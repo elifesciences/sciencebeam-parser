@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import argparse
+from os.path import splitext
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
@@ -52,7 +53,7 @@ def run(argv=None):
     ))
 
     # change the key (filename) from pdf to xml to reflect the new content
-    output |= MapKeys(lambda k: k.replace('.pdf', '.tei-header.xml'))
+    output |= MapKeys(lambda k: splitext(k)[0] + known_args.output_suffix)
 
     # write the files, using the key as the filename
     output |= WriteToFile()
