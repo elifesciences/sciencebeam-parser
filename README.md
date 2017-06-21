@@ -38,4 +38,4 @@ Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.
 
 Extending the Pipeline
 ----------------------
-You can use the [grobid_service_pdf_to_xml](sciencebeam/examples/grobid_service_pdf_to_xml.py) as a template and add your own steps.
+You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) example as a template and add your own steps.
