@@ -1,0 +1,8 @@
+[FORMAT]
+indent-string='  '
+indent-after-paren=2
+
+[MESSAGES CONTROL]
+# Disable C0111 (docstrings) - use useful method names instead
+# Disable C0103 (invalid variable name) - in very short blocks it is okay to use generic names
+disable=C0111,C0103,W0108,E1101,C0330
