@@ -32,6 +32,10 @@ Or specify an XSLT transformation, e.g. using [grobid-jats.xsl](https://github.c
 
 `python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf --xslt-path grobid-jats.xsl`
 
+Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.google.com/sdk/) you can also work with buckets by specifying the URL:
+
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input gs://example_bucket/path/to/pdfs/*.pdf`
+
 Extending the Pipeline
 ----------------------
 You can use the [grobid_service_pdf_to_xml](sciencebeam/examples/grobid_service_pdf_to_xml.py) as a template and add your own steps.
