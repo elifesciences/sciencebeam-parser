@@ -22,7 +22,7 @@ Run
 
 To run the example conversion with the defaults:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf [--grobid-url http://localhost:8080] [--output-suffix .tei-header.xml]`
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf`
 
 Or specify the Grobid URL and file suffix:
 
