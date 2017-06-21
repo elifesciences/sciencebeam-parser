@@ -7,11 +7,12 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 
 from sciencebeam.beam_utils.fileio import ReadFileNamesAndContent, WriteToFile
-from sciencebeam.beam_utils.core import MapKeys
+from sciencebeam.beam_utils.core import MapKeys, MapValues
 from sciencebeam.transformers.grobid_service import (
   grobid_service,
   PROCESS_HEADER_DOCUMENT_PATH
 )
+from sciencebeam.transformers.xslt import xslt_transformer_from_file
 
 def run(argv=None):
   """Main entry point; defines and runs the tfidf pipeline."""
@@ -35,6 +36,10 @@ def run(argv=None):
     required=False,
     default=PROCESS_HEADER_DOCUMENT_PATH,
     help='Name of the Grobid action')
+  parser.add_argument(
+    '--xslt-path',
+    required=False,
+    help='XSLT template to apply')
   known_args, pipeline_args = parser.parse_known_args(argv)
 
   # We use the save_main_session option because one or more DoFn's in this
@@ -51,6 +56,9 @@ def run(argv=None):
     output = pcoll | beam.Map(grobid_service(
       known_args.grobid_url, known_args.grobid_action
     ))
+
+    if known_args.xslt_path:
+      output |= MapValues(xslt_transformer_from_file(known_args.xslt_path))
 
     # change the key (filename) from pdf to xml to reflect the new content
     output |= MapKeys(lambda k: splitext(k)[0] + known_args.output_suffix)
