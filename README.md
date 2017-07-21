@@ -19,6 +19,17 @@ Pre-requisites
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
 - [Grobid Service](https://grobid.readthedocs.io/en/latest/Grobid-service/)
 
+Pipeline
+--------
+
+The conversion pipeline could for example look as follows:
+
+![Example Conversion Pipeline](doc/example-conversion-pipeline.png)
+
+Currently it only runs Grobid and XSLT (for meta data). It also assumes that Grobid is running as a service.
+
+In the future we want to implement the TensorFlow model as well as integrate other tools.
+
 Run
 ---
 
