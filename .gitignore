@@ -1,3 +1,5 @@
 /sciencebeam.egg-info
+/.vscode
+/venv
 
 *.pyc
