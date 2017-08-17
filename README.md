@@ -35,19 +35,19 @@ Run
 
 To run the example conversion with the defaults:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf`
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf"`
 
 Or specify the Grobid URL and file suffix:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf --grobid-url http://localhost:8080 --output-suffix .tei-header.xml`
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" --grobid-url http://localhost:8080 --output-suffix .tei-header.xml`
 
 Or specify an XSLT transformation, e.g. using [grobid-jats.xsl](https://github.com/kermitt2/grobid/blob/master/grobid-core/src/main/resources/xslt/grobid-jats.xsl):
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input /path/to/pdfs/*/*.pdf --xslt-path grobid-jats.xsl`
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" --xslt-path grobid-jats.xsl`
 
 Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.google.com/sdk/) you can also work with buckets by specifying the URL:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input gs://example_bucket/path/to/pdfs/*.pdf`
+`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_bucket/path/to/pdfs/*.pdf"`
 
 Extending the Pipeline
 ----------------------
