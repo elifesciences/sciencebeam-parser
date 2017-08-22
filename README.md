@@ -1,4 +1,4 @@
-Science Beam
+ScienceBeam
 ============
 
 A set of tools to allow PDF to XML conversion, utilising [Apache Beam](https://beam.apache.org/) and other tools.
@@ -7,7 +7,7 @@ Currently [Grobid](http://grobid.readthedocs.io/en/latest/) is used for the actu
 
 The aim of this project is to bring multiple tools together to generate a full XML document.
 
-You might also be interested in the [Science Beam - Gym](https://github.com/elifesciences/sciencebeam-gym), for the model training ground (the model is not yet integrated into the conversion pipeline).
+You might also be interested in the [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym), for the model training ground (the model is not yet integrated into the conversion pipeline).
 
 Status
 ------
