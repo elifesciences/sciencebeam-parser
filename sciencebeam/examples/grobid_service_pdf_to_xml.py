@@ -14,6 +14,10 @@ from sciencebeam.transformers.grobid_service import (
 )
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
 
+def create_fn_api_runner():
+  from apache_beam.runners.portability.fn_api_runner import FnApiRunner
+  return FnApiRunner()
+
 def run(argv=None):
   """Main entry point; defines and runs the tfidf pipeline."""
   parser = argparse.ArgumentParser()
@@ -40,6 +44,11 @@ def run(argv=None):
     '--xslt-path',
     required=False,
     help='XSLT template to apply')
+  parser.add_argument(
+    '--runner',
+    required=False,
+    default='FnApiRunner',
+    help='Runner.')
   known_args, pipeline_args = parser.parse_known_args(argv)
 
   # We use the save_main_session option because one or more DoFn's in this
@@ -47,7 +56,11 @@ def run(argv=None):
   pipeline_options = PipelineOptions(pipeline_args)
   pipeline_options.view_as(SetupOptions).save_main_session = True
 
-  with beam.Pipeline(options=pipeline_options) as p:
+  runner = known_args.runner
+  if runner == 'FnApiRunner':
+    runner = create_fn_api_runner()
+
+  with beam.Pipeline(runner, options=pipeline_options) as p:
     # read the files and create a collection with filename, content tuples
     pcoll = p | ReadFileNamesAndContent(known_args.input)
 
