@@ -18,6 +18,7 @@ def grobid_service(base_url, path):
     response = requests.post(url,
       files={'input': (filename, six.StringIO(content))},
     )
+    response.raise_for_status()
     result_content = response.content
     if isinstance(x, tuple):
       return filename, result_content
