@@ -1,5 +1,8 @@
 /sciencebeam.egg-info
+/.eggs
 /.vscode
 /venv
+/logs
+/.temp
 
 *.pyc
