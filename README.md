@@ -17,7 +17,6 @@ Pre-requisites
 --------------
 - Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
-- [Grobid Service](https://grobid.readthedocs.io/en/latest/Grobid-service/)
 
 Pipeline
 --------
@@ -37,7 +36,9 @@ To run the example conversion with the defaults:
 
 `python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf"`
 
-Or specify the Grobid URL and file suffix:
+That will automatically download and run a [Grobid Service](https://grobid.readthedocs.io/en/latest/Grobid-service/) instance.
+
+Or specify the Grobid URL and file suffix (in that case the Grobid Service is assumed to be running):
 
 `python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" --grobid-url http://localhost:8080 --output-suffix .tei-header.xml`
 
