@@ -1,5 +1,4 @@
-ScienceBeam
-============
+# ScienceBeam
 
 A set of tools to allow PDF to XML conversion, utilising [Apache Beam](https://beam.apache.org/) and other tools.
 
@@ -9,17 +8,16 @@ The aim of this project is to bring multiple tools together to generate a full X
 
 You might also be interested in the [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym), for the model training ground (the model is not yet integrated into the conversion pipeline).
 
-Status
-------
+## Status
+
 This is in a very early status and may change significantly. The Pipeline may not currently run successfully in the Cloud.
 
-Pre-requisites
---------------
+## Pre-requisites
+
 - Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
 
-Pipeline
---------
+## Pipeline
 
 The conversion pipeline could for example look as follows:
 
@@ -29,8 +27,7 @@ Currently it only runs Grobid and XSLT (for meta data). It also assumes that Gro
 
 In the future we want to implement the TensorFlow model as well as integrate other tools.
 
-Run
----
+## Run
 
 To run the example conversion with the defaults:
 
@@ -50,8 +47,8 @@ Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.
 
 `python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_bucket/path/to/pdfs/*.pdf"`
 
-Extending the Pipeline
-----------------------
+## Extending the Pipeline
+
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) example as a template and add your own steps.
 
 [CONTRIBUTING](CONTRIBUTING.md)
