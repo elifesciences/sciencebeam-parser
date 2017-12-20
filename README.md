@@ -31,21 +31,31 @@ In the future we want to implement the TensorFlow model as well as integrate oth
 
 To run the example conversion with the defaults:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf"`
+```bash
+python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf"
+```
 
 That will automatically download and run a [Grobid Service](https://grobid.readthedocs.io/en/latest/Grobid-service/) instance.
 
 Or specify the Grobid URL and file suffix (in that case the Grobid Service is assumed to be running):
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" --grobid-url http://localhost:8080 --output-suffix .tei-header.xml`
+```bash
+python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" \
+ --grobid-url http://localhost:8080 --output-suffix .tei-header.xml
+```
 
 Or specify an XSLT transformation, e.g. using [grobid-jats.xsl](https://github.com/kermitt2/grobid/blob/master/grobid-core/src/main/resources/xslt/grobid-jats.xsl):
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" --xslt-path grobid-jats.xsl`
+```bash
+python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "/path/to/pdfs/*/*.pdf" \
+ --xslt-path grobid-jats.xsl
+```
 
 Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.google.com/sdk/) you can also work with buckets by specifying the URL:
 
-`python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_bucket/path/to/pdfs/*.pdf"`
+```bash
+python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_bucket/path/to/pdfs/*.pdf"
+```
 
 ## Extending the Pipeline
 
