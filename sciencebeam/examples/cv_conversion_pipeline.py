@@ -392,7 +392,7 @@ def parse_args(argv=None):
   process_main_args(args)
   process_cloud_args(
     args, args.output_path,
-    name='sciencbeam-convert'
+    name='sciencebeam-convert'
   )
 
   get_logger().info('args: %s', args)
