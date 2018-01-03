@@ -77,6 +77,10 @@ from sciencebeam_gym.inference_model.extract_to_xml import (
   extract_structured_document_to_xml
 )
 
+from sciencebeam.transformers.grobid_xml_enhancer import (
+  GrobidXmlEnhancer
+)
+
 def get_logger():
   return logging.getLogger(__name__)
 
@@ -88,6 +92,7 @@ class MetricCounters(object):
   CV_PREDICTION_ERROR = 'ComputerVisionPrediction_error_count'
   ANNOTATE_USING_PREDICTION_ERROR = 'AnnotateLxmlUsingPrediction_error_count'
   EXTRACT_TO_XML_ERROR = 'ExtractToXml_error_count'
+  GROBID_ERROR = 'Grobid_error_count'
 
 def lazy_cached_value(value_fn):
   cache = {}
@@ -280,6 +285,19 @@ def configure_pipeline(p, opt):
     ), error_count=MetricCounters.EXTRACT_TO_XML_ERROR)
   )
 
+  if opt.use_grobid:
+    enhancer = GrobidXmlEnhancer(
+      opt.grobid_url, start_service=opt.start_grobid_service
+    )
+    extracted_xml = (
+      extracted_xml |
+      "GrobidEnhanceXml" >> MapOrLog(lambda v: extend_dict(v, {
+        'extracted_xml': enhancer(
+          v['extracted_xml']
+        )
+      }), error_count=MetricCounters.GROBID_ERROR)
+    )
+
   _ = (
     extracted_xml |
     "WriteXml" >> TransformAndLog(
@@ -340,6 +358,15 @@ def add_main_args(parser):
   )
 
   parser.add_argument(
+    '--use-grobid', action='store_true', default=False,
+    help='enable the use of grobid'
+  )
+  parser.add_argument(
+    '--grobid-url', required=False, default=None,
+    help='Base URL to the Grobid service'
+  )
+
+  parser.add_argument(
     '--debug', action='store_true', default=False,
     help='enable debug output'
   )
@@ -378,6 +405,12 @@ def process_main_args(args):
       os.path.dirname(args.base_data_path),
       os.path.basename(args.base_data_path + '-results')
     )
+
+  if args.use_grobid and not args.grobid_url:
+    args.grobid_url = 'http://localhost:8080/api'
+    args.start_grobid_service = True
+  else:
+    args.start_grobid_service = False
 
 def parse_args(argv=None):
   parser = argparse.ArgumentParser()

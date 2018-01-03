@@ -1,3 +1,4 @@
+import logging
 from mock import patch, DEFAULT
 
 import pytest
@@ -39,6 +40,9 @@ MIN_ARGV = [
   '--model-export-dir=' + MODEL_EXPORT_DIR
 ]
 
+def setup_module():
+  logging.basicConfig(level='DEBUG')
+
 def get_default_args():
   return parse_args(MIN_ARGV)
 
@@ -59,7 +63,8 @@ def patch_conversion_pipeline(**kwargs):
     'annotate_lxml_using_predicted_images',
     'extract_annotated_lxml_to_xml',
     'save_file_content',
-    'parse_color_map_from_file'
+    'parse_color_map_from_file',
+    'GrobidXmlEnhancer'
   }
 
   return patch.multiple(
@@ -144,4 +149,36 @@ class TestConfigurePipeline(BeamTest):
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
         mocks['extract_annotated_lxml_to_xml'].return_value
+      )
+
+  def test_should_use_grobid_if_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      grobid_xml_enhancer = mocks['GrobidXmlEnhancer'].return_value
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.use_grobid = True
+      opt.grobid_url = 'http://test/api'
+      with TestPipeline() as p:
+        mocks['ReadDictCsv'].return_value = beam.Create([{
+          'pdf_url': PDF_FILE_1
+        }])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        mocks['convert_pdf_bytes_to_lxml'].return_value = LXML_CONTENT_1
+        _setup_mocks_for_pages(mocks, [1, 2])
+        configure_pipeline(p, opt)
+
+      mocks['GrobidXmlEnhancer'].assert_called_with(
+        opt.grobid_url,
+        start_service=opt.start_grobid_service
+      )
+      grobid_xml_enhancer.assert_called_with(
+        mocks['extract_annotated_lxml_to_xml'].return_value
+      )
+      mocks['save_file_content'].assert_called_with(
+        OUTPUT_XML_FILE_1,
+        grobid_xml_enhancer.return_value
       )
