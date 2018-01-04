@@ -71,6 +71,7 @@ What you need before you can go you proceed:
 - Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model)
 - `color_map.conf` used to train the model (that will be embedded into the model in the future)
 - PDF files, as file list csv/tsv or glob pattern
+- [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym) project installed (e.g. by running `pip install -e .` after cloning it)
 
 The following comman will process files locally:
 
