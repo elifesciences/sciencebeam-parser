@@ -14,6 +14,7 @@ This is in a very early status and may change significantly. The Pipeline may no
 
 - Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
+- [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym) project installed (e.g. by running `pip install -e .` after cloning it)
 
 ## Pipeline
 
@@ -71,7 +72,6 @@ What you need before you can go you proceed:
 - Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model)
 - `color_map.conf` used to train the model (that will be embedded into the model in the future)
 - PDF files, as file list csv/tsv or glob pattern
-- [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym) project installed (e.g. by running `pip install -e .` after cloning it)
 
 The following comman will process files locally:
 
@@ -111,4 +111,10 @@ python -m sciencebeam.examples.cv_conversion_pipeline --help
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) or
 [cv_conversion_pipeline.py](sciencebeam/examples/cv_conversion_pipeline.py) example as a template and add your own steps.
 
-[CONTRIBUTING](CONTRIBUTING.md)
+## Tests
+
+Unit tests are written using [pytest](https://docs.pytest.org/). Run for example `pytest` or `pytest-watch`.
+
+## Contributing
+
+See [CONTRIBUTIG](CONTRIBUTING.md)
