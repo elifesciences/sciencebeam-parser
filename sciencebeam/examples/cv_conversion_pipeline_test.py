@@ -59,11 +59,10 @@ def patch_conversion_pipeline(**kwargs):
     'convert_pdf_bytes_to_lxml',
     'save_pages',
     'ReadDictCsv',
-    'create_inference_model_wrapper',
+    'InferenceModelWrapper',
     'annotate_lxml_using_predicted_images',
     'extract_annotated_lxml_to_xml',
     'save_file_content',
-    'parse_color_map_from_file',
     'GrobidXmlEnhancer'
   }
 
@@ -116,7 +115,7 @@ class TestConfigurePipeline(BeamTest):
 
   def test_should_pass_around_values_with_default_pipeline(self):
     with patch_conversion_pipeline() as mocks:
-      inference_model_wrapper = mocks['create_inference_model_wrapper'].return_value
+      inference_model_wrapper = mocks['InferenceModelWrapper'].return_value
       opt = get_default_args()
       opt.base_data_path = BASE_DATA_PATH
       opt.pdf_path = None
@@ -141,7 +140,7 @@ class TestConfigurePipeline(BeamTest):
       mocks['annotate_lxml_using_predicted_images'].assert_called_with(
         LXML_CONTENT_1,
         inference_model_wrapper.return_value,
-        mocks['parse_color_map_from_file'].return_value
+        inference_model_wrapper.get_color_map.return_value
       )
       mocks['extract_annotated_lxml_to_xml'].assert_called_with(
         mocks['annotate_lxml_using_predicted_images'].return_value
