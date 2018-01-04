@@ -46,10 +46,6 @@ from sciencebeam_gym.structured_document.lxml import (
   LxmlStructuredDocument
 )
 
-from sciencebeam_gym.preprocess.color_map import (
-  parse_color_map_from_file
-)
-
 from sciencebeam_gym.beam_utils.io import (
   find_matching_filenames
 )
@@ -130,19 +126,23 @@ def image_data_to_png(image_data):
   image.save(out, 'png')
   return out.getvalue()
 
-def create_inference_model_wrapper(export_dir):
-  session_cache = lazy_cached_value(lambda: tf.InteractiveSession())
-  inference_model_cache = lazy_cached_value(
-    lambda: load_inference_model(export_dir, session=session_cache())
-  )
-  def wrapper(png_pages):
+class InferenceModelWrapper(object):
+  def __init__(self, export_dir):
+    self.session_cache = lazy_cached_value(lambda: tf.InteractiveSession())
+    self.inference_model_cache = lazy_cached_value(
+      lambda: load_inference_model(export_dir, session=self.session_cache())
+    )
+
+  def get_color_map(self):
+    return self.inference_model_cache().get_color_map(session=self.session_cache())
+
+  def __call__(self, png_pages):
     input_data = [
       np.asarray(Image.open(BytesIO(png_page)).convert('RGB'), dtype=np.uint8)
       for png_page in png_pages
     ]
-    output_img_data_batch = inference_model_cache()(input_data, session=session_cache())
+    output_img_data_batch = self.inference_model_cache()(input_data, session=self.session_cache())
     return output_img_data_batch
-  return wrapper
 
 def configure_pipeline(p, opt):
   image_size = (
@@ -152,9 +152,7 @@ def configure_pipeline(p, opt):
   )
   page_range = opt.pages
 
-  inference_model_wrapper = create_inference_model_wrapper(opt.model_export_dir)
-
-  color_map = parse_color_map_from_file(opt.color_map)
+  inference_model_wrapper = InferenceModelWrapper(opt.model_export_dir)
 
   if opt.pdf_file_list:
     pdf_urls = (
@@ -218,7 +216,8 @@ def configure_pipeline(p, opt):
 
     "ComputerVisionPrediction" >> MapOrLog(lambda v: remove_keys_from_dict(
       extend_dict(v, {
-        'prediction_png_pages': inference_model_wrapper(v['pdf_png_pages'])
+        'prediction_png_pages': inference_model_wrapper(v['pdf_png_pages']),
+        'color_map': inference_model_wrapper.get_color_map()
       }),
       keys_to_remove={'pdf_png_pages'}
     ), error_count=MetricCounters.CV_PREDICTION_ERROR)
@@ -248,7 +247,7 @@ def configure_pipeline(p, opt):
     "AnnotateLxmlUsingPrediction" >> MapOrLog(lambda v: remove_keys_from_dict(
       extend_dict(v, {
         'annotated_lxml_content': annotate_lxml_using_predicted_images(
-          v['lxml_content'], v['prediction_png_pages'], color_map
+          v['lxml_content'], v['prediction_png_pages'], v['color_map']
         )
       }),
       keys_to_remove={'pdf_png_pages', 'lxml_content'}
@@ -390,11 +389,6 @@ def add_main_args(parser):
   parser.add_argument(
     '--model-export-dir', type=str, required=True,
     help='path to model export dir'
-  )
-
-  parser.add_argument(
-    '--color-map', default='color_map.conf',
-    help='color map to use'
   )
 
 def process_main_args(args):
