@@ -7,7 +7,14 @@ from sciencebeam.transformers.grobid_service_wrapper import (
   GrobidServiceWrapper
 )
 
-PROCESS_HEADER_DOCUMENT_PATH = '/processHeaderDocument'
+class GrobidApiPaths:
+  PROCESS_HEADER_DOCUMENT = '/processHeaderDocument'
+  PROCESS_HEADER_NAMES = '/processHeaderNames'
+  PROCESS_CITATION_NAMES = '/processCitationNames'
+  PROCESS_AFFILIATIONS = '/processAffiliations'
+  PROCESS_CITATION = '/processCitation'
+
+PROCESS_HEADER_DOCUMENT = GrobidApiPaths.PROCESS_HEADER_DOCUMENT
 
 service_wrapper = GrobidServiceWrapper()
 
@@ -17,18 +24,24 @@ def get_logger():
 def start_service_if_not_running():
   service_wrapper.start_service_if_not_running()
 
-def grobid_service(base_url, path, start_service=True):
+def grobid_service(base_url, path, start_service=True, field_name=None):
   url = base_url + path
 
   def do_grobid_service(x):
     if start_service:
       start_service_if_not_running()
-    filename = x[0] if isinstance(x, tuple) else 'unknown.pdf'
-    content = x[1] if isinstance(x, tuple) else x
-    get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
-    response = requests.post(url,
-      files={'input': (filename, six.StringIO(content))},
-    )
+    if field_name:
+      content = x
+      response = requests.post(url,
+        data={field_name: content}
+      )
+    else:
+      filename = x[0] if isinstance(x, tuple) else 'unknown.pdf'
+      content = x[1] if isinstance(x, tuple) else x
+      get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
+      response = requests.post(url,
+        files={'input': (filename, six.StringIO(content))},
+      )
     response.raise_for_status()
     result_content = response.content
     if isinstance(x, tuple):
