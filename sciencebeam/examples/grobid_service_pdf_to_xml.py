@@ -14,7 +14,7 @@ from sciencebeam.beam_utils.fileio import ReadFileNamesAndContent, WriteToFile
 from sciencebeam.beam_utils.core import MapKeys, MapValues
 from sciencebeam.transformers.grobid_service import (
   grobid_service,
-  PROCESS_HEADER_DOCUMENT_PATH
+  GrobidApiPaths
 )
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
 
@@ -95,7 +95,7 @@ def parse_args(argv=None):
   parser.add_argument(
     '--grobid-action',
     required=False,
-    default=PROCESS_HEADER_DOCUMENT_PATH,
+    default=GrobidApiPaths.PROCESS_HEADER_DOCUMENT,
     help='Name of the Grobid action')
   parser.add_argument(
     '--xslt-path',

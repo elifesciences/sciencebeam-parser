@@ -7,14 +7,12 @@ from sciencebeam.transformers.grobid_service_wrapper import (
   GrobidServiceWrapper
 )
 
-class GrobidApiPaths:
+class GrobidApiPaths(object):
   PROCESS_HEADER_DOCUMENT = '/processHeaderDocument'
   PROCESS_HEADER_NAMES = '/processHeaderNames'
   PROCESS_CITATION_NAMES = '/processCitationNames'
   PROCESS_AFFILIATIONS = '/processAffiliations'
   PROCESS_CITATION = '/processCitation'
-
-PROCESS_HEADER_DOCUMENT = GrobidApiPaths.PROCESS_HEADER_DOCUMENT
 
 service_wrapper = GrobidServiceWrapper()
 
