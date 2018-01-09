@@ -108,6 +108,28 @@ For a full list of parameters:
 python -m sciencebeam.examples.cv_conversion_pipeline --help
 ```
 
+### Run CRF Model Pipeline
+
+Similar to the CV pipeline, this pipeline is currently also under development. It uses the CRF model trained by
+[ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym).
+
+What you need before you can go you proceed:
+
+- Path to [CRF model](https://github.com/elifesciences/sciencebeam-gym#training-crf-model)
+- PDF files, as file list csv/tsv or glob pattern
+
+The following comman will process files locally:
+
+```bash
+python -m sciencebeam.examples.crf_conversion_pipeline \
+  --data-path=./data \
+  --pdf-file-list=./data/file-list-validation.tsv \
+  --crf-model=path/to/crf-model.pkl \
+  --output-path=./data-results \
+  --pages=1 \
+  --limit=100
+```
+
 ## Extending the Pipeline
 
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) or
