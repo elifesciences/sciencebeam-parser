@@ -77,6 +77,10 @@ from sciencebeam.transformers.grobid_xml_enhancer import (
   GrobidXmlEnhancer
 )
 
+# alias to make testing easier
+save_annot_lxml_content = save_file_content
+save_output_xml_content = save_file_content
+
 def get_logger():
   return logging.getLogger(__name__)
 
@@ -89,6 +93,10 @@ class MetricCounters(object):
   ANNOTATE_USING_PREDICTION_ERROR = 'AnnotateLxmlUsingPrediction_error_count'
   EXTRACT_TO_XML_ERROR = 'ExtractToXml_error_count'
   GROBID_ERROR = 'Grobid_error_count'
+
+class OutputExt(object):
+  ANNOT_LXML = '.annot.lxml.gz'
+  CV_PNG = '.cv-png.zip'
 
 def lazy_cached_value(value_fn):
   cache = {}
@@ -119,6 +127,15 @@ def extract_annotated_lxml_to_xml(annotated_lxml_content):
 
   xml_root = extract_structured_document_to_xml(structured_document)
   return etree.tostring(xml_root, pretty_print=True)
+
+def get_output_file(filename, source_base_path, output_base_path, output_file_suffix):
+  return FileSystems.join(
+    output_base_path,
+    change_ext(
+      relative_path(source_base_path, filename),
+      None, output_file_suffix
+    )
+  )
 
 def image_data_to_png(image_data):
   image = Image.fromarray(image_data, 'RGB')
@@ -153,6 +170,13 @@ def configure_pipeline(p, opt):
   page_range = opt.pages
 
   inference_model_wrapper = InferenceModelWrapper(opt.model_export_dir)
+
+  get_pipeline_output_file = lambda source_url, ext: get_output_file(
+    source_url,
+    opt.base_data_path,
+    opt.output_path,
+    ext
+  )
 
   if opt.pdf_file_list:
     pdf_urls = (
@@ -228,12 +252,9 @@ def configure_pipeline(p, opt):
       cv_predictions |
       "SaveComputerVisionOutput" >> TransformAndLog(
         beam.Map(lambda v: save_pages(
-          FileSystems.join(
-            opt.output_path,
-            change_ext(
-              relative_path(opt.base_data_path, v['pdf_filename']),
-              None, '.cv-png.zip'
-            )
+          get_pipeline_output_file(
+            v['pdf_filename'],
+            OutputExt.CV_PNG
           ),
           '.png',
           [image_data_to_png(image_data) for image_data in v['prediction_png_pages']]
@@ -258,13 +279,10 @@ def configure_pipeline(p, opt):
     _ = (
       annotated_lxml |
       "SaveAnnotLxml" >> TransformAndLog(
-        beam.Map(lambda v: save_file_content(
-          FileSystems.join(
-            opt.output_path,
-            change_ext(
-              relative_path(opt.base_data_path, v['pdf_filename']),
-              None, '.annot.lxml.gz'
-            )
+        beam.Map(lambda v: save_annot_lxml_content(
+          get_pipeline_output_file(
+            v['pdf_filename'],
+            OutputExt.ANNOT_LXML
           ),
           v['annotated_lxml_content']
         )),
@@ -272,47 +290,45 @@ def configure_pipeline(p, opt):
       )
     )
 
-  extracted_xml = (
-    annotated_lxml |
-    "ExtractToXml" >> MapOrLog(lambda v: remove_keys_from_dict(
-      extend_dict(v, {
-        'extracted_xml': extract_annotated_lxml_to_xml(
-          v['annotated_lxml_content']
-        )
-      }),
-      keys_to_remove={'annotated_lxml_content'}
-    ), error_count=MetricCounters.EXTRACT_TO_XML_ERROR)
-  )
-
-  if opt.use_grobid:
-    enhancer = GrobidXmlEnhancer(
-      opt.grobid_url, start_service=opt.start_grobid_service
-    )
+  if opt.save_xml:
     extracted_xml = (
-      extracted_xml |
-      "GrobidEnhanceXml" >> MapOrLog(lambda v: extend_dict(v, {
-        'extracted_xml': enhancer(
-          v['extracted_xml']
-        )
-      }), error_count=MetricCounters.GROBID_ERROR)
+      annotated_lxml |
+      "ExtractToXml" >> MapOrLog(lambda v: remove_keys_from_dict(
+        extend_dict(v, {
+          'extracted_xml': extract_annotated_lxml_to_xml(
+            v['annotated_lxml_content']
+          )
+        }),
+        keys_to_remove={'annotated_lxml_content'}
+      ), error_count=MetricCounters.EXTRACT_TO_XML_ERROR)
     )
 
-  _ = (
-    extracted_xml |
-    "WriteXml" >> TransformAndLog(
-      beam.Map(lambda v: save_file_content(
-        FileSystems.join(
-          opt.output_path,
-          change_ext(
-            relative_path(opt.base_data_path, v['pdf_filename']),
-            None, opt.output_suffix
+    if opt.use_grobid:
+      enhancer = GrobidXmlEnhancer(
+        opt.grobid_url, start_service=opt.start_grobid_service
+      )
+      extracted_xml = (
+        extracted_xml |
+        "GrobidEnhanceXml" >> MapOrLog(lambda v: extend_dict(v, {
+          'extracted_xml': enhancer(
+            v['extracted_xml']
           )
-        ),
-        v['extracted_xml']
-      )),
-      log_fn=lambda x: get_logger().info('saved xml to: %s', x)
+        }), error_count=MetricCounters.GROBID_ERROR)
+      )
+
+    _ = (
+      extracted_xml |
+      "WriteXml" >> TransformAndLog(
+        beam.Map(lambda v: save_output_xml_content(
+          get_pipeline_output_file(
+            v['pdf_filename'],
+            opt.output_suffix
+          ),
+          v['extracted_xml']
+        )),
+        log_fn=lambda x: get_logger().info('saved xml to: %s', x)
+      )
     )
-  )
 
 
 def add_main_args(parser):
@@ -336,14 +352,18 @@ def add_main_args(parser):
     help='limit the number of file pairs to process'
   )
 
-  parser.add_argument(
+  output = parser.add_argument_group('output')
+  output.add_argument(
     '--output-path', required=False,
     help='Output directory to write results to.'
   )
-
-  parser.add_argument(
+  output.add_argument(
     '--output-suffix', required=False, default='.cv.xml',
     help='Output file suffix to add to the filename (excluding the file extension).'
+  )
+  output.add_argument(
+    '--no-save-xml', dest='save_xml', action='store_false',
+    help='disable saving of xml (main output)'
   )
 
   parser.add_argument(
@@ -391,7 +411,7 @@ def add_main_args(parser):
     help='path to model export dir'
   )
 
-def process_main_args(args):
+def process_main_args(args, parser):
   args.base_data_path = args.data_path.replace('/*/', '/')
 
   if not args.output_path:
@@ -405,6 +425,13 @@ def process_main_args(args):
     args.start_grobid_service = True
   else:
     args.start_grobid_service = False
+
+  if not (args.save_xml or args.save_annot_lxml or args.save_cv_output):
+    parser.error(
+      'at least one of the output options required:'
+      '--save-annot-lxml, --save-cv-output or not --no-save-xml'
+    )
+
 
 def get_or_create_sciencebeam_gym_dist_path():
   import sys
@@ -444,7 +471,7 @@ def parse_args(argv=None):
   if args.debug:
     logging.getLogger().setLevel('DEBUG')
 
-  process_main_args(args)
+  process_main_args(args, parser)
   process_cloud_args(
     args, args.output_path,
     name='sciencebeam-convert'
