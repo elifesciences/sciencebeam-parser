@@ -13,7 +13,9 @@ from sciencebeam_gym.beam_utils.testing import (
 import sciencebeam.examples.cv_conversion_pipeline as cv_conversion_pipeline
 from sciencebeam.examples.cv_conversion_pipeline import (
   configure_pipeline,
-  parse_args
+  parse_args,
+  get_output_file,
+  OutputExt
 )
 
 
@@ -63,6 +65,8 @@ def patch_conversion_pipeline(**kwargs):
     'annotate_lxml_using_predicted_images',
     'extract_annotated_lxml_to_xml',
     'save_file_content',
+    'save_output_xml_content',
+    'save_annot_lxml_content',
     'GrobidXmlEnhancer'
   }
 
@@ -145,7 +149,7 @@ class TestConfigurePipeline(BeamTest):
       mocks['extract_annotated_lxml_to_xml'].assert_called_with(
         mocks['annotate_lxml_using_predicted_images'].return_value
       )
-      mocks['save_file_content'].assert_called_with(
+      mocks['save_output_xml_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
         mocks['extract_annotated_lxml_to_xml'].return_value
       )
@@ -177,7 +181,51 @@ class TestConfigurePipeline(BeamTest):
       grobid_xml_enhancer.assert_called_with(
         mocks['extract_annotated_lxml_to_xml'].return_value
       )
-      mocks['save_file_content'].assert_called_with(
+      mocks['save_output_xml_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
         grobid_xml_enhancer.return_value
       )
+
+  def test_should_only_save_annot_lxml_output_if_xml_output_is_disabled(self):
+    with patch_conversion_pipeline() as mocks:
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.save_annot_lxml = True
+      opt.save_xml = False
+      with TestPipeline() as p:
+        mocks['ReadDictCsv'].return_value = beam.Create([{
+          'pdf_url': PDF_FILE_1
+        }])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        mocks['convert_pdf_bytes_to_lxml'].return_value = LXML_CONTENT_1
+        _setup_mocks_for_pages(mocks, [1, 2])
+        configure_pipeline(p, opt)
+
+      mocks['save_annot_lxml_content'].assert_called_with(
+        get_output_file(
+          PDF_FILE_1,
+          BASE_DATA_PATH,
+          OUTPUT_PATH,
+          OutputExt.ANNOT_LXML
+        ),
+        mocks['annotate_lxml_using_predicted_images'].return_value
+      )
+      mocks['save_output_xml_content'].assert_not_called()
+
+class TestParseArgs(object):
+  def test_should_parse_minimal_arguments(self):
+    parse_args(MIN_ARGV)
+
+  def test_should_raise_error_if_no_output_is_enabled(self):
+    with pytest.raises(SystemExit):
+      parse_args(MIN_ARGV + ['--no-save-xml'])
+
+  def test_should_allow_save_annot_lxml_only(self):
+    parse_args(MIN_ARGV + ['--no-save-xml', '--save-annot-lxml'])
+
+  def test_should_allow_save_cv_output_only(self):
+    parse_args(MIN_ARGV + ['--no-save-xml', '--save-cv-output'])
