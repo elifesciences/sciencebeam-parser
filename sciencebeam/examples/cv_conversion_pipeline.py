@@ -95,7 +95,7 @@ class MetricCounters(object):
   GROBID_ERROR = 'Grobid_error_count'
 
 class OutputExt(object):
-  ANNOT_LXML = '.annot.lxml.gz'
+  ANNOT_LXML = '.cv.lxml.gz'
   CV_PNG = '.cv-png.zip'
 
 def lazy_cached_value(value_fn):
