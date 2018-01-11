@@ -116,9 +116,10 @@ Similar to the CV pipeline, this pipeline is currently also under development. I
 What you need before you can go you proceed:
 
 - Path to [CRF model](https://github.com/elifesciences/sciencebeam-gym#training-crf-model)
+- Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model) (optional)
 - PDF files, as file list csv/tsv or glob pattern
 
-The following comman will process files locally:
+The following command will process files locally:
 
 ```bash
 python -m sciencebeam.examples.crf_conversion_pipeline \
@@ -129,6 +130,21 @@ python -m sciencebeam.examples.crf_conversion_pipeline \
   --pages=1 \
   --limit=100
 ```
+
+Add the `--cv-model-export-dir` parameter to also feed the CV predictions to the CRF model (assuming it has been trained with it):
+
+```bash
+python -m sciencebeam.examples.crf_conversion_pipeline \
+  --data-path=./data \
+  --pdf-file-list=./data/file-list-validation.tsv \
+  --crf-model=path/to/crf-model.pkl \
+  --cv-model-export-dir=./my-model/export \
+  --output-path=./data-results \
+  --pages=1 \
+  --limit=100
+```
+
+The `--use-grobid` parameter can also be used with this pipeline.
 
 ## Extending the Pipeline
 

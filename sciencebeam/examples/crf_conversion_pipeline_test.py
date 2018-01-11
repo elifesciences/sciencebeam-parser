@@ -21,6 +21,7 @@ BASE_TEST_PATH = '.temp/test/crf-conversion-pipeline'
 BASE_DATA_PATH = BASE_TEST_PATH + '/data'
 PDF_PATH = '*/*.pdf'
 MODEL_EXPORT_DIR = BASE_TEST_PATH + '/model-export'
+CV_MODEL_EXPORT_DIR = BASE_TEST_PATH + '/cv-model-export'
 
 REL_PDF_FILE_WITHOUT_EXT_1 = '1/file'
 PDF_FILE_1 = BASE_DATA_PATH + '/' + REL_PDF_FILE_WITHOUT_EXT_1 + '.pdf'
@@ -56,7 +57,10 @@ def patch_conversion_pipeline(**kwargs):
     'predict_and_annotate_lxml_content',
     'extract_annotated_lxml_to_xml',
     'save_file_content',
-    'GrobidXmlEnhancer'
+    'GrobidXmlEnhancer',
+    'pdf_bytes_to_png_pages',
+    'InferenceModelWrapper',
+    'annotate_lxml_using_predicted_images'
   }
 
   return patch.multiple(
@@ -66,6 +70,11 @@ def patch_conversion_pipeline(**kwargs):
       for k in always_mock
     }
   )
+
+def _setup_mocks_for_pages(mocks, page_no_list, file_count=1):
+  mocks['pdf_bytes_to_png_pages'].return_value = [
+    fake_pdf_png_page(i) for i in page_no_list
+  ]
 
 @pytest.mark.slow
 class TestConfigurePipeline(BeamTest):
@@ -135,6 +144,45 @@ class TestConfigurePipeline(BeamTest):
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
         mocks['extract_annotated_lxml_to_xml'].return_value
+      )
+
+  def test_should_use_cv_model_if_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      inference_model_wrapper = mocks['InferenceModelWrapper'].return_value
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.cv_model_export_dir = CV_MODEL_EXPORT_DIR
+      with TestPipeline() as p:
+        mocks['ReadDictCsv'].return_value = beam.Create([{
+          'pdf_url': PDF_FILE_1
+        }])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        mocks['convert_pdf_bytes_to_lxml'].return_value = LXML_CONTENT_1
+        _setup_mocks_for_pages(mocks, [1, 2])
+        configure_pipeline(p, opt)
+
+      mocks['convert_pdf_bytes_to_lxml'].assert_called_with(
+        PDF_CONTENT_1, page_range=None, path=PDF_FILE_1
+      )
+
+      # cv model
+      inference_model_wrapper.assert_called_with(
+        [fake_pdf_png_page(i) for i in [1, 2]]
+      )
+      mocks['annotate_lxml_using_predicted_images'].assert_called_with(
+        LXML_CONTENT_1,
+        inference_model_wrapper.return_value,
+        inference_model_wrapper.get_color_map.return_value
+      )
+
+      # crf model should receive output from cv model
+      mocks['predict_and_annotate_lxml_content'].assert_called_with(
+        mocks['annotate_lxml_using_predicted_images'].return_value,
+        mocks['load_crf_model'].return_value
       )
 
   def test_should_use_grobid_if_enabled(self):
