@@ -22,9 +22,12 @@ BASE_DATA_PATH = BASE_TEST_PATH + '/data'
 PDF_PATH = '*/*.pdf'
 MODEL_EXPORT_DIR = BASE_TEST_PATH + '/model-export'
 CV_MODEL_EXPORT_DIR = BASE_TEST_PATH + '/cv-model-export'
+FILE_LIST_PATH = 'file-list.csv'
+FILE_COLUMN = 'column1'
 
 REL_PDF_FILE_WITHOUT_EXT_1 = '1/file'
 PDF_FILE_1 = BASE_DATA_PATH + '/' + REL_PDF_FILE_WITHOUT_EXT_1 + '.pdf'
+LXML_FILE_1 = BASE_DATA_PATH + '/' + REL_PDF_FILE_WITHOUT_EXT_1 + '.lxml'
 
 OUTPUT_PATH = BASE_TEST_PATH + '/out'
 OUTPUT_SUFFIX = '.cv.xml'
@@ -142,6 +145,28 @@ class TestConfigurePipeline(BeamTest):
         mocks['extract_annotated_lxml_to_xml'].return_value
       )
 
+  def test_should_use_lxml_file_list_if_provided(self):
+    with patch_conversion_pipeline() as mocks:
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = None
+      opt.lxml_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([LXML_FILE_1])
+        mocks['read_all_from_path'].return_value = LXML_CONTENT_1
+        configure_pipeline(p, opt)
+
+      mocks['extract_annotated_lxml_to_xml'].assert_called_with(
+        LXML_CONTENT_1
+      )
+      mocks['save_file_content'].assert_called_with(
+        OUTPUT_XML_FILE_1,
+        mocks['extract_annotated_lxml_to_xml'].return_value
+      )
+
   def test_should_use_cv_model_if_enabled(self):
     with patch_conversion_pipeline() as mocks:
       inference_model_wrapper = mocks['InferenceModelWrapper'].return_value
@@ -207,3 +232,74 @@ class TestConfigurePipeline(BeamTest):
         OUTPUT_XML_FILE_1,
         grobid_xml_enhancer.return_value
       )
+
+class TestParseArgs(object):
+  def test_should_parse_minimum_number_of_arguments(self):
+    parse_args(MIN_ARGV)
+
+  def test_should_raise_error_if_no_source_argument_was_provided(self):
+    with pytest.raises(SystemExit):
+      parse_args([
+        '--data-path=' + BASE_DATA_PATH,
+        '--crf-model=' + MODEL_EXPORT_DIR
+      ])
+
+  def test_should_allow_pdf_path_to_be_specified(self):
+    args = parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-path=' + PDF_PATH,
+      '--crf-model=' + MODEL_EXPORT_DIR
+    ])
+    assert args.pdf_path == PDF_PATH
+
+  def test_should_allow_pdf_file_list_and_column_to_be_specified(self):
+    args = parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-file-list=' + FILE_LIST_PATH,
+      '--pdf-file-column=' + FILE_COLUMN,
+      '--crf-model=' + MODEL_EXPORT_DIR
+    ])
+    assert args.pdf_file_list == FILE_LIST_PATH
+    assert args.pdf_file_column == FILE_COLUMN
+
+  def test_should_allow_lxml_file_list_and_column_to_be_specified(self):
+    args = parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--lxml-file-list=' + FILE_LIST_PATH,
+      '--lxml-file-column=' + FILE_COLUMN
+    ])
+    assert args.lxml_file_list == FILE_LIST_PATH
+    assert args.lxml_file_column == FILE_COLUMN
+
+  def test_should_not_allow_crf_model_with_lxml_file_list(self):
+    with pytest.raises(SystemExit):
+      parse_args([
+        '--data-path=' + BASE_DATA_PATH,
+        '--lxml-file-list=' + FILE_LIST_PATH,
+        '--lxml-file-column=' + FILE_COLUMN,
+        '--crf-model=' + MODEL_EXPORT_DIR
+      ])
+
+  def test_should_not_allow_cv_model_with_lxml_file_list(self):
+    with pytest.raises(SystemExit):
+      parse_args([
+        '--data-path=' + BASE_DATA_PATH,
+        '--lxml-file-list=' + FILE_LIST_PATH,
+        '--lxml-file-column=' + FILE_COLUMN,
+        '--cv-model-export-dir=' + CV_MODEL_EXPORT_DIR
+      ])
+
+  def test_should_require_crf_model_with_pdf_file_list(self):
+    with pytest.raises(SystemExit):
+      parse_args([
+        '--data-path=' + BASE_DATA_PATH,
+        '--pdf-file-list=' + FILE_LIST_PATH,
+        '--pdf-file-column=' + FILE_COLUMN
+      ])
+
+  def test_should_require_crf_model_with_pdf_path(self):
+    with pytest.raises(SystemExit):
+      parse_args([
+        '--data-path=' + BASE_DATA_PATH,
+        '--pdf-path=' + PDF_PATH
+      ])

@@ -89,7 +89,7 @@ class OutputExt(object):
   CV_PNG = '.cv-png.zip'
 
 class DataProps(object):
-  PDF_FILENAME = 'pdf_filename'
+  SOURCE_FILENAME = 'source_filename'
   PDF_CONTENT = 'pdf_content'
   LXML_CONTENT = 'lxml_content'
   PDF_PNG_PAGES = 'pdf_png_pages'
@@ -116,20 +116,13 @@ def load_crf_model(path):
   with FileSystems.open(path) as crf_model_f:
     return pickle.load(crf_model_f)
 
-def configure_pipeline(p, opt):
+def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file):
   page_range = opt.pages
 
   cv_enabled = opt.cv_model_export_dir
 
-  get_pipeline_output_file = lambda source_url, ext: get_output_file(
-    source_url,
-    opt.base_data_path,
-    opt.output_path,
-    ext
-  )
-
   if opt.pdf_file_list:
-    pdf_urls = p | ReadFileList(opt.pdf_file_list, column='pdf_url', limit=opt.limit)
+    pdf_urls = p | ReadFileList(opt.pdf_file_list, column=opt.pdf_file_column, limit=opt.limit)
   else:
     pdf_urls = p | FindFiles(join_if_relative_path(opt.base_data_path, opt.pdf_path))
 
@@ -139,21 +132,21 @@ def configure_pipeline(p, opt):
 
     "ReadPdfContent" >> TransformAndCount(
       beam.Map(lambda pdf_url: {
-        DataProps.PDF_FILENAME: pdf_url,
-        DataProps.PDF_CONTENT: read_all_from_path(pdf_url),
+        DataProps.SOURCE_FILENAME: pdf_url,
+        DataProps.PDF_CONTENT: read_all_from_path(pdf_url)
       }),
       MetricCounters.FILES
     ) |
 
     "ConvertPdfToLxml" >> MapOrLog(lambda v: extend_dict(v, {
       DataProps.LXML_CONTENT: convert_pdf_bytes_to_lxml(
-        v[DataProps.PDF_CONTENT], path=v[DataProps.PDF_FILENAME],
+        v[DataProps.PDF_CONTENT], path=v[DataProps.SOURCE_FILENAME],
         page_range=page_range
       )
     }), log_fn=lambda e, v: (
       get_logger().warning(
         'caught exception (ignoring item): %s, pdf: %s',
-        e, v[DataProps.PDF_FILENAME], exc_info=e
+        e, v[DataProps.SOURCE_FILENAME], exc_info=e
       )
     ), error_count=MetricCounters.CONVERT_PDF_TO_LXML_ERROR)
   )
@@ -196,7 +189,7 @@ def configure_pipeline(p, opt):
         "SaveComputerVisionOutput" >> TransformAndLog(
           beam.Map(lambda v: save_pages(
             get_pipeline_output_file(
-              v[DataProps.PDF_FILENAME],
+              v[DataProps.SOURCE_FILENAME],
               OutputExt.CV_PNG
             ),
             '.png',
@@ -238,7 +231,7 @@ def configure_pipeline(p, opt):
       "SaveAnnotLxml" >> TransformAndLog(
         beam.Map(lambda v: save_file_content(
           get_pipeline_output_file(
-            v[DataProps.PDF_FILENAME],
+            v[DataProps.SOURCE_FILENAME],
             OutputExt.CRF_CV_ANNOT_LXML if cv_enabled else OutputExt.CRF_ANNOT_LXML
           ),
           v[DataProps.LXML_CONTENT]
@@ -246,6 +239,33 @@ def configure_pipeline(p, opt):
         log_fn=lambda x: get_logger().info('saved annoted lxml to: %s', x)
       )
     )
+  return annotated_lxml
+
+def configure_pipeline(p, opt):
+  get_pipeline_output_file = lambda source_url, ext: get_output_file(
+    source_url,
+    opt.base_data_path,
+    opt.output_path,
+    ext
+  )
+
+  if opt.lxml_file_list:
+    lxml_urls = p | ReadFileList(opt.lxml_file_list, column=opt.lxml_file_column, limit=opt.limit)
+
+    annotated_lxml = (
+      lxml_urls |
+      PreventFusion() |
+
+      "ReadLxmlContent" >> TransformAndCount(
+        beam.Map(lambda lxml_url: {
+          DataProps.SOURCE_FILENAME: lxml_url,
+          DataProps.LXML_CONTENT: read_all_from_path(lxml_url)
+        }),
+        MetricCounters.FILES
+      )
+    )
+  else:
+    annotated_lxml = add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file)
 
   extracted_xml = (
     annotated_lxml |
@@ -277,7 +297,7 @@ def configure_pipeline(p, opt):
     "WriteXml" >> TransformAndLog(
       beam.Map(lambda v: save_file_content(
         get_pipeline_output_file(
-          v[DataProps.PDF_FILENAME],
+          v[DataProps.SOURCE_FILENAME],
           opt.output_suffix
         ),
         v[DataProps.EXTRACTED_XML]
@@ -293,14 +313,28 @@ def add_main_args(parser):
     help='base data path'
   )
 
-  source_group = parser.add_mutually_exclusive_group(required=True)
-  source_group.add_argument(
+  source_group = parser.add_argument_group('source')
+  source_one_of_group = source_group.add_mutually_exclusive_group(required=True)
+  source_one_of_group.add_argument(
     '--pdf-path', type=str, required=False,
     help='path to pdf file(s), relative to data-path'
   )
-  source_group.add_argument(
+  source_one_of_group.add_argument(
     '--pdf-file-list', type=str, required=False,
-    help='path to pdf csv/tsv file list (with a "pdf_url" column; it may contain other columns)'
+    help='path to pdf csv/tsv file list'
+  )
+  source_group.add_argument(
+    '--pdf-file-column', type=str, required=False, default='pdf_url',
+    help='the column of the pdf file list to use'
+  )
+  source_one_of_group.add_argument(
+    '--lxml-file-list', type=str, required=False,
+    help='path to annotated lxml file list'
+    '; (CRF and CV models are not supported in this mode)'
+  )
+  source_group.add_argument(
+    '--lxml-file-column', type=str, required=False, default='url',
+    help='the column of the lxml file list to use'
   )
 
   parser.add_argument(
@@ -345,7 +379,7 @@ def add_main_args(parser):
 
   crf_group = parser.add_argument_group('CRF')
   crf_group.add_argument(
-    '--crf-model', type=str, required=True,
+    '--crf-model', type=str, required=False,
     help='path to saved crf model'
   )
 
@@ -369,7 +403,7 @@ def add_main_args(parser):
     help='enable saving of computer vision output (png pages)'
   )
 
-def process_main_args(args):
+def process_main_args(args, parser):
   args.base_data_path = args.data_path.replace('/*/', '/')
 
   if not args.output_path:
@@ -377,6 +411,16 @@ def process_main_args(args):
       os.path.dirname(args.base_data_path),
       os.path.basename(args.base_data_path + '-results')
     )
+
+  if args.lxml_file_list:
+    if args.crf_model:
+      parser.error('--crf-model cannot be used in conjunction with --lxml-file-list')
+
+    if args.cv_model_export_dir:
+      parser.error('--crf-model-export-dir cannot be used in conjunction with --lxml-file-list')
+  else:
+    if not args.crf_model:
+      parser.error('--crf-model required in conjunction with --pdf-file-list or --pdf-path')
 
   if args.use_grobid and not args.grobid_url:
     args.grobid_url = 'http://localhost:8080/api'
@@ -422,7 +466,7 @@ def parse_args(argv=None):
   if args.debug:
     logging.getLogger().setLevel('DEBUG')
 
-  process_main_args(args)
+  process_main_args(args, parser)
   process_cloud_args(
     args, args.output_path,
     name='sciencebeam-convert'
