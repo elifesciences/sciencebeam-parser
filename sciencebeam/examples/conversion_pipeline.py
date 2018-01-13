@@ -84,6 +84,7 @@ def get_logger():
 
 class MetricCounters(object):
   FILES = 'files'
+  READ_LXML_ERROR = 'read_lxml_error_count'
   CONVERT_PDF_TO_LXML_ERROR = 'ConvertPdfToLxml_error_count'
   CONVERT_PDF_TO_PNG_ERROR = 'ConvertPdfToPng_error_count'
   CONVERT_LXML_TO_SVG_ANNOT_ERROR = 'ConvertPdfToSvgAnnot_error_count'
@@ -275,10 +276,10 @@ def configure_pipeline(p, opt):
       PreventFusion() |
 
       "ReadLxmlContent" >> TransformAndCount(
-        beam.Map(lambda url: {
+        MapOrLog(lambda url: {
           DataProps.SOURCE_FILENAME: url,
           DataProps.STRUCTURED_DOCUMENT: load_structured_document(url)
-        }),
+        }, error_count=MetricCounters.READ_LXML_ERROR),
         MetricCounters.FILES
       )
     )
