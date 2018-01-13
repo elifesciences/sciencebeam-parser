@@ -13,7 +13,8 @@ from sciencebeam_gym.beam_utils.testing import (
 import sciencebeam.examples.conversion_pipeline as conversion_pipeline
 from sciencebeam.examples.conversion_pipeline import (
   configure_pipeline,
-  parse_args
+  parse_args,
+  OutputExt
 )
 
 
@@ -53,17 +54,20 @@ def get_default_args():
 def patch_conversion_pipeline(**kwargs):
   always_mock = {
     'read_all_from_path',
+    'load_structured_document',
     'convert_pdf_bytes_to_lxml',
+    'convert_pdf_bytes_to_structured_document',
     'load_crf_model',
     'ReadFileList',
     'FindFiles',
-    'predict_and_annotate_lxml_content',
-    'extract_annotated_lxml_to_xml',
+    'predict_and_annotate_structured_document',
+    'extract_annotated_structured_document_to_xml',
+    'save_structured_document',
     'save_file_content',
     'GrobidXmlEnhancer',
     'pdf_bytes_to_png_pages',
     'InferenceModelWrapper',
-    'annotate_lxml_using_predicted_images'
+    'annotate_structured_document_using_predicted_image_data'
   }
 
   return patch.multiple(
@@ -127,25 +131,42 @@ class TestConfigurePipeline(BeamTest):
       with TestPipeline() as p:
         mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
         mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        mocks['convert_pdf_bytes_to_lxml'].return_value = LXML_CONTENT_1
         configure_pipeline(p, opt)
 
-      mocks['convert_pdf_bytes_to_lxml'].assert_called_with(
+      mocks['convert_pdf_bytes_to_structured_document'].assert_called_with(
         PDF_CONTENT_1, page_range=None, path=PDF_FILE_1
       )
-      mocks['predict_and_annotate_lxml_content'].assert_called_with(
-        LXML_CONTENT_1,
+      mocks['predict_and_annotate_structured_document'].assert_called_with(
+        mocks['convert_pdf_bytes_to_structured_document'].return_value,
         mocks['load_crf_model'].return_value
       )
-      mocks['extract_annotated_lxml_to_xml'].assert_called_with(
-        mocks['predict_and_annotate_lxml_content'].return_value
+      mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
+        mocks['predict_and_annotate_structured_document'].return_value
       )
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
-        mocks['extract_annotated_lxml_to_xml'].return_value
+        mocks['extract_annotated_structured_document_to_xml'].return_value
       )
 
-  def test_should_use_lxml_file_list_if_provided(self):
+  def test_should_save_annotated_lxml_if_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.save_annot_lxml = True
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+        configure_pipeline(p, opt)
+
+      mocks['save_structured_document'].assert_called_with(
+        OUTPUT_PATH + '/' + REL_PDF_FILE_WITHOUT_EXT_1 + OutputExt.CRF_ANNOT_LXML,
+        mocks['predict_and_annotate_structured_document'].return_value
+      )
+
+  def test_should_use_lxml_file_list_if_provided_and_load_structured_documents(self):
     with patch_conversion_pipeline() as mocks:
       opt = get_default_args()
       opt.base_data_path = BASE_DATA_PATH
@@ -156,15 +177,14 @@ class TestConfigurePipeline(BeamTest):
       opt.output_suffix = OUTPUT_SUFFIX
       with TestPipeline() as p:
         mocks['ReadFileList'].return_value = beam.Create([LXML_FILE_1])
-        mocks['read_all_from_path'].return_value = LXML_CONTENT_1
         configure_pipeline(p, opt)
 
-      mocks['extract_annotated_lxml_to_xml'].assert_called_with(
-        LXML_CONTENT_1
+      mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
+        mocks['load_structured_document'].return_value
       )
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
-        mocks['extract_annotated_lxml_to_xml'].return_value
+        mocks['extract_annotated_structured_document_to_xml'].return_value
       )
 
   def test_should_use_cv_model_if_enabled(self):
@@ -180,11 +200,10 @@ class TestConfigurePipeline(BeamTest):
       with TestPipeline() as p:
         mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
         mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        mocks['convert_pdf_bytes_to_lxml'].return_value = LXML_CONTENT_1
         _setup_mocks_for_pages(mocks, [1, 2])
         configure_pipeline(p, opt)
 
-      mocks['convert_pdf_bytes_to_lxml'].assert_called_with(
+      mocks['convert_pdf_bytes_to_structured_document'].assert_called_with(
         PDF_CONTENT_1, page_range=None, path=PDF_FILE_1
       )
 
@@ -192,15 +211,15 @@ class TestConfigurePipeline(BeamTest):
       inference_model_wrapper.assert_called_with(
         [fake_pdf_png_page(i) for i in [1, 2]]
       )
-      mocks['annotate_lxml_using_predicted_images'].assert_called_with(
-        LXML_CONTENT_1,
+      mocks['annotate_structured_document_using_predicted_image_data'].assert_called_with(
+        mocks['convert_pdf_bytes_to_structured_document'].return_value,
         inference_model_wrapper.return_value,
         inference_model_wrapper.get_color_map.return_value
       )
 
       # crf model should receive output from cv model
-      mocks['predict_and_annotate_lxml_content'].assert_called_with(
-        mocks['annotate_lxml_using_predicted_images'].return_value,
+      mocks['predict_and_annotate_structured_document'].assert_called_with(
+        mocks['annotate_structured_document_using_predicted_image_data'].return_value,
         mocks['load_crf_model'].return_value
       )
 
@@ -226,7 +245,7 @@ class TestConfigurePipeline(BeamTest):
         start_service=opt.start_grobid_service
       )
       grobid_xml_enhancer.assert_called_with(
-        mocks['extract_annotated_lxml_to_xml'].return_value
+        mocks['extract_annotated_structured_document_to_xml'].return_value
       )
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,

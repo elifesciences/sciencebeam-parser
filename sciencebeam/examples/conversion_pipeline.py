@@ -40,6 +40,10 @@ from sciencebeam_gym.beam_utils.main import (
   process_sciencebeam_gym_dep_args
 )
 
+from sciencebeam_gym.structured_document.structured_document_loader import (
+  load_structured_document
+)
+
 from sciencebeam_gym.structured_document.lxml import (
   LxmlStructuredDocument
 )
@@ -60,6 +64,11 @@ from sciencebeam_gym.models.text.crf.annotate_using_predictions import (
   predict_and_annotate_structured_document
 )
 
+from sciencebeam_gym.inference_model.annotate_using_predictions import (
+  annotate_structured_document_using_predicted_images,
+  AnnotatedImage
+)
+
 from sciencebeam.transformers.grobid_xml_enhancer import (
   GrobidXmlEnhancer
 )
@@ -67,8 +76,7 @@ from sciencebeam.transformers.grobid_xml_enhancer import (
 from sciencebeam.examples.cv_conversion_pipeline import (
   InferenceModelWrapper,
   get_output_file,
-  image_data_to_png,
-  annotate_lxml_using_predicted_images
+  image_data_to_png
 )
 
 def get_logger():
@@ -92,30 +100,39 @@ class OutputExt(object):
 class DataProps(object):
   SOURCE_FILENAME = 'source_filename'
   PDF_CONTENT = 'pdf_content'
-  LXML_CONTENT = 'lxml_content'
+  STRUCTURED_DOCUMENT = 'structured_document'
   PDF_PNG_PAGES = 'pdf_png_pages'
   CV_PREDICTION_PNG_PAGES = 'cv_prediction_png_pages'
   COLOR_MAP = 'color_map'
   EXTRACTED_XML = 'extracted_xml'
 
-def predict_and_annotate_lxml_content(lxml_content, model):
-  structured_document = LxmlStructuredDocument(
-    etree.parse(BytesIO(lxml_content))
-  )
-  predict_and_annotate_structured_document(structured_document, model)
-  return etree.tostring(structured_document.root)
+def convert_pdf_bytes_to_structured_document(pdf_content, path=None, page_range=None):
+  return LxmlStructuredDocument(etree.parse(BytesIO(
+    convert_pdf_bytes_to_lxml(pdf_content, path=path, page_range=page_range)
+  )))
 
-def extract_annotated_lxml_to_xml(annotated_lxml_content):
-  structured_document = LxmlStructuredDocument(
-    etree.parse(BytesIO(annotated_lxml_content))
+def annotate_structured_document_using_predicted_image_data(
+  structured_document, prediction_images, color_map):
+
+  return annotate_structured_document_using_predicted_images(
+    structured_document, (
+      AnnotatedImage(prediction_image, color_map)
+      for prediction_image in prediction_images
+    )
   )
 
+def extract_annotated_structured_document_to_xml(structured_document):
   xml_root = extract_structured_document_to_xml(structured_document)
   return etree.tostring(xml_root, pretty_print=True)
 
 def load_crf_model(path):
   with FileSystems.open(path) as crf_model_f:
     return pickle.load(crf_model_f)
+
+def save_structured_document(filename, structured_document):
+  # only support saving lxml for now
+  assert isinstance(structured_document, LxmlStructuredDocument)
+  save_file_content(filename, etree.tostring(structured_document.root, pretty_print=True))
 
 def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file):
   page_range = opt.pages
@@ -140,7 +157,7 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
     ) |
 
     "ConvertPdfToLxml" >> MapOrLog(lambda v: extend_dict(v, {
-      DataProps.LXML_CONTENT: convert_pdf_bytes_to_lxml(
+      DataProps.STRUCTURED_DOCUMENT: convert_pdf_bytes_to_structured_document(
         v[DataProps.PDF_CONTENT], path=v[DataProps.SOURCE_FILENAME],
         page_range=page_range
       )
@@ -204,8 +221,8 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
       cv_predictions |
       "AnnotateLxmlUsingCvPrediction" >> MapOrLog(lambda v: remove_keys_from_dict(
         extend_dict(v, {
-          DataProps.LXML_CONTENT: annotate_lxml_using_predicted_images(
-            v[DataProps.LXML_CONTENT],
+          DataProps.STRUCTURED_DOCUMENT: annotate_structured_document_using_predicted_image_data(
+            v[DataProps.STRUCTURED_DOCUMENT],
             v[DataProps.CV_PREDICTION_PNG_PAGES],
             v[DataProps.COLOR_MAP]
           )
@@ -219,9 +236,9 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
   model = load_crf_model(opt.crf_model)
   annotated_lxml = (
     lxml_content |
-    "AnnotateLxmlUsingPrediction" >> MapOrLog(lambda v: extend_dict(v, {
-      DataProps.LXML_CONTENT: predict_and_annotate_lxml_content(
-        v[DataProps.LXML_CONTENT], model
+    "AnnotateLxmlUsingCrfPrediction" >> MapOrLog(lambda v: extend_dict(v, {
+      DataProps.STRUCTURED_DOCUMENT: predict_and_annotate_structured_document(
+        v[DataProps.STRUCTURED_DOCUMENT], model
       )
     }), error_count=MetricCounters.ANNOTATE_USING_PREDICTION_ERROR)
   )
@@ -230,12 +247,12 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
     _ = (
       annotated_lxml |
       "SaveAnnotLxml" >> TransformAndLog(
-        beam.Map(lambda v: save_file_content(
+        beam.Map(lambda v: save_structured_document(
           get_pipeline_output_file(
             v[DataProps.SOURCE_FILENAME],
             OutputExt.CRF_CV_ANNOT_LXML if cv_enabled else OutputExt.CRF_ANNOT_LXML
           ),
-          v[DataProps.LXML_CONTENT]
+          v[DataProps.STRUCTURED_DOCUMENT]
         )),
         log_fn=lambda x: get_logger().info('saved annoted lxml to: %s', x)
       )
@@ -258,25 +275,27 @@ def configure_pipeline(p, opt):
       PreventFusion() |
 
       "ReadLxmlContent" >> TransformAndCount(
-        beam.Map(lambda lxml_url: {
-          DataProps.SOURCE_FILENAME: lxml_url,
-          DataProps.LXML_CONTENT: read_all_from_path(lxml_url)
+        beam.Map(lambda url: {
+          DataProps.SOURCE_FILENAME: url,
+          DataProps.STRUCTURED_DOCUMENT: load_structured_document(url)
         }),
         MetricCounters.FILES
       )
     )
   else:
-    annotated_lxml = add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file)
+    annotated_lxml = add_read_pdfs_to_annotated_lxml_pipeline_steps(
+      p, opt, get_pipeline_output_file
+    )
 
   extracted_xml = (
     annotated_lxml |
     "ExtractToXml" >> MapOrLog(lambda v: remove_keys_from_dict(
       extend_dict(v, {
-        DataProps.EXTRACTED_XML: extract_annotated_lxml_to_xml(
-          v[DataProps.LXML_CONTENT]
+        DataProps.EXTRACTED_XML: extract_annotated_structured_document_to_xml(
+          v[DataProps.STRUCTURED_DOCUMENT]
         )
       }),
-      keys_to_remove={DataProps.LXML_CONTENT}
+      keys_to_remove={DataProps.STRUCTURED_DOCUMENT}
     ), error_count=MetricCounters.EXTRACT_TO_XML_ERROR)
   )
 
@@ -330,7 +349,7 @@ def add_main_args(parser):
   )
   source_one_of_group.add_argument(
     '--lxml-file-list', type=str, required=False,
-    help='path to annotated lxml file list'
+    help='path to annotated lxml or svg pages zip file list'
     '; (CRF and CV models are not supported in this mode)'
   )
   source_group.add_argument(
