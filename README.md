@@ -64,9 +64,9 @@ python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_b
 This pipeline is currently under development. It uses the CRF or computer vision model trained by
 [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym).
 
-What you need before you can go you proceed:
+What you need before you can proceed:
 
-- At least one of of:
+- At least one of:
   - Path to [CRF model](https://github.com/elifesciences/sciencebeam-gym#training-crf-model)
   - Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model)
 - PDF files, as file list csv/tsv or glob pattern
