@@ -234,19 +234,22 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
 
     lxml_content = cv_annotated_lxml
 
-  model = load_crf_model(opt.crf_model)
-  annotated_lxml = (
-    lxml_content |
-    "AnnotateLxmlUsingCrfPrediction" >> MapOrLog(lambda v: extend_dict(v, {
-      DataProps.STRUCTURED_DOCUMENT: predict_and_annotate_structured_document(
-        v[DataProps.STRUCTURED_DOCUMENT], model
-      )
-    }), error_count=MetricCounters.ANNOTATE_USING_PREDICTION_ERROR)
-  )
+  if opt.crf_model:
+    model = load_crf_model(opt.crf_model)
+    crf_annotated_lxml = (
+      lxml_content |
+      "AnnotateLxmlUsingCrfPrediction" >> MapOrLog(lambda v: extend_dict(v, {
+        DataProps.STRUCTURED_DOCUMENT: predict_and_annotate_structured_document(
+          v[DataProps.STRUCTURED_DOCUMENT], model
+        )
+      }), error_count=MetricCounters.ANNOTATE_USING_PREDICTION_ERROR)
+    )
+
+    lxml_content = crf_annotated_lxml
 
   if opt.save_annot_lxml:
     _ = (
-      annotated_lxml |
+      lxml_content |
       "SaveAnnotLxml" >> TransformAndLog(
         beam.Map(lambda v: save_structured_document(
           get_pipeline_output_file(
@@ -258,7 +261,7 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
         log_fn=lambda x: get_logger().info('saved annoted lxml to: %s', x)
       )
     )
-  return annotated_lxml
+  return lxml_content
 
 def configure_pipeline(p, opt):
   get_pipeline_output_file = lambda source_url, ext: get_output_file(
@@ -440,8 +443,11 @@ def process_main_args(args, parser):
     if args.cv_model_export_dir:
       parser.error('--crf-model-export-dir cannot be used in conjunction with --lxml-file-list')
   else:
-    if not args.crf_model:
-      parser.error('--crf-model required in conjunction with --pdf-file-list or --pdf-path')
+    if not args.crf_model and not args.cv_model_export_dir:
+      parser.error(
+        '--crf-model or --cv-model-export-dir required in conjunction'
+        ' with --pdf-file-list or --pdf-path'
+      )
 
   if args.use_grobid and not args.grobid_url:
     args.grobid_url = 'http://localhost:8080/api'

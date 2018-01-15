@@ -187,7 +187,7 @@ class TestConfigurePipeline(BeamTest):
         mocks['extract_annotated_structured_document_to_xml'].return_value
       )
 
-  def test_should_use_cv_model_if_enabled(self):
+  def test_should_use_crf_model_with_cv_model_if_enabled(self):
     with patch_conversion_pipeline() as mocks:
       inference_model_wrapper = mocks['InferenceModelWrapper'].return_value
       opt = get_default_args()
@@ -222,6 +222,46 @@ class TestConfigurePipeline(BeamTest):
         mocks['annotate_structured_document_using_predicted_image_data'].return_value,
         mocks['load_crf_model'].return_value
       )
+      mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
+        mocks['predict_and_annotate_structured_document'].return_value
+      )
+
+  def test_should_use_cv_model_only_if_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      inference_model_wrapper = mocks['InferenceModelWrapper'].return_value
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.crf_model = None
+      opt.cv_model_export_dir = CV_MODEL_EXPORT_DIR
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        _setup_mocks_for_pages(mocks, [1, 2])
+        configure_pipeline(p, opt)
+
+      mocks['convert_pdf_bytes_to_structured_document'].assert_called_with(
+        PDF_CONTENT_1, page_range=None, path=PDF_FILE_1
+      )
+
+      # cv model
+      inference_model_wrapper.assert_called_with(
+        [fake_pdf_png_page(i) for i in [1, 2]]
+      )
+      mocks['annotate_structured_document_using_predicted_image_data'].assert_called_with(
+        mocks['convert_pdf_bytes_to_structured_document'].return_value,
+        inference_model_wrapper.return_value,
+        inference_model_wrapper.get_color_map.return_value
+      )
+      mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
+        mocks['annotate_structured_document_using_predicted_image_data'].return_value
+      )
+
+      # crf model not be called
+      mocks['predict_and_annotate_structured_document'].assert_not_called()
 
   def test_should_use_grobid_if_enabled(self):
     with patch_conversion_pipeline() as mocks:
@@ -308,7 +348,7 @@ class TestParseArgs(object):
         '--cv-model-export-dir=' + CV_MODEL_EXPORT_DIR
       ])
 
-  def test_should_require_crf_model_with_pdf_file_list(self):
+  def test_should_require_crf_or_cv_model_with_pdf_file_list(self):
     with pytest.raises(SystemExit):
       parse_args([
         '--data-path=' + BASE_DATA_PATH,
@@ -316,9 +356,34 @@ class TestParseArgs(object):
         '--pdf-file-column=' + FILE_COLUMN
       ])
 
-  def test_should_require_crf_model_with_pdf_path(self):
+  def test_should_require_crf_or_cv_model_with_pdf_path(self):
     with pytest.raises(SystemExit):
       parse_args([
         '--data-path=' + BASE_DATA_PATH,
         '--pdf-path=' + PDF_PATH
       ])
+
+  def test_should_allow_crf_model_only_with_pdf_file_list(self):
+    parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-file-list=' + FILE_LIST_PATH,
+      '--pdf-file-column=' + FILE_COLUMN,
+      '--crf-model=' + MODEL_EXPORT_DIR
+    ])
+
+  def test_should_allow_cv_model_only_with_pdf_file_list(self):
+    parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-file-list=' + FILE_LIST_PATH,
+      '--pdf-file-column=' + FILE_COLUMN,
+      '--cv-model-export-dir=' + CV_MODEL_EXPORT_DIR
+    ])
+
+  def test_should_allow_crf_and_cv_model_only_with_pdf_file_list(self):
+    parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-file-list=' + FILE_LIST_PATH,
+      '--pdf-file-column=' + FILE_COLUMN,
+      '--crf-model=' + MODEL_EXPORT_DIR,
+      '--cv-model-export-dir=' + CV_MODEL_EXPORT_DIR
+    ])
