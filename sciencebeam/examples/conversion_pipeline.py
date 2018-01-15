@@ -53,7 +53,8 @@ from sciencebeam_gym.preprocess.preprocessing_utils import (
   convert_pdf_bytes_to_lxml,
   parse_page_range,
   save_pages,
-  pdf_bytes_to_png_pages
+  pdf_bytes_to_png_pages,
+  get_output_file
 )
 
 from sciencebeam_gym.inference_model.extract_to_xml import (
@@ -73,9 +74,8 @@ from sciencebeam.transformers.grobid_xml_enhancer import (
   GrobidXmlEnhancer
 )
 
-from sciencebeam.examples.cv_conversion_pipeline import (
+from sciencebeam.examples.cv_conversion_utils import (
   InferenceModelWrapper,
-  get_output_file,
   image_data_to_png
 )
 
