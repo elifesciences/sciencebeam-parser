@@ -25,15 +25,9 @@ The conversion pipeline could for example look as follows:
 
 ![Example Conversion Pipeline](doc/example-conversion-pipeline.png)
 
-Currently it only runs Grobid and XSLT (for meta data). It also assumes that Grobid is running as a service.
+See below for current example implementations.
 
-In the future we want to implement the TensorFlow model as well as integrate other tools.
-
-## Run
-
-There different example pipelines that you could run. To integrate new tools you'd modify an existing or add a new pipeline.
-
-### Run Grobid Example Pipeline
+### Grobid Example Pipeline
 
 This pipeline will run [Grobid](http://grobid.readthedocs.io/en/latest/) is used for the actual conversion.
 
@@ -65,23 +59,28 @@ Assuming you have already authenticated with [Google's Cloud SDK](https://cloud.
 python -m sciencebeam.examples.grobid_service_pdf_to_xml --input "gs://example_bucket/path/to/pdfs/*.pdf"
 ```
 
-### Run Computer Vision Pipeline
+### ScienceBeam Conversion Pipeline
 
-This pipeline is currently under development. It uses the computer vision model trained by
+This pipeline is currently under development. It uses the CRF or computer vision model trained by
 [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym).
 
 What you need before you can go you proceed:
 
-- Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model)
+- At least one of of:
+  - Path to [CRF model](https://github.com/elifesciences/sciencebeam-gym#training-crf-model)
+  - Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model)
 - PDF files, as file list csv/tsv or glob pattern
 
-The following comman will process files locally:
+To use the CRF model together with the CV model, the CRF model will have to be trained with the CV predictions.
+
+The following command will process files locally:
 
 ```bash
-python -m sciencebeam.examples.cv_conversion_pipeline \
+python -m sciencebeam.examples.conversion_pipeline \
   --data-path=./data \
   --pdf-file-list=./data/file-list-validation.tsv \
-  --model-export-dir=./my-model/export \
+  --crf-model=path/to/crf-model.pkl \
+  --cv-model-export-dir=./my-model/export \
   --output-path=./data-results \
   --pages=1 \
   --limit=100
@@ -90,10 +89,11 @@ python -m sciencebeam.examples.cv_conversion_pipeline \
 The following command would process the first 100 files in the cloud using Dataflow:
 
 ```bash
-python -m sciencebeam.examples.cv_conversion_pipeline \
+python -m sciencebeam.examples.conversion_pipeline \
   --data-path=gs://my-bucket/data \
   --pdf-file-list=gs://my-bucket/data/file-list-validation.tsv \
-  --model-export-dir=gs://mybucket/my-model/export \
+  --crf-model=path/to/crf-model.pkl \
+  --cv-model-export-dir=gs://mybucket/my-model/export \
   --output-path=gs://my-bucket/data-results \
   --pages=1 \
   --limit=100 \
@@ -105,51 +105,13 @@ You can also enable the post processing of the extracted authors and affiliation
 For a full list of parameters:
 
 ```bash
-python -m sciencebeam.examples.cv_conversion_pipeline --help
+python -m sciencebeam.examples.conversion_pipeline --help
 ```
-
-### Run CRF Model Pipeline
-
-Similar to the CV pipeline, this pipeline is currently also under development. It uses the CRF model trained by
-[ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym).
-
-What you need before you can go you proceed:
-
-- Path to [CRF model](https://github.com/elifesciences/sciencebeam-gym#training-crf-model)
-- Path to [exported computer vision model](https://github.com/elifesciences/sciencebeam-gym#export-inference-model) (optional)
-- PDF files, as file list csv/tsv or glob pattern
-
-The following command will process files locally:
-
-```bash
-python -m sciencebeam.examples.crf_conversion_pipeline \
-  --data-path=./data \
-  --pdf-file-list=./data/file-list-validation.tsv \
-  --crf-model=path/to/crf-model.pkl \
-  --output-path=./data-results \
-  --pages=1 \
-  --limit=100
-```
-
-Add the `--cv-model-export-dir` parameter to also feed the CV predictions to the CRF model (assuming it has been trained with it):
-
-```bash
-python -m sciencebeam.examples.crf_conversion_pipeline \
-  --data-path=./data \
-  --pdf-file-list=./data/file-list-validation.tsv \
-  --crf-model=path/to/crf-model.pkl \
-  --cv-model-export-dir=./my-model/export \
-  --output-path=./data-results \
-  --pages=1 \
-  --limit=100
-```
-
-The `--use-grobid` parameter can also be used with this pipeline.
 
 ## Extending the Pipeline
 
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) or
-[cv_conversion_pipeline.py](sciencebeam/examples/cv_conversion_pipeline.py) example as a template and add your own steps.
+[conversion_pipeline.py](sciencebeam/examples/conversion_pipeline.py) example as a template and add your own steps.
 
 ## Tests
 
