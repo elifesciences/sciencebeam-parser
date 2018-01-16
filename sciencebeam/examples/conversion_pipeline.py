@@ -79,6 +79,12 @@ from sciencebeam.examples.cv_conversion_utils import (
   image_data_to_png
 )
 
+from sciencebeam.transformers.grobid_service import (
+  grobid_service,
+  GrobidApiPaths
+)
+
+
 def get_logger():
   return logging.getLogger(__name__)
 
@@ -146,27 +152,33 @@ def get_annot_lxml_ext(crf_enabled, cv_enabled):
     return OutputExt.CV_ANNOT_LXML
   raise AssertionError('at least one of crf or cv need to be enabled')
 
+def PdfUrlSource(opt):
+  if opt.pdf_file_list:
+    return ReadFileList(opt.pdf_file_list, column=opt.pdf_file_column, limit=opt.limit)
+  else:
+    return FindFiles(join_if_relative_path(opt.base_data_path, opt.pdf_path))
+
+def ReadPdfContent():
+  return "ReadPdfContent" >> TransformAndCount(
+    beam.Map(lambda pdf_url: {
+      DataProps.SOURCE_FILENAME: pdf_url,
+      DataProps.PDF_CONTENT: read_all_from_path(pdf_url)
+    }),
+    MetricCounters.FILES
+  )
+
 def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file):
   page_range = opt.pages
 
   cv_enabled = opt.cv_model_export_dir
 
-  if opt.pdf_file_list:
-    pdf_urls = p | ReadFileList(opt.pdf_file_list, column=opt.pdf_file_column, limit=opt.limit)
-  else:
-    pdf_urls = p | FindFiles(join_if_relative_path(opt.base_data_path, opt.pdf_path))
+  pdf_urls = p | PdfUrlSource(opt)
 
   lxml_content = (
     pdf_urls |
     PreventFusion() |
 
-    "ReadPdfContent" >> TransformAndCount(
-      beam.Map(lambda pdf_url: {
-        DataProps.SOURCE_FILENAME: pdf_url,
-        DataProps.PDF_CONTENT: read_all_from_path(pdf_url)
-      }),
-      MetricCounters.FILES
-    ) |
+    ReadPdfContent() |
 
     "ConvertPdfToLxml" >> MapOrLog(lambda v: extend_dict(v, {
       DataProps.STRUCTURED_DOCUMENT: convert_pdf_bytes_to_structured_document(
@@ -277,14 +289,24 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
     )
   return lxml_content
 
-def configure_pipeline(p, opt):
-  get_pipeline_output_file = lambda source_url, ext: get_output_file(
-    source_url,
-    opt.base_data_path,
-    opt.output_path,
-    ext
+def add_read_pdfs_to_grobid_xml_pipeline_steps(p, opt):
+  grobid_transformer = grobid_service(
+    opt.grobid_url, opt.grobid_action, start_service=opt.start_grobid_service
   )
 
+  return (
+    p |
+    PdfUrlSource(opt) |
+    PreventFusion() |
+    ReadPdfContent() |
+    "Grobid" >> MapOrLog(lambda v: extend_dict(v, {
+      DataProps.EXTRACTED_XML: grobid_transformer(
+        (v[DataProps.SOURCE_FILENAME], v[DataProps.PDF_CONTENT])
+      )[1]
+    }), error_count=MetricCounters.GROBID_ERROR)
+  )
+
+def add_read_source_to_extracted_xml_pipeline_steps(p, opt, get_pipeline_output_file):
   if opt.lxml_file_list:
     lxml_urls = p | ReadFileList(opt.lxml_file_list, column=opt.lxml_file_column, limit=opt.limit)
 
@@ -328,6 +350,22 @@ def configure_pipeline(p, opt):
           v[DataProps.EXTRACTED_XML]
         )
       }), error_count=MetricCounters.GROBID_ERROR)
+    )
+  return extracted_xml
+
+def configure_pipeline(p, opt):
+  get_pipeline_output_file = lambda source_url, ext: get_output_file(
+    source_url,
+    opt.base_data_path,
+    opt.output_path,
+    ext
+  )
+
+  if opt.use_grobid and not opt.crf_model and not opt.cv_model_export_dir:
+    extracted_xml = add_read_pdfs_to_grobid_xml_pipeline_steps(p, opt)
+  else:
+    extracted_xml = add_read_source_to_extracted_xml_pipeline_steps(
+      p, opt, get_pipeline_output_file
     )
 
   _ = (
@@ -404,6 +442,11 @@ def add_main_args(parser):
     '--grobid-url', required=False, default=None,
     help='Base URL to the Grobid service'
   )
+  parser.add_argument(
+    '--grobid-action', required=False,
+    default=GrobidApiPaths.PROCESS_HEADER_DOCUMENT,
+    help='Name of the Grobid action (if Grobid is used without CRF or CV model)'
+  )
 
   parser.add_argument(
     '--debug', action='store_true', default=False,
@@ -457,9 +500,9 @@ def process_main_args(args, parser):
     if args.cv_model_export_dir:
       parser.error('--crf-model-export-dir cannot be used in conjunction with --lxml-file-list')
   else:
-    if not args.crf_model and not args.cv_model_export_dir:
+    if not args.crf_model and not args.cv_model_export_dir and not args.use_grobid:
       parser.error(
-        '--crf-model or --cv-model-export-dir required in conjunction'
+        '--crf-model, --cv-model-export-dir or --use-grobid required in conjunction'
         ' with --pdf-file-list or --pdf-path'
       )
 

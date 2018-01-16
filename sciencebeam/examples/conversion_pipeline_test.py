@@ -37,6 +37,7 @@ OUTPUT_XML_FILE_1 = OUTPUT_PATH + '/' + REL_PDF_FILE_WITHOUT_EXT_1 + OUTPUT_SUFF
 
 PDF_CONTENT_1 = b'pdf content'
 LXML_CONTENT_1 = b'<LXML>lxml content</LXML>'
+TEI_XML_CONTENT_1 = b'<TEI>tei content</TEI>'
 
 fake_pdf_png_page = lambda i=0: 'fake pdf png page: %d' % i
 
@@ -66,6 +67,7 @@ def patch_conversion_pipeline(**kwargs):
     'save_structured_document',
     'save_file_content',
     'GrobidXmlEnhancer',
+    'grobid_service',
     'pdf_bytes_to_png_pages',
     'InferenceModelWrapper',
     'annotate_structured_document_using_predicted_image_data'
@@ -307,6 +309,36 @@ class TestConfigurePipeline(BeamTest):
         grobid_xml_enhancer.return_value
       )
 
+  def test_should_use_grobid_only_if_crf_or_cv_model_are_not_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.crf_model = None
+      opt.cv_model_export_dir = None
+      opt.use_grobid = True
+      opt.grobid_url = 'http://test/api'
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        mocks['grobid_service'].return_value = lambda x: (
+          PDF_FILE_1, TEI_XML_CONTENT_1
+        )
+        configure_pipeline(p, opt)
+
+      mocks['grobid_service'].assert_called_with(
+        opt.grobid_url,
+        opt.grobid_action,
+        start_service=opt.start_grobid_service
+      )
+      mocks['save_file_content'].assert_called_with(
+        OUTPUT_XML_FILE_1,
+        TEI_XML_CONTENT_1
+      )
+
 class TestParseArgs(object):
   def test_should_parse_minimum_number_of_arguments(self):
     parse_args(MIN_ARGV)
@@ -401,4 +433,12 @@ class TestParseArgs(object):
       '--pdf-file-column=' + FILE_COLUMN,
       '--crf-model=' + MODEL_EXPORT_DIR,
       '--cv-model-export-dir=' + CV_MODEL_EXPORT_DIR
+    ])
+
+  def test_should_allow_grobid_only_with_pdf_file_list(self):
+    parse_args([
+      '--data-path=' + BASE_DATA_PATH,
+      '--pdf-file-list=' + FILE_LIST_PATH,
+      '--pdf-file-column=' + FILE_COLUMN,
+      '--use-grobid'
     ])
