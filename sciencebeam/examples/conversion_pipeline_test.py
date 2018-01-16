@@ -12,6 +12,7 @@ from sciencebeam_gym.beam_utils.testing import (
 
 import sciencebeam.examples.conversion_pipeline as conversion_pipeline
 from sciencebeam.examples.conversion_pipeline import (
+  get_annot_lxml_ext,
   configure_pipeline,
   parse_args,
   OutputExt
@@ -82,6 +83,20 @@ def _setup_mocks_for_pages(mocks, page_no_list, file_count=1):
   mocks['pdf_bytes_to_png_pages'].return_value = [
     fake_pdf_png_page(i) for i in page_no_list
   ]
+
+class TestGetAnnotLxmlExt(object):
+  def test_should_return_crf_cv_annot_lxml(self):
+    assert get_annot_lxml_ext(crf_enabled=True, cv_enabled=True) == OutputExt.CRF_CV_ANNOT_LXML
+
+  def test_should_return_crf_annot_lxml(self):
+    assert get_annot_lxml_ext(crf_enabled=True, cv_enabled=False) == OutputExt.CRF_ANNOT_LXML
+
+  def test_should_return_cv_annot_lxml(self):
+    assert get_annot_lxml_ext(crf_enabled=False, cv_enabled=True) == OutputExt.CV_ANNOT_LXML
+
+  def test_should_raise_error_if_neither_crf_or_cv_are_enabled(self):
+    with pytest.raises(AssertionError):
+      get_annot_lxml_ext(crf_enabled=False, cv_enabled=False)
 
 @pytest.mark.slow
 class TestConfigurePipeline(BeamTest):
