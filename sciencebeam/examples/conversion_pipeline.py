@@ -96,6 +96,7 @@ class MetricCounters(object):
 class OutputExt(object):
   CRF_ANNOT_LXML = '.crf.lxml.gz'
   CRF_CV_ANNOT_LXML = '.crf-cv.lxml.gz'
+  CV_ANNOT_LXML = '.cv.lxml.gz'
   CV_PNG = '.cv-png.zip'
 
 class DataProps(object):
@@ -134,6 +135,16 @@ def save_structured_document(filename, structured_document):
   # only support saving lxml for now
   assert isinstance(structured_document, LxmlStructuredDocument)
   save_file_content(filename, etree.tostring(structured_document.root, pretty_print=True))
+  return filename
+
+def get_annot_lxml_ext(crf_enabled, cv_enabled):
+  if crf_enabled and cv_enabled:
+    return OutputExt.CRF_CV_ANNOT_LXML
+  if crf_enabled:
+    return OutputExt.CRF_ANNOT_LXML
+  if cv_enabled:
+    return OutputExt.CV_ANNOT_LXML
+  raise AssertionError('at least one of crf or cv need to be enabled')
 
 def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_file):
   page_range = opt.pages
@@ -254,7 +265,10 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
         beam.Map(lambda v: save_structured_document(
           get_pipeline_output_file(
             v[DataProps.SOURCE_FILENAME],
-            OutputExt.CRF_CV_ANNOT_LXML if cv_enabled else OutputExt.CRF_ANNOT_LXML
+            get_annot_lxml_ext(
+              crf_enabled=opt.crf_model,
+              cv_enabled=cv_enabled
+            )
           ),
           v[DataProps.STRUCTURED_DOCUMENT]
         )),
