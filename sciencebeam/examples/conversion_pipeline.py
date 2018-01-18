@@ -62,12 +62,14 @@ from sciencebeam_gym.inference_model.extract_to_xml import (
 )
 
 from sciencebeam_gym.models.text.crf.annotate_using_predictions import (
-  predict_and_annotate_structured_document
+  predict_and_annotate_structured_document,
+  CRF_TAG_SCOPE
 )
 
 from sciencebeam_gym.inference_model.annotate_using_predictions import (
   annotate_structured_document_using_predicted_images,
-  AnnotatedImage
+  AnnotatedImage,
+  CV_TAG_SCOPE
 )
 
 from sciencebeam.transformers.grobid_xml_enhancer import (
@@ -120,17 +122,17 @@ def convert_pdf_bytes_to_structured_document(pdf_content, path=None, page_range=
   )))
 
 def annotate_structured_document_using_predicted_image_data(
-  structured_document, prediction_images, color_map):
+  structured_document, prediction_images, color_map, tag_scope=None):
 
   return annotate_structured_document_using_predicted_images(
     structured_document, (
       AnnotatedImage(prediction_image, color_map)
       for prediction_image in prediction_images
-    )
+    ), tag_scope=tag_scope
   )
 
-def extract_annotated_structured_document_to_xml(structured_document):
-  xml_root = extract_structured_document_to_xml(structured_document)
+def extract_annotated_structured_document_to_xml(structured_document, tag_scope=None):
+  xml_root = extract_structured_document_to_xml(structured_document, tag_scope=tag_scope)
   return etree.tostring(xml_root, pretty_print=True)
 
 def load_crf_model(path):
@@ -171,6 +173,8 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
   page_range = opt.pages
 
   cv_enabled = opt.cv_model_export_dir
+
+  extract_tag_scope = None
 
   pdf_urls = p | PdfUrlSource(opt)
 
@@ -248,7 +252,8 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
           DataProps.STRUCTURED_DOCUMENT: annotate_structured_document_using_predicted_image_data(
             v[DataProps.STRUCTURED_DOCUMENT],
             v[DataProps.CV_PREDICTION_PNG_PAGES],
-            v[DataProps.COLOR_MAP]
+            v[DataProps.COLOR_MAP],
+            tag_scope=CV_TAG_SCOPE
           )
         }),
         keys_to_remove={DataProps.PDF_PNG_PAGES}
@@ -256,6 +261,7 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
     )
 
     lxml_content = cv_annotated_lxml
+    extract_tag_scope = CV_TAG_SCOPE
 
   if opt.crf_model:
     model = load_crf_model(opt.crf_model)
@@ -269,6 +275,7 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
     )
 
     lxml_content = crf_annotated_lxml
+    extract_tag_scope = CRF_TAG_SCOPE
 
   if opt.save_annot_lxml:
     _ = (
@@ -287,7 +294,7 @@ def add_read_pdfs_to_annotated_lxml_pipeline_steps(p, opt, get_pipeline_output_f
         log_fn=lambda x: get_logger().info('saved annoted lxml to: %s', x)
       )
     )
-  return lxml_content
+  return lxml_content, extract_tag_scope
 
 def add_read_pdfs_to_grobid_xml_pipeline_steps(p, opt):
   grobid_transformer = grobid_service(
@@ -322,8 +329,10 @@ def add_read_source_to_extracted_xml_pipeline_steps(p, opt, get_pipeline_output_
         MetricCounters.FILES
       )
     )
+
+    extract_tag_scope = None
   else:
-    annotated_lxml = add_read_pdfs_to_annotated_lxml_pipeline_steps(
+    annotated_lxml, extract_tag_scope = add_read_pdfs_to_annotated_lxml_pipeline_steps(
       p, opt, get_pipeline_output_file
     )
 
@@ -332,7 +341,8 @@ def add_read_source_to_extracted_xml_pipeline_steps(p, opt, get_pipeline_output_
     "ExtractToXml" >> MapOrLog(lambda v: remove_keys_from_dict(
       extend_dict(v, {
         DataProps.EXTRACTED_XML: extract_annotated_structured_document_to_xml(
-          v[DataProps.STRUCTURED_DOCUMENT]
+          v[DataProps.STRUCTURED_DOCUMENT],
+          tag_scope=extract_tag_scope
         )
       }),
       keys_to_remove={DataProps.STRUCTURED_DOCUMENT}
