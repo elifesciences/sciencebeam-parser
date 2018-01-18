@@ -15,7 +15,9 @@ from sciencebeam.examples.conversion_pipeline import (
   get_annot_lxml_ext,
   configure_pipeline,
   parse_args,
-  OutputExt
+  OutputExt,
+  CV_TAG_SCOPE,
+  CRF_TAG_SCOPE
 )
 
 
@@ -158,7 +160,8 @@ class TestConfigurePipeline(BeamTest):
         mocks['load_crf_model'].return_value
       )
       mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
-        mocks['predict_and_annotate_structured_document'].return_value
+        mocks['predict_and_annotate_structured_document'].return_value,
+        tag_scope=CRF_TAG_SCOPE
       )
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
@@ -197,7 +200,8 @@ class TestConfigurePipeline(BeamTest):
         configure_pipeline(p, opt)
 
       mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
-        mocks['load_structured_document'].return_value
+        mocks['load_structured_document'].return_value,
+        tag_scope=None
       )
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
@@ -231,7 +235,8 @@ class TestConfigurePipeline(BeamTest):
       mocks['annotate_structured_document_using_predicted_image_data'].assert_called_with(
         mocks['convert_pdf_bytes_to_structured_document'].return_value,
         inference_model_wrapper.return_value,
-        inference_model_wrapper.get_color_map.return_value
+        inference_model_wrapper.get_color_map.return_value,
+        tag_scope=CV_TAG_SCOPE
       )
 
       # crf model should receive output from cv model
@@ -240,7 +245,8 @@ class TestConfigurePipeline(BeamTest):
         mocks['load_crf_model'].return_value
       )
       mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
-        mocks['predict_and_annotate_structured_document'].return_value
+        mocks['predict_and_annotate_structured_document'].return_value,
+        tag_scope=CRF_TAG_SCOPE
       )
 
   def test_should_use_cv_model_only_if_enabled(self):
@@ -271,10 +277,12 @@ class TestConfigurePipeline(BeamTest):
       mocks['annotate_structured_document_using_predicted_image_data'].assert_called_with(
         mocks['convert_pdf_bytes_to_structured_document'].return_value,
         inference_model_wrapper.return_value,
-        inference_model_wrapper.get_color_map.return_value
+        inference_model_wrapper.get_color_map.return_value,
+        tag_scope=CV_TAG_SCOPE
       )
       mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
-        mocks['annotate_structured_document_using_predicted_image_data'].return_value
+        mocks['annotate_structured_document_using_predicted_image_data'].return_value,
+        tag_scope=CV_TAG_SCOPE
       )
 
       # crf model not be called
