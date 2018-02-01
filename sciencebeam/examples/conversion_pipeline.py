@@ -371,7 +371,10 @@ def configure_pipeline(p, opt):
     ext
   )
 
-  if opt.use_grobid and not opt.crf_model and not opt.cv_model_export_dir:
+  if (
+    opt.use_grobid and not opt.crf_model and
+    not opt.cv_model_export_dir and not opt.lxml_file_list
+  ):
     extracted_xml = add_read_pdfs_to_grobid_xml_pipeline_steps(p, opt)
   else:
     extracted_xml = add_read_source_to_extracted_xml_pipeline_steps(
