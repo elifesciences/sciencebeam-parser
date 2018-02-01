@@ -317,6 +317,33 @@ class TestConfigurePipeline(BeamTest):
         grobid_xml_enhancer.return_value
       )
 
+  def test_should_use_grobid_with_lxml_file_list_if_enabled(self):
+    with patch_conversion_pipeline() as mocks:
+      grobid_xml_enhancer = mocks['GrobidXmlEnhancer'].return_value
+      opt = get_default_args()
+      opt.base_data_path = BASE_DATA_PATH
+      opt.pdf_path = None
+      opt.pdf_file_list = None
+      opt.lxml_file_list = BASE_DATA_PATH + '/file-list.tsv'
+      opt.output_path = OUTPUT_PATH
+      opt.output_suffix = OUTPUT_SUFFIX
+      opt.crf_model = None
+      opt.cv_model_export_dir = None
+      opt.use_grobid = True
+      opt.grobid_url = 'http://test/api'
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([LXML_FILE_1])
+        configure_pipeline(p, opt)
+
+      mocks['extract_annotated_structured_document_to_xml'].assert_called_with(
+        mocks['load_structured_document'].return_value,
+        tag_scope=None
+      )
+      mocks['save_file_content'].assert_called_with(
+        OUTPUT_XML_FILE_1,
+        grobid_xml_enhancer.return_value
+      )
+
   def test_should_use_grobid_only_if_crf_or_cv_model_are_not_enabled(self):
     with patch_conversion_pipeline() as mocks:
       opt = get_default_args()
