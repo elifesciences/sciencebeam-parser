@@ -3,14 +3,22 @@ import logging
 from flask import Blueprint, jsonify, request, Response
 from werkzeug.exceptions import BadRequest
 
-from sciencebeam.pipeline_factories.simple_pipeline import create_simple_pipeline_from_config
+from sciencebeam.pipeline_runners.simple_pipeline_runner import (
+  create_simple_pipeline_runner_from_config,
+  add_arguments as _add_arguments
+)
 
 LOGGER = logging.getLogger(__name__)
 
-def create_api_blueprint(config):
+def add_arguments(parser, config, argv=None):
+  _add_arguments(parser, config, argv=argv)
+
+def create_api_blueprint(config, args):
   blueprint = Blueprint('api', __name__)
 
-  pipeline = create_simple_pipeline_from_config(config)
+  pipeline_runner = create_simple_pipeline_runner_from_config(
+    config, args
+  )
 
   @blueprint.route("/")
   def _api_root():
@@ -26,7 +34,7 @@ def create_api_blueprint(config):
     uploaded_file = request.files['file']
     pdf_filename = uploaded_file.filename
     pdf_content = uploaded_file.read()
-    conversion_result = pipeline.convert(
+    conversion_result = pipeline_runner.convert(
       pdf_content=pdf_content, pdf_filename=pdf_filename
     )
     LOGGER.debug('conversion_result: %s', conversion_result)
