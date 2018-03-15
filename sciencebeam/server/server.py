@@ -4,15 +4,17 @@ import logging
 from flask import Flask
 from flask_cors import CORS
 
+from sciencebeam.config.app_config import get_app_config
+
 from .blueprints.api import create_api_blueprint
 
 LOGGER = logging.getLogger(__name__)
 
-def create_app(args):
+def create_app(config):
   app = Flask(__name__)
   CORS(app)
 
-  api = create_api_blueprint(args)
+  api = create_api_blueprint(config)
   app.register_blueprint(api, url_prefix='/api')
 
   return app
@@ -36,7 +38,8 @@ def parse_args(argv=None):
 
 def main(argv=None):
   args = parse_args(argv)
-  app = create_app(args)
+  config = get_app_config()
+  app = create_app(config)
   app.run(port=args.port, host=args.host, threaded=True)
 
 if __name__ == "__main__":
