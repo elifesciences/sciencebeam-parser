@@ -7,3 +7,4 @@ RUN venv/bin/pip install https://github.com/elifesciences/sciencebeam-gym/archiv
 COPY sciencebeam /srv/sciencebeam/sciencebeam
 COPY *.conf *.sh *.in *.txt *.py /srv/sciencebeam/
 RUN venv/bin/pip install -r requirements.txt
+RUN venv/bin/pip install -r requirements.py2.txt
