@@ -89,7 +89,7 @@
 	</xsl:template>
 
 	<xsl:template match="tei:title">
-		<xsl:apply-templates select="node()|@*"/>
+		<xsl:apply-templates select="node()"/>
 	</xsl:template>
 
 	<xsl:template match="tei:p">

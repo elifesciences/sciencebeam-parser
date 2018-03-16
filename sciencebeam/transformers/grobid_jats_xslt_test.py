@@ -14,6 +14,8 @@ DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0')
 
 VALUE_1 = 'value 1'
+VALUE_2 = 'value 2'
+VALUE_3 = 'value 3'
 
 FIRST_NAME_1 = 'first name 1'
 LAST_NAME_1 = 'last name 1'
@@ -150,6 +152,29 @@ class TestGrobidJatsXslt(object):
         ))
       ))
       assert _get_text(jats, 'front/article-meta/title-group/article-title') == VALUE_1
+
+    def test_should_not_include_title_attributes_in_transformed_title_value(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(titleStmt=E.titleStmt(
+          E.title(VALUE_1, attrib1='other')
+        ))
+      ))
+      assert _get_text(jats, 'front/article-meta/title-group/article-title') == VALUE_1
+
+    def test_should_include_values_of_sub_elements(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(titleStmt=E.titleStmt(
+          E.title(
+            E.before(VALUE_1),
+            VALUE_2,
+            E.after(VALUE_3)
+          )
+        ))
+      ))
+      assert (
+        _get_text(jats, 'front/article-meta/title-group/article-title') ==
+        ''.join([VALUE_1, VALUE_2, VALUE_3])
+      )
 
   class TestAuthor(object):
     def test_should_translate_single_author(self, grobid_jats_xslt):
