@@ -271,3 +271,17 @@ class TestGrobidJatsXslt(object):
       affs = jats.xpath('front/article-meta/aff')
       assert affs[0].attrib.get('id') == AFFILIATION_1['key']
       assert affs[1].attrib.get('id') == AFFILIATION_2['key']
+
+  class TestBody(object):
+    def test_should_add_body(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei()
+      ))
+      assert _get_item(jats, 'body') is not None
+
+  class TestBack(object):
+    def test_should_add_back(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei()
+      ))
+      assert _get_item(jats, 'back') is not None

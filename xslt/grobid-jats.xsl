@@ -11,6 +11,8 @@
 	<xsl:template match="/">
 		<article article-type="research-article">
 			<xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
+			<body/>
+			<back/>
 		</article>
 	</xsl:template>
 
