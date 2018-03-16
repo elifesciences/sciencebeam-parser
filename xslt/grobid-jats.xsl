@@ -71,15 +71,31 @@
 						<xsl:attribute name='id'>
 							<xsl:value-of select="@key"/>
 						</xsl:attribute>
-						<institution content-type="orgname">
-							<xsl:value-of select="tei:orgName[@type='institution']"/>
-						</institution>
-						<city>
-							<xsl:value-of select="tei:address/tei:settlement"/>
-						</city>
-						<country>
-							<xsl:value-of select="tei:address/tei:country"/>
-						</country>
+						<xsl:if test="tei:orgName[@type='institution']">
+							<institution content-type="orgname">
+								<xsl:value-of select="tei:orgName[@type='institution']"/>
+							</institution>
+						</xsl:if>
+						<xsl:if test="tei:orgName[@type='department']">
+							<institution content-type="orgdiv1">
+								<xsl:value-of select="tei:orgName[@type='department']"/>
+							</institution>
+						</xsl:if>
+						<xsl:if test="tei:orgName[@type='laboratory']">
+							<institution content-type="orgdiv2">
+								<xsl:value-of select="tei:orgName[@type='laboratory']"/>
+							</institution>
+						</xsl:if>
+						<xsl:if test="tei:address/tei:settlement">
+							<city>
+								<xsl:value-of select="tei:address/tei:settlement"/>
+							</city>
+						</xsl:if>
+						<xsl:if test="tei:address/tei:country">
+							<country>
+								<xsl:value-of select="tei:address/tei:country"/>
+							</country>
+						</xsl:if>
 					</aff>
 				</xsl:for-each>
 

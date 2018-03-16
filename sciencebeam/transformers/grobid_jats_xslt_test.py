@@ -222,6 +222,7 @@ class TestGrobidJatsXslt(object):
       assert _get_text(persons[0], './name/surname') == LAST_NAME_1
       assert _get_text(persons[1], './name/surname') == LAST_NAME_2
 
+  class TestAuthorAffiliation(object):
     def test_should_add_affiliation_of_single_author_with_xref(self, grobid_jats_xslt):
       jats = etree.fromstring(grobid_jats_xslt(
         _tei(authors=[
@@ -239,8 +240,28 @@ class TestGrobidJatsXslt(object):
       assert (
         _get_text(aff, 'institution[@content-type="orgname"]') == AFFILIATION_1['institution']
       )
+      assert (
+        _get_text(aff, 'institution[@content-type="orgdiv1"]') == AFFILIATION_1['department']
+      )
+      assert (
+        _get_text(aff, 'institution[@content-type="orgdiv2"]') == AFFILIATION_1['laboratory']
+      )
       assert _get_text(aff, 'city') == AFFILIATION_1['city']
       assert _get_text(aff, 'country') == AFFILIATION_1['country']
+
+    def test_should_not_add_affiliation_fields_not_in_tei(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(authors=[
+          _author(affiliation=_author_affiliation(key=AFFILIATION_1['key']))
+        ])
+      ))
+
+      aff = _get_item(jats, 'front/article-meta/aff')
+      assert aff.xpath('institution[@content-type="orgname"]') == []
+      assert aff.xpath('institution[@content-type="orgdiv1"]') == []
+      assert aff.xpath('institution[@content-type="orgdiv2"]') == []
+      assert aff.xpath('city') == []
+      assert aff.xpath('country') == []
 
     def test_should_not_add_affiliation_if_not_in_tei(self, grobid_jats_xslt):
       jats = etree.fromstring(grobid_jats_xslt(
