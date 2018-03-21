@@ -4,7 +4,7 @@ elifeLibrary {
     }
 
     stage 'Build image', {
-        sh 'docker build --no-cache -t elife/sciencebeam .'
+        sh './build_container.sh'
     }
 
     stage 'Run tests', {

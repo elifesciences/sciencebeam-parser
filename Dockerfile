@@ -7,7 +7,8 @@ RUN virtualenv venv
 COPY requirements.prereq.txt ${PROJECT_HOME}/
 RUN venv/bin/pip install -r requirements.prereq.txt
 
-RUN venv/bin/pip install https://github.com/elifesciences/sciencebeam-gym/archive/develop.zip
+ARG sciencebeam_gym_commit
+RUN venv/bin/pip install https://github.com/elifesciences/sciencebeam-gym/archive/${sciencebeam_gym_commit}.zip
 
 COPY requirements.txt ${PROJECT_HOME}/
 RUN venv/bin/pip install -r requirements.txt
