@@ -2,7 +2,7 @@ FROM python:2.7.14-stretch
 
 ENV PROJECT_HOME=/srv/sciencebeam
 
-ENV VENV=${HOME}/venv
+ENV VENV=${PROJECT_HOME}/venv
 RUN virtualenv ${VENV}
 ENV PYTHONUSERBASE=${VENV} PATH=${VENV}/bin:$PATH
 
