@@ -1,6 +1,10 @@
 FROM python:2.7.14-stretch
 
-ENV PROJECT_HOME=/srv/sciencebeam
+RUN useradd -ms /bin/bash sciencebeam
+USER sciencebeam
+ENV HOME=/home/sciencebeam
+
+ENV PROJECT_HOME=${HOME}/sciencebeam
 
 ENV VENV=${PROJECT_HOME}/venv
 RUN virtualenv ${VENV}
