@@ -10,6 +10,8 @@ from sciencebeam.pipeline_runners.simple_pipeline_runner import (
 
 LOGGER = logging.getLogger(__name__)
 
+PDF_CONTENT_TYPE = 'application/pdf'
+
 def add_arguments(parser, config, argv=None):
   _add_arguments(parser, config, argv=argv)
 
@@ -29,11 +31,21 @@ def create_api_blueprint(config, args):
 
   @blueprint.route("/convert", methods=['POST'])
   def _convert():
-    if 'file' not in request.files:
-      raise BadRequest()
-    uploaded_file = request.files['file']
-    pdf_filename = uploaded_file.filename
-    pdf_content = uploaded_file.read()
+    if not request.files:
+      LOGGER.debug('mimetype: %s', request.mimetype)
+      if request.mimetype != PDF_CONTENT_TYPE:
+        raise BadRequest('unsupported content type: %s' % request.mimetype)
+      pdf_filename = request.args.get('filename')
+      pdf_content = request.data
+    elif 'file' not in request.files:
+      raise BadRequest('missing file named "file", found: %s ' % request.files.keys())
+    else:
+      uploaded_file = request.files['file']
+      pdf_filename = uploaded_file.filename
+      pdf_content = uploaded_file.read()
+    if not pdf_content:
+      raise BadRequest('no pdf contents')
+    LOGGER.debug('processing file: %s (%d)', pdf_filename, len(pdf_content))
     conversion_result = pipeline_runner.convert(
       pdf_content=pdf_content, pdf_filename=pdf_filename
     )

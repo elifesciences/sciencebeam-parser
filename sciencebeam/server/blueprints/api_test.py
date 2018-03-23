@@ -11,10 +11,11 @@ from werkzeug.exceptions import BadRequest
 
 import pytest
 
-from sciencebeam.utils.config import dict_to_config
-
 from . import api as api_module
-from .api import create_api_blueprint
+from .api import (
+  create_api_blueprint,
+  PDF_CONTENT_TYPE
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def _get_ok_json(response):
   return _get_json(response)
 
 def setup_module():
+  logging.root.handlers = []
   logging.basicConfig(level='DEBUG')
 
 class TestApiBlueprint(object):
@@ -83,9 +85,23 @@ class TestApiBlueprint(object):
         assert response.status_code == 200
         assert 'html' in response.data
 
-    def test_should_reject_post_without_file(self, config, args):
+    def test_should_reject_post_without_data(self, config, args):
       with _api_test_client(config, args) as test_client:
         response = test_client.post('/convert')
+        assert response.status_code == BadRequest.code
+
+    def test_should_reject_post_with_empty_pdf(self, config, args):
+      with _api_test_client(config, args) as test_client:
+        response = test_client.post('/convert', content_type=PDF_CONTENT_TYPE)
+        assert response.status_code == BadRequest.code
+
+    def test_should_reject_file_with_wrong_name(self, config, args):
+      with _api_test_client(config, args) as test_client:
+        response = test_client.post(
+          '/convert', data=dict(
+            otherfile=(BytesIO(PDF_CONTENT), PDF_FILENAME)
+          )
+        )
         assert response.status_code == BadRequest.code
 
     def test_should_accept_file_and_pass_to_convert_method(self, config, args, pipeline_runner):
@@ -96,6 +112,24 @@ class TestApiBlueprint(object):
         response = test_client.post('/convert', data=dict(
           file=(BytesIO(PDF_CONTENT), PDF_FILENAME),
         ))
+        pipeline_runner.convert.assert_called_with(
+          pdf_content=PDF_CONTENT, pdf_filename=PDF_FILENAME
+        )
+        assert response.status_code == 200
+        assert response.data == XML_CONTENT
+
+    def test_should_accept_post_data_and_pass_to_convert_method(
+      self, config, args, pipeline_runner):
+
+      with _api_test_client(config, args) as test_client:
+        pipeline_runner.convert.return_value = {
+          'xml_content': XML_CONTENT
+        }
+        response = test_client.post(
+          '/convert?filename=%s' % PDF_FILENAME,
+          data=PDF_CONTENT,
+          content_type=PDF_CONTENT_TYPE
+        )
         pipeline_runner.convert.assert_called_with(
           pdf_content=PDF_CONTENT, pdf_filename=PDF_FILENAME
         )
