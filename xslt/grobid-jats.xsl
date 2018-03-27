@@ -44,6 +44,7 @@
 								</surname>
 								<given-names>
 									<xsl:for-each select="tei:persName/tei:forename">
+										<xsl:if test="position() > 1" xml:space="preserve"> </xsl:if>
 										<xsl:value-of select="string(.)"/>
 									</xsl:for-each>
 								</given-names>
