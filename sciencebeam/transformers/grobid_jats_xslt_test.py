@@ -188,6 +188,15 @@ class TestGrobidJatsXslt(object):
       assert _get_text(person, './name/surname') == LAST_NAME_1
       assert _get_text(person, './email') == EMAIL_1
 
+    def test_should_include_middle_name_in_given_names(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(authors=[
+          _author(forenames=[FIRST_NAME_1, FIRST_NAME_2], surname=LAST_NAME_1, email=EMAIL_1)
+        ])
+      ))
+      person = _get_item(jats, 'front/article-meta/contrib-group/contrib')
+      assert _get_text(person, './name/given-names') == '%s %s' % (FIRST_NAME_1, FIRST_NAME_2)
+
     def test_should_not_add_email_if_not_in_tei(self, grobid_jats_xslt):
       jats = etree.fromstring(grobid_jats_xslt(
         _tei(authors=[
