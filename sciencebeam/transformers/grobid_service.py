@@ -1,7 +1,7 @@
+from io import BytesIO
 import logging
 
 import requests
-import six
 
 from sciencebeam.transformers.grobid_service_wrapper import (
   GrobidServiceWrapper
@@ -38,7 +38,7 @@ def grobid_service(base_url, path, start_service=True, field_name=None):
       content = x[1] if isinstance(x, tuple) else x
       get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
       response = requests.post(url,
-        files={'input': (filename, six.StringIO(content))},
+        files={'input': (filename, BytesIO(content))},
         data={
           'consolidateHeader': '0',
           'consolidateCitations': '0'
