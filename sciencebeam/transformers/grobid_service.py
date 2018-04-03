@@ -39,6 +39,10 @@ def grobid_service(base_url, path, start_service=True, field_name=None):
       get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
       response = requests.post(url,
         files={'input': (filename, six.StringIO(content))},
+        data={
+          'consolidateHeader': '0',
+          'consolidateCitations': '0'
+        }
       )
     response.raise_for_status()
     result_content = response.content
