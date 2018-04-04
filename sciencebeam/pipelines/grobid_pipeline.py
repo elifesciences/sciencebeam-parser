@@ -33,6 +33,10 @@ class GrobidPipeline(Pipeline):
       '--grobid-xslt-path', default=DEFAULT_GROBID_XSLT_PATH,
       help='JATS'
     )
+    grobid_group.add_argument(
+      '--no-grobid-pretty-print', action='store_true',
+      help='Disable pretty print of XSLT output'
+    )
 
   def get_steps(self, config, args):
     # type: (dict, object) -> list
@@ -58,7 +62,10 @@ class GrobidPipeline(Pipeline):
       }
     ]
     if not args.no_grobid_xslt:
-      xslt_transformer = xslt_transformer_from_file(args.grobid_xslt_path)
+      xslt_transformer = xslt_transformer_from_file(
+        args.grobid_xslt_path,
+        pretty_print=not args.no_grobid_pretty_print
+      )
       steps.append(lambda d: {
         'xml_content': xslt_transformer(d['xml_content'])
       })

@@ -87,9 +87,10 @@ class TestGrobidPipeline(object):
     self, config, args, xslt_transformer_from_file):
 
     args.no_grobid_xslt = False
+    args.no_grobid_pretty_print = False
     args.grobid_xslt_path = '/test.xsl'
     _run_pipeline(config, args, PDF_INPUT)
-    xslt_transformer_from_file.assert_called_with(args.grobid_xslt_path)
+    xslt_transformer_from_file.assert_called_with(args.grobid_xslt_path, pretty_print=True)
 
   def test_should_return_apply_xslt_transform_to_tei_content(
     self, config, args, grobid_service_instance, xslt_transformer):
@@ -99,3 +100,12 @@ class TestGrobidPipeline(object):
     result = _run_pipeline(config, args, PDF_INPUT)
     xslt_transformer.assert_called_with(TEI_CONTENT)
     assert result['xml_content'] == xslt_transformer.return_value
+
+  def test_should_disable_pretty_print_xslt_output(
+    self, config, args, xslt_transformer_from_file):
+
+    args.no_grobid_xslt = False
+    args.no_grobid_pretty_print = True
+    args.grobid_xslt_path = '/test.xsl'
+    _run_pipeline(config, args, PDF_INPUT)
+    xslt_transformer_from_file.assert_called_with(args.grobid_xslt_path, pretty_print=False)
