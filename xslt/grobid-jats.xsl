@@ -139,6 +139,10 @@
 					<volume><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']"/></volume>
 				</xsl:if>
 
+				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='issue']">
+					<issue><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='issue']"/></issue>
+				</xsl:if>
+
 				<xsl:choose>
 					<xsl:when test="tei:monogr/tei:imprint/tei:biblScope[@unit='page'][@from or @to]">
 						<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from">

@@ -63,7 +63,8 @@ REFERENCE_1 = {
   'journal_title': 'Journal 1',
   'year': '2018',
   'doi': '10.1234/doi1',
-  'volume': 'volume1'
+  'volume': 'volume1',
+  'issue': 'issue1'
 }
 
 def setup_module():
@@ -173,6 +174,8 @@ def _reference(**kwargs):
     imprint.append(E.date(type='published', when=props['year']))
   if 'volume' in props:
     imprint.append(E.biblScope(props['volume'], unit='volume'))
+  if 'issue' in props:
+    imprint.append(E.biblScope(props['issue'], unit='issue'))
   if 'fpage' in props and 'lpage' in props:
     imprint.append(E.biblScope({'unit': 'page', 'from': props['fpage'], 'to': props['lpage']}))
   if 'page' in props:
@@ -408,6 +411,7 @@ class TestGrobidJatsXslt(object):
       assert _get_text(element_citation, 'year') == REFERENCE_1['year']
       assert _get_text(element_citation, 'source') == REFERENCE_1['journal_title']
       assert _get_text(element_citation, 'volume') == REFERENCE_1['volume']
+      assert _get_text(element_citation, 'issue') == REFERENCE_1['issue']
       assert _get_text(element_citation, 'pub-id[@pub-id-type="doi"]') == REFERENCE_1['doi']
 
     def test_should_fallback_to_collection_title_if_article_title_does_not_exist(
