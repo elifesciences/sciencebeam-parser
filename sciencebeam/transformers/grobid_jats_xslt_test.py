@@ -172,7 +172,12 @@ def _reference(**kwargs):
   if 'journal_title' in props:
     monogr.append(E.title(props['journal_title'], level='j'))
   if 'year' in props:
-    imprint.append(E.date(type='published', when=props['year']))
+    when = props['year']
+    if 'month' in props:
+      when += '-%s' % props['month']
+      if 'day' in props:
+        when += '-%s' % props['day']
+    imprint.append(E.date(type='published', when=when))
   if 'volume' in props:
     imprint.append(E.biblScope(props['volume'], unit='volume'))
   if 'issue' in props:
@@ -488,6 +493,35 @@ class TestGrobidJatsXslt(object):
 
       assert _get_text(element_citation, 'fpage') == 'page1'
       assert _get_text(element_citation, 'lpage') == 'page1'
+
+    def test_should_convert_year_and_month(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, year='2001', month='02'
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'year') == '2001'
+      assert _get_text(element_citation, 'month') == '02'
+
+    def test_should_convert_year_month_and_day(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, year='2001', month='02', day='03'
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'year') == '2001'
+      assert _get_text(element_citation, 'month') == '02'
+      assert _get_text(element_citation, 'day') == '03'
 
     def test_should_convert_multiple_article_authors_of_single_reference(self, grobid_jats_xslt):
       authors = [AUTHOR_1, AUTHOR_2]

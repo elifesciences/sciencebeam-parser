@@ -132,7 +132,9 @@
 				</xsl:if>
 
 				<xsl:if test="tei:monogr/tei:imprint/tei:date[@type='published']">
-					<year><xsl:value-of select="tei:monogr/tei:imprint/tei:date[@type='published']/@when"/></year>
+					<xsl:call-template name="parseDateComponents">
+						<xsl:with-param name="date" select="tei:monogr/tei:imprint/tei:date[@type='published']/@when"/>
+					</xsl:call-template>
 				</xsl:if>
 
 				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']">
@@ -201,4 +203,51 @@
 			<xsl:apply-templates select="node()|@*"/>
 		</p>
 	</xsl:template>
+
+	<!--
+	Template: parseDateComponents (XSLT 1.0)
+
+	Params:
+		date: ISO year, year-month or year-month-day
+
+	Examples:
+		date=2001 => <year>2001</year>
+		date=2001-02 => <year>2001</year><month>02</month>
+		date=2001-02-03 => <year>2001</year><month>02</month><day>03</day>
+	-->
+	<xsl:template name="parseDateComponents">
+		<xsl:param name="date" select="."/>
+		<xsl:call-template name="_parseDateComponentYear">
+			<xsl:with-param name="value" select="$date"/>
+		</xsl:call-template>
+	</xsl:template>
+
+	<xsl:template name="_parseDateComponentYear">
+		<xsl:param name="value" select="."/>
+		<xsl:choose>
+			<xsl:when test="contains($value, '-')">
+				<year><xsl:value-of select="substring-before($value, '-')"/></year>
+				<xsl:call-template name="_parseDateComponentMonth">
+					<xsl:with-param name="value" select="substring-after($value, '-')"/>
+				</xsl:call-template>
+			</xsl:when>
+			<xsl:otherwise>
+				<year><xsl:value-of select="$value"/></year>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
+	<xsl:template name="_parseDateComponentMonth">
+		<xsl:param name="value" select="."/>
+		<xsl:choose>
+			<xsl:when test="contains($value, '-')">
+				<month><xsl:value-of select="substring-before($value, '-')"/></month>
+				<day><xsl:value-of select="substring-after($value, '-')"/></day>
+			</xsl:when>
+			<xsl:otherwise>
+				<month><xsl:value-of select="$value"/></month>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
 </xsl:stylesheet>
