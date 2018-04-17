@@ -126,12 +126,19 @@
 						<article-title><xsl:value-of select="tei:monogr/tei:title[@type='main' and @level='a']"/></article-title>
 					</xsl:when>
 				</xsl:choose>
+
 				<xsl:if test="tei:monogr/tei:title[@level='j']">
 					<source><xsl:value-of select="tei:monogr/tei:title[@level='j']"/></source>
 				</xsl:if>
+
 				<xsl:if test="tei:monogr/tei:imprint/tei:date[@type='published']">
 					<year><xsl:value-of select="tei:monogr/tei:imprint/tei:date[@type='published']/@when"/></year>
 				</xsl:if>
+
+				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']">
+					<volume><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']"/></volume>
+				</xsl:if>
+
 				<xsl:if test="tei:monogr/tei:idno[@type='doi']">
 					<pub-id pub-id-type="doi"><xsl:value-of select="tei:monogr/tei:idno[@type='doi']"/></pub-id>
 				</xsl:if>

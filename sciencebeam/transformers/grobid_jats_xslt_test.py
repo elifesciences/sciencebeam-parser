@@ -62,7 +62,8 @@ REFERENCE_1 = {
   'article_title': ARTICLE_TITLE_1,
   'journal_title': 'Journal 1',
   'year': '2018',
-  'doi': '10.1234/doi1'
+  'doi': '10.1234/doi1',
+  'volume': 'volume1'
 }
 
 def setup_module():
@@ -159,6 +160,8 @@ def _reference(**kwargs):
   bibl_struct.append(analytic)
   monogr = E.monogr()
   bibl_struct.append(monogr)
+  imprint = E.imprint()
+  monogr.append(imprint)
 
   if props.get('article_title') is not None:
     analytic.append(E.title(props['article_title'], level='a', type='main'))
@@ -167,7 +170,9 @@ def _reference(**kwargs):
   if 'journal_title' in props:
     monogr.append(E.title(props['journal_title'], level='j'))
   if 'year' in props:
-    monogr.append(E.imprint(E.date(type='published', when=props['year'])))
+    imprint.append(E.date(type='published', when=props['year']))
+  if 'volume' in props:
+    imprint.append(E.biblScope(props['volume'], unit='volume'))
   if 'doi' in props:
     monogr.append(E.idno(props['doi'], type='doi'))
   if 'article_authors' in props:
@@ -398,6 +403,7 @@ class TestGrobidJatsXslt(object):
       assert _get_text(element_citation, 'article-title') == REFERENCE_1['article_title']
       assert _get_text(element_citation, 'year') == REFERENCE_1['year']
       assert _get_text(element_citation, 'source') == REFERENCE_1['journal_title']
+      assert _get_text(element_citation, 'volume') == REFERENCE_1['volume']
       assert _get_text(element_citation, 'pub-id[@pub-id-type="doi"]') == REFERENCE_1['doi']
 
     def test_should_fallback_to_collection_title_if_article_title_does_not_exist(
