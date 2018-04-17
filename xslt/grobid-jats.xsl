@@ -118,8 +118,16 @@
 			</xsl:attribute>
 
 			<element-citation publication-type="journal">
-				<xsl:if test="tei:monogr/tei:title">
-					<article-title><xsl:value-of select="tei:monogr/tei:title"/></article-title>
+				<xsl:choose>
+					<xsl:when test="tei:analytic/tei:title[@type='main' and @level='a']">
+						<article-title><xsl:value-of select="tei:analytic/tei:title[@type='main' and @level='a']"/></article-title>
+					</xsl:when>
+					<xsl:when test="tei:monogr/tei:title[@type='main' and @level='a']">
+						<article-title><xsl:value-of select="tei:monogr/tei:title[@type='main' and @level='a']"/></article-title>
+					</xsl:when>
+				</xsl:choose>
+				<xsl:if test="tei:monogr/tei:title[@level='j']">
+					<source><xsl:value-of select="tei:monogr/tei:title[@level='j']"/></source>
 				</xsl:if>
 				<xsl:if test="tei:monogr/tei:imprint/tei:date[@type='published']">
 					<year><xsl:value-of select="tei:monogr/tei:imprint/tei:date[@type='published']/@when"/></year>
@@ -127,8 +135,11 @@
 				<xsl:if test="tei:monogr/tei:idno[@type='doi']">
 					<pub-id pub-id-type="doi"><xsl:value-of select="tei:monogr/tei:idno[@type='doi']"/></pub-id>
 				</xsl:if>
-				<xsl:if test="tei:note[@type='report_type']">
-					<source><xsl:value-of select="tei:note[@type='report_type']"/></source>
+
+				<xsl:if test="tei:analytic/tei:author/tei:persName">
+					<person-group person-group-type="author">
+						<xsl:apply-templates select="tei:analytic/tei:author/tei:persName"/>
+					</person-group>
 				</xsl:if>
 
 				<xsl:if test="tei:monogr/tei:author/tei:persName">

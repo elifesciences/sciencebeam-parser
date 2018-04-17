@@ -54,11 +54,14 @@ AFFILIATION_2 = {
   'country': 'Country 2'
 }
 
+ARTICLE_TITLE_1 = 'Article title 1'
+COLLECTION_TITLE_1 = 'Collection title 1'
+
 REFERENCE_1 = {
   'id': 'b0',
-  'title': 'Cited title 1',
+  'article_title': ARTICLE_TITLE_1,
+  'journal_title': 'Journal 1',
   'year': '2018',
-  'source': 'BioRxiv 21613',
   'doi': '10.1234/doi1'
 }
 
@@ -151,19 +154,32 @@ def _reference(**kwargs):
   bibl_struct = E.biblStruct()
   if 'id' in props:
     bibl_struct.attrib['id'] = props['id']
+
+  analytic = E.analytic()
+  bibl_struct.append(analytic)
   monogr = E.monogr()
   bibl_struct.append(monogr)
-  if 'title' in props:
-    monogr.append(E.title(props['title']))
+
+  if props.get('article_title') is not None:
+    analytic.append(E.title(props['article_title'], level='a', type='main'))
+  if 'collection_title' in props:
+    monogr.append(E.title(props['collection_title'], level='a', type='main'))
+  if 'journal_title' in props:
+    monogr.append(E.title(props['journal_title'], level='j'))
   if 'year' in props:
     monogr.append(E.imprint(E.date(type='published', when=props['year'])))
   if 'doi' in props:
     monogr.append(E.idno(props['doi'], type='doi'))
-  if 'authors' in props:
-    for author in props['authors']:
-      monogr.append(_author(forenames=[author['first-name']], surname=author['last-name'], email=None))
-  if 'source' in props:
-    bibl_struct.append(E.note(props['source'], type='report_type'))
+  if 'article_authors' in props:
+    for author in props['article_authors']:
+      analytic.append(
+        _author(forenames=[author['first-name']], surname=author['last-name'], email=None)
+      )
+  if 'collection_authors' in props:
+    for author in props['collection_authors']:
+      monogr.append(
+        _author(forenames=[author['first-name']], surname=author['last-name'], email=None)
+      )
   return bibl_struct
 
 def _get_item(xml, xpath):
@@ -370,9 +386,7 @@ class TestGrobidJatsXslt(object):
   class TestReferences(object):
     def test_should_convert_single_reference(self, grobid_jats_xslt):
       jats = etree.fromstring(grobid_jats_xslt(
-        _tei(references=[
-          _reference(**REFERENCE_1)
-        ])
+        _tei(references=[_reference(**REFERENCE_1)])
       ))
 
       ref_list = _get_item(jats, 'back/ref-list')
@@ -381,16 +395,65 @@ class TestGrobidJatsXslt(object):
 
       assert ref.attrib.get('id') == REFERENCE_1['id']
       assert element_citation.attrib.get('publication-type') == 'journal'
-      assert _get_text(element_citation, 'article-title') == REFERENCE_1['title']
+      assert _get_text(element_citation, 'article-title') == REFERENCE_1['article_title']
       assert _get_text(element_citation, 'year') == REFERENCE_1['year']
-      assert _get_text(element_citation, 'source') == REFERENCE_1['source']
+      assert _get_text(element_citation, 'source') == REFERENCE_1['journal_title']
       assert _get_text(element_citation, 'pub-id[@pub-id-type="doi"]') == REFERENCE_1['doi']
 
-    def test_should_convert_multiple_authors_of_single_reference(self, grobid_jats_xslt):
+    def test_should_fallback_to_collection_title_if_article_title_does_not_exist(
+      self, grobid_jats_xslt):
+
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, article_title=None, collection_title=COLLECTION_TITLE_1
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'article-title') == COLLECTION_TITLE_1
+
+    def test_should_only_return_article_title_even_if_collection_title_exists(
+      self, grobid_jats_xslt):
+
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, article_title=ARTICLE_TITLE_1, collection_title=COLLECTION_TITLE_1
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'article-title') == ARTICLE_TITLE_1
+
+    def test_should_convert_multiple_article_authors_of_single_reference(self, grobid_jats_xslt):
       authors = [AUTHOR_1, AUTHOR_2]
       jats = etree.fromstring(grobid_jats_xslt(
         _tei(references=[
-          _reference(**extend_dict(REFERENCE_1, authors=authors))
+          _reference(**extend_dict(REFERENCE_1, article_authors=authors))
+        ])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+      person_group = _get_item(element_citation, 'person-group')
+      persons = person_group.xpath('name')
+      assert len(persons) == 2
+
+      for person, author in zip(persons, authors):
+        assert _get_text(person, 'surname') == author['last-name']
+        assert _get_text(person, 'given-names') == author['first-name']
+
+    def test_should_convert_multiple_collection_authors_of_single_reference(self, grobid_jats_xslt):
+      authors = [AUTHOR_1, AUTHOR_2]
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[
+          _reference(**extend_dict(REFERENCE_1, collection_authors=authors))
         ])
       ))
 
