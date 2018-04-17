@@ -139,13 +139,21 @@
 					<volume><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']"/></volume>
 				</xsl:if>
 
-				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from">
-					<fpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from"/></fpage>
-				</xsl:if>
+				<xsl:choose>
+					<xsl:when test="tei:monogr/tei:imprint/tei:biblScope[@unit='page'][@from or @to]">
+						<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from">
+							<fpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from"/></fpage>
+						</xsl:if>
 
-				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to">
-					<lpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to"/></lpage>
-				</xsl:if>
+						<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to">
+							<lpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to"/></lpage>
+						</xsl:if>
+					</xsl:when>
+					<xsl:when test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/text()">
+						<fpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']"/></fpage>
+						<lpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']"/></lpage>
+					</xsl:when>
+				</xsl:choose>
 
 				<xsl:if test="tei:monogr/tei:idno[@type='doi']">
 					<pub-id pub-id-type="doi"><xsl:value-of select="tei:monogr/tei:idno[@type='doi']"/></pub-id>

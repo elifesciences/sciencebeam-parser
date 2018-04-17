@@ -175,6 +175,8 @@ def _reference(**kwargs):
     imprint.append(E.biblScope(props['volume'], unit='volume'))
   if 'fpage' in props and 'lpage' in props:
     imprint.append(E.biblScope({'unit': 'page', 'from': props['fpage'], 'to': props['lpage']}))
+  if 'page' in props:
+    imprint.append(E.biblScope(props['page'], unit='page'))
   if 'doi' in props:
     monogr.append(E.idno(props['doi'], type='doi'))
   if 'article_authors' in props:
@@ -451,6 +453,20 @@ class TestGrobidJatsXslt(object):
 
       assert _get_text(element_citation, 'fpage') == 'fpage'
       assert _get_text(element_citation, 'lpage') == 'lpage'
+
+    def test_should_convert_single_page_no(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, page='page1'
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'fpage') == 'page1'
+      assert _get_text(element_citation, 'lpage') == 'page1'
 
     def test_should_convert_multiple_article_authors_of_single_reference(self, grobid_jats_xslt):
       authors = [AUTHOR_1, AUTHOR_2]
