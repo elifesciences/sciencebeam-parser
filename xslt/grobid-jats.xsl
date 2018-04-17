@@ -139,6 +139,14 @@
 					<volume><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='volume']"/></volume>
 				</xsl:if>
 
+				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from">
+					<fpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@from"/></fpage>
+				</xsl:if>
+
+				<xsl:if test="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to">
+					<lpage><xsl:value-of select="tei:monogr/tei:imprint/tei:biblScope[@unit='page']/@to"/></lpage>
+				</xsl:if>
+
 				<xsl:if test="tei:monogr/tei:idno[@type='doi']">
 					<pub-id pub-id-type="doi"><xsl:value-of select="tei:monogr/tei:idno[@type='doi']"/></pub-id>
 				</xsl:if>
