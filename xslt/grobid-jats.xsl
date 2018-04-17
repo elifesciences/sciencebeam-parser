@@ -119,11 +119,11 @@
 
 			<element-citation publication-type="journal">
 				<xsl:choose>
-					<xsl:when test="tei:analytic/tei:title[@type='main' and @level='a']">
-						<article-title><xsl:value-of select="tei:analytic/tei:title[@type='main' and @level='a']"/></article-title>
+					<xsl:when test="tei:analytic/tei:title[@type='main']">
+						<article-title><xsl:value-of select="tei:analytic/tei:title[@type='main']"/></article-title>
 					</xsl:when>
-					<xsl:when test="tei:monogr/tei:title[@type='main' and @level='a']">
-						<article-title><xsl:value-of select="tei:monogr/tei:title[@type='main' and @level='a']"/></article-title>
+					<xsl:when test="tei:monogr/tei:title[@type='main']">
+						<article-title><xsl:value-of select="tei:monogr/tei:title[@type='main']"/></article-title>
 					</xsl:when>
 				</xsl:choose>
 

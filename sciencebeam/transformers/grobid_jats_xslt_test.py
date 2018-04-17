@@ -164,10 +164,11 @@ def _reference(**kwargs):
   imprint = E.imprint()
   monogr.append(imprint)
 
+  title_level = props.get('title_level', 'a')
   if props.get('article_title') is not None:
-    analytic.append(E.title(props['article_title'], level='a', type='main'))
+    analytic.append(E.title(props['article_title'], level=title_level, type='main'))
   if 'collection_title' in props:
-    monogr.append(E.title(props['collection_title'], level='a', type='main'))
+    monogr.append(E.title(props['collection_title'], level=title_level, type='main'))
   if 'journal_title' in props:
     monogr.append(E.title(props['journal_title'], level='j'))
   if 'year' in props:
@@ -435,6 +436,22 @@ class TestGrobidJatsXslt(object):
       jats = etree.fromstring(grobid_jats_xslt(
         _tei(references=[_reference(**extend_dict(
           REFERENCE_1, article_title=ARTICLE_TITLE_1, collection_title=COLLECTION_TITLE_1
+        ))])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert _get_text(element_citation, 'article-title') == ARTICLE_TITLE_1
+
+    @pytest.mark.parametrize('title_level', ['a', 'm'])
+    def test_should_only_return_article_title_at_different_levels(
+      self, grobid_jats_xslt, title_level):
+
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[_reference(**extend_dict(
+          REFERENCE_1, article_title=ARTICLE_TITLE_1, title_level=title_level
         ))])
       ))
 
