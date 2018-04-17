@@ -12,7 +12,9 @@
 		<article article-type="research-article">
 			<xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
 			<body/>
-			<back/>
+			<back>
+				<xsl:apply-templates select="tei:TEI/tei:text/tei:back"/>
+			</back>
 		</article>
 	</xsl:template>
 
@@ -38,17 +40,7 @@
 				<contrib-group content-type="author">
 					<xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
 						<contrib contrib-type="person">
-							<name>
-								<surname>
-									<xsl:value-of select="tei:persName/tei:surname"/>
-								</surname>
-								<given-names>
-									<xsl:for-each select="tei:persName/tei:forename">
-										<xsl:if test="position() > 1" xml:space="preserve"> </xsl:if>
-										<xsl:value-of select="string(.)"/>
-									</xsl:for-each>
-								</given-names>
-							</name>
+							<xsl:apply-templates select="tei:persName"/>
 
 							<xsl:if test="tei:email">
 								<email>
@@ -105,6 +97,61 @@
 				</abstract>
 			</article-meta>
 		</front>
+	</xsl:template>
+
+	<xsl:template match="tei:back">
+		<xsl:apply-templates select="tei:div/tei:listBibl"/>
+	</xsl:template>
+
+	<xsl:template match="tei:listBibl">
+		<xsl:if test="tei:biblStruct">
+			<ref-list id="ref-list-1">
+				<xsl:apply-templates select="tei:biblStruct"/>
+			</ref-list>
+		</xsl:if>
+	</xsl:template>
+
+	<xsl:template match="tei:biblStruct">
+		<ref>
+			<xsl:attribute name='id'>
+				<xsl:value-of select="./@id"/>
+			</xsl:attribute>
+
+			<element-citation publication-type="journal">
+				<xsl:if test="tei:monogr/tei:title">
+					<article-title><xsl:value-of select="tei:monogr/tei:title"/></article-title>
+				</xsl:if>
+				<xsl:if test="tei:monogr/tei:imprint/tei:date[@type='published']">
+					<year><xsl:value-of select="tei:monogr/tei:imprint/tei:date[@type='published']/@when"/></year>
+				</xsl:if>
+				<xsl:if test="tei:monogr/tei:idno[@type='doi']">
+					<pub-id pub-id-type="doi"><xsl:value-of select="tei:monogr/tei:idno[@type='doi']"/></pub-id>
+				</xsl:if>
+				<xsl:if test="tei:note[@type='report_type']">
+					<source><xsl:value-of select="tei:note[@type='report_type']"/></source>
+				</xsl:if>
+
+				<xsl:if test="tei:monogr/tei:author/tei:persName">
+					<person-group person-group-type="author">
+						<xsl:apply-templates select="tei:monogr/tei:author/tei:persName"/>
+					</person-group>
+				</xsl:if>
+			</element-citation>
+		</ref>
+	</xsl:template>
+
+	<xsl:template match="tei:persName">
+		<name>
+			<surname>
+				<xsl:value-of select="tei:surname"/>
+			</surname>
+			<given-names>
+				<xsl:for-each select="tei:forename">
+					<xsl:if test="position() > 1" xml:space="preserve"> </xsl:if>
+					<xsl:value-of select="string(.)"/>
+				</xsl:for-each>
+			</given-names>
+		</name>
 	</xsl:template>
 
 	<xsl:template match="tei:title">

@@ -6,6 +6,7 @@ from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
+from sciencebeam_gym.utils.collection import extend_dict
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +26,16 @@ FIRST_NAME_2 = 'first name 2'
 LAST_NAME_2 = 'last name 2'
 EMAIL_2 = 'email@you.org'
 
+AUTHOR_1 = {
+  'first-name': FIRST_NAME_1,
+  'last-name': LAST_NAME_1
+}
+
+AUTHOR_2 = {
+  'first-name': FIRST_NAME_2,
+  'last-name': LAST_NAME_2
+}
+
 AFFILIATION_1 = {
   'key': 'aff1',
   'department': 'Department of Science',
@@ -43,6 +54,14 @@ AFFILIATION_2 = {
   'country': 'Country 2'
 }
 
+REFERENCE_1 = {
+  'id': 'b0',
+  'title': 'Cited title 1',
+  'year': '2018',
+  'source': 'BioRxiv 21613',
+  'doi': '10.1234/doi1'
+}
+
 def setup_module():
   logging.root.handlers = []
   logging.basicConfig(level='DEBUG')
@@ -57,7 +76,7 @@ def _grobid_jats_xslt():
     return transformer(xml)
   return wrapper
 
-def _tei(titleStmt=None, biblStruct=None, authors=None):
+def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
   if authors is None:
     authors = []
   fileDesc = E.fileDesc()
@@ -69,6 +88,15 @@ def _tei(titleStmt=None, biblStruct=None, authors=None):
         *authors
       )
     )
+  back = E.back()
+  if references is not None:
+    back.append(
+      E.div(
+        E.listBibl(
+          *references
+        )
+      )
+    )
   fileDesc.append(
     E.sourceDesc(
       biblStruct
@@ -77,6 +105,9 @@ def _tei(titleStmt=None, biblStruct=None, authors=None):
   return E.TEI(
     E.teiHeader(
       fileDesc
+    ),
+    E.text(
+      back
     )
   )
 
@@ -114,6 +145,26 @@ def _author_affiliation(**kwargs):
   if 'country' in props:
     address.append(E.country(props['country']))
   return affiliation
+
+def _reference(**kwargs):
+  props = kwargs
+  bibl_struct = E.biblStruct()
+  if 'id' in props:
+    bibl_struct.attrib['id'] = props['id']
+  monogr = E.monogr()
+  bibl_struct.append(monogr)
+  if 'title' in props:
+    monogr.append(E.title(props['title']))
+  if 'year' in props:
+    monogr.append(E.imprint(E.date(type='published', when=props['year'])))
+  if 'doi' in props:
+    monogr.append(E.idno(props['doi'], type='doi'))
+  if 'authors' in props:
+    for author in props['authors']:
+      monogr.append(_author(forenames=[author['first-name']], surname=author['last-name'], email=None))
+  if 'source' in props:
+    bibl_struct.append(E.note(props['source'], type='report_type'))
+  return bibl_struct
 
 def _get_item(xml, xpath):
   items = xml.xpath(xpath)
@@ -315,3 +366,41 @@ class TestGrobidJatsXslt(object):
         _tei()
       ))
       assert _get_item(jats, 'back') is not None
+
+  class TestReferences(object):
+    def test_should_convert_single_reference(self, grobid_jats_xslt):
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[
+          _reference(**REFERENCE_1)
+        ])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert ref.attrib.get('id') == REFERENCE_1['id']
+      assert element_citation.attrib.get('publication-type') == 'journal'
+      assert _get_text(element_citation, 'article-title') == REFERENCE_1['title']
+      assert _get_text(element_citation, 'year') == REFERENCE_1['year']
+      assert _get_text(element_citation, 'source') == REFERENCE_1['source']
+      assert _get_text(element_citation, 'pub-id[@pub-id-type="doi"]') == REFERENCE_1['doi']
+
+    def test_should_convert_multiple_authors_of_single_reference(self, grobid_jats_xslt):
+      authors = [AUTHOR_1, AUTHOR_2]
+      jats = etree.fromstring(grobid_jats_xslt(
+        _tei(references=[
+          _reference(**extend_dict(REFERENCE_1, authors=authors))
+        ])
+      ))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+      person_group = _get_item(element_citation, 'person-group')
+      persons = person_group.xpath('name')
+      assert len(persons) == 2
+
+      for person, author in zip(persons, authors):
+        assert _get_text(person, 'surname') == author['last-name']
+        assert _get_text(person, 'given-names') == author['first-name']
