@@ -114,7 +114,7 @@
 	<xsl:template match="tei:biblStruct">
 		<ref>
 			<xsl:attribute name='id'>
-				<xsl:value-of select="./@id"/>
+				<xsl:value-of select="./@xml:id"/>
 			</xsl:attribute>
 
 			<element-citation publication-type="journal">

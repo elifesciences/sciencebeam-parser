@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 
-E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0')
+E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0', nsmap={'xml':'xml'})
 
 VALUE_1 = 'value 1'
 VALUE_2 = 'value 2'
@@ -155,7 +155,7 @@ def _reference(**kwargs):
   props = kwargs
   bibl_struct = E.biblStruct()
   if 'id' in props:
-    bibl_struct.attrib['id'] = props['id']
+    bibl_struct.attrib['{xml}id'] = props['id']
 
   analytic = E.analytic()
   bibl_struct.append(analytic)
