@@ -13,6 +13,7 @@ class GrobidApiPaths(object):
   PROCESS_CITATION_NAMES = '/processCitationNames'
   PROCESS_AFFILIATIONS = '/processAffiliations'
   PROCESS_CITATION = '/processCitation'
+  PROCESS_FULL_TEXT_DOCUMENT = '/processFulltextDocument'
 
 service_wrapper = GrobidServiceWrapper()
 

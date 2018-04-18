@@ -22,7 +22,7 @@ class GrobidPipeline(Pipeline):
     )
     grobid_group.add_argument(
       '--grobid-action', required=False,
-      default=GrobidApiPaths.PROCESS_HEADER_DOCUMENT,
+      default=GrobidApiPaths.PROCESS_FULL_TEXT_DOCUMENT,
       help='Name of the Grobid action'
     )
     grobid_group.add_argument(
