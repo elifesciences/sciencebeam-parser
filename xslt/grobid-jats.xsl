@@ -217,17 +217,17 @@
 	-->
 	<xsl:template name="parseDateComponents">
 		<xsl:param name="date" select="."/>
-		<xsl:call-template name="_parseDateComponentYear">
+		<xsl:call-template name="_parseDateComponentYearMonthDay">
 			<xsl:with-param name="value" select="$date"/>
 		</xsl:call-template>
 	</xsl:template>
 
-	<xsl:template name="_parseDateComponentYear">
+	<xsl:template name="_parseDateComponentYearMonthDay">
 		<xsl:param name="value" select="."/>
 		<xsl:choose>
 			<xsl:when test="contains($value, '-')">
 				<year><xsl:value-of select="substring-before($value, '-')"/></year>
-				<xsl:call-template name="_parseDateComponentMonth">
+				<xsl:call-template name="_parseDateComponentMonthDay">
 					<xsl:with-param name="value" select="substring-after($value, '-')"/>
 				</xsl:call-template>
 			</xsl:when>
@@ -237,7 +237,7 @@
 		</xsl:choose>
 	</xsl:template>
 
-	<xsl:template name="_parseDateComponentMonth">
+	<xsl:template name="_parseDateComponentMonthDay">
 		<xsl:param name="value" select="."/>
 		<xsl:choose>
 			<xsl:when test="contains($value, '-')">
