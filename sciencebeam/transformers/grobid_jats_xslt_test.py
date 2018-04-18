@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 
-E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0', nsmap={'xml':'xml'})
+E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0', nsmap={'xml': 'xml'})
 
 VALUE_1 = 'value 1'
 VALUE_2 = 'value 2'
