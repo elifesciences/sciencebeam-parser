@@ -19,5 +19,9 @@ elifeLibrary {
             image.tag(commit).push()
             image.push()
         }
+
+        stage 'Downstream', {
+            build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'commit', value: commit)]
+        }
     }
 }
