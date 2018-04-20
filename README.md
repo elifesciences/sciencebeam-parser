@@ -11,7 +11,11 @@ You might also be interested in the [ScienceBeam Gym](https://github.com/elifesc
 
 ## Status
 
-This is in a very early status and may change significantly. The Pipeline may not currently run successfully in the Cloud.
+This is in a very early status and may change significantly.
+
+## Docker
+
+Note: If you just want to use the API, you could make use of the [docker image](doc/Docker.md).
 
 ## Pre-requisites
 
@@ -113,6 +117,24 @@ python -m sciencebeam.examples.conversion_pipeline --help
 
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) or
 [conversion_pipeline.py](sciencebeam/examples/conversion_pipeline.py) example as a template and add your own steps.
+
+## API Server
+
+The [API](doc/API.md) server is currently available in combination with GROBID.
+
+To start the GROBID run:
+
+```bash
+docker run -p 8070:8070 lfoppiano/grobid:0.5.1
+```
+
+To start the ScienceBeam server run:
+
+```bash
+./server.sh --host=0.0.0.0 --port=8075 --grobid-url http://localhost:8070/api
+```
+
+The [ScienceBeam API](doc/API.md) will be available on port _8075_.
 
 ## Tests
 
