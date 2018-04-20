@@ -7,7 +7,7 @@ This section details using or building the docker images. You will need [Docker]
 Clone this repository and run:
 
 ```bash
-docker-compose -f docker-compose.yml.latest up
+docker-compose -f docker-compose.latest.yml up
 ```
 
 That will start GROBID and ScienceBeam docker containers. The [ScienceBeam API](API.md) will be available on port _8075_.
