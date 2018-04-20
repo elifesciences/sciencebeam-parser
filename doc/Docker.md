@@ -15,13 +15,13 @@ That will start GROBID and ScienceBeam docker containers. The [ScienceBeam API](
 Alternatively run:
 
 ```bash
-docker run -p 8070:8070 lfoppiano/grobid:0.5.1
+docker run --rm -p 8070:8070 lfoppiano/grobid:0.5.1
 ```
 
 and:
 
 ```bash
-docker run -p 8075:8075 elifesciences/sciencebeam \
+docker run --rm -i -t -p 8075:8075 elifesciences/sciencebeam \
   ./server.sh --host=0.0.0.0 --port=8075 --grobid-url http://localhost:8070/api
 ```
 
