@@ -1,5 +1,8 @@
 FROM python:2.7.14-stretch
 
+RUN apt-get update
+RUN apt-get install -y libreoffice-writer
+
 ENV PROJECT_HOME=/srv/sciencebeam
 
 ENV VENV=${PROJECT_HOME}/venv

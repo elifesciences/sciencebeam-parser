@@ -1,16 +1,20 @@
 import logging
+import mimetypes
 
 from flask import Blueprint, jsonify, request, Response
 from werkzeug.exceptions import BadRequest
 
+from sciencebeam.utils.mime_type_constants import MimeTypes
+
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
+  UnsupportedDataTypeError,
   create_simple_pipeline_runner_from_config,
   add_arguments as _add_arguments
 )
 
 LOGGER = logging.getLogger(__name__)
 
-PDF_CONTENT_TYPE = 'application/pdf'
+DEFAULT_FILENAME = 'file'
 
 def add_arguments(parser, config, argv=None):
   _add_arguments(parser, config, argv=argv)
@@ -21,6 +25,7 @@ def create_api_blueprint(config, args):
   pipeline_runner = create_simple_pipeline_runner_from_config(
     config, args
   )
+  supported_types = pipeline_runner.get_supported_types()
 
   @blueprint.route("/")
   def _api_root():
@@ -31,28 +36,44 @@ def create_api_blueprint(config, args):
 
   @blueprint.route("/convert", methods=['POST'])
   def _convert():
+    data_type = None
     if not request.files:
-      LOGGER.debug('mimetype: %s', request.mimetype)
-      if request.mimetype != PDF_CONTENT_TYPE:
-        raise BadRequest('unsupported content type: %s' % request.mimetype)
-      pdf_filename = request.args.get('filename')
-      pdf_content = request.data
+      data_type = request.mimetype
+      filename = request.args.get('filename')
+      content = request.data
     elif 'file' not in request.files:
       raise BadRequest('missing file named "file", found: %s ' % request.files.keys())
     else:
       uploaded_file = request.files['file']
-      pdf_filename = uploaded_file.filename
-      pdf_content = uploaded_file.read()
-    if not pdf_content:
-      raise BadRequest('no pdf contents')
-    LOGGER.debug('processing file: %s (%d)', pdf_filename, len(pdf_content))
+      data_type = uploaded_file.mimetype
+      filename = uploaded_file.filename
+      content = uploaded_file.read()
+
+    if not content:
+      raise BadRequest('no contents')
+
+    if not filename:
+      filename = '%s%s' % (DEFAULT_FILENAME, mimetypes.guess_extension(data_type) or '')
+    elif data_type == 'application/octet-stream':
+      data_type = mimetypes.guess_type(filename)[0]
+
+    if data_type not in supported_types:
+      error_message = 'unsupported type: %s (supported: %s)' % (
+        data_type, ', '.join(sorted(supported_types))
+      )
+      LOGGER.info('%s', error_message)
+      raise BadRequest(error_message)
+
+    LOGGER.debug('processing file: %s (%d, type "%s")', filename, len(content), data_type)
     conversion_result = pipeline_runner.convert(
-      pdf_content=pdf_content, pdf_filename=pdf_filename
+      content=content, filename=filename, data_type=data_type
     )
-    LOGGER.debug('conversion_result: %s', conversion_result)
-    xml_content = conversion_result['xml_content']
-    LOGGER.debug('xml_content: %s', xml_content)
-    return Response(xml_content, mimetype='text/xml')
+    response_content = conversion_result['content']
+    response_type = conversion_result['type']
+    LOGGER.debug('response_content: %s (%s)', len(response_content), response_type)
+    if response_type in {MimeTypes.TEI_XML, MimeTypes.JATS_XML}:
+      response_type = 'text/xml'
+    return Response(response_content, mimetype=response_type)
 
   @blueprint.route("/convert", methods=['GET'])
   def _convert_form():

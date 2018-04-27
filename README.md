@@ -22,6 +22,7 @@ Note: If you just want to use the API, you could make use of the [docker image](
 - Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
 - [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym) project installed (e.g. by running `pip install -e .` after cloning it)
+- [Libre Office Write (lowrite)](https://www.libreoffice.org/discover/writer/) for converting Doc(x) files
 
 ## Pipeline
 
@@ -135,6 +136,8 @@ To start the ScienceBeam server run:
 ```
 
 The [ScienceBeam API](doc/API.md) will be available on port _8075_.
+
+The pipeline used by the API is currently different from the Apache Beam pipeline (it will be merged in the future). The pipeline can be configured via `app.cfg` (default: `app-defaults.cfg`). The default pipeline uses GROBID.
 
 ## Tests
 
