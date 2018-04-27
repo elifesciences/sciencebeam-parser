@@ -36,3 +36,13 @@ curl -X POST --show-error --form \
   "file=@test.pdf;filename=test.pdf" \
   http://localhost:8075/api/convert
 ```
+
+### Other Content Types
+
+The API currently supports the following file types:
+
+* .pdf (_application/pdf_)
+* .doc (_application/msword_)
+* .docx (_application/vnd.openxmlformats-officedocument.wordprocessingml.document_)
+
+The content type is inferred from the filename if the content is submitted with the content type _application/octet-stream_.

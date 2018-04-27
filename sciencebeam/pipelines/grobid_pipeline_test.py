@@ -5,6 +5,8 @@ from mock import patch, MagicMock
 
 import pytest
 
+from sciencebeam.utils.mime_type_constants import MimeTypes
+
 from . import grobid_pipeline as grobid_pipeline_module
 from .grobid_pipeline import (
   PIPELINE,
@@ -12,8 +14,9 @@ from .grobid_pipeline import (
 )
 
 PDF_INPUT = {
-  'pdf_filename': 'test.pdf',
-  'pdf_content': b'PDF insider 1'
+  'filename': 'test.pdf',
+  'content': b'PDF insider 1',
+  'type': MimeTypes.PDF
 }
 
 TEI_CONTENT = b'<tei>TEI TEI</tei>'
@@ -72,16 +75,17 @@ class TestGrobidPipeline(object):
 
     _run_pipeline(config, args, PDF_INPUT)
     grobid_service_instance.assert_called_with(
-      (PDF_INPUT['pdf_filename'], PDF_INPUT['pdf_content'])
+      (PDF_INPUT['filename'], PDF_INPUT['content'])
     )
 
   def test_should_return_tei_content_as_xml_content_without_xslt(
     self, config, args, grobid_service_instance):
 
     args.no_grobid_xslt = True
-    grobid_service_instance.return_value = (PDF_INPUT['pdf_filename'], TEI_CONTENT)
+    grobid_service_instance.return_value = (PDF_INPUT['filename'], TEI_CONTENT)
     result = _run_pipeline(config, args, PDF_INPUT)
-    assert result['xml_content'] == TEI_CONTENT
+    assert result['content'] == TEI_CONTENT
+    assert result['type'] == MimeTypes.TEI_XML
 
   def test_should_pass_xslt_path_to_xslt_transform_from_file(
     self, config, args, xslt_transformer_from_file):
@@ -96,10 +100,11 @@ class TestGrobidPipeline(object):
     self, config, args, grobid_service_instance, xslt_transformer):
 
     args.no_grobid_xslt = False
-    grobid_service_instance.return_value = (PDF_INPUT['pdf_filename'], TEI_CONTENT)
+    grobid_service_instance.return_value = (PDF_INPUT['filename'], TEI_CONTENT)
     result = _run_pipeline(config, args, PDF_INPUT)
     xslt_transformer.assert_called_with(TEI_CONTENT)
-    assert result['xml_content'] == xslt_transformer.return_value
+    assert result['content'] == xslt_transformer.return_value
+    assert result['type'] == MimeTypes.JATS_XML
 
   def test_should_disable_pretty_print_xslt_output(
     self, config, args, xslt_transformer_from_file):

@@ -4,6 +4,9 @@ from mock import patch, MagicMock
 import pytest
 
 from sciencebeam.utils.config import dict_to_config
+from sciencebeam.utils.mime_type_constants import MimeTypes
+
+from sciencebeam.pipelines import FunctionPipelineStep
 
 from . import simple_pipeline_runner as simple_pipeline_runner_module
 from .simple_pipeline_runner import create_simple_pipeline_runner_from_config
@@ -36,9 +39,6 @@ def _args():
 def _step():
   return MagicMock(name='step')
 
-def setup_module():
-  logging.basicConfig(level='DEBUG')
-
 class TestCreateSimlePipelineFromConfig(object):
   def test_should_call_import_module_with_configured_default_pipeline(self, import_module, args):
     config = dict_to_config(DEFAULT_CONFIG)
@@ -55,7 +55,25 @@ class TestCreateSimlePipelineFromConfig(object):
     config = dict_to_config(DEFAULT_CONFIG)
     pipeline.get_steps.return_value = [step]
     pipeline_runner = create_simple_pipeline_runner_from_config(config, args)
+    step.get_supported_types.return_value = {MimeTypes.PDF}
     assert (
-      pipeline_runner.convert(pdf_content=PDF_CONTENT, pdf_filename=PDF_FILENAME) ==
+      pipeline_runner.convert(
+        content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF
+      ) ==
+      step.return_value
+    )
+
+  def test_should_skip_first_step_if_content_type_does_not_match(self, pipeline, args, step):
+    config = dict_to_config(DEFAULT_CONFIG)
+    pipeline.get_steps.return_value = [
+      FunctionPipelineStep(lambda _: None, set(), 'dummy'),
+      step
+    ]
+    pipeline_runner = create_simple_pipeline_runner_from_config(config, args)
+    step.get_supported_types.return_value = {MimeTypes.PDF}
+    assert (
+      pipeline_runner.convert(
+        content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF
+      ) ==
       step.return_value
     )
