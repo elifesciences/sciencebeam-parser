@@ -40,9 +40,6 @@ class GrobidPipeline(Pipeline):
       help='Disable pretty print of XSLT output'
     )
 
-  def get_supported_types(self, config, args):
-    return {MimeTypes.PDF}
-
   def get_steps(self, config, args):
     # type: (dict, object) -> list
     grobid_url = args.grobid_url
