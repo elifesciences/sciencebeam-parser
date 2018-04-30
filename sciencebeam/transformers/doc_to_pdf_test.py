@@ -38,7 +38,17 @@ class TestDocToPdf(object):
   def test_should_call_check_output_with_docx(self, tmpdir, check_output_mock):
     tmpdir.join('temp.pdf').write(PDF_CONTENT_1)
     doc_to_pdf(DOC_CONTENT_1, MimeTypes.DOCX)
-    check_output_mock.assert_called_with([
-      'lowriter', '--convert-to', 'pdf', '--outdir', str(tmpdir),
-      os.path.join(str(tmpdir), 'temp.docx')
-    ])
+    check_output_mock.assert_called()
+    assert check_output_mock.call_args[0][0][-1] == os.path.join(str(tmpdir), 'temp.docx')
+
+  def test_should_call_check_output_with_dotx(self, tmpdir, check_output_mock):
+    tmpdir.join('temp.pdf').write(PDF_CONTENT_1)
+    doc_to_pdf(DOC_CONTENT_1, MimeTypes.DOTX)
+    check_output_mock.assert_called()
+    assert check_output_mock.call_args[0][0][-1] == os.path.join(str(tmpdir), 'temp.dotx')
+
+  def test_should_call_check_output_with_rtf(self, tmpdir, check_output_mock):
+    tmpdir.join('temp.pdf').write(PDF_CONTENT_1)
+    doc_to_pdf(DOC_CONTENT_1, MimeTypes.RTF)
+    check_output_mock.assert_called()
+    assert check_output_mock.call_args[0][0][-1] == os.path.join(str(tmpdir), 'temp.rtf')
