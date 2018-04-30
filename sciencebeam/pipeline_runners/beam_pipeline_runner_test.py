@@ -54,21 +54,6 @@ def _get_pipeline_mock(pipeline):
   with patch.object(beam_pipeline_runner_module, '_pipeline', pipeline):
     yield pipeline
 
-@pytest.fixture(name='read_all_from_path_mock', autouse=True)
-def _read_all_from_path_mock():
-  with patch.object(beam_pipeline_runner_module, 'read_all_from_path') as m:
-    yield m
-
-@pytest.fixture(name='read_all_from_path_mock', autouse=True)
-def _read_all_from_path_mock():
-  with patch.object(beam_pipeline_runner_module, 'read_all_from_path') as m:
-    yield m
-
-@pytest.fixture(name='save_file_content_mock', autouse=True)
-def _save_file_content_mock():
-  with patch.object(beam_pipeline_runner_module, 'save_file_content') as m:
-    yield m
-
 @pytest.fixture(name='app_config')
 def get_default_config():
   return dict_to_config({})
