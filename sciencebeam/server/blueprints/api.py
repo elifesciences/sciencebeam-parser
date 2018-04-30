@@ -54,6 +54,7 @@ def create_api_blueprint(config, args):
 
     if not filename:
       filename = '%s%s' % (DEFAULT_FILENAME, mimetypes.guess_extension(data_type) or '')
+      LOGGER.debug('guessed filename %s for type %s', filename, data_type)
     elif data_type == 'application/octet-stream':
       data_type = mimetypes.guess_type(filename)[0]
 
@@ -61,10 +62,10 @@ def create_api_blueprint(config, args):
       error_message = 'unsupported type: %s (supported: %s)' % (
         data_type, ', '.join(sorted(supported_types))
       )
-      LOGGER.info('%s', error_message)
+      LOGGER.info('%s (filename: %s)', error_message, filename)
       raise BadRequest(error_message)
 
-    LOGGER.debug('processing file: %s (%d, type "%s")', filename, len(content), data_type)
+    LOGGER.debug('processing file: %s (%d bytes, type "%s")', filename, len(content), data_type)
     conversion_result = pipeline_runner.convert(
       content=content, filename=filename, data_type=data_type
     )

@@ -15,6 +15,7 @@ from distutils.command.build import build
 CUSTOM_COMMANDS = [
   shlex.split(command_line) for command_line in [
     'apt-get update',
+    'apt-get --assume-yes install libreoffice-writer',
     'apt-get --assume-yes install libxml2',
     # Note: using jessie-backports may be environment specific
     'apt-get --assume-yes install -f -t jessie-backports'

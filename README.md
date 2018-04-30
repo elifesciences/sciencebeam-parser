@@ -114,6 +114,33 @@ For a full list of parameters:
 python -m sciencebeam.examples.conversion_pipeline --help
 ```
 
+## Simple Pipeline
+
+A simple non-Apache Beam specific pipeline definition exists and can be configured using _app.cfg_ (defaults in: _app-defaults.cfg_).
+
+The pipeline can be executed directly (e.g. as part of the API, see below) or translated and run as an Apache Beam pipeline.
+
+To run the pipeline using Apache Beam:
+
+```bash
+python -m sciencebeam.pipeline_runners.beam_pipeline_runner \
+  --data-path=/home/deuser/_git_/elife/pdf-xml/data/other/00666 --source-path=*.pdf \
+  --grobid-url=http://localhost:8070/api
+```
+
+To get a list of all of the available parameters:
+
+```bash
+python -m sciencebeam.pipeline_runners.beam_pipeline_runner --help
+```
+
+Note: the list of parameters may change depending on the configured pipeline.
+
+Current pipelines:
+
+- [GROBID /w XSLT pipeline](sciencebeam/pipelines/grobid_pipeline.py)
+- [Doc to PDF pipeline](sciencebeam/pipelines/doc_to_pdf_pipeline.py)
+
 ## Extending the Pipeline
 
 You can use the [grobid_service_pdf_to_xml.py](sciencebeam/examples/grobid_service_pdf_to_xml.py) or
@@ -137,7 +164,7 @@ To start the ScienceBeam server run:
 
 The [ScienceBeam API](doc/API.md) will be available on port _8075_.
 
-The pipeline used by the API is currently different from the Apache Beam pipeline (it will be merged in the future). The pipeline can be configured via `app.cfg` (default: `app-defaults.cfg`). The default pipeline uses GROBID.
+The pipeline used by the API is currently is using the simple pipeline format described above. The pipeline can be configured via `app.cfg` (default: `app-defaults.cfg`). The default pipeline uses GROBID.
 
 ## Tests
 
