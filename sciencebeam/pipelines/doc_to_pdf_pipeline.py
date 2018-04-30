@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 class DocToPdfStep(PipelineStep):
   def get_supported_types(self):
-    return {MimeTypes.DOC, MimeTypes.DOCX}
+    return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF}
 
   def __call__(self, data):
     return {

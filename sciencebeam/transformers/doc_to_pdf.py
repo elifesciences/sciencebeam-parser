@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 from subprocess import check_output
 from backports.tempfile import TemporaryDirectory
@@ -9,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 def doc_to_pdf(doc_content, data_type=MimeTypes.DOC):
   with TemporaryDirectory('doc-to-pdf') as path:
-    doc_ext = '.docx' if data_type == MimeTypes.DOCX else '.doc'
+    doc_ext = mimetypes.guess_extension(data_type)
     temp_doc = os.path.join(path, 'temp%s' % doc_ext)
     temp_pdf = os.path.join(path, 'temp.pdf')
     LOGGER.info('temp_doc: %s', temp_doc)
