@@ -22,14 +22,16 @@ DEFAULT_CONFIG = {
 PDF_FILENAME = 'test.pdf'
 PDF_CONTENT = b'pdf content'
 
-@pytest.fixture(name='import_module', autouse=True)
+@pytest.fixture(name='get_pipeline_for_configuration', autouse=True)
 def _import_module():
-  with patch.object(simple_pipeline_runner_module, 'import_module') as import_module:
-    yield import_module
+  with patch.object(simple_pipeline_runner_module, 'get_pipeline_for_configuration') as \
+  get_pipeline_for_configuration:
+
+    yield get_pipeline_for_configuration
 
 @pytest.fixture(name='pipeline')
-def _pipeline(import_module):
-  return import_module.return_value.PIPELINE
+def _pipeline(get_pipeline_for_configuration):
+  return get_pipeline_for_configuration.return_value
 
 @pytest.fixture(name='args')
 def _args():
@@ -40,10 +42,12 @@ def _step():
   return MagicMock(name='step')
 
 class TestCreateSimlePipelineFromConfig(object):
-  def test_should_call_import_module_with_configured_default_pipeline(self, import_module, args):
+  def test_should_call_get_pipeline_for_configuration_with_config(
+    self, get_pipeline_for_configuration, args):
+
     config = dict_to_config(DEFAULT_CONFIG)
     create_simple_pipeline_runner_from_config(config, args)
-    import_module.assert_called_with(DEFAULT_PIPELINE_MODULE)
+    get_pipeline_for_configuration.assert_called_with(config)
 
   def test_should_pass_args_and_config_to_get_steps(self, pipeline, args, step):
     config = dict_to_config(DEFAULT_CONFIG)
