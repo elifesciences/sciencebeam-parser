@@ -1,10 +1,6 @@
-from importlib import import_module
-
 import logging
 
-from sciencebeam.utils.config import parse_list
-
-from sciencebeam.pipelines import ChainedPipeline
+from sciencebeam.pipelines import get_pipeline_for_configuration
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,20 +45,10 @@ class SimplePipelineRunner(object):
 def create_simple_pipeline_runner_from_pipeline(pipeline, config, args):
   return SimplePipelineRunner(pipeline.get_steps(config, args))
 
-def _pipeline(config):
-  # type: (dict) -> Pipeline
-  pipeline_module_names = parse_list(config.get(u'pipelines', u'default'))
-  pipeline_modules = [
-    import_module(pipeline_module_name)
-    for pipeline_module_name in pipeline_module_names
-  ]
-  pipelines = [pipeline_module.PIPELINE for pipeline_module in pipeline_modules]
-  return ChainedPipeline(pipelines)
-
 def add_arguments(parser, config, argv=None):
-  pipeline = _pipeline(config)
+  pipeline = get_pipeline_for_configuration(config)
   pipeline.add_arguments(parser, config, argv=argv)
 
 def create_simple_pipeline_runner_from_config(config, args):
-  pipeline = _pipeline(config)
+  pipeline = get_pipeline_for_configuration(config)
   return create_simple_pipeline_runner_from_pipeline(pipeline, config, args)

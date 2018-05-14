@@ -1,6 +1,9 @@
 from abc import ABCMeta, abstractmethod
+from importlib import import_module
 
 from six import with_metaclass
+
+from sciencebeam.utils.config import parse_list
 
 class Pipeline(object, with_metaclass(ABCMeta)):
   @abstractmethod
@@ -53,3 +56,25 @@ class FunctionPipelineStep(PipelineStep):
 
   def __repr__(self):
     return '%s(%s)' % (type(self).__name__, self.name)
+
+def get_pipeline_for_pipeline_expression(pipeline_expression):
+  # type: (str) -> Pipeline
+  pipeline_module_names = parse_list(pipeline_expression)
+  pipeline_modules = [
+    import_module(pipeline_module_name)
+    for pipeline_module_name in pipeline_module_names
+  ]
+  pipelines = [pipeline_module.PIPELINE for pipeline_module in pipeline_modules]
+  if len(pipelines) == 1:
+    return pipelines[0]
+  return ChainedPipeline(pipelines)
+
+def get_pipeline_expression_for_configuration(config, name=None):
+  # type: (ConfigParser) -> str
+  return config.get(u'pipelines', name or u'default')
+
+def get_pipeline_for_configuration(config, name=None):
+  # type: (ConfigParser) -> Pipeline
+  return get_pipeline_for_pipeline_expression(
+    get_pipeline_expression_for_configuration(config, name=name)
+  )

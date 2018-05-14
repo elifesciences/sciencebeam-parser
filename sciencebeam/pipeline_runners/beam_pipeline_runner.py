@@ -43,7 +43,7 @@ from sciencebeam_gym.preprocess.preprocessing_utils import (
 
 from sciencebeam.config.app_config import get_app_config
 
-from .simple_pipeline_runner import _pipeline
+from sciencebeam.pipelines import get_pipeline_for_configuration
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,7 +61,10 @@ class DataProps(object):
 
 def FileUrlSource(opt):
   if opt.source_file_list:
-    return ReadFileList(opt.source_file_list, column=opt.source_file_column, limit=opt.limit)
+    return ReadFileList(
+      join_if_relative_path(opt.base_data_path, opt.source_file_list),
+      column=opt.source_file_column, limit=opt.limit
+    )
   else:
     return FindFiles(join_if_relative_path(opt.base_data_path, opt.source_path))
 
@@ -164,6 +167,14 @@ def configure_pipeline(p, opt, pipeline, config):
     )
   )
 
+def add_pipeline_args(parser):
+  pipeline_group = parser.add_argument_group('pipeline')
+  pipeline_group.add_argument(
+    '--pipeline', required=False,
+    help='Pipeline to use'
+  )
+
+
 def add_main_args(parser):
   parser.add_argument(
     '--data-path', type=str, required=True,
@@ -214,8 +225,15 @@ def process_main_args(args):
       os.path.basename(args.base_data_path + '-results')
     )
 
+def parse_pipeline_args(argv=None):
+  parser = argparse.ArgumentParser()
+  add_pipeline_args(parser)
+  args, _ = parser.parse_known_args(argv)
+  return args
+
 def parse_args(pipeline, config, argv=None):
   parser = argparse.ArgumentParser()
+  add_pipeline_args(parser)
   add_main_args(parser)
   add_cloud_args(parser)
   pipeline.add_arguments(parser, config, argv)
@@ -238,7 +256,10 @@ def parse_args(pipeline, config, argv=None):
 
 def run(argv=None):
   config = get_app_config()
-  pipeline = _pipeline(config)
+
+  pipeline_name = parse_pipeline_args(argv).pipeline
+
+  pipeline = get_pipeline_for_configuration(config, name=pipeline_name)
 
   args = parse_args(pipeline, config, argv)
 
