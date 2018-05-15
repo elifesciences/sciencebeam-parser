@@ -76,7 +76,9 @@ class TestApiBlueprint(object):
       with _api_test_client(config, args) as test_client:
         response = test_client.get('/')
         assert _get_ok_json(response) == {
-          'links': {}
+          'links': {
+            'convert': '/convert'
+          }
         }
 
   class TestConvert(object):

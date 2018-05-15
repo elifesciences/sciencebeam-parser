@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
@@ -30,6 +30,7 @@ def create_api_blueprint(config, args):
   def _api_root():
     return jsonify({
       'links': {
+        'convert': url_for('api._convert')
       }
     })
 
