@@ -25,6 +25,21 @@ docker run --rm -i -t -p 8075:8075 elifesciences/sciencebeam \
   ./server.sh --host=0.0.0.0 --port=8075 --grobid-url http://localhost:8070/api
 ```
 
+## Run Science Parse and ScienceBeam Docker Container
+
+Run the [Science Parse](https://github.com/allenai/science-parse) and ScienceBeam docker container:
+
+```bash
+docker run -p 8071:8080 --rm allenai-docker-public-docker.bintray.io/s2/scienceparse:1.3.2
+```
+
+and:
+
+```bash
+docker run --rm -i -t -p 8075:8075 elifesciences/sciencebeam \
+  ./server.sh --host=0.0.0.0 --port=8075 --pipeline=scienceparse --science-parse-url http://localhost:8071/v1
+```
+
 ## Build and Run Docker Container with Docker Compose
 
 ```bash
