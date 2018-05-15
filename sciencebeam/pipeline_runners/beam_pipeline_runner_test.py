@@ -23,7 +23,7 @@ from .beam_pipeline_runner import (
 )
 
 
-BASE_TEST_PATH = '.temp/test/conversion-pipeline'
+BASE_TEST_PATH = '/tmp/test/conversion-pipeline'
 BASE_DATA_PATH = BASE_TEST_PATH + '/data'
 PDF_PATH = '*/*.pdf'
 FILE_LIST_PATH = 'file-list.csv'
@@ -51,7 +51,7 @@ def _pipeline_mock():
 
 @pytest.fixture(name='get_pipeline', autouse=True)
 def _get_pipeline_mock(pipeline):
-  with patch.object(beam_pipeline_runner_module, '_pipeline', pipeline):
+  with patch.object(beam_pipeline_runner_module, 'get_pipeline_for_configuration', pipeline):
     yield pipeline
 
 @pytest.fixture(name='app_config')
