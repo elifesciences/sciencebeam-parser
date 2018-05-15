@@ -1,6 +1,6 @@
 import logging
 
-import requests
+from requests import post as requests_post
 
 from sciencebeam_gym.preprocess.preprocessing_utils import change_ext
 
@@ -18,9 +18,9 @@ class ApiStep(PipelineStep):
     return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF, MimeTypes.PDF}
 
   def __call__(self, data):
-    response = requests.post(
+    response = requests_post(
       self._api_url,
-      headers={'Content-type': data['type']},
+      headers={'Content-Type': data['type']},
       data=data['content'],
       params={'filename': data['filename']}
     )
