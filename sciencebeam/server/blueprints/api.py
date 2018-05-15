@@ -7,7 +7,6 @@ from werkzeug.exceptions import BadRequest
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
-  UnsupportedDataTypeError,
   create_simple_pipeline_runner_from_config,
   add_arguments as _add_arguments
 )
