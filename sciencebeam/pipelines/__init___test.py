@@ -39,6 +39,16 @@ class TestGetPipelineForConfiguration(object):
     get_pipeline_for_configuration(config)
     import_module.assert_called_with(DEFAULT_PIPELINE_MODULE)
 
+  def test_should_default_pipeline_to_point_to_another_pipeline_configuration(self, import_module):
+    config = dict_to_config({
+      u'pipelines': {
+        u'default': u'custom',
+        u'custom': DEFAULT_PIPELINE_MODULE
+      }
+    })
+    get_pipeline_for_configuration(config)
+    import_module.assert_called_with(DEFAULT_PIPELINE_MODULE)
+
   def test_should_pass_args_and_config_to_get_steps(self, pipeline, args, step):
     config = dict_to_config(DEFAULT_CONFIG)
     pipeline.get_steps.return_value = [step]

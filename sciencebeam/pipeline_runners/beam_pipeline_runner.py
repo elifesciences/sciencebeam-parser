@@ -5,6 +5,8 @@ import os
 import logging
 import mimetypes
 
+from six import text_type
+
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 from apache_beam.metrics.metric import Metrics
@@ -120,6 +122,9 @@ def get_step_transform(step):
     ), error_count=get_step_error_counter(step)
   )
 
+def encode_if_text_type(data):
+  return data.encode('utf-8') if isinstance(data, text_type) else data
+
 def configure_pipeline(p, opt, pipeline, config):
   get_pipeline_output_file = lambda source_url, ext: get_output_file(
     source_url,
@@ -161,7 +166,7 @@ def configure_pipeline(p, opt, pipeline, config):
           v[DataProps.SOURCE_FILENAME],
           opt.output_suffix
         ),
-        v[DataProps.CONTENT]
+        encode_if_text_type(v[DataProps.CONTENT])
       )),
       log_fn=lambda x: get_logger().info('saved output to: %s', x)
     )

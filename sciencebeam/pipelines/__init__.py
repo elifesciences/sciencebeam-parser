@@ -71,7 +71,11 @@ def get_pipeline_for_pipeline_expression(pipeline_expression):
 
 def get_pipeline_expression_for_configuration(config, name=None):
   # type: (ConfigParser) -> str
-  return config.get(u'pipelines', name or u'default')
+  pipelines = config[u'pipelines']
+  expression = pipelines[name or u'default']
+  if expression in pipelines:
+    expression = pipelines[expression]
+  return expression
 
 def get_pipeline_for_configuration(config, name=None):
   # type: (ConfigParser) -> Pipeline
