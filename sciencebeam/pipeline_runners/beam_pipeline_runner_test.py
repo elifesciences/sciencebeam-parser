@@ -55,7 +55,9 @@ def _pipeline_mock():
 
 @pytest.fixture(name='get_pipeline', autouse=True)
 def _get_pipeline_mock(pipeline):
-  with patch.object(beam_pipeline_runner_module, 'get_pipeline_for_configuration', pipeline):
+  with patch.object(
+    beam_pipeline_runner_module, 'get_pipeline_for_configuration_and_args', pipeline):
+
     yield pipeline
 
 @pytest.fixture(name='app_config')
