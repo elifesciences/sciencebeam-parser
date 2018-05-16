@@ -11,8 +11,6 @@ from . import Pipeline, PipelineStep, FunctionPipelineStep
 
 DEFAULT_SCIENCE_PARSE_XSLT_PATH = 'xslt/scienceparse-jats.xsl'
 
-LOCAL_GROBID_API_URL = 'http://localhost:8080/api'
-
 class ScienceParseApiStep(PipelineStep):
   def __init__(self, api_url):
     self._api_url = api_url

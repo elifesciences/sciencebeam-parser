@@ -40,6 +40,21 @@ docker run --rm -i -t -p 8075:8075 elifesciences/sciencebeam \
   ./server.sh --host=0.0.0.0 --port=8075 --pipeline=scienceparse --science-parse-url http://localhost:8071/v1
 ```
 
+## Run CERMINE and ScienceBeam Docker Container
+
+Run the [CERMINE](https://github.com/CeON/CERMINE) and ScienceBeam docker container:
+
+```bash
+docker run -p 8072:8080 --rm elifesciences/cermine:1.13
+```
+
+and:
+
+```bash
+docker run --rm -i -t -p 8075:8075 elifesciences/sciencebeam \
+  ./server.sh --host=0.0.0.0 --port=8075 --pipeline=cermine --cermine-url http://localhost:8072/extract.do
+```
+
 ## Build and Run Docker Container with Docker Compose
 
 ```bash
