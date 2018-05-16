@@ -1,6 +1,9 @@
 import logging
 
-from sciencebeam.pipelines import get_pipeline_for_configuration
+from sciencebeam.pipelines import (
+  get_pipeline_for_configuration_and_args,
+  add_pipeline_args
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,9 +49,11 @@ def create_simple_pipeline_runner_from_pipeline(pipeline, config, args):
   return SimplePipelineRunner(pipeline.get_steps(config, args))
 
 def add_arguments(parser, config, argv=None):
-  pipeline = get_pipeline_for_configuration(config)
+  add_pipeline_args(parser)
+
+  pipeline = get_pipeline_for_configuration_and_args(config, argv=argv)
   pipeline.add_arguments(parser, config, argv=argv)
 
 def create_simple_pipeline_runner_from_config(config, args):
-  pipeline = get_pipeline_for_configuration(config)
+  pipeline = get_pipeline_for_configuration_and_args(config, args=args)
   return create_simple_pipeline_runner_from_pipeline(pipeline, config, args)

@@ -5,6 +5,8 @@ import os
 import logging
 import mimetypes
 
+from six import text_type
+
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 from apache_beam.metrics.metric import Metrics
@@ -43,7 +45,10 @@ from sciencebeam_gym.preprocess.preprocessing_utils import (
 
 from sciencebeam.config.app_config import get_app_config
 
-from sciencebeam.pipelines import get_pipeline_for_configuration
+from sciencebeam.pipelines import (
+  get_pipeline_for_configuration_and_args,
+  add_pipeline_args
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,6 +125,9 @@ def get_step_transform(step):
     ), error_count=get_step_error_counter(step)
   )
 
+def encode_if_text_type(data):
+  return data.encode('utf-8') if isinstance(data, text_type) else data
+
 def configure_pipeline(p, opt, pipeline, config):
   get_pipeline_output_file = lambda source_url, ext: get_output_file(
     source_url,
@@ -161,19 +169,11 @@ def configure_pipeline(p, opt, pipeline, config):
           v[DataProps.SOURCE_FILENAME],
           opt.output_suffix
         ),
-        v[DataProps.CONTENT]
+        encode_if_text_type(v[DataProps.CONTENT])
       )),
       log_fn=lambda x: get_logger().info('saved output to: %s', x)
     )
   )
-
-def add_pipeline_args(parser):
-  pipeline_group = parser.add_argument_group('pipeline')
-  pipeline_group.add_argument(
-    '--pipeline', required=False,
-    help='Pipeline to use'
-  )
-
 
 def add_main_args(parser):
   parser.add_argument(
@@ -225,12 +225,6 @@ def process_main_args(args):
       os.path.basename(args.base_data_path + '-results')
     )
 
-def parse_pipeline_args(argv=None):
-  parser = argparse.ArgumentParser()
-  add_pipeline_args(parser)
-  args, _ = parser.parse_known_args(argv)
-  return args
-
 def parse_args(pipeline, config, argv=None):
   parser = argparse.ArgumentParser()
   add_pipeline_args(parser)
@@ -257,9 +251,7 @@ def parse_args(pipeline, config, argv=None):
 def run(argv=None):
   config = get_app_config()
 
-  pipeline_name = parse_pipeline_args(argv).pipeline
-
-  pipeline = get_pipeline_for_configuration(config, name=pipeline_name)
+  pipeline = get_pipeline_for_configuration_and_args(config, argv=argv)
 
   args = parse_args(pipeline, config, argv)
 

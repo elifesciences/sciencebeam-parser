@@ -2,6 +2,8 @@ from mock import patch, MagicMock, DEFAULT, ANY
 
 import pytest
 
+from six import text_type
+
 import apache_beam as beam
 
 from sciencebeam.utils.config import dict_to_config
@@ -40,6 +42,8 @@ PDF_CONTENT_1 = b'pdf content 1'
 XML_CONTENT_1 = b'<article>xml content 1</article>'
 TEI_XML_CONTENT_1 = b'<TEI>tei content 1</TEI>'
 
+UNICODE_CONTENT_1 = u'Unicode \u1234'
+
 MIN_ARGV = [
   '--data-path=' + BASE_DATA_PATH,
   '--source-path=' + PDF_PATH
@@ -51,7 +55,9 @@ def _pipeline_mock():
 
 @pytest.fixture(name='get_pipeline', autouse=True)
 def _get_pipeline_mock(pipeline):
-  with patch.object(beam_pipeline_runner_module, 'get_pipeline_for_configuration', pipeline):
+  with patch.object(
+    beam_pipeline_runner_module, 'get_pipeline_for_configuration_and_args', pipeline):
+
     yield pipeline
 
 @pytest.fixture(name='app_config')
@@ -156,6 +162,28 @@ class TestConfigurePipeline(BeamTest):
       mocks['save_file_content'].assert_called_with(
         OUTPUT_XML_FILE_1,
         XML_CONTENT_1
+      )
+
+  def test_should_encode_string_when_saving(self, pipeline, app_config):
+    with patch_conversion_pipeline() as mocks:
+      opt = get_file_list_args()
+
+      step1 = MagicMock(name='step1')
+      step1.get_supported_types.return_value = {MimeTypes.PDF}
+      step1.return_value = {
+        'content': text_type(UNICODE_CONTENT_1)
+      }
+
+      pipeline.get_steps.return_value = [step1]
+
+      with TestPipeline() as p:
+        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+        configure_pipeline(p, opt, pipeline, app_config)
+
+      mocks['save_file_content'].assert_called_with(
+        OUTPUT_XML_FILE_1,
+        UNICODE_CONTENT_1.encode('utf-8')
       )
 
   def test_should_pass_around_values_with_multiple_steps(self, pipeline, app_config):

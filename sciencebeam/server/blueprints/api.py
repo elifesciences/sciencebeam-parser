@@ -1,13 +1,12 @@
 import logging
 import mimetypes
 
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
-  UnsupportedDataTypeError,
   create_simple_pipeline_runner_from_config,
   add_arguments as _add_arguments
 )
@@ -31,6 +30,7 @@ def create_api_blueprint(config, args):
   def _api_root():
     return jsonify({
       'links': {
+        'convert': url_for('api._convert')
       }
     })
 

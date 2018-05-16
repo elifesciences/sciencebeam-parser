@@ -6,3 +6,4 @@ class MimeTypes(object):
   RTF = 'application/rtf'
   TEI_XML = 'application/tei+xml'
   JATS_XML = 'application/vnd.jats+xml'
+  JSON = 'application/json'

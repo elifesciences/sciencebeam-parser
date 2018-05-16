@@ -1,3 +1,4 @@
+import argparse
 from abc import ABCMeta, abstractmethod
 from importlib import import_module
 
@@ -71,10 +72,32 @@ def get_pipeline_for_pipeline_expression(pipeline_expression):
 
 def get_pipeline_expression_for_configuration(config, name=None):
   # type: (ConfigParser) -> str
-  return config.get(u'pipelines', name or u'default')
+  pipelines = config[u'pipelines']
+  expression = pipelines[name or u'default']
+  if expression in pipelines:
+    expression = pipelines[expression]
+  return expression
 
 def get_pipeline_for_configuration(config, name=None):
   # type: (ConfigParser) -> Pipeline
   return get_pipeline_for_pipeline_expression(
     get_pipeline_expression_for_configuration(config, name=name)
   )
+
+def add_pipeline_args(parser):
+  pipeline_group = parser.add_argument_group('pipeline')
+  pipeline_group.add_argument(
+    '--pipeline', required=False,
+    help='Pipeline to use'
+  )
+
+def parse_pipeline_args(argv=None):
+  parser = argparse.ArgumentParser()
+  add_pipeline_args(parser)
+  args, _ = parser.parse_known_args(argv)
+  return args
+
+def get_pipeline_for_configuration_and_args(config, args=None, argv=None):
+  args = parse_pipeline_args(argv) if args is None else args
+  pipeline_name = args.pipeline
+  return get_pipeline_for_configuration(config, name=pipeline_name)

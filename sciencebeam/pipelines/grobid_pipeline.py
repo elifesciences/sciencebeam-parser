@@ -33,7 +33,7 @@ class GrobidPipeline(Pipeline):
     )
     grobid_group.add_argument(
       '--grobid-xslt-path', default=DEFAULT_GROBID_XSLT_PATH,
-      help='JATS'
+      help='Path to XSLT file translating results to JATS'
     )
     grobid_group.add_argument(
       '--no-grobid-pretty-print', action='store_true',
