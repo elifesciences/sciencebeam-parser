@@ -286,3 +286,72 @@ class TestScienceParseJatsXslt(object):
       assert len(sec_list) == 2
 
       assert [sec.attrib.get('id') for sec in sec_list] == ['sec-1', 'sec-2']
+
+class TestScienceParseV2JatsXslt(object):
+  class TestArticleTitle(object):
+    def test_should_translate_title(self, scienceparse_jats_xslt):
+      jats = etree.fromstring(scienceparse_jats_xslt({
+        'doc': {
+          'title': VALUE_1
+        }
+      }))
+      assert _get_text(jats, 'front/article-meta/title-group/article-title') == VALUE_1
+
+  class TestAuthor(object):
+    def test_should_translate_multiple_authors(self, scienceparse_jats_xslt):
+      jats = etree.fromstring(scienceparse_jats_xslt({
+        'doc': {
+          'authors': [
+            '%s %s' % (FIRST_NAME_1, LAST_NAME_1),
+            '%s %s' % (FIRST_NAME_2, LAST_NAME_2)
+          ]
+        }
+      }))
+      persons = jats.xpath('front/article-meta/contrib-group/contrib')
+      assert _get_text(persons[0], './name/surname') == LAST_NAME_1
+      assert _get_text(persons[1], './name/surname') == LAST_NAME_2
+
+  class TestReferences(object):
+    def test_should_convert_single_reference(self, scienceparse_jats_xslt):
+      jats = etree.fromstring(scienceparse_jats_xslt({
+        'doc': {
+          'bibs': [
+            REFERENCE_1
+          ]
+        }
+      }))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+
+      assert ref.attrib.get('id') == 'ref-1'
+      assert element_citation.attrib.get('publication-type') == 'journal'
+      assert _get_text(element_citation, 'article-title') == REFERENCE_1['title']
+      assert _get_text(element_citation, 'year') == REFERENCE_1['year']
+
+    def test_should_convert_multiple_article_authors_of_single_reference(
+      self, scienceparse_jats_xslt):
+
+      authors = [AUTHOR_1, AUTHOR_2]
+      jats = etree.fromstring(scienceparse_jats_xslt({
+        'references': [
+          extend_dict(REFERENCE_1, {
+            'authors': [
+              '%s %s' % (author['first-name'], author['last-name'])
+              for author in authors
+            ]
+          })
+        ]
+      }))
+
+      ref_list = _get_item(jats, 'back/ref-list')
+      ref = _get_item(ref_list, 'ref')
+      element_citation = _get_item(ref, 'element-citation')
+      person_group = _get_item(element_citation, 'person-group')
+      persons = person_group.xpath('name')
+      assert len(persons) == 2
+
+      for person, author in zip(persons, authors):
+        assert _get_text(person, 'surname') == author['last-name']
+        assert _get_text(person, 'given-names') == author['first-name']

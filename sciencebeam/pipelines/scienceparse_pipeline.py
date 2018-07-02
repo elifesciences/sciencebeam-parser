@@ -40,7 +40,7 @@ class ScienceParseApiStep(PipelineStep):
 class ScienceParsePipeline(Pipeline):
   def add_arguments(self, parser, config, argv=None):
     # type: (argparse.ArgumentParser, dict, object) -> None
-    science_parse_group = parser.add_argument_group('Science Parse')
+    science_parse_group = parser.add_argument_group('Science Parse / Science Parse V2')
     science_parse_group.add_argument(
       '--science-parse-url', required=True,
       help='URL to the Science Parse service'
