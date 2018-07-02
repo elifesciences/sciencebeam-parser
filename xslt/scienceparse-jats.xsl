@@ -17,15 +17,13 @@
   <xsl:template name="front">
     <front>
       <article-meta>
-        <xsl:if test="title">
-          <title-group>
-            <article-title>
-              <xsl:value-of select="title"/>
-            </article-title>
-          </title-group>
-        </xsl:if>
+        <xsl:call-template name="title">
+          <xsl:with-param name="title" select="title | doc/title"/>
+        </xsl:call-template>
 
-        <xsl:call-template name="authors"/>
+        <xsl:call-template name="authors">
+          <xsl:with-param name="authors" select="authors | doc/authors"/>
+        </xsl:call-template>
 
         <xsl:if test="abstractText">
           <abstract>
@@ -36,15 +34,25 @@
     </front>
   </xsl:template>
 
+  <xsl:template name="title">
+    <xsl:param name="title" select="."/>
+    <xsl:if test="$title">
+      <title-group>
+        <article-title>
+          <xsl:value-of select="$title"/>
+        </article-title>
+      </title-group>
+    </xsl:if>
+  </xsl:template>
+
   <xsl:template name="authors">
+    <xsl:param name="authors" select="."/>
     <contrib-group content-type="author">
-      <xsl:for-each select="authors/item">
+      <xsl:for-each select="$authors/item">
         <contrib contrib-type="person">
-          <xsl:if test="name">
-            <xsl:call-template name="parseName">
-              <xsl:with-param name="name" select="name"/>
-            </xsl:call-template>
-          </xsl:if>
+          <xsl:call-template name="parseName">
+            <xsl:with-param name="name" select="name | ."/>
+          </xsl:call-template>
         </contrib>
       </xsl:for-each>
     </contrib-group>
@@ -52,14 +60,17 @@
 
   <xsl:template name="back">
     <back>
-      <xsl:call-template name="references"/>
+      <xsl:call-template name="references">
+        <xsl:with-param name="references" select="references | doc/bibs"/>
+      </xsl:call-template>
     </back>
   </xsl:template>
 
   <xsl:template name="references">
-    <xsl:if test="references">
+    <xsl:param name="references" select="."/>
+    <xsl:if test="$references">
       <ref-list id="ref-list-1">
-        <xsl:for-each select="references/item">
+        <xsl:for-each select="$references/item">
           <xsl:call-template name="reference"/>
         </xsl:for-each>
       </ref-list>
@@ -152,29 +163,31 @@
   -->
   <xsl:template name="parseName">
     <xsl:param name="name" select="."/>
-    <name>
-      <xsl:choose>
-        <xsl:when test="contains($name, ' ')">
-          <given-names>
-            <xsl:call-template name="substring-before-last">
-              <xsl:with-param name="arg" select="$name" />
-              <xsl:with-param name="delim" select="' '" />
-            </xsl:call-template>
-          </given-names>
-          <surname>
-            <xsl:call-template name="substring-after-last">
-              <xsl:with-param name="arg" select="$name" />
-              <xsl:with-param name="delim" select="' '" />
-            </xsl:call-template>
-          </surname>
-        </xsl:when>
-        <xsl:otherwise>
-          <surname>
-            <xsl:value-of select="$name"/>
-          </surname>
-        </xsl:otherwise>
-      </xsl:choose>
-    </name>
+    <xsl:if test="$name">
+      <name>
+        <xsl:choose>
+          <xsl:when test="contains($name, ' ')">
+            <given-names>
+              <xsl:call-template name="substring-before-last">
+                <xsl:with-param name="arg" select="$name" />
+                <xsl:with-param name="delim" select="' '" />
+              </xsl:call-template>
+            </given-names>
+            <surname>
+              <xsl:call-template name="substring-after-last">
+                <xsl:with-param name="arg" select="$name" />
+                <xsl:with-param name="delim" select="' '" />
+              </xsl:call-template>
+            </surname>
+          </xsl:when>
+          <xsl:otherwise>
+            <surname>
+              <xsl:value-of select="$name"/>
+            </surname>
+          </xsl:otherwise>
+        </xsl:choose>
+      </name>
+    </xsl:if>
   </xsl:template>
 
   <xsl:template name="substring-before-last">
