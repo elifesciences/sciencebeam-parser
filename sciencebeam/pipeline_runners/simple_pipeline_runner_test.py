@@ -1,4 +1,3 @@
-import logging
 from mock import patch, MagicMock
 
 import pytest
@@ -6,7 +5,7 @@ import pytest
 from sciencebeam.utils.config import dict_to_config
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from sciencebeam.pipelines import FunctionPipelineStep
+from sciencebeam.pipelines import FunctionPipelineStep, FieldNames, StepDataProps
 
 from . import simple_pipeline_runner as simple_pipeline_runner_module
 from .simple_pipeline_runner import create_simple_pipeline_runner_from_config
@@ -66,6 +65,22 @@ class TestCreateSimlePipelineFromConfig(object):
       ) ==
       step.return_value
     )
+
+  def test_should_pass_includes_to_first_step(self, pipeline, args, step):
+    config = dict_to_config(DEFAULT_CONFIG)
+    pipeline.get_steps.return_value = [step]
+    pipeline_runner = create_simple_pipeline_runner_from_config(config, args)
+    step.get_supported_types.return_value = {MimeTypes.PDF}
+    pipeline_runner.convert(
+      content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+      includes={FieldNames.TITLE}
+    )
+    step.assert_called_with({
+      StepDataProps.FILENAME: PDF_FILENAME,
+      StepDataProps.CONTENT: PDF_CONTENT,
+      StepDataProps.TYPE: MimeTypes.PDF,
+      StepDataProps.INCLUDES: {FieldNames.TITLE}
+    })
 
   def test_should_skip_first_step_if_content_type_does_not_match(self, pipeline, args, step):
     config = dict_to_config(DEFAULT_CONFIG)

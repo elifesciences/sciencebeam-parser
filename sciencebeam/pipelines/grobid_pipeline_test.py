@@ -7,10 +7,14 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam_gym.utils.collection import extend_dict
+
+from . import FieldNames, StepDataProps
 from . import grobid_pipeline as grobid_pipeline_module
 from .grobid_pipeline import (
   PIPELINE,
-  LOCAL_GROBID_API_URL
+  LOCAL_GROBID_API_URL,
+  GrobidApiPaths
 )
 
 PDF_INPUT = {
@@ -75,7 +79,32 @@ class TestGrobidPipeline(object):
 
     _run_pipeline(config, args, PDF_INPUT)
     grobid_service_instance.assert_called_with(
-      (PDF_INPUT['filename'], PDF_INPUT['content'])
+      (PDF_INPUT['filename'], PDF_INPUT['content']),
+      path=args.grobid_action
+    )
+
+  def test_should_use_process_header_if_includes_only_contains_header(
+    self, config, args, grobid_service_instance):
+
+    args.grobid_action = None
+    _run_pipeline(config, args, extend_dict(PDF_INPUT, {
+      StepDataProps.INCLUDES: {FieldNames.TITLE}
+    }))
+    grobid_service_instance.assert_called_with(
+      (PDF_INPUT['filename'], PDF_INPUT['content']),
+      path=GrobidApiPaths.PROCESS_HEADER_DOCUMENT
+    )
+
+  def test_should_use_process_full_text_if_includes_only_contains_references(
+    self, config, args, grobid_service_instance):
+
+    args.grobid_action = None
+    _run_pipeline(config, args, extend_dict(PDF_INPUT, {
+      StepDataProps.INCLUDES: {FieldNames.REFERENCES}
+    }))
+    grobid_service_instance.assert_called_with(
+      (PDF_INPUT['filename'], PDF_INPUT['content']),
+      path=GrobidApiPaths.PROCESS_FULL_TEXT_DOCUMENT
     )
 
   def test_should_return_tei_content_as_xml_content_without_xslt(

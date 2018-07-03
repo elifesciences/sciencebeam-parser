@@ -1,5 +1,6 @@
 from io import BytesIO
 import logging
+from functools import partial
 
 import requests
 
@@ -23,32 +24,40 @@ def get_logger():
 def start_service_if_not_running():
   service_wrapper.start_service_if_not_running()
 
-def grobid_service(base_url, path, start_service=True, field_name=None):
+def run_grobid_service(x, base_url, path, start_service=True, field_name=None):
   url = base_url + path
 
-  def do_grobid_service(x):
-    if start_service:
-      start_service_if_not_running()
-    if field_name:
-      content = x
-      response = requests.post(url,
-        data={field_name: content}
-      )
-    else:
-      filename = x[0] if isinstance(x, tuple) else 'unknown.pdf'
-      content = x[1] if isinstance(x, tuple) else x
-      get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
-      response = requests.post(url,
-        files={'input': (filename, BytesIO(content))},
-        data={
-          'consolidateHeader': '0',
-          'consolidateCitations': '0'
-        }
-      )
-    response.raise_for_status()
-    result_content = response.content
-    if isinstance(x, tuple):
-      return filename, result_content
-    else:
-      return result_content
-  return do_grobid_service
+  if start_service:
+    start_service_if_not_running()
+
+  if field_name:
+    content = x
+    response = requests.post(url,
+      data={field_name: content}
+    )
+  else:
+    filename = x[0] if isinstance(x, tuple) else 'unknown.pdf'
+    content = x[1] if isinstance(x, tuple) else x
+    get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
+    response = requests.post(url,
+      files={'input': (filename, BytesIO(content))},
+      data={
+        'consolidateHeader': '0',
+        'consolidateCitations': '0'
+      }
+    )
+  response.raise_for_status()
+  result_content = response.content
+  if isinstance(x, tuple):
+    return filename, result_content
+  else:
+    return result_content
+
+def grobid_service(base_url, path, start_service=True, field_name=None):
+  return partial(
+    run_grobid_service,
+    base_url=base_url,
+    path=path,
+    start_service=start_service,
+    field_name=field_name
+  )
