@@ -6,6 +6,20 @@ from six import with_metaclass
 
 from sciencebeam.utils.config import parse_list
 
+class FieldNames(object):
+  TITLE = 'title'
+  ABSTRACT = 'abstract'
+  AUTHORS = 'authors'
+  AFFILIATIONS = 'affiliations'
+  REFERENCES = 'references'
+  FULL_TEXT = 'full-text'
+
+class StepDataProps(object):
+  FILENAME = 'filename'
+  CONTENT = 'content'
+  INCLUDES = 'includes'
+  TYPE = 'type'
+
 class Pipeline(object, with_metaclass(ABCMeta)):
   @abstractmethod
   def add_arguments(self, parser, config, argv=None):

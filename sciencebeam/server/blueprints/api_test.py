@@ -13,6 +13,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam.pipelines import FieldNames, StepDataProps
+
 from . import api as api_module
 from .api import (
   create_api_blueprint,
@@ -122,7 +124,8 @@ class TestApiBlueprint(object):
           file=(BytesIO(PDF_CONTENT), PDF_FILENAME),
         ))
         pipeline_runner.convert.assert_called_with(
-          content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF
+          content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+          includes=None
         )
         assert response.status_code == 200
         assert response.data == XML_CONTENT
@@ -141,7 +144,8 @@ class TestApiBlueprint(object):
           content_type=MimeTypes.PDF
         )
         pipeline_runner.convert.assert_called_with(
-          content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF
+          content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+          includes=None
         )
         assert response.status_code == 200
         assert response.data == XML_CONTENT
@@ -160,7 +164,30 @@ class TestApiBlueprint(object):
           content_type=MimeTypes.PDF
         )
         pipeline_runner.convert.assert_called_with(
-          content=PDF_CONTENT, filename='%s.pdf' % DEFAULT_FILENAME, data_type=MimeTypes.PDF
+          content=PDF_CONTENT, filename='%s.pdf' % DEFAULT_FILENAME, data_type=MimeTypes.PDF,
+          includes=None
+        )
+        assert response.status_code == 200
+        assert response.data == XML_CONTENT
+
+    def test_should_pass_includes_parameter_to_convert_method(
+      self, config, args, pipeline_runner):
+
+      with _api_test_client(config, args) as test_client:
+        pipeline_runner.convert.return_value = {
+          'content': XML_CONTENT,
+          'type': MimeTypes.JATS_XML
+        }
+        response = test_client.post(
+          '/convert?filename=%s&includes=%s,%s' % (
+            PDF_FILENAME, FieldNames.TITLE, FieldNames.ABSTRACT
+          ),
+          data=PDF_CONTENT,
+          content_type=MimeTypes.PDF
+        )
+        pipeline_runner.convert.assert_called_with(
+          content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+          includes={FieldNames.TITLE, FieldNames.ABSTRACT}
         )
         assert response.status_code == 200
         assert response.data == XML_CONTENT

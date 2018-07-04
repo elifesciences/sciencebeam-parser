@@ -2,7 +2,8 @@ import logging
 
 from sciencebeam.pipelines import (
   get_pipeline_for_configuration_and_args,
-  add_pipeline_args
+  add_pipeline_args,
+  StepDataProps
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -25,12 +26,13 @@ class SimplePipelineRunner(object):
       for data_type in step.get_supported_types()
     }
 
-  def convert(self, content, filename, data_type):
+  def convert(self, content, filename, data_type, includes=None):
     # type: (str, str, str) -> dict
     current_item = {
-      'content': content,
-      'filename': filename,
-      'type': data_type
+      StepDataProps.CONTENT: content,
+      StepDataProps.FILENAME: filename,
+      StepDataProps.TYPE: data_type,
+      StepDataProps.INCLUDES: includes
     }
     num_processed = 0
     for step in self._steps:

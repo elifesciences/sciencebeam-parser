@@ -37,6 +37,26 @@ curl -X POST --show-error --form \
   http://localhost:8075/api/convert
 ```
 
+### Specify which fields to process
+
+Add the _includes_ URL parameter. Currently the valid values are:
+
+* title
+* abstract
+* authors
+* affiliations
+* references
+* full-text
+
+```bash
+curl -X POST --show-error -H "Content-Type: application/pdf" \
+  --data-binary @test.pdf \
+  'http://localhost:8075/api/convert?filename=test.pdf&includes=title,abstract,authors,affiliations'
+```
+
+Note: This currently does not filter the response but is considered when deciding
+  whether to perform more expensive operations (e.g. _references_ and _full-text_ will be more expensive).
+
 ### Other Content Types
 
 The API currently supports the following file types:

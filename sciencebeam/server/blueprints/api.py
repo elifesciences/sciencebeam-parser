@@ -6,6 +6,8 @@ from werkzeug.exceptions import BadRequest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam_gym.utils.collection import strip_all
+
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
   create_simple_pipeline_runner_from_config,
   add_arguments as _add_arguments
@@ -17,6 +19,9 @@ DEFAULT_FILENAME = 'file'
 
 def add_arguments(parser, config, argv=None):
   _add_arguments(parser, config, argv=argv)
+
+def parse_includes(includes):
+  return includes and set(strip_all(includes.split(',')))
 
 def create_api_blueprint(config, args):
   blueprint = Blueprint('api', __name__)
@@ -37,6 +42,7 @@ def create_api_blueprint(config, args):
   @blueprint.route("/convert", methods=['POST'])
   def _convert():
     data_type = None
+    includes = parse_includes(request.args.get('includes'))
     if not request.files:
       data_type = request.mimetype
       filename = request.args.get('filename')
@@ -67,7 +73,8 @@ def create_api_blueprint(config, args):
 
     LOGGER.debug('processing file: %s (%d bytes, type "%s")', filename, len(content), data_type)
     conversion_result = pipeline_runner.convert(
-      content=content, filename=filename, data_type=data_type
+      content=content, filename=filename, data_type=data_type,
+      includes=includes
     )
     response_content = conversion_result['content']
     response_type = conversion_result['type']
