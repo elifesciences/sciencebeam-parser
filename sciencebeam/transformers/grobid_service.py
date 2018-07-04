@@ -24,20 +24,41 @@ def get_logger():
 def start_service_if_not_running():
   service_wrapper.start_service_if_not_running()
 
-def run_grobid_service(x, base_url, path, start_service=True, field_name=None):
+def run_grobid_service(item, base_url, path, start_service=True, field_name=None):
+  """
+  Translates PDF content via the GROBID service.
+
+  Args:
+    item: one of:
+      * tuple (filename, pdf content)
+      * pdf content
+      * field content (requires field name)
+    base_url: base url to the GROBID service
+    path: path of the GROBID endpoint
+    start_service: if true, a GROBID service will be started automatically and
+      kept running until the application ends
+    field_name: the field name the field content relates to
+
+  Returns:
+    If item is tuple:
+      returns tuple (filename, xml result)
+    Otherwise:
+      returns xml result
+  """
+
   url = base_url + path
 
   if start_service:
     start_service_if_not_running()
 
   if field_name:
-    content = x
+    content = item
     response = requests.post(url,
       data={field_name: content}
     )
   else:
-    filename = x[0] if isinstance(x, tuple) else 'unknown.pdf'
-    content = x[1] if isinstance(x, tuple) else x
+    filename = item[0] if isinstance(item, tuple) else 'unknown.pdf'
+    content = item[1] if isinstance(item, tuple) else item
     get_logger().info('processing: %s (%d) - %s', filename, len(content), url)
     response = requests.post(url,
       files={'input': (filename, BytesIO(content))},
@@ -48,7 +69,7 @@ def run_grobid_service(x, base_url, path, start_service=True, field_name=None):
     )
   response.raise_for_status()
   result_content = response.content
-  if isinstance(x, tuple):
+  if isinstance(item, tuple):
     return filename, result_content
   else:
     return result_content
