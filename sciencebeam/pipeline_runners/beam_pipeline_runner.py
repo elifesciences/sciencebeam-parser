@@ -10,6 +10,7 @@ from six import text_type
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 from apache_beam.metrics.metric import Metrics
+from apache_beam.io.filesystems import FileSystems
 
 from sciencebeam_gym.utils.collection import (
   extend_dict
@@ -128,6 +129,11 @@ def get_step_transform(step):
 def encode_if_text_type(data):
   return data.encode('utf-8') if isinstance(data, text_type) else data
 
+def _file_exists(file_url):
+  result = FileSystems.exists(file_url)
+  LOGGER.debug('file exists: result=%s, url=%s', result, file_url)
+  return result
+
 def configure_pipeline(p, opt, pipeline, config):
   get_pipeline_output_file = lambda source_url, ext: get_output_file(
     source_url,
@@ -136,14 +142,30 @@ def configure_pipeline(p, opt, pipeline, config):
     ext
   )
 
+  get_default_output_file_for_source_file = lambda source_url: get_pipeline_output_file(
+    source_url,
+    opt.output_suffix
+  )
+
+  output_file_not_exists = lambda source_url: not _file_exists(
+    get_default_output_file_for_source_file(source_url)
+  )
+
   steps = pipeline.get_steps(config, opt)
 
   LOGGER.info('steps: %s', steps)
 
-  input_data = (
+  input_urls = (
     p |
     FileUrlSource(opt) |
-    PreventFusion() |
+    PreventFusion()
+  )
+
+  if opt.resume:
+    input_urls |= beam.Filter(output_file_not_exists)
+
+  input_data = (
+    input_urls |
     ReadFileContent() |
     "Determine Type" >> beam.Map(lambda d: extend_dict(d, {
       DataProps.TYPE: mimetypes.guess_type(d[DataProps.SOURCE_FILENAME])[0]
@@ -165,10 +187,7 @@ def configure_pipeline(p, opt, pipeline, config):
     result |
     "WriteOutput" >> TransformAndLog(
       beam.Map(lambda v: save_file_content(
-        get_pipeline_output_file(
-          v[DataProps.SOURCE_FILENAME],
-          opt.output_suffix
-        ),
+        get_default_output_file_for_source_file(v[DataProps.SOURCE_FILENAME]),
         encode_if_text_type(v[DataProps.CONTENT])
       )),
       log_fn=lambda x: get_logger().info('saved output to: %s', x)
@@ -209,6 +228,11 @@ def add_main_args(parser):
   output_group.add_argument(
     '--output-suffix', required=False, default='.xml',
     help='Output file suffix to add to the filename (excluding the file extension).'
+  )
+
+  parser.add_argument(
+    '--resume', action='store_true', default=False,
+    help='resume conversion (skip files that already have an output file)'
   )
 
   parser.add_argument(
