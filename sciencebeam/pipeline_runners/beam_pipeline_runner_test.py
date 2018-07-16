@@ -105,12 +105,18 @@ def patch_conversion_pipeline(**kwargs):
   ) as mocks:
     yield mocks
 
-def _pdf_step(name='pdf_step', response=None):
+def _convert_step(name, supported_types, response=None):
   step = MagicMock(name=name)
-  step.get_supported_types.return_value = {MimeTypes.PDF}
+  step.get_supported_types.return_value = supported_types
   if response:
     step.return_value = response
   return step
+
+def _pdf_step(name='pdf_step', response=None):
+  return _convert_step(name, {MimeTypes.PDF}, response=response)
+
+def _tei_step(name='tei_step', response=None):
+  return _convert_step(name, {MimeTypes.TEI_XML}, response=response)
 
 @pytest.mark.slow
 @pytest.mark.usefixtures('mocks')
@@ -149,11 +155,9 @@ class TestConfigurePipeline(BeamTest):
   def test_should_pass_around_values_with_single_step(self, pipeline, app_config, mocks):
     opt = get_file_list_args()
 
-    step1 = MagicMock(name='step1')
-    step1.get_supported_types.return_value = {MimeTypes.PDF}
-    step1.return_value = {
+    step1 = _pdf_step(response={
       'content': XML_CONTENT_1
-    }
+    })
 
     pipeline.get_steps.return_value = [step1]
 
@@ -177,11 +181,9 @@ class TestConfigurePipeline(BeamTest):
   def test_should_encode_string_when_saving(self, pipeline, app_config, mocks):
     opt = get_file_list_args()
 
-    step1 = MagicMock(name='step1')
-    step1.get_supported_types.return_value = {MimeTypes.PDF}
-    step1.return_value = {
+    step1 = _pdf_step(response={
       'content': text_type(UNICODE_CONTENT_1)
-    }
+    })
 
     pipeline.get_steps.return_value = [step1]
 
@@ -198,19 +200,15 @@ class TestConfigurePipeline(BeamTest):
   def test_should_pass_around_values_with_multiple_steps(self, pipeline, app_config, mocks):
     opt = get_file_list_args()
 
-    step1 = MagicMock(name='step1')
-    step1.get_supported_types.return_value = {MimeTypes.PDF}
-    step1.return_value = {
+    step1 = _pdf_step(response={
       'content': TEI_XML_CONTENT_1,
       'type': MimeTypes.TEI_XML
-    }
+    })
 
-    step2 = MagicMock(name='step2')
-    step2.get_supported_types.return_value = {MimeTypes.TEI_XML}
-    step2.return_value = {
+    step2 = _tei_step(response={
       'content': XML_CONTENT_1,
       'type': MimeTypes.JATS_XML
-    }
+    })
 
     pipeline.get_steps.return_value = [step1, step2]
 
@@ -267,8 +265,7 @@ class TestConfigurePipeline(BeamTest):
 
     opt = get_file_list_args()
 
-    step1 = MagicMock(name='step1')
-    step1.get_supported_types.return_value = {MimeTypes.PDF}
+    step1 = _pdf_step()
     step1.side_effect = RuntimeError('doh1')
 
     pipeline.get_steps.return_value = [step1]
@@ -286,8 +283,7 @@ class TestConfigurePipeline(BeamTest):
 
     opt = get_file_list_args()
 
-    step1 = MagicMock(name='step1')
-    step1.get_supported_types.return_value = {'other'}
+    step1 = _convert_step(name='step1', supported_types={'other'})
 
     pipeline.get_steps.return_value = [step1]
 
