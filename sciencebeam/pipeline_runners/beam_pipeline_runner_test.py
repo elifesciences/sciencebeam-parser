@@ -86,180 +86,220 @@ def get_file_list_args():
   opt.source_file_column = 'url'
   return opt
 
+@pytest.fixture(name='mocks')
 def patch_conversion_pipeline(**kwargs):
   always_mock = {
     'read_all_from_path',
     'ReadFileList',
     'FindFiles',
-    'save_file_content'
+    'save_file_content',
+    'FileSystems'
   }
 
-  return patch.multiple(
+  with patch.multiple(
     beam_pipeline_runner_module,
     **{
       k: kwargs.get(k, DEFAULT)
       for k in always_mock
     }
-  )
+  ) as mocks:
+    yield mocks
+
+def _convert_step(name, supported_types, response=None):
+  step = MagicMock(name=name)
+  step.get_supported_types.return_value = supported_types
+  if response:
+    step.return_value = response
+  return step
+
+def _pdf_step(name='pdf_step', response=None):
+  return _convert_step(name, {MimeTypes.PDF}, response=response)
+
+def _tei_step(name='tei_step', response=None):
+  return _convert_step(name, {MimeTypes.TEI_XML}, response=response)
 
 @pytest.mark.slow
+@pytest.mark.usefixtures('mocks')
 class TestConfigurePipeline(BeamTest):
-  def test_should_pass_pdf_pattern_to_find_files_and_read_pdf_file(self, pipeline, app_config):
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_path_args()
-      with TestPipeline() as p:
-        mocks['FindFiles'].return_value = beam.Create([PDF_FILE_1])
-        configure_pipeline(p, opt, pipeline, app_config)
+  def test_should_pass_pdf_pattern_to_find_files_and_read_pdf_file(
+    self, pipeline, app_config, mocks):
 
-      mocks['FindFiles'].assert_called_with(
-        BASE_DATA_PATH + '/' + PDF_PATH
-      )
-      mocks['read_all_from_path'].assert_called_with(
-        PDF_FILE_1
-      )
+    opt = get_file_path_args()
+    with TestPipeline() as p:
+      mocks['FindFiles'].return_value = beam.Create([PDF_FILE_1])
+      configure_pipeline(p, opt, pipeline, app_config)
+
+    mocks['FindFiles'].assert_called_with(
+      BASE_DATA_PATH + '/' + PDF_PATH
+    )
+    mocks['read_all_from_path'].assert_called_with(
+      PDF_FILE_1
+    )
 
   def test_should_pass_pdf_file_list_and_limit_to_read_file_list_and_read_pdf_file(
-    self, pipeline, app_config):
+    self, pipeline, app_config, mocks):
 
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
-      opt.limit = 100
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        configure_pipeline(p, opt, pipeline, app_config)
+    opt = get_file_list_args()
+    opt.limit = 100
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      configure_pipeline(p, opt, pipeline, app_config)
 
-      mocks['ReadFileList'].assert_called_with(
-        opt.source_file_list, column=opt.source_file_column, limit=opt.limit
-      )
-      mocks['read_all_from_path'].assert_called_with(
-        PDF_FILE_1
-      )
+    mocks['ReadFileList'].assert_called_with(
+      opt.source_file_list, column=opt.source_file_column, limit=opt.limit
+    )
+    mocks['read_all_from_path'].assert_called_with(
+      PDF_FILE_1
+    )
 
-  def test_should_pass_around_values_with_single_step(self, pipeline, app_config):
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
+  def test_should_pass_around_values_with_single_step(self, pipeline, app_config, mocks):
+    opt = get_file_list_args()
 
-      step1 = MagicMock(name='step1')
-      step1.get_supported_types.return_value = {MimeTypes.PDF}
-      step1.return_value = {
-        'content': XML_CONTENT_1
-      }
+    step1 = _pdf_step(response={
+      'content': XML_CONTENT_1
+    })
 
-      pipeline.get_steps.return_value = [step1]
+    pipeline.get_steps.return_value = [step1]
 
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        configure_pipeline(p, opt, pipeline, app_config)
-        assert get_counter_value(p.run(), get_step_processed_counter(step1)) == 1
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      configure_pipeline(p, opt, pipeline, app_config)
+      assert get_counter_value(p.run(), get_step_processed_counter(step1)) == 1
 
-      step1.assert_called_with({
-        'content': PDF_CONTENT_1,
-        'source_filename': PDF_FILE_1,
-        'filename': PDF_FILE_1,
-        'type': MimeTypes.PDF
-      })
-      mocks['save_file_content'].assert_called_with(
-        OUTPUT_XML_FILE_1,
-        XML_CONTENT_1
-      )
+    step1.assert_called_with({
+      'content': PDF_CONTENT_1,
+      'source_filename': PDF_FILE_1,
+      'filename': PDF_FILE_1,
+      'type': MimeTypes.PDF
+    })
+    mocks['save_file_content'].assert_called_with(
+      OUTPUT_XML_FILE_1,
+      XML_CONTENT_1
+    )
 
-  def test_should_encode_string_when_saving(self, pipeline, app_config):
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
+  def test_should_encode_string_when_saving(self, pipeline, app_config, mocks):
+    opt = get_file_list_args()
 
-      step1 = MagicMock(name='step1')
-      step1.get_supported_types.return_value = {MimeTypes.PDF}
-      step1.return_value = {
-        'content': text_type(UNICODE_CONTENT_1)
-      }
+    step1 = _pdf_step(response={
+      'content': text_type(UNICODE_CONTENT_1)
+    })
 
-      pipeline.get_steps.return_value = [step1]
+    pipeline.get_steps.return_value = [step1]
 
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        configure_pipeline(p, opt, pipeline, app_config)
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      configure_pipeline(p, opt, pipeline, app_config)
 
-      mocks['save_file_content'].assert_called_with(
-        OUTPUT_XML_FILE_1,
-        UNICODE_CONTENT_1.encode('utf-8')
-      )
+    mocks['save_file_content'].assert_called_with(
+      OUTPUT_XML_FILE_1,
+      UNICODE_CONTENT_1.encode('utf-8')
+    )
 
-  def test_should_pass_around_values_with_multiple_steps(self, pipeline, app_config):
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
+  def test_should_pass_around_values_with_multiple_steps(self, pipeline, app_config, mocks):
+    opt = get_file_list_args()
 
-      step1 = MagicMock(name='step1')
-      step1.get_supported_types.return_value = {MimeTypes.PDF}
-      step1.return_value = {
-        'content': TEI_XML_CONTENT_1,
-        'type': MimeTypes.TEI_XML
-      }
+    step1 = _pdf_step(response={
+      'content': TEI_XML_CONTENT_1,
+      'type': MimeTypes.TEI_XML
+    })
 
-      step2 = MagicMock(name='step2')
-      step2.get_supported_types.return_value = {MimeTypes.TEI_XML}
-      step2.return_value = {
-        'content': XML_CONTENT_1,
-        'type': MimeTypes.JATS_XML
-      }
+    step2 = _tei_step(response={
+      'content': XML_CONTENT_1,
+      'type': MimeTypes.JATS_XML
+    })
 
-      pipeline.get_steps.return_value = [step1, step2]
+    pipeline.get_steps.return_value = [step1, step2]
 
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        configure_pipeline(p, opt, pipeline, app_config)
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      configure_pipeline(p, opt, pipeline, app_config)
 
-      step2.assert_called_with({
-        'content': TEI_XML_CONTENT_1,
-        'source_filename': PDF_FILE_1,
-        'filename': PDF_FILE_1,
-        'type': MimeTypes.TEI_XML
-      })
-      mocks['save_file_content'].assert_called_with(
-        OUTPUT_XML_FILE_1,
-        XML_CONTENT_1
-      )
+    step2.assert_called_with({
+      'content': TEI_XML_CONTENT_1,
+      'source_filename': PDF_FILE_1,
+      'filename': PDF_FILE_1,
+      'type': MimeTypes.TEI_XML
+    })
+    mocks['save_file_content'].assert_called_with(
+      OUTPUT_XML_FILE_1,
+      XML_CONTENT_1
+    )
 
-  def test_should_skip_item_causing_exception_and_increase_error_count(self, pipeline, app_config):
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
+  @pytest.mark.parametrize(
+    'resume, output_exists, expect_processing', [
+      (False, True, True),
+      (True, False, True),
+      (True, True, False)
+    ]
+  )
+  def test_should_skip_item_depending_on_resume_flag_and_existing_output_file(
+    self, pipeline, app_config, mocks,
+    resume, output_exists, expect_processing):
 
-      step1 = MagicMock(name='step1')
-      step1.get_supported_types.return_value = {MimeTypes.PDF}
-      step1.side_effect = RuntimeError('doh1')
+    opt = get_file_list_args()
+    opt.resume = resume
 
-      pipeline.get_steps.return_value = [step1]
+    step1 = _pdf_step()
 
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        configure_pipeline(p, opt, pipeline, app_config)
-        assert get_counter_value(p.run(), get_step_error_counter(step1)) == 1
+    pipeline.get_steps.return_value = [step1]
 
-      mocks['save_file_content'].assert_not_called()
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      mocks['FileSystems'].exists.return_value = output_exists
+      configure_pipeline(p, opt, pipeline, app_config)
+
+    if resume:
+      mocks['FileSystems'].exists.assert_called_with(OUTPUT_XML_FILE_1)
+
+    if expect_processing:
+      step1.assert_called()
+    else:
+      step1.assert_not_called()
+
+  def test_should_skip_item_causing_exception_and_increase_error_count(
+    self, pipeline, app_config, mocks):
+
+    opt = get_file_list_args()
+
+    step1 = _pdf_step()
+    step1.side_effect = RuntimeError('doh1')
+
+    pipeline.get_steps.return_value = [step1]
+
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      configure_pipeline(p, opt, pipeline, app_config)
+      assert get_counter_value(p.run(), get_step_error_counter(step1)) == 1
+
+    mocks['save_file_content'].assert_not_called()
 
   def test_should_skip_step_if_data_type_doesnt_match_and_increase_ignored_count(
-    self, pipeline, app_config):
+    self, pipeline, app_config, mocks):
 
-    with patch_conversion_pipeline() as mocks:
-      opt = get_file_list_args()
+    opt = get_file_list_args()
 
-      step1 = MagicMock(name='step1')
-      step1.get_supported_types.return_value = {'other'}
+    step1 = _convert_step(name='step1', supported_types={'other'})
 
-      pipeline.get_steps.return_value = [step1]
+    pipeline.get_steps.return_value = [step1]
 
-      with TestPipeline() as p:
-        mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-        mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-        configure_pipeline(p, opt, pipeline, app_config)
-        assert get_counter_value(p.run(), get_step_ignored_counter(step1)) == 1
+    with TestPipeline() as p:
+      mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+      mocks['read_all_from_path'].return_value = PDF_CONTENT_1
+      configure_pipeline(p, opt, pipeline, app_config)
+      assert get_counter_value(p.run(), get_step_ignored_counter(step1)) == 1
 
 class TestParseArgs(object):
   def test_should_parse_minimum_number_of_arguments(self, pipeline):
     parse_args(pipeline, get_default_config(), MIN_ARGV)
+
+  def test_should_not_resume_by_default(self, pipeline):
+    args = parse_args(pipeline, get_default_config(), MIN_ARGV)
+    assert not args.resume
 
   def test_should_raise_error_if_no_source_argument_was_provided(self, pipeline):
     with pytest.raises(SystemExit):
