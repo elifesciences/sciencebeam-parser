@@ -39,7 +39,7 @@ def configure_pipeline(p, opt):
     output |= MapValues(xslt_transformer_from_file(opt.xslt_path))
 
   # change the key (filename) from pdf to xml to reflect the new content
-  output |= MapKeys(lambda k: splitext(k)[0] + opt.output_suffix)
+  output |= MapKeys(lambda k: '%s/%s' % (opt.output_path, splitext(k)[0].split('/')[-1] + opt.output_suffix))
 
   # write the files, using the key as the filename
   output |= WriteToFile()
@@ -163,6 +163,7 @@ def parse_args(argv=None):
   get_logger().info('parsed_args: %s', parsed_args)
 
   return parsed_args
+
 
 def run(argv=None):
   """Main entry point; defines and runs the tfidf pipeline."""
