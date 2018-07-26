@@ -27,7 +27,7 @@ class ContentMineApiStep(PipelineStep):
     }
 
   def __str__(self):
-    return 'Cermine API'
+    return 'ContentMine API'
 
   def __repr__(self):
     return '%s(%s)' % (type(self).__name__, self._api_url)
