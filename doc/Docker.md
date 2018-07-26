@@ -84,7 +84,7 @@ docker run --rm -i -t -p 8075:8075 --net=host elifesciences/sciencebeam \
 Run the [contentmine](https://github.com/elifesciences/contentmine-docker) (for [ContentMine's svg2xml](https://github.com/ContentMine/svg2xml)) and ScienceBeam docker container:
 
 ```bash
-docker run -p 8076:8080 --rm elifesciences/contentmine
+docker run --rm -i -t -p 8076:8080 elifesciences/contentmine
 ```
 
 and:
