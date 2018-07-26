@@ -109,7 +109,8 @@ and:
 
 ```bash
 docker run --rm -i -t -p 8075:8075 --net=host elifesciences/sciencebeam \
-  ./server.sh --host=0.0.0.0 --port=8075 --pipeline=contentmine --contentmine-url http://localhost:8076/api/convert
+  ./server.sh --host=0.0.0.0 --port=8075 --pipeline=contentmine --contentmine-url \
+  http://localhost:8076/api/convert
 ```
 
 ## Build and Run Docker Container with Docker Compose
