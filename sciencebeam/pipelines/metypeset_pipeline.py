@@ -1,6 +1,6 @@
 from requests import post as requests_post
 
-from sciencebeam_gym.preprocess.preprocessing_utils import change_ext
+from sciencebeam_utils.utils.file_path import change_ext
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 

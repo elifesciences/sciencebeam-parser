@@ -9,7 +9,7 @@ import apache_beam as beam
 from sciencebeam.utils.config import dict_to_config
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from sciencebeam_gym.beam_utils.testing import (
+from sciencebeam_utils.beam_utils.testing import (
   BeamTest,
   TestPipeline,
   get_counter_value

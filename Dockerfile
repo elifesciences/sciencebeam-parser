@@ -14,9 +14,6 @@ WORKDIR ${PROJECT_HOME}
 COPY requirements.prereq.txt ${PROJECT_HOME}/
 RUN pip install -r requirements.prereq.txt
 
-ARG sciencebeam_gym_commit
-RUN pip install https://github.com/elifesciences/sciencebeam-gym/archive/${sciencebeam_gym_commit}.zip
-
 COPY requirements.txt ${PROJECT_HOME}/
 RUN pip install -r requirements.txt
 

@@ -5,7 +5,7 @@ import pytest
 
 import apache_beam as beam
 
-from sciencebeam_gym.beam_utils.testing import (
+from sciencebeam_utils.beam_utils.testing import (
   BeamTest,
   TestPipeline
 )

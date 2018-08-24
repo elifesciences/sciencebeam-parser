@@ -6,7 +6,7 @@ from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
-from sciencebeam_gym.utils.collection import extend_dict
+from sciencebeam_utils.utils.collection import extend_dict
 
 LOGGER = logging.getLogger(__name__)
 
