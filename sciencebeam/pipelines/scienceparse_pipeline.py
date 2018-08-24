@@ -1,6 +1,6 @@
 from requests import post as requests_post
 
-from sciencebeam_gym.preprocess.preprocessing_utils import change_ext
+from sciencebeam_utils.utils.file_path import change_ext
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
 from sciencebeam.transformers.json_to_xml import json_to_xml

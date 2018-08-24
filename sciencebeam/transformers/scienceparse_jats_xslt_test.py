@@ -6,7 +6,7 @@ import pytest
 from lxml import etree
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
-from sciencebeam_gym.utils.collection import extend_dict
+from sciencebeam_utils.utils.collection import extend_dict
 
 from .json_to_xml import json_to_xml
 
