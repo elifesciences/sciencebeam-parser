@@ -21,7 +21,6 @@ Note: If you just want to use the API, you could make use of the [docker image](
 
 - Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
-- [ScienceBeam Gym](https://github.com/elifesciences/sciencebeam-gym) project installed (e.g. by running `pip install -e .` after cloning it)
 - [Libre Office Write (lowrite)](https://www.libreoffice.org/discover/writer/) for converting Doc(x) files
 
 ## Pipeline
