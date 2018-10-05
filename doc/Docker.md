@@ -128,7 +128,7 @@ That will start GROBID and ScienceBeam docker containers. The [ScienceBeam API](
 ## Build Docker Container Only
 
 ```bash
-./build_container.sh
+docker-compose build
 ```
 
 ## GROBID and Crossref Consolidation

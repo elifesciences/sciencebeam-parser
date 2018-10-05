@@ -1,0 +1,4 @@
+version: '3'
+
+# to add images that are only used for tests
+services: {}
