@@ -27,9 +27,9 @@ elifeLibrary {
         }
 
         stage 'Push image', {
-            def image = DockerImage.elifesciences(this, 'sciencebeam', 'latest')
-            image.tag(commit).push()
+            def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
             image.push()
+            image.tag('latest').push()
         }
 
         stage 'Downstream', {
