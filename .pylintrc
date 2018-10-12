@@ -10,8 +10,6 @@ disable=
 
 [TYPECHECK]
 ignored-classes=
-    scoped_session,
-    SQLAlchemy,
     lxml.builder.ElementMaker
 extension-pkg-whitelist=
     lxml
