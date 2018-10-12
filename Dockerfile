@@ -25,4 +25,4 @@ COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
 # tests
-COPY *.pylintrc ${PROJECT_HOME}/
+COPY .pylintrc .flake8 ${PROJECT_HOME}/

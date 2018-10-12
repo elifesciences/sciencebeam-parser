@@ -7,3 +7,6 @@ pytest sciencebeam
 
 pylint sciencebeam
 pylint setup.py
+
+flake8 sciencebeam
+flake8 setup.py
