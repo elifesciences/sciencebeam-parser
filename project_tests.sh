@@ -5,8 +5,6 @@ pip install -r requirements.dev.txt
 
 pytest sciencebeam
 
-pylint sciencebeam
-pylint setup.py
+pylint sciencebeam setup.py
 
-flake8 sciencebeam
-flake8 setup.py
+flake8 sciencebeam setup.py
