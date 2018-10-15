@@ -23,3 +23,6 @@ RUN pip install -r requirements.py2.txt
 COPY sciencebeam ${PROJECT_HOME}/sciencebeam
 COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
+
+# tests
+COPY .pylintrc .flake8 ${PROJECT_HOME}/
