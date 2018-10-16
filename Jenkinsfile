@@ -34,7 +34,15 @@ elifeLibrary {
             elifeGitMoveToBranch commit, 'master'
         }
 
-        stage 'Push image', {
+        stage 'Push release image', {
+            isNew = sh(script: "git tag | grep v${candidateVersion}", returnStatus: true) != 0
+            if (isNew) {
+                def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
+                image.tag(candidateVersion).push()
+            }
+        }
+
+        stage 'Push unstable image', {
             def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
             image.push()
             image.tag('latest').push()
