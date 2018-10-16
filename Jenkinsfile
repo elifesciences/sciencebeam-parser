@@ -1,4 +1,6 @@
 elifeLibrary {
+    def isNew
+    def candidateVersion
     def commit
 
     stage 'Checkout', {
@@ -10,6 +12,12 @@ elifeLibrary {
         stage 'Build images', {
             checkout scm
             dockerComposeBuild(commit)
+            candidateVersion = dockerComposeRunAndCaptureOutput(
+                "sciencebeam",
+                "./print_version.sh",
+                commit
+            ).trim()
+            echo "Candidate version: v${candidateVersion}"
         }
 
         stage 'Project tests', {
