@@ -46,6 +46,7 @@ elifeLibrary {
             if (isNew) {
                 def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
                 image.tag(candidateVersion).push()
+                image.tag('latest').push()
             }
         }
 
