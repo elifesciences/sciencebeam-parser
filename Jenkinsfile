@@ -37,16 +37,16 @@ elifeLibrary {
         stage 'Push unstable image', {
             def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
             def unstable_image = image.addSuffixAndTag('_unstable', commit)
-            unstable_image.push()
             unstable_image.tag('latest').push()
+            unstable_image.push()
         }
 
         stage 'Push release image', {
             isNew = sh(script: "git tag | grep v${candidateVersion}", returnStatus: true) != 0
             if (isNew) {
                 def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
-                image.tag(candidateVersion).push()
                 image.tag('latest').push()
+                image.tag(candidateVersion).push()
             }
         }
 
