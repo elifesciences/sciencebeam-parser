@@ -12,6 +12,8 @@ from setuptools import (
     Command
 )
 
+import sciencebeam
+
 
 CUSTOM_COMMANDS = [
     shlex.split(command_line) for command_line in [
@@ -74,7 +76,7 @@ class CustomCommands(Command):
 
 setup(
     name='sciencebeam',
-    version='0.0.1',
+    version=sciencebeam.__version__,
     install_requires=REQUIRED_PACKAGES,
     packages=packages,
     include_package_data=True,

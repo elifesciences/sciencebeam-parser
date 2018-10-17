@@ -1,0 +1,7 @@
+version: '3'
+
+# used by default but not in ci
+services:
+    sciencebeam:
+        depends_on:
+            - grobid

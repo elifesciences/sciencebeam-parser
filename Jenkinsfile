@@ -1,4 +1,6 @@
 elifeLibrary {
+    def isNew
+    def candidateVersion
     def commit
 
     stage 'Checkout', {
@@ -10,6 +12,12 @@ elifeLibrary {
         stage 'Build images', {
             checkout scm
             dockerComposeBuild(commit)
+            candidateVersion = dockerComposeRunAndCaptureOutput(
+                "sciencebeam",
+                "./print_version.sh",
+                commit
+            ).trim()
+            echo "Candidate version: v${candidateVersion}"
         }
 
         stage 'Project tests', {
@@ -26,14 +34,26 @@ elifeLibrary {
             elifeGitMoveToBranch commit, 'master'
         }
 
-        stage 'Push image', {
+        stage 'Push unstable image', {
             def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
-            image.push()
-            image.tag('latest').push()
+            def unstable_image = image.addSuffixAndTag('_unstable', commit)
+            unstable_image.tag('latest').push()
+            unstable_image.push()
+        }
+
+        stage 'Push release image', {
+            isNew = sh(script: "git tag | grep v${candidateVersion}", returnStatus: true) != 0
+            if (isNew) {
+                def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
+                image.tag('latest').push()
+                image.tag(candidateVersion).push()
+            }
         }
 
         stage 'Downstream', {
-            build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'commit', value: commit)]
+            if (isNew) {
+                build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'tag', value: candidateVersion)]
+            }
         }
     }
 }

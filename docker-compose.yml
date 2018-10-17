@@ -14,8 +14,6 @@ services:
         networks:
             - default
             - grobid
-        depends_on:
-            - grobid
     grobid:
         image: lfoppiano/grobid:${GROBID_TAG}
         environment:
