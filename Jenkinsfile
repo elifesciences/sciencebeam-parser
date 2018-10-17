@@ -36,7 +36,9 @@ elifeLibrary {
 
         stage 'Push unstable image', {
             def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
-            image = image.addSuffixAndTag('_unstable', commit)
+            def unstable_image = image.addSuffixAndTag('_unstable', commit)
+            unstable_image.push()
+            unstable_image.tag('latest').push()
             image.push()
             image.tag('latest').push()
         }
