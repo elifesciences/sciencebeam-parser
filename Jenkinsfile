@@ -39,8 +39,6 @@ elifeLibrary {
             def unstable_image = image.addSuffixAndTag('_unstable', commit)
             unstable_image.push()
             unstable_image.tag('latest').push()
-            image.push()
-            image.tag('latest').push()
         }
 
         stage 'Push release image', {
