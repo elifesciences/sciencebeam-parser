@@ -51,7 +51,9 @@ elifeLibrary {
         }
 
         stage 'Downstream', {
-            build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'commit', value: candidateVersion)]
+            if (isNew) {
+                build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'commit', value: candidateVersion)]
+            }
         }
     }
 }
