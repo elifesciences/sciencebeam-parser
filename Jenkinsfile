@@ -27,32 +27,32 @@ elifeLibrary {
                 commit
             )
         }
-    }
 
-    elifeMainlineOnly {
-        stage 'Merge to master', {
-            elifeGitMoveToBranch commit, 'master'
-        }
-
-        stage 'Push unstable image', {
-            def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
-            def unstable_image = image.addSuffixAndTag('_unstable', commit)
-            unstable_image.tag('latest').push()
-            unstable_image.push()
-        }
-
-        stage 'Push release image', {
-            isNew = sh(script: "git tag | grep v${candidateVersion}", returnStatus: true) != 0
-            if (isNew) {
-                def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
-                image.tag('latest').push()
-                image.tag(candidateVersion).push()
+        elifeMainlineOnly {
+            stage 'Merge to master', {
+                elifeGitMoveToBranch commit, 'master'
             }
-        }
 
-        stage 'Downstream', {
-            if (isNew) {
-                build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'tag', value: candidateVersion)]
+            stage 'Push unstable image', {
+                def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
+                def unstable_image = image.addSuffixAndTag('_unstable', commit)
+                unstable_image.tag('latest').push()
+                unstable_image.push()
+            }
+
+            stage 'Push release image', {
+                isNew = sh(script: "git tag | grep v${candidateVersion}", returnStatus: true) != 0
+                if (isNew) {
+                    def image = DockerImage.elifesciences(this, 'sciencebeam', commit)
+                    image.tag('latest').push()
+                    image.tag(candidateVersion).push()
+                }
+            }
+
+            stage 'Downstream', {
+                if (isNew) {
+                    build job: '/dependencies/dependencies-sciencebeam-texture-update-sciencebeam', wait: false, parameters: [string(name: 'tag', value: candidateVersion)]
+                }
             }
         }
     }
