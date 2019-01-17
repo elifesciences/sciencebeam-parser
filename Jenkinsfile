@@ -55,7 +55,7 @@ elifeLibrary {
 
             stage 'Tag release', {
                 if (isNew) {
-                    releaseTag = "v${candidateVersion}"
+                    def releaseTag = "v${candidateVersion}"
                     echo "Release tag: ${releaseTag}"
                     sh "git tag ${releaseTag} && git push origin ${releaseTag}"
                 }
