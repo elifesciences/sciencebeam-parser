@@ -26,3 +26,8 @@ COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
 # tests
 COPY .pylintrc .flake8 ${PROJECT_HOME}/
+
+# labels
+ARG commit
+LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"
+LABEL org.opencontainers.image.revision="${commit}"
