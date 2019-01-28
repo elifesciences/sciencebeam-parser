@@ -1,14 +1,13 @@
-elifeLibrary {
-    def isNew
-    def candidateVersion
-    def commit
-
-    stage 'Checkout', {
-        checkout scm
-        commit = elifeGitRevision()
-    }
-
+elifePipeline {
     node('containers-jenkins-plugin') {
+        def isNew
+        def candidateVersion
+        def commit
+
+        stage 'Checkout', { checkout scm
+            commit = elifeGitRevision()
+        }
+
         stage 'Build images', {
             checkout scm
             dockerComposeBuild(commit)
