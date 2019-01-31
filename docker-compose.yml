@@ -5,6 +5,8 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+            args: 
+                commit: ${IMAGE_TAG}
         image: elifesciences/sciencebeam:${IMAGE_TAG}
         command: ./server.sh \
             --host=0.0.0.0 --port=8075 \
