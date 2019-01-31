@@ -3,10 +3,6 @@ FROM python:2.7.14-stretch
 RUN apt-get update
 RUN apt-get install -y libreoffice-writer
 
-RUN useradd -ms /bin/bash sciencebeam
-USER sciencebeam
-ENV HOME=/home/sciencebeam
-
 ENV PROJECT_HOME=/srv/sciencebeam
 
 ENV VENV=${PROJECT_HOME}/venv
@@ -30,6 +26,10 @@ COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
 # tests
 COPY .pylintrc .flake8 ${PROJECT_HOME}/
+
+RUN useradd -ms /bin/bash sciencebeam
+USER sciencebeam
+ENV HOME=/home/sciencebeam
 
 # labels
 ARG commit
