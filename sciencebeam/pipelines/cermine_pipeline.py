@@ -1,3 +1,5 @@
+import argparse  # pylint: disable=unused-import
+
 from requests import post as requests_post
 
 from sciencebeam_utils.utils.file_path import change_ext
