@@ -1,6 +1,7 @@
 import argparse
 from abc import ABCMeta, abstractmethod
 from importlib import import_module
+from configparser import ConfigParser  # pylint: disable=unused-import
 
 from six import with_metaclass
 

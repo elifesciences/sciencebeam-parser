@@ -1,3 +1,5 @@
+import argparse  # pylint: disable=unused-import
+
 from sciencebeam.transformers.grobid_service import (
     grobid_service,
     GrobidApiPaths

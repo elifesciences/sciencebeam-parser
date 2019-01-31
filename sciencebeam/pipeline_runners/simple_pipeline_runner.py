@@ -1,5 +1,7 @@
 import logging
+from typing import List  # pylint: disable=unused-import
 
+from sciencebeam.pipelines import PipelineStep  # pylint: disable=unused-import
 from sciencebeam.pipelines import (
     get_pipeline_for_configuration_and_args,
     add_pipeline_args,
