@@ -74,8 +74,7 @@ def get_default_config():
 
 
 @pytest.fixture(name='args')
-def get_default_args():
-    app_config = get_default_config()
+def get_default_args(app_config):
     opt = parse_args(MagicMock(), app_config, MIN_ARGV)
     opt.base_data_path = BASE_DATA_PATH
     opt.output_path = OUTPUT_PATH
@@ -83,15 +82,17 @@ def get_default_args():
     return opt
 
 
-def get_file_path_args():
-    opt = get_default_args()
+@pytest.fixture(name='file_path_args')
+def get_file_path_args(args):
+    opt = args
     opt.source_path = PDF_PATH
     opt.source_file_list = None
     return opt
 
 
-def get_file_list_args():
-    opt = get_default_args()
+@pytest.fixture(name='file_list_args')
+def get_file_list_args(args):
+    opt = args
     opt.source_path = None
     opt.source_file_list = BASE_DATA_PATH + '/file-list.tsv'
     opt.source_file_column = 'url'
@@ -138,9 +139,9 @@ def _tei_step(name='tei_step', response=None):
 @pytest.mark.usefixtures('mocks')
 class TestConfigurePipeline(BeamTest):
     def test_should_pass_pdf_pattern_to_find_files_and_read_pdf_file(
-            self, pipeline, app_config, mocks):
+            self, pipeline, app_config, file_path_args, mocks):
 
-        opt = get_file_path_args()
+        opt = file_path_args
         with TestPipeline() as p:
             mocks['FindFiles'].return_value = beam.Create([PDF_FILE_1])
             configure_pipeline(p, opt, pipeline, app_config)
@@ -153,9 +154,9 @@ class TestConfigurePipeline(BeamTest):
         )
 
     def test_should_pass_pdf_file_list_and_limit_to_read_file_list_and_read_pdf_file(
-            self, pipeline, app_config, mocks):
+            self, pipeline, app_config, mocks, file_list_args):
 
-        opt = get_file_list_args()
+        opt = file_list_args
         opt.limit = 100
         with TestPipeline() as p:
             mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
@@ -168,8 +169,9 @@ class TestConfigurePipeline(BeamTest):
             PDF_FILE_1
         )
 
-    def test_should_pass_around_values_with_single_step(self, pipeline, app_config, mocks):
-        opt = get_file_list_args()
+    def test_should_pass_around_values_with_single_step(
+            self, pipeline, app_config, file_list_args, mocks):
+        opt = file_list_args
 
         step1 = _pdf_step(response={
             'content': XML_CONTENT_1
@@ -196,8 +198,9 @@ class TestConfigurePipeline(BeamTest):
             XML_CONTENT_1
         )
 
-    def test_should_encode_string_when_saving(self, pipeline, app_config, mocks):
-        opt = get_file_list_args()
+    def test_should_encode_string_when_saving(
+            self, pipeline, app_config, file_list_args, mocks):
+        opt = file_list_args
 
         step1 = _pdf_step(response={
             'content': text_type(UNICODE_CONTENT_1)
@@ -215,8 +218,9 @@ class TestConfigurePipeline(BeamTest):
             UNICODE_CONTENT_1.encode('utf-8')
         )
 
-    def test_should_pass_around_values_with_multiple_steps(self, pipeline, app_config, mocks):
-        opt = get_file_list_args()
+    def test_should_pass_around_values_with_multiple_steps(
+            self, pipeline, app_config, file_list_args, mocks):
+        opt = file_list_args
 
         step1 = _pdf_step(response={
             'content': TEI_XML_CONTENT_1,
@@ -254,10 +258,10 @@ class TestConfigurePipeline(BeamTest):
         ]
     )
     def test_should_skip_item_depending_on_resume_flag_and_existing_output_file(
-            self, pipeline, app_config, mocks,
+            self, pipeline, app_config, file_list_args, mocks,
             resume, output_exists, expect_processing):
 
-        opt = get_file_list_args()
+        opt = file_list_args
         opt.resume = resume
 
         step1 = _pdf_step()
@@ -279,9 +283,9 @@ class TestConfigurePipeline(BeamTest):
             step1.assert_not_called()
 
     def test_should_skip_item_causing_exception_and_increase_error_count(
-            self, pipeline, app_config, mocks):
+            self, pipeline, app_config, file_list_args, mocks):
 
-        opt = get_file_list_args()
+        opt = file_list_args
 
         step1 = _pdf_step()
         step1.side_effect = RuntimeError('doh1')
@@ -299,9 +303,9 @@ class TestConfigurePipeline(BeamTest):
         mocks['save_file_content'].assert_not_called()
 
     def test_should_skip_step_if_data_type_doesnt_match_and_increase_ignored_count(
-            self, pipeline, app_config, mocks):
+            self, pipeline, app_config, file_list_args, mocks):
 
-        opt = get_file_list_args()
+        opt = file_list_args
 
         step1 = _convert_step(name='step1', supported_types={'other'})
 
@@ -317,28 +321,28 @@ class TestConfigurePipeline(BeamTest):
 
 
 class TestParseArgs(object):
-    def test_should_parse_minimum_number_of_arguments(self, pipeline):
-        parse_args(pipeline, get_default_config(), MIN_ARGV)
+    def test_should_parse_minimum_number_of_arguments(self, pipeline, app_config):
+        parse_args(pipeline, app_config, MIN_ARGV)
 
-    def test_should_not_resume_by_default(self, pipeline):
-        args = parse_args(pipeline, get_default_config(), MIN_ARGV)
+    def test_should_not_resume_by_default(self, pipeline, app_config):
+        args = parse_args(pipeline, app_config, MIN_ARGV)
         assert not args.resume
 
-    def test_should_raise_error_if_no_source_argument_was_provided(self, pipeline):
+    def test_should_raise_error_if_no_source_argument_was_provided(self, pipeline, app_config):
         with pytest.raises(SystemExit):
-            parse_args(pipeline, get_default_config(), [
+            parse_args(pipeline, app_config, [
                 '--data-path=' + BASE_DATA_PATH
             ])
 
-    def test_should_allow_source_path_to_be_specified(self, pipeline):
-        args = parse_args(pipeline, get_default_config(), [
+    def test_should_allow_source_path_to_be_specified(self, pipeline, app_config):
+        args = parse_args(pipeline, app_config, [
             '--data-path=' + BASE_DATA_PATH,
             '--source-path=' + PDF_PATH
         ])
         assert args.source_path == PDF_PATH
 
-    def test_should_allow_source_file_list_and_column_to_be_specified(self, pipeline):
-        args = parse_args(pipeline, get_default_config(), [
+    def test_should_allow_source_file_list_and_column_to_be_specified(self, pipeline, app_config):
+        args = parse_args(pipeline, app_config, [
             '--data-path=' + BASE_DATA_PATH,
             '--source-file-list=' + FILE_LIST_PATH,
             '--source-file-column=' + FILE_COLUMN
@@ -346,7 +350,6 @@ class TestParseArgs(object):
         assert args.source_file_list == FILE_LIST_PATH
         assert args.source_file_column == FILE_COLUMN
 
-    def test_should_call_pipeline_add_arguments(self, pipeline):
-        app_config = get_default_config()
+    def test_should_call_pipeline_add_arguments(self, pipeline, app_config):
         parse_args(pipeline, app_config, MIN_ARGV)
         pipeline.add_arguments.assert_called_with(ANY, app_config, MIN_ARGV)
