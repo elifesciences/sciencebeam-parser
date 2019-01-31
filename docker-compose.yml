@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+    sciencebeam:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args: 
+                commit: ${IMAGE_TAG}
+        image: elifesciences/sciencebeam:${IMAGE_TAG}
+        command: ./server.sh \
+            --host=0.0.0.0 --port=8075 \
+            --grobid-url http://grobid:8070/api
+        ports:
+            - "8075:8075"
+        networks:
+            - default
+            - grobid
+    grobid:
+        image: lfoppiano/grobid:${GROBID_TAG}
+        environment:
+            - JAVA_OPTS=-Xmx1g
+        ports:
+            - "8070:8070"
+        networks:
+            - grobid
+
+networks:
+    default:
+        internal: false
+    grobid:
+        internal: true

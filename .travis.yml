@@ -5,8 +5,8 @@ services:
   - docker
 
 before_install:
-  - ./build_container.sh
+  - docker-compose -f docker-compose.yml -f docker-compose.ci.yml build
 
 script:
-  - ./project_tests.sh
+  - docker-compose -f docker-compose.yml -f docker-compose.ci.yml run --rm sciencebeam ./project_tests.sh
 

@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+    sciencebeam:
+        image: elifesciences/sciencebeam:latest
+        command: ./server.sh \
+            --host=0.0.0.0 --port=8075 \
+            --grobid-url http://grobid:8070/api
+        ports:
+            - "8075:8075"
+        networks:
+            - default
+            - grobid
+        depends_on:
+            - grobid
+    grobid:
+        image: lfoppiano/grobid:${GROBID_TAG}
+        environment:
+            - JAVA_OPTS=-Xmx1g
+        ports:
+            - "8070:8070"
+        networks:
+            - grobid
+
+networks:
+    default:
+        internal: false
+    grobid:
+        internal: true

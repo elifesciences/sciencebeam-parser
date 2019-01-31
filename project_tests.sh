@@ -1,4 +1,14 @@
 #!/bin/bash
 set -e
 
-docker run --rm elifesciences/sciencebeam /bin/bash -c 'pip install -r requirements.dev.txt && pytest sciencebeam'
+pip install -r requirements.dev.txt
+
+pytest sciencebeam
+
+echo "running pylint"
+pylint sciencebeam setup.py
+
+echo "running flake8"
+flake8 sciencebeam setup.py
+
+echo "done"
