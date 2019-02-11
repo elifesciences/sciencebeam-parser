@@ -2,7 +2,7 @@ dicttoxml==1.7.4
 Flask==1.0.2
 Flask-Cors==3.0.7
 futures==3.2.0
-lxml==4.3.0
+lxml==4.3.1
 requests==2.21.0
 sciencebeam-utils==0.0.1
 six==1.12.0
