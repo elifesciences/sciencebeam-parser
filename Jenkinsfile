@@ -8,7 +8,16 @@ elifePipeline {
 
         stage 'Build images', {
             checkout scm
-            dockerComposeBuild(commit)
+            // TODO: extract into dockerComposeBuild
+            def version
+            if (env.TAG_NAME) {
+                version = env.TAG_NAME - 'v'
+            } else {
+                version = 'develop'
+            }
+            withEnv(["VERSION=${version}"]) {
+                dockerComposeBuild(commit)
+            }
         }
 
         stage 'Project tests', {

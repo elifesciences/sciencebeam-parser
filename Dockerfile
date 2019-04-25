@@ -31,3 +31,5 @@ COPY .pylintrc .flake8 ${PROJECT_HOME}/
 ARG commit
 LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"
 LABEL org.opencontainers.image.revision="${commit}"
+ARG version
+LABEL org.opencontainers.image.version="${version}"
