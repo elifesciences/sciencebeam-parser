@@ -25,11 +25,11 @@ elifePipeline {
         }
 
         stage 'Project tests', {
-            dockerComposeRun(
-                "sciencebeam",
-                "./project_tests.sh",
-                commit
-            )
+            try {
+                sh "make IMAGE_TAG=${commit} ci-test"
+            } finally {
+                sh "make ci-clean"
+            }
         }
 
         elifeMainlineOnly {
