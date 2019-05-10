@@ -8,4 +8,4 @@ before_install:
   - make ci-build-all
 
 script:
-  - make ci-test
+  - make NO_BUILD=y ci-test

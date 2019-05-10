@@ -26,7 +26,7 @@ elifePipeline {
 
         stage 'Project tests', {
             try {
-                sh "make IMAGE_TAG=${commit} ci-test"
+                sh "make IMAGE_TAG=${commit} NO_BUILD=y ci-test"
             } finally {
                 sh "make ci-clean"
             }
