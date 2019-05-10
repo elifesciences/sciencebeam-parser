@@ -1,9 +1,7 @@
 #!/bin/bash
 set -e
 
-pip install -r requirements.dev.txt
-
-pytest sciencebeam
+pytest sciencebeam -p no:cacheprovider
 
 echo "running pylint"
 pylint sciencebeam setup.py

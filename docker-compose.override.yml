@@ -5,3 +5,11 @@ services:
     sciencebeam:
         depends_on:
             - grobid
+
+    sciencebeam-dev:
+        volumes:
+        - ./sciencebeam:/srv/sciencebeam/sciencebeam
+        environment:
+            # avoid issues with .pyc/pyo files when mounting source directory
+            PYTHONOPTIMIZE: ""
+            PYTHONDONTWRITEBYTECODE: "1"
