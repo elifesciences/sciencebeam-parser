@@ -29,6 +29,10 @@ test: build-dev
 	$(RUN_DEV) ./project_tests.sh
 
 
+ci-build-all:
+	$(DOCKER_COMPOSE_CI) build
+
+
 ci-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" test
 
