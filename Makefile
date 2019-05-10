@@ -29,6 +29,10 @@ test: build-dev
 	$(RUN_DEV) ./project_tests.sh
 
 
+watch: build-dev
+	$(RUN_DEV) pytest-watch -- -p no:cacheprovider
+
+
 ci-build-all:
 	$(DOCKER_COMPOSE_CI) build
 
