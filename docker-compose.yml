@@ -23,7 +23,7 @@ services:
             args: 
                 commit: ${IMAGE_TAG}
                 install_dev: y
-        image: elifesciences/sciencebeam:${IMAGE_TAG}
+        image: elifesciences/sciencebeam-dev:${IMAGE_TAG}
         command: ./server.sh \
             --host=0.0.0.0 --port=8075 \
             --grobid-url http://grobid:8070/api
