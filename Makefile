@@ -8,6 +8,17 @@ RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 NO_BUILD =
 
 
+dev-venv:
+	rm -rf venv || true
+
+	virtualenv -p python2.7 venv
+
+	venv/bin/pip install -r requirements.prereq.txt
+	venv/bin/pip install -r requirements.txt
+	venv/bin/pip install -r requirements.py2.txt
+	venv/bin/pip install -r requirements.dev.txt
+
+
 build-dev:
 	if [ "$(NO_BUILD)" != "y" ]; then \
 		$(DOCKER_COMPOSE) build sciencebeam-dev; \
