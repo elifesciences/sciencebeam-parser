@@ -3,19 +3,19 @@ DOCKER_COMPOSE_CI = docker-compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 
-RUN = $(DOCKER_COMPOSE) run --rm sciencebeam
+RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 
 NO_BUILD =
 
 
-build:
+build-dev:
 	if [ "$(NO_BUILD)" != "y" ]; then \
-		$(DOCKER_COMPOSE) build sciencebeam; \
+		$(DOCKER_COMPOSE) build sciencebeam-dev; \
 	fi
 
 
-test:
-	$(RUN) ./project_tests.sh
+test: build-dev
+	$(RUN_DEV) ./project_tests.sh
 
 
 ci-test:

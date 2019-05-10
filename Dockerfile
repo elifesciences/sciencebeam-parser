@@ -20,6 +20,10 @@ RUN pip install -r requirements.txt
 COPY requirements.py2.txt ${PROJECT_HOME}/
 RUN pip install -r requirements.py2.txt
 
+ARG install_dev
+COPY requirements.dev.txt ./
+RUN if [ "${install_dev}" = "y" ]; then pip install -r requirements.dev.txt; fi
+
 COPY sciencebeam ${PROJECT_HOME}/sciencebeam
 COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
