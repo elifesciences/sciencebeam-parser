@@ -28,10 +28,6 @@ COPY sciencebeam ${PROJECT_HOME}/sciencebeam
 COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
-# tests
-COPY tests ${PROJECT_HOME}/tests
-COPY .pylintrc .flake8 ${PROJECT_HOME}/
-
 RUN useradd -ms /bin/bash sciencebeam
 USER sciencebeam
 ENV HOME=/home/sciencebeam
