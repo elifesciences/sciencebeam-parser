@@ -65,6 +65,7 @@ class TestGetPipelineExpressionForConfiguration(object):
             config, '%s, %s' % (PIPELINE_1, PIPELINE_2)
         ) == '%s, %s' % (PIPELINE_MODULE_1, PIPELINE_MODULE_2)
 
+
 class TestGetPipelineForConfiguration(object):
     def test_should_call_import_module_with_configured_default_pipeline(self, import_module):
         config = dict_to_config(DEFAULT_CONFIG)
