@@ -5,7 +5,7 @@ from lxml import etree
 
 from requests import post as requests_post
 
-from sciencebeam_utils.utils.file_path import change_ext
+from sciencebeam_utils.utils.collection import extend_dict
 from sciencebeam_utils.utils.xml import get_text_content
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
@@ -42,11 +42,9 @@ class ScienceBeamAutocutApiStep(PipelineStep):
             LOGGER.debug('revised_value: %s (was: %s)', revised_value, value)
             if revised_value != value:
                 apply_revised_value(node, revised_value)
-        return {
-            'filename': change_ext(data['filename'], None, '.xml'),
-            'content': etree.tostring(root),
-            'type': data['type']
-        }
+        return extend_dict(data, {
+            'content': etree.tostring(root)
+        })
 
     def __str__(self):
         return 'ScienceBeam Autocut API'

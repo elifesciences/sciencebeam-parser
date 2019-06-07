@@ -8,6 +8,8 @@ import pytest
 from lxml import etree
 from lxml.builder import E
 
+from sciencebeam_utils.utils.collection import extend_dict
+
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipelines import sciencebeam_autocut_pipeline as \
@@ -118,3 +120,10 @@ class TestScienceBeamAutocutPipeline(object):
         ))
         assert result['content'] == _generate_xml_with_title(title_with_elements)
         assert result['type'] == MimeTypes.JATS_XML
+
+    def test_should_preserve_other_input_props(self, config, args):
+        result = _run_pipeline(config, args, extend_dict(
+            _generate_content_with_title(TITLE_1),
+            {'other': 'other1'}
+        ))
+        assert result['other'] == 'other1'
