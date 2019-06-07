@@ -32,9 +32,12 @@ RUN useradd -ms /bin/bash sciencebeam
 USER sciencebeam
 ENV HOME=/home/sciencebeam
 
-# labels
 ARG commit
+ARG version
+COPY docker ./docker
+RUN ./docker/set-version.sh "${version}" "${commit}"
+
+# labels
 LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"
 LABEL org.opencontainers.image.revision="${commit}"
-ARG version
 LABEL org.opencontainers.image.version="${version}"
