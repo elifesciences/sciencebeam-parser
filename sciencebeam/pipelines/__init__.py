@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from importlib import import_module
 from configparser import ConfigParser  # pylint: disable=unused-import
 
-from six import with_metaclass
+from six import with_metaclass, text_type
 
 from sciencebeam.utils.config import parse_list
 
@@ -98,10 +98,12 @@ def get_pipeline_for_pipeline_expression(pipeline_expression):
 def get_pipeline_expression_for_configuration(config, name=None):
     # type: (ConfigParser) -> str
     pipelines = config[u'pipelines']
-    expression = pipelines[name or u'default']
-    if expression in pipelines:
-        expression = pipelines[expression]
-    return expression
+    pipeline_names = parse_list(name or u'default')
+    expressions = [pipelines[pipeline_name] for pipeline_name in pipeline_names]
+    return text_type(', ').join(
+        pipelines.get(expression, expression)
+        for expression in expressions
+    )
 
 
 def get_pipeline_for_configuration(config, name=None):
