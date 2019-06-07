@@ -13,7 +13,7 @@ elifePipeline {
             if (env.TAG_NAME) {
                 version = env.TAG_NAME - 'v'
             } else {
-                version = 'develop'
+                version = ''
             }
             withEnv(["VERSION=${version}"]) {
                 dockerComposeBuild(commit)
