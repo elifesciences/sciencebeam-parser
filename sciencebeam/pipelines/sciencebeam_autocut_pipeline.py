@@ -58,12 +58,12 @@ class ScienceBeamAutocutApiStep(PipelineStep):
 class ScienceBeamAutocutPipeline(Pipeline):
     def add_arguments(self, parser, config, argv=None):
         # type: (argparse.ArgumentParser, dict, object) -> None
-        cermine_group = parser.add_argument_group('ScienceBeam Autocut')
-        cermine_group.add_argument(
+        sciencebeam_autocut_group = parser.add_argument_group('ScienceBeam Autocut')
+        sciencebeam_autocut_group.add_argument(
             '--sciencebeam-autocut-url', required=True,
             help='URL to the ScienceBeam Autocut service (e.g. http://localhost:8080/api/autocut)'
         )
-        cermine_group.add_argument(
+        sciencebeam_autocut_group.add_argument(
             '--sciencebeam-autocut-xpath', required=True,
             default='front/article-meta/title-group/article-title',
             help='The xPath for the element to send to ScienceBeam Autocut'
