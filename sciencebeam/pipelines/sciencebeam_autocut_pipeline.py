@@ -33,6 +33,9 @@ class ScienceBeamAutocutApiStep(PipelineStep):
     def __call__(self, data):
         root = etree.fromstring(data['content'])
         matching_nodes = root.xpath(self._xpath)
+        if not matching_nodes:
+            LOGGER.info('xpath not matching any element: %s', self._xpath)
+            return data
         for node in matching_nodes:
             value = get_text_content(node)
             LOGGER.debug('node for xpath %s: %s (text: %s)', self._xpath, node, value)
