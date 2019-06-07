@@ -15,8 +15,8 @@ from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipelines import FieldNames
 
-from . import api as api_module
-from .api import (
+from sciencebeam.server.blueprints import api as api_module
+from sciencebeam.server.blueprints.api import (
     create_api_blueprint,
     DEFAULT_FILENAME
 )

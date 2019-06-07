@@ -9,6 +9,7 @@ services:
     sciencebeam-dev:
         volumes:
         - ./sciencebeam:/srv/sciencebeam/sciencebeam
+        - ./tests:/srv/sciencebeam/tests
         environment:
             # avoid issues with .pyc/pyo files when mounting source directory
             PYTHONOPTIMIZE: ""

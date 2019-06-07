@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-pytest sciencebeam -p no:cacheprovider
+pytest -p no:cacheprovider
 
 echo "running pylint"
 pylint sciencebeam setup.py

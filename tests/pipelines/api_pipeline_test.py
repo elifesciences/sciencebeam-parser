@@ -7,21 +7,21 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import metypeset_pipeline as metypeset_pipeline_module
-from .metypeset_pipeline import PIPELINE
+from sciencebeam.pipelines import api_pipeline as api_pipeline_module
+from sciencebeam.pipelines.api_pipeline import PIPELINE
 
-DOCX_INPUT = {
-    'filename': 'test.docx',
-    'content': b'DOCX insider 1',
-    'type': MimeTypes.DOCX
+PDF_INPUT = {
+    'filename': 'test.pdf',
+    'content': b'PDF insider 1',
+    'type': MimeTypes.PDF
 }
 
-XML_CONTENT = b'<XML>XML</XML>'
+XML_CONTENT = b'<article>XML</article>'
 
 
 @pytest.fixture(name='requests_post', autouse=True)
 def _requests_post():
-    with patch.object(metypeset_pipeline_module, 'requests_post') as requests_post:
+    with patch.object(api_pipeline_module, 'requests_post') as requests_post:
         yield requests_post
 
 
@@ -30,17 +30,15 @@ def _response(requests_post):
     return requests_post.return_value
 
 
-@pytest.fixture(name='MeTypesetApiStep')
-def _metypeset_api_step():
-    with patch.object(metypeset_pipeline_module, 'MeTypesetApiStep') \
-            as cermine_api_step:
-
-        yield cermine_api_step
+@pytest.fixture(name='ApiStep')
+def _api_step_class():
+    with patch.object(api_pipeline_module, 'ApiStep') as ApiStep:
+        yield ApiStep
 
 
 @pytest.fixture(name='api_step')
-def _api_step(CermineApiStep):
-    yield CermineApiStep.return_value
+def _api_step(ApiStep):
+    yield ApiStep.return_value
 
 
 @pytest.fixture(name='config')
@@ -60,26 +58,27 @@ def _run_pipeline(config, args, pdf_input):
     return reduce(lambda value, step: step(value), steps, pdf_input)
 
 
-class TestCerminePipeline(object):
+class TestScienceParsePipeline(object):
     def test_should_pass_api_url_and_pdf_content_to_requests_post_call(
             self, config, args, requests_post):
 
-        args.metypeset_url = 'http://metypeset/api'
-        _run_pipeline(config, args, DOCX_INPUT)
+        args.api_url = 'http://sciencebeam/api'
+        _run_pipeline(config, args, PDF_INPUT)
         requests_post.assert_called_with(
-            args.metypeset_url,
-            data=DOCX_INPUT['content'],
-            headers={'Content-Type': MimeTypes.DOCX}
+            args.api_url,
+            data=PDF_INPUT['content'],
+            headers={'Content-Type': MimeTypes.PDF},
+            params={'filename': PDF_INPUT['filename']}
         )
 
-    def test_should_return_xml_response(
+    def test_should_return_response_content(
             self, config, args, response):
 
         args.no_science_parse_xslt = True
 
         response.text = XML_CONTENT
-        response.headers = {'Content-Type': MimeTypes.XML}
+        response.headers = {'Content-Type': MimeTypes.JATS_XML}
 
-        result = _run_pipeline(config, args, DOCX_INPUT)
+        result = _run_pipeline(config, args, PDF_INPUT)
         assert result['content'] == XML_CONTENT
-        assert result['type'] == MimeTypes.XML
+        assert result['type'] == MimeTypes.JATS_XML

@@ -5,8 +5,8 @@ import pytest
 from sciencebeam.utils.config import dict_to_config
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from .. import pipelines as pipelines_module
-from . import get_pipeline_for_configuration
+from sciencebeam import pipelines as pipelines_module
+from sciencebeam.pipelines import get_pipeline_for_configuration
 
 DEFAULT_PIPELINE_MODULE = 'sciencebeam.pipelines.default_pipeline'
 

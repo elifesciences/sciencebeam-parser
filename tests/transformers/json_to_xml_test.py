@@ -2,7 +2,7 @@ import json
 
 from lxml import etree
 
-from .json_to_xml import json_to_xml
+from sciencebeam.transformers.json_to_xml import json_to_xml
 
 KEY_1 = 'key1'
 KEY_2 = 'key2'

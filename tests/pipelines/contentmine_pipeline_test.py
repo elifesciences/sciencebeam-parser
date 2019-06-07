@@ -7,8 +7,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import cermine_pipeline as cermine_pipeline_module
-from .cermine_pipeline import PIPELINE
+from sciencebeam.pipelines import contentmine_pipeline as contentmine_pipeline_module
+from sciencebeam.pipelines.contentmine_pipeline import PIPELINE
 
 PDF_INPUT = {
     'filename': 'test.pdf',
@@ -21,7 +21,7 @@ XML_CONTENT = b'<XML>XML</XML>'
 
 @pytest.fixture(name='requests_post', autouse=True)
 def _requests_post():
-    with patch.object(cermine_pipeline_module, 'requests_post') as requests_post:
+    with patch.object(contentmine_pipeline_module, 'requests_post') as requests_post:
         yield requests_post
 
 
@@ -30,12 +30,12 @@ def _response(requests_post):
     return requests_post.return_value
 
 
-@pytest.fixture(name='CermineApiStep')
-def _cermine_api_step():
-    with patch.object(cermine_pipeline_module, 'CermineApiStep') \
-            as cermine_api_step:
+@pytest.fixture(name='ContentMineApiStep')
+def _contentmine_api_step():
+    with patch.object(contentmine_pipeline_module, 'ContentMineApiStep') \
+            as contentmine_api_step:
 
-        yield cermine_api_step
+        yield contentmine_api_step
 
 
 @pytest.fixture(name='api_step')
@@ -64,10 +64,10 @@ class TestCerminePipeline(object):
     def test_should_pass_api_url_and_pdf_content_to_requests_post_call(
             self, config, args, requests_post):
 
-        args.cermine_url = 'http://cerminee/api'
+        args.contentmine_url = 'http://contentmine/api'
         _run_pipeline(config, args, PDF_INPUT)
         requests_post.assert_called_with(
-            args.cermine_url,
+            args.contentmine_url,
             data=PDF_INPUT['content'],
             headers={'Content-Type': MimeTypes.PDF}
         )

@@ -7,8 +7,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import scienceparse_pipeline as scienceparse_pipeline_module
-from .scienceparse_pipeline import PIPELINE
+from sciencebeam.pipelines import scienceparse_pipeline as scienceparse_pipeline_module
+from sciencebeam.pipelines.scienceparse_pipeline import PIPELINE
 
 PDF_INPUT = {
     'filename': 'test.pdf',
