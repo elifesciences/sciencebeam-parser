@@ -24,6 +24,7 @@ services:
             dockerfile: Dockerfile
             args: 
                 commit: ${IMAGE_TAG}
+                version: ${VERSION}
                 install_dev: y
         image: elifesciences/sciencebeam-base-dev:${IMAGE_TAG}
 
