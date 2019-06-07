@@ -6,6 +6,7 @@ DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 
 NO_BUILD =
+PYTEST_ARGS =
 
 
 dev-venv:
@@ -30,7 +31,7 @@ test: build-dev
 
 
 watch: build-dev
-	$(RUN_DEV) pytest-watch -- -p no:cacheprovider
+	$(RUN_DEV) pytest-watch -- -p no:cacheprovider $(PYTEST_ARGS)
 
 
 ci-build-all:

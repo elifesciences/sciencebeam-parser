@@ -1,18 +1,30 @@
 from mock import patch, MagicMock
 
+from six import text_type
+
 import pytest
 
 from sciencebeam.utils.config import dict_to_config
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam import pipelines as pipelines_module
-from sciencebeam.pipelines import get_pipeline_for_configuration
+from sciencebeam.pipelines import (
+    get_pipeline_expression_for_configuration,
+    get_pipeline_for_configuration
+)
 
 DEFAULT_PIPELINE_MODULE = 'sciencebeam.pipelines.default_pipeline'
+PIPELINE_MODULE_1 = 'sciencebeam.pipelines.pipeline1'
+PIPELINE_MODULE_2 = 'sciencebeam.pipelines.pipeline2'
+
+PIPELINE_1 = text_type('pipeline1')
+PIPELINE_2 = text_type('pipeline2')
 
 DEFAULT_CONFIG = {
     u'pipelines': {
-        u'default': DEFAULT_PIPELINE_MODULE
+        u'default': DEFAULT_PIPELINE_MODULE,
+        PIPELINE_1: PIPELINE_MODULE_1,
+        PIPELINE_2: PIPELINE_MODULE_2
     }
 }
 
@@ -36,6 +48,22 @@ def _args():
 @pytest.fixture(name='step')
 def _step():
     return MagicMock(name='step')
+
+
+class TestGetPipelineExpressionForConfiguration(object):
+    def test_should_return_default_pipeline(self):
+        config = dict_to_config(DEFAULT_CONFIG)
+        assert get_pipeline_expression_for_configuration(config, '') == DEFAULT_PIPELINE_MODULE
+
+    def test_should_return_specified_pipeline(self):
+        config = dict_to_config(DEFAULT_CONFIG)
+        assert get_pipeline_expression_for_configuration(config, PIPELINE_1) == PIPELINE_MODULE_1
+
+    def test_should_return_concatenated_pipeline(self):
+        config = dict_to_config(DEFAULT_CONFIG)
+        assert get_pipeline_expression_for_configuration(
+            config, '%s, %s' % (PIPELINE_1, PIPELINE_2)
+        ) == '%s, %s' % (PIPELINE_MODULE_1, PIPELINE_MODULE_2)
 
 
 class TestGetPipelineForConfiguration(object):
