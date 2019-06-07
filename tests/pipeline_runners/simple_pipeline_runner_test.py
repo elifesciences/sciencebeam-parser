@@ -7,8 +7,11 @@ from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipelines import FunctionPipelineStep, FieldNames, StepDataProps
 
-from . import simple_pipeline_runner as simple_pipeline_runner_module
-from .simple_pipeline_runner import create_simple_pipeline_runner_from_config
+from sciencebeam.pipeline_runners import simple_pipeline_runner as simple_pipeline_runner_module
+from sciencebeam.pipeline_runners.simple_pipeline_runner import (
+    create_simple_pipeline_runner_from_config
+)
+
 
 DEFAULT_PIPELINE_MODULE = 'sciencebeam.pipelines.default_pipeline'
 

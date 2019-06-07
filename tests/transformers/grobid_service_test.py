@@ -2,7 +2,7 @@ from mock import patch, ANY
 
 import pytest
 
-from .grobid_service import grobid_service as create_grobid_service
+from sciencebeam.transformers.grobid_service import grobid_service as create_grobid_service
 
 BASE_URL = 'http://grobid/api'
 PATH_1 = '/path1'

@@ -5,8 +5,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import convert_doc as convert_doc_module
-from .convert_doc import _convert_doc_to, doc_to_pdf, doc_to_docx
+from sciencebeam.transformers import convert_doc as convert_doc_module
+from sciencebeam.transformers.convert_doc import _convert_doc_to, doc_to_pdf, doc_to_docx
 
 DOC_CONTENT_1 = b'doc content 1'
 PDF_CONTENT_1 = b'pdf content 1'
