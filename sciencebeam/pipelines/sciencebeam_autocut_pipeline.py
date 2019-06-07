@@ -61,7 +61,7 @@ class ScienceBeamAutocutPipeline(Pipeline):
         cermine_group = parser.add_argument_group('ScienceBeam Autocut')
         cermine_group.add_argument(
             '--sciencebeam-autocut-url', required=True,
-            help='URL to the ScienceBeam Autocut service'
+            help='URL to the ScienceBeam Autocut service (e.g. http://localhost:8080/api/autocut)'
         )
         cermine_group.add_argument(
             '--sciencebeam-autocut-xpath', required=True,
