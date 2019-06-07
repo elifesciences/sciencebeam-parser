@@ -16,22 +16,26 @@ services:
         networks:
             - default
             - grobid
-    sciencebeam-dev:
+
+    sciencebeam-base-dev:
         build:
             context: .
             dockerfile: Dockerfile
             args: 
                 commit: ${IMAGE_TAG}
                 install_dev: y
+        image: elifesciences/sciencebeam-base-dev:${IMAGE_TAG}
+
+    sciencebeam-dev:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+            args: 
+                base_image: elifesciences/sciencebeam-base-dev:${IMAGE_TAG}
         image: elifesciences/sciencebeam-dev:${IMAGE_TAG}
-        command: ./server.sh \
-            --host=0.0.0.0 --port=8075 \
-            --grobid-url http://grobid:8070/api
-        ports:
-            - "8075:8075"
-        networks:
-            - default
-            - grobid
+        depends_on:
+            - sciencebeam-base-dev
+
     grobid:
         image: lfoppiano/grobid:${GROBID_TAG}
         environment:

@@ -7,13 +7,13 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import contentmine_pipeline as contentmine_pipeline_module
-from .contentmine_pipeline import PIPELINE
+from sciencebeam.pipelines import metypeset_pipeline as metypeset_pipeline_module
+from sciencebeam.pipelines.metypeset_pipeline import PIPELINE
 
-PDF_INPUT = {
-    'filename': 'test.pdf',
-    'content': b'PDF insider 1',
-    'type': MimeTypes.PDF
+DOCX_INPUT = {
+    'filename': 'test.docx',
+    'content': b'DOCX insider 1',
+    'type': MimeTypes.DOCX
 }
 
 XML_CONTENT = b'<XML>XML</XML>'
@@ -21,7 +21,7 @@ XML_CONTENT = b'<XML>XML</XML>'
 
 @pytest.fixture(name='requests_post', autouse=True)
 def _requests_post():
-    with patch.object(contentmine_pipeline_module, 'requests_post') as requests_post:
+    with patch.object(metypeset_pipeline_module, 'requests_post') as requests_post:
         yield requests_post
 
 
@@ -30,12 +30,12 @@ def _response(requests_post):
     return requests_post.return_value
 
 
-@pytest.fixture(name='ContentMineApiStep')
-def _contentmine_api_step():
-    with patch.object(contentmine_pipeline_module, 'ContentMineApiStep') \
-            as contentmine_api_step:
+@pytest.fixture(name='MeTypesetApiStep')
+def _metypeset_api_step():
+    with patch.object(metypeset_pipeline_module, 'MeTypesetApiStep') \
+            as cermine_api_step:
 
-        yield contentmine_api_step
+        yield cermine_api_step
 
 
 @pytest.fixture(name='api_step')
@@ -64,12 +64,12 @@ class TestCerminePipeline(object):
     def test_should_pass_api_url_and_pdf_content_to_requests_post_call(
             self, config, args, requests_post):
 
-        args.contentmine_url = 'http://contentmine/api'
-        _run_pipeline(config, args, PDF_INPUT)
+        args.metypeset_url = 'http://metypeset/api'
+        _run_pipeline(config, args, DOCX_INPUT)
         requests_post.assert_called_with(
-            args.contentmine_url,
-            data=PDF_INPUT['content'],
-            headers={'Content-Type': MimeTypes.PDF}
+            args.metypeset_url,
+            data=DOCX_INPUT['content'],
+            headers={'Content-Type': MimeTypes.DOCX}
         )
 
     def test_should_return_xml_response(
@@ -80,6 +80,6 @@ class TestCerminePipeline(object):
         response.text = XML_CONTENT
         response.headers = {'Content-Type': MimeTypes.XML}
 
-        result = _run_pipeline(config, args, PDF_INPUT)
+        result = _run_pipeline(config, args, DOCX_INPUT)
         assert result['content'] == XML_CONTENT
         assert result['type'] == MimeTypes.XML

@@ -9,9 +9,9 @@ from sciencebeam_utils.utils.collection import extend_dict
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import FieldNames, StepDataProps
-from . import grobid_pipeline as grobid_pipeline_module
-from .grobid_pipeline import (
+from sciencebeam.pipelines import FieldNames, StepDataProps
+from sciencebeam.pipelines import grobid_pipeline as grobid_pipeline_module
+from sciencebeam.pipelines.grobid_pipeline import (
     PIPELINE,
     LOCAL_GROBID_API_URL,
     GrobidApiPaths

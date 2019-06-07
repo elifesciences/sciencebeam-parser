@@ -4,8 +4,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import doc_to_pdf_pipeline as doc_to_pdf_pipeline_module
-from .doc_to_pdf_pipeline import (
+from sciencebeam.pipelines import doc_to_pdf_pipeline as doc_to_pdf_pipeline_module
+from sciencebeam.pipelines.doc_to_pdf_pipeline import (
     DocToPdfStep
 )
 

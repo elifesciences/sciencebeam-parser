@@ -21,7 +21,7 @@ dev-venv:
 
 build-dev:
 	if [ "$(NO_BUILD)" != "y" ]; then \
-		$(DOCKER_COMPOSE) build sciencebeam-dev; \
+		$(DOCKER_COMPOSE) build sciencebeam-base-dev sciencebeam-dev; \
 	fi
 
 
