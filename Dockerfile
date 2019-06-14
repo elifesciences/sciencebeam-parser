@@ -28,11 +28,16 @@ COPY sciencebeam ${PROJECT_HOME}/sciencebeam
 COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
+ARG commit
+ARG version
+COPY docker ./docker
+RUN ./docker/set-version.sh "${version}" "${commit}"
+
 RUN useradd -ms /bin/bash sciencebeam
 USER sciencebeam
 ENV HOME=/home/sciencebeam
 
 # labels
-ARG commit
 LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"
 LABEL org.opencontainers.image.revision="${commit}"
+LABEL org.opencontainers.image.version="${version}"
