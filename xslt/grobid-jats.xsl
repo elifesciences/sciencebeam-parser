@@ -247,6 +247,14 @@
 
   <xsl:template match="tei:ref">
     <xsl:choose>
+      <xsl:when test="@type = 'bibr' and @target">
+        <xref ref-type="bibr">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
       <xsl:when test="@type = 'figure'">
         <xref ref-type="fig">
           <xsl:attribute name='rid'>

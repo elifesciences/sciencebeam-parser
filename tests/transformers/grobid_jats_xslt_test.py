@@ -519,6 +519,26 @@ class TestGrobidJatsXslt(object):
             assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'fig'
             assert _get_text(jats, 'body/sec/p/xref/@rid') == 'fig_0'
 
+        def test_should_extract_bibr_ref(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='bibr', target='#b0'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert _get_text(jats, 'body/sec/p/xref') == 'Some ref'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'bibr'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'b0'
+
+        def test_should_extract_bibr_ref_without_target_as_text(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='bibr'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert not jats.xpath('body/sec/p/xref')
+
         def test_should_extract_unknown_ref_as_text(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(body=E.body(E.div(
