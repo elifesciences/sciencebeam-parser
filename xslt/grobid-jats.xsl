@@ -112,10 +112,6 @@
     </sec>
   </xsl:template>
 
-  <xsl:template match="tei:head">
-    <title><xsl:value-of select="."/></title>
-  </xsl:template>
-
   <xsl:template match="tei:back">
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
   </xsl:template>
@@ -231,6 +227,10 @@
         </xsl:for-each>
       </given-names>
     </name>
+  </xsl:template>
+
+  <xsl:template match="tei:head">
+    <title><xsl:value-of select="."/></title>
   </xsl:template>
 
   <xsl:template match="tei:title">
