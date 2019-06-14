@@ -116,10 +116,6 @@
     <title><xsl:value-of select="."/></title>
   </xsl:template>
 
-  <xsl:template match="tei:p">
-    <title><xsl:value-of select="."/></title>
-  </xsl:template>
-
   <xsl:template match="tei:back">
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
   </xsl:template>
