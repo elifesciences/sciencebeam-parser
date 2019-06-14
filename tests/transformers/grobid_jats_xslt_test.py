@@ -513,6 +513,7 @@ class TestGrobidJatsXslt(object):
             assert _get_text(jats, 'body/sec/fig/@id') == 'fig_0'
             assert _get_text(jats, 'body/sec/fig/object-id') == 'fig_0'
             assert _get_text(jats, 'body/sec/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/title') == 'Figure 1'
             assert _get_text(jats, 'body/sec/fig/caption/p') == 'Figure 1. This is the figure'
             assert _get_item(jats, 'body/sec/fig/graphic') is not None
             assert _get_text(jats, 'body/sec/p/xref') == '(Figure 1)'
@@ -539,6 +540,7 @@ class TestGrobidJatsXslt(object):
             ))
             assert _get_text(jats, 'body/sec/table-wrap/@id') == 'tab_0'
             assert _get_text(jats, 'body/sec/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/title') == 'Table 1'
             assert _get_text(jats, 'body/sec/table-wrap/caption/p') == 'Table 1. This is a table'
             assert _get_item(jats, 'body/sec/table-wrap/table') is not None
             assert _get_item(jats, 'body/sec/table-wrap/table/tbody') is not None
