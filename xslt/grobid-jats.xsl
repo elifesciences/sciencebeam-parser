@@ -11,7 +11,9 @@
   <xsl:template match="/">
     <article article-type="research-article">
       <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
-      <body/>
+      <body>
+        <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
+      </body>
       <back>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:back"/>
       </back>
@@ -97,6 +99,69 @@
         </abstract>
       </article-meta>
     </front>
+  </xsl:template>
+
+  <xsl:template match="tei:body">
+    <xsl:apply-templates select="tei:div"/>
+    <xsl:if test="tei:figure">
+      <sec id="figures">
+        <title>Figures</title>
+        <xsl:for-each select="tei:figure">
+          <xsl:choose>
+            <xsl:when test="@type = 'table'">
+              <xsl:call-template name="tei_table"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="tei_figure"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
+      </sec>
+    </xsl:if>
+  </xsl:template>
+
+  <xsl:template name="tei_figure">
+    <fig>
+      <xsl:attribute name='id'>
+        <xsl:value-of select="@xml:id"/>
+      </xsl:attribute>
+      <object-id><xsl:value-of select="@xml:id"/></object-id>
+      <label><xsl:value-of select="tei:head"/></label>
+      <caption>
+        <title><xsl:value-of select="tei:head"/></title>
+        <p><xsl:value-of select="tei:figDesc"/></p>
+      </caption>
+      <graphic />
+    </fig>
+  </xsl:template>
+
+  <xsl:template name="tei_table">
+    <table-wrap>
+      <xsl:attribute name='id'>
+        <xsl:value-of select="@xml:id"/>
+      </xsl:attribute>
+      <label><xsl:value-of select="tei:head"/></label>
+      <caption>
+        <title><xsl:value-of select="tei:head"/></title>
+        <p><xsl:value-of select="tei:figDesc"/></p>
+      </caption>
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <xsl:value-of select="tei:table"/>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+  </xsl:template>
+
+  <xsl:template match="tei:div">
+    <sec>
+      <xsl:apply-templates select="tei:head"/>
+      <xsl:apply-templates select="tei:p"/>
+    </sec>
   </xsl:template>
 
   <xsl:template match="tei:back">
@@ -214,6 +279,42 @@
         </xsl:for-each>
       </given-names>
     </name>
+  </xsl:template>
+
+  <xsl:template match="tei:ref">
+    <xsl:choose>
+      <xsl:when test="@type = 'bibr' and @target">
+        <xref ref-type="bibr">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
+      <xsl:when test="@type = 'figure' and @target">
+        <xref ref-type="fig">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
+      <xsl:when test="@type = 'table' and @target">
+        <xref ref-type="table">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="."/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <xsl:template match="tei:head">
+    <title><xsl:value-of select="."/></title>
   </xsl:template>
 
   <xsl:template match="tei:title">

@@ -10,6 +10,7 @@ services:
         volumes:
         - ./sciencebeam:/srv/sciencebeam/sciencebeam
         - ./tests:/srv/sciencebeam/tests
+        - ./xslt:/srv/sciencebeam/xslt
         environment:
             # avoid issues with .pyc/pyo files when mounting source directory
             PYTHONOPTIMIZE: ""

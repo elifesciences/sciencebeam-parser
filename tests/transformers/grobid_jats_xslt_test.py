@@ -1,11 +1,14 @@
 import logging
 
+from six import text_type
+
 import pytest
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_utils.utils.collection import extend_dict
+from sciencebeam_utils.utils.xml import get_text_content
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
 
@@ -13,7 +16,12 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 
-E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0', nsmap={'xml': 'xml'})
+XML_NS = 'http://www.w3.org/XML/1998/namespace'
+TEI_NS = 'http://www.tei-c.org/ns/1.0'
+
+E = ElementMaker(namespace=TEI_NS, nsmap={'xml': 'xml', 'tei': TEI_NS})
+
+XML_ID = '{%s}id' % XML_NS
 
 VALUE_1 = 'value 1'
 VALUE_2 = 'value 2'
@@ -79,13 +87,15 @@ def _grobid_jats_xslt():
     transformer = xslt_transformer_from_file(DEFAULT_GROBID_XSLT_PATH)
 
     def wrapper(xml):
-        xml = etree.tostring(xml)
-        LOGGER.debug('tei: %s', xml)
-        return transformer(xml)
+        xml_str = etree.tostring(xml)
+        LOGGER.debug('tei: %s', etree.tostring(xml, pretty_print=True))
+        result = transformer(xml_str)
+        LOGGER.debug('jats: %s', etree.tostring(etree.fromstring(result), pretty_print=True))
+        return result
     return wrapper
 
 
-def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
+def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=None):
     if authors is None:
         authors = []
     fileDesc = E.fileDesc()
@@ -97,7 +107,11 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
                 *authors
             )
         )
+    tei_text = E.text()
+    if body is not None:
+        tei_text.append(body)
     back = E.back()
+    tei_text.append(back)
     if references is not None:
         back.append(
             E.div(
@@ -115,9 +129,7 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
         E.teiHeader(
             fileDesc
         ),
-        E.text(
-            back
-        )
+        tei_text
     )
 
 
@@ -232,7 +244,10 @@ def _get_item(xml, xpath):
 
 def _get_text(xml, xpath):
     item = _get_item(xml, xpath)
-    return item.text
+    try:
+        return get_text_content(item)
+    except AttributeError:
+        return text_type(item)
 
 
 class TestGrobidJatsXslt(object):
@@ -468,6 +483,102 @@ class TestGrobidJatsXslt(object):
                 _tei()
             ))
             assert _get_item(jats, 'body') is not None
+
+        def test_should_extract_head_and_p_divs(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(VALUE_1),
+                    E.p(VALUE_2)
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+
+        def test_should_extract_figures(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(
+                    E.div(
+                        E.p(E.ref('(Figure 1)', type='figure', target='#fig_0'))
+                    ),
+                    E.figure(
+                        E.head('Figure 1'),
+                        E.label('1'),
+                        E.figDesc('Figure 1. This is the figure'),
+                        {
+                            XML_ID: 'fig_0'
+                        }
+                    )
+                ))
+            ))
+            assert _get_text(jats, 'body/sec/fig/@id') == 'fig_0'
+            assert _get_text(jats, 'body/sec/fig/object-id') == 'fig_0'
+            assert _get_text(jats, 'body/sec/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/title') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/p') == 'Figure 1. This is the figure'
+            assert _get_item(jats, 'body/sec/fig/graphic') is not None
+            assert _get_text(jats, 'body/sec/p/xref') == '(Figure 1)'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'fig'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'fig_0'
+
+        def test_should_extract_tables(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(
+                    E.div(
+                        E.p(E.ref('(Table 1)', type='table', target='#tab_0'))
+                    ),
+                    E.figure(
+                        {
+                            'type': 'table',
+                            XML_ID: 'tab_0'
+                        },
+                        E.head('Table 1'),
+                        E.label('1'),
+                        E.figDesc('Table 1. This is a table'),
+                        E.table('Table content')
+                    )
+                ))
+            ))
+            assert _get_text(jats, 'body/sec/table-wrap/@id') == 'tab_0'
+            assert _get_text(jats, 'body/sec/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/title') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/p') == 'Table 1. This is a table'
+            assert _get_item(jats, 'body/sec/table-wrap/table') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody/tr') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody/tr/td') is not None
+            assert _get_text(jats, 'body/sec/table-wrap/table/tbody/tr/td') == 'Table content'
+            assert _get_text(jats, 'body/sec/p/xref') == '(Table 1)'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'table'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'tab_0'
+
+        def test_should_extract_bibr_ref(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='bibr', target='#b0'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert _get_text(jats, 'body/sec/p/xref') == 'Some ref'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'bibr'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'b0'
+
+        def test_should_extract_bibr_ref_without_target_as_text(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='bibr'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert not jats.xpath('body/sec/p/xref')
+
+        def test_should_extract_unknown_ref_as_text(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='other', target='#other'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert not jats.xpath('body/sec/p/xref')
 
     class TestBack(object):
         def test_should_add_back(self, grobid_jats_xslt):
