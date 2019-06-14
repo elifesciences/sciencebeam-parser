@@ -21,7 +21,7 @@ dev-venv:
 
 
 build-dev:
-	if [ "$(NO_BUILD)" != "y" ]; then \
+	@if [ "$(NO_BUILD)" != "y" ]; then \
 		$(DOCKER_COMPOSE) build sciencebeam-base-dev sciencebeam-dev; \
 	fi
 
@@ -31,7 +31,11 @@ test: build-dev
 
 
 watch: build-dev
-	$(RUN_DEV) pytest-watch -- -p no:cacheprovider $(PYTEST_ARGS)
+	$(RUN_DEV) pytest-watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(PYTEST_ARGS)
+
+
+shell-dev: build-dev
+	$(RUN_DEV) bash
 
 
 ci-build-all:
