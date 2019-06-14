@@ -108,6 +108,9 @@
         <title>Figures</title>
         <xsl:for-each select="tei:figure">
           <fig>
+            <xsl:attribute name='id'>
+              <xsl:value-of select="@xml:id"/>
+            </xsl:attribute>
             <object-id><xsl:value-of select="@xml:id"/></object-id>
             <label><xsl:value-of select="tei:head"/></label>
             <caption><p><xsl:value-of select="tei:figDesc"/></p></caption>
@@ -242,8 +245,20 @@
     </name>
   </xsl:template>
 
-  <xsl:template match="tei:figure">
-    <label>Figure 1</label>
+  <xsl:template match="tei:ref">
+    <xsl:choose>
+      <xsl:when test="@type = 'figure'">
+        <xref ref-type="fig">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="."/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <xsl:template match="tei:head">

@@ -1,11 +1,14 @@
 import logging
 
+from six import text_type
+
 import pytest
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_utils.utils.collection import extend_dict
+from sciencebeam_utils.utils.xml import get_text_content
 
 from sciencebeam.transformers.xslt import xslt_transformer_from_file
 
@@ -241,7 +244,10 @@ def _get_item(xml, xpath):
 
 def _get_text(xml, xpath):
     item = _get_item(xml, xpath)
-    return item.text
+    try:
+        return get_text_content(item)
+    except AttributeError:
+        return text_type(item)
 
 
 class TestGrobidJatsXslt(object):
@@ -492,7 +498,7 @@ class TestGrobidJatsXslt(object):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(body=E.body(
                     E.div(
-                        E.p(E.ref('(Figure 1)', type='figure', target='#fig_0')),
+                        E.p(E.ref('(Figure 1)', type='figure', target='#fig_0'))
                     ),
                     E.figure(
                         E.head('Figure 1'),
@@ -504,10 +510,23 @@ class TestGrobidJatsXslt(object):
                     )
                 ))
             ))
+            assert _get_text(jats, 'body/sec/fig/@id') == 'fig_0'
             assert _get_text(jats, 'body/sec/fig/object-id') == 'fig_0'
             assert _get_text(jats, 'body/sec/fig/label') == 'Figure 1'
             assert _get_text(jats, 'body/sec/fig/caption/p') == 'Figure 1. This is the figure'
             assert _get_item(jats, 'body/sec/fig/graphic') is not None
+            assert _get_text(jats, 'body/sec/p/xref') == '(Figure 1)'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'fig'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'fig_0'
+
+        def test_should_extract_unknown_ref_as_text(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.p(E.ref('Some ref', type='other', target='#other'))
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/p') == 'Some ref'
+            assert not jats.xpath('body/sec/p/xref')
 
     class TestBack(object):
         def test_should_add_back(self, grobid_jats_xslt):
