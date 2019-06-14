@@ -103,6 +103,19 @@
 
   <xsl:template match="tei:body">
     <xsl:apply-templates select="tei:div"/>
+    <xsl:if test="tei:figure">
+      <sec id="figures">
+        <title>Figures</title>
+        <xsl:for-each select="tei:figure">
+          <fig>
+            <object-id><xsl:value-of select="@xml:id"/></object-id>
+            <label><xsl:value-of select="tei:head"/></label>
+            <caption><p><xsl:value-of select="tei:figDesc"/></p></caption>
+            <graphic />
+          </fig>
+        </xsl:for-each>
+      </sec>
+    </xsl:if>
   </xsl:template>
 
   <xsl:template match="tei:div">
@@ -227,6 +240,10 @@
         </xsl:for-each>
       </given-names>
     </name>
+  </xsl:template>
+
+  <xsl:template match="tei:figure">
+    <label>Figure 1</label>
   </xsl:template>
 
   <xsl:template match="tei:head">

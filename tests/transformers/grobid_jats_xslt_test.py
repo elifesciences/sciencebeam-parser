@@ -13,9 +13,12 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 
+XML_NS = 'http://www.w3.org/XML/1998/namespace'
 TEI_NS = 'http://www.tei-c.org/ns/1.0'
 
 E = ElementMaker(namespace=TEI_NS, nsmap={'xml': 'xml', 'tei': TEI_NS})
+
+XML_ID = '{%s}id' % XML_NS
 
 VALUE_1 = 'value 1'
 VALUE_2 = 'value 2'
@@ -484,6 +487,27 @@ class TestGrobidJatsXslt(object):
             ))
             assert _get_text(jats, 'body/sec/title') == VALUE_1
             assert _get_text(jats, 'body/sec/p') == VALUE_2
+
+        def test_should_extract_figures(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(
+                    E.div(
+                        E.p(E.ref('(Figure 1)', type='figure', target='#fig_0')),
+                    ),
+                    E.figure(
+                        E.head('Figure 1'),
+                        E.label('1'),
+                        E.figDesc('Figure 1. This is the figure'),
+                        {
+                            XML_ID: 'fig_0'
+                        }
+                    )
+                ))
+            ))
+            assert _get_text(jats, 'body/sec/fig/object-id') == 'fig_0'
+            assert _get_text(jats, 'body/sec/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/p') == 'Figure 1. This is the figure'
+            assert _get_item(jats, 'body/sec/fig/graphic') is not None
 
     class TestBack(object):
         def test_should_add_back(self, grobid_jats_xslt):
