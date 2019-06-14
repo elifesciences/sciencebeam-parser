@@ -519,6 +519,36 @@ class TestGrobidJatsXslt(object):
             assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'fig'
             assert _get_text(jats, 'body/sec/p/xref/@rid') == 'fig_0'
 
+        def test_should_extract_tables(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(
+                    E.div(
+                        E.p(E.ref('(Table 1)', type='table', target='#tab_0'))
+                    ),
+                    E.figure(
+                        {
+                            'type': 'table',
+                            XML_ID: 'tab_0'
+                        },
+                        E.head('Table 1'),
+                        E.label('1'),
+                        E.figDesc('Table 1. This is a table'),
+                        E.table('Table content')
+                    )
+                ))
+            ))
+            assert _get_text(jats, 'body/sec/table-wrap/@id') == 'tab_0'
+            assert _get_text(jats, 'body/sec/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/p') == 'Table 1. This is a table'
+            assert _get_item(jats, 'body/sec/table-wrap/table') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody/tr') is not None
+            assert _get_item(jats, 'body/sec/table-wrap/table/tbody/tr/td') is not None
+            assert _get_text(jats, 'body/sec/table-wrap/table/tbody/tr/td') == 'Table content'
+            assert _get_text(jats, 'body/sec/p/xref') == '(Table 1)'
+            assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'table'
+            assert _get_text(jats, 'body/sec/p/xref/@rid') == 'tab_0'
+
         def test_should_extract_bibr_ref(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(body=E.body(E.div(

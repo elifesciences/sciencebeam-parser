@@ -107,18 +107,48 @@
       <sec id="figures">
         <title>Figures</title>
         <xsl:for-each select="tei:figure">
-          <fig>
-            <xsl:attribute name='id'>
-              <xsl:value-of select="@xml:id"/>
-            </xsl:attribute>
-            <object-id><xsl:value-of select="@xml:id"/></object-id>
-            <label><xsl:value-of select="tei:head"/></label>
-            <caption><p><xsl:value-of select="tei:figDesc"/></p></caption>
-            <graphic />
-          </fig>
+          <xsl:choose>
+            <xsl:when test="@type = 'table'">
+              <xsl:call-template name="tei_table"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="tei_figure"/>
+            </xsl:otherwise>
+          </xsl:choose>
         </xsl:for-each>
       </sec>
     </xsl:if>
+  </xsl:template>
+
+  <xsl:template name="tei_figure">
+    <fig>
+      <xsl:attribute name='id'>
+        <xsl:value-of select="@xml:id"/>
+      </xsl:attribute>
+      <object-id><xsl:value-of select="@xml:id"/></object-id>
+      <label><xsl:value-of select="tei:head"/></label>
+      <caption><p><xsl:value-of select="tei:figDesc"/></p></caption>
+      <graphic />
+    </fig>
+  </xsl:template>
+
+  <xsl:template name="tei_table">
+    <table-wrap>
+      <xsl:attribute name='id'>
+        <xsl:value-of select="@xml:id"/>
+      </xsl:attribute>
+      <label><xsl:value-of select="tei:head"/></label>
+      <caption><p><xsl:value-of select="tei:figDesc"/></p></caption>
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <xsl:value-of select="tei:table"/>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
   </xsl:template>
 
   <xsl:template match="tei:div">
@@ -255,8 +285,16 @@
           <xsl:value-of select="."/>
         </xref>
       </xsl:when>
-      <xsl:when test="@type = 'figure'">
+      <xsl:when test="@type = 'figure' and @target">
         <xref ref-type="fig">
+          <xsl:attribute name='rid'>
+            <xsl:value-of select="substring-after(@target, '#')"/>
+          </xsl:attribute>
+          <xsl:value-of select="."/>
+        </xref>
+      </xsl:when>
+      <xsl:when test="@type = 'table' and @target">
+        <xref ref-type="table">
           <xsl:attribute name='rid'>
             <xsl:value-of select="substring-after(@target, '#')"/>
           </xsl:attribute>
