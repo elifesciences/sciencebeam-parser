@@ -11,7 +11,9 @@
   <xsl:template match="/">
     <article article-type="research-article">
       <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
-      <body/>
+      <body>
+        <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
+      </body>
       <back>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:back"/>
       </back>
@@ -97,6 +99,25 @@
         </abstract>
       </article-meta>
     </front>
+  </xsl:template>
+
+  <xsl:template match="tei:body">
+    <xsl:apply-templates select="tei:div"/>
+  </xsl:template>
+
+  <xsl:template match="tei:div">
+    <sec>
+      <xsl:apply-templates select="tei:head"/>
+      <xsl:apply-templates select="tei:p"/>
+    </sec>
+  </xsl:template>
+
+  <xsl:template match="tei:head">
+    <title><xsl:value-of select="."/></title>
+  </xsl:template>
+
+  <xsl:template match="tei:p">
+    <title><xsl:value-of select="."/></title>
   </xsl:template>
 
   <xsl:template match="tei:back">

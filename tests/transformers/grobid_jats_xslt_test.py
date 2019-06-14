@@ -13,7 +13,9 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
 
-E = ElementMaker(namespace='http://www.tei-c.org/ns/1.0', nsmap={'xml': 'xml'})
+TEI_NS = 'http://www.tei-c.org/ns/1.0'
+
+E = ElementMaker(namespace=TEI_NS, nsmap={'xml': 'xml', 'tei': TEI_NS})
 
 VALUE_1 = 'value 1'
 VALUE_2 = 'value 2'
@@ -79,13 +81,15 @@ def _grobid_jats_xslt():
     transformer = xslt_transformer_from_file(DEFAULT_GROBID_XSLT_PATH)
 
     def wrapper(xml):
-        xml = etree.tostring(xml)
-        LOGGER.debug('tei: %s', xml)
-        return transformer(xml)
+        xml_str = etree.tostring(xml)
+        LOGGER.debug('tei: %s', etree.tostring(xml, pretty_print=True))
+        result = transformer(xml_str)
+        LOGGER.debug('jats: %s', etree.tostring(etree.fromstring(result), pretty_print=True))
+        return result
     return wrapper
 
 
-def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
+def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=None):
     if authors is None:
         authors = []
     fileDesc = E.fileDesc()
@@ -97,7 +101,11 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
                 *authors
             )
         )
+    tei_text = E.text()
+    if body is not None:
+        tei_text.append(body)
     back = E.back()
+    tei_text.append(back)
     if references is not None:
         back.append(
             E.div(
@@ -115,9 +123,7 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, references=None):
         E.teiHeader(
             fileDesc
         ),
-        E.text(
-            back
-        )
+        tei_text
     )
 
 
@@ -468,6 +474,16 @@ class TestGrobidJatsXslt(object):
                 _tei()
             ))
             assert _get_item(jats, 'body') is not None
+
+        def test_should_extract_head_and_p_divs(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(VALUE_1),
+                    E.p(VALUE_2)
+                )))
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
 
     class TestBack(object):
         def test_should_add_back(self, grobid_jats_xslt):
