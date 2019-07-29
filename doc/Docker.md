@@ -23,7 +23,7 @@ That will start GROBID and ScienceBeam docker containers. The [ScienceBeam API](
 Alternatively run (the _--add-host_ parameter is used to prevent Crossref lookups):
 
 ```bash
-docker run --rm --add-host api.crossref.org:127.0.0.1 -p 8070:8070 lfoppiano/grobid:0.5.1
+docker run --rm --add-host api.crossref.org:127.0.0.1 -p 8070:8070 lfoppiano/grobid:0.5.3
 ```
 
 and:
