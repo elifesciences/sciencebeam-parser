@@ -20,6 +20,8 @@ from sciencebeam.pipelines.sciencebeam_autocut_pipeline import PIPELINE
 TITLE_1 = 'Title 1'
 TITLE_2 = 'Title 2'
 
+UNICODE_CONTENT_1 = u'Unicode \u1234'
+
 
 TITLE_XPATH = 'front/article-meta/title-group/article-title'
 
@@ -88,6 +90,13 @@ class TestScienceBeamAutocutPipeline(object):
         _run_pipeline(config, args, _generate_content_with_title(TITLE_1))
         requests_post.assert_called()
         assert requests_post.call_args[1]['data'] == TITLE_1
+
+    def test_should_utf8_encode_unicode_title_to_requests_post_call(
+            self, config, args, requests_post):
+
+        _run_pipeline(config, args, _generate_content_with_title(UNICODE_CONTENT_1))
+        requests_post.assert_called()
+        assert requests_post.call_args[1]['data'] == UNICODE_CONTENT_1.encode('utf-8')
 
     def test_should_return_xml_with_updated_title(
             self, config, args, response):

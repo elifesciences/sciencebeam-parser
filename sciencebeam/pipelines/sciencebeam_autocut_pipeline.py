@@ -39,7 +39,7 @@ class ScienceBeamAutocutApiStep(PipelineStep):
         for node in matching_nodes:
             value = get_text_content(node)
             LOGGER.debug('node for xpath %s: %s (text: %s)', self._xpath, node, value)
-            response = requests_post(self._api_url, data=value)
+            response = requests_post(self._api_url, data=value.encode('utf-8'))
             response.raise_for_status()
             revised_value = response.text
             LOGGER.debug('revised_value: %s (was: %s)', revised_value, value)
