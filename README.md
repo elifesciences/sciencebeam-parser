@@ -65,7 +65,7 @@ The [API](doc/API.md) server is currently available in combination with GROBID.
 To start the GROBID run:
 
 ```bash
-docker run -p 8070:8070 lfoppiano/grobid:0.5.1
+docker run -p 8070:8070 lfoppiano/grobid:0.5.3
 ```
 
 To start the ScienceBeam server run:
