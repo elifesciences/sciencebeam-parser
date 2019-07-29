@@ -1,5 +1,5 @@
 dicttoxml==1.7.4
-Flask==1.0.3
+Flask==1.1.1
 Flask-Cors==3.0.8
 futures==3.2.0
 lxml==4.4.0
