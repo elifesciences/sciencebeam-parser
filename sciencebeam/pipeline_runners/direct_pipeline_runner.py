@@ -5,7 +5,7 @@ import logging
 import concurrent.futures
 from functools import partial
 from mimetypes import guess_type
-from typing import Callable
+from typing import Callable, List
 
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
@@ -22,6 +22,8 @@ from sciencebeam_utils.utils.file_path import (
 from sciencebeam_utils.utils.file_list import (
     load_file_list
 )
+
+from sciencebeam_utils.tools.check_file_list import map_file_list_to_file_exists
 
 from sciencebeam.utils.formatting import format_size
 
@@ -112,11 +114,43 @@ def process_file(
     LOGGER.info('saved output to: %s (%s)', output_file_url, format_size(len(output_content)))
 
 
+def get_file_list_without_output_file(
+        file_list: List[str],
+        get_output_file_for_source_url: Callable[[str], str]) -> List[str]:
+    output_file_exists_list = map_file_list_to_file_exists([
+        get_output_file_for_source_url(file_url)
+        for file_url in file_list
+    ])
+    LOGGER.debug('output_file_exists_list: %s', output_file_exists_list)
+    return [
+        file_url
+        for file_url, output_file_exists in zip(file_list, output_file_exists_list)
+        if not output_file_exists
+    ]
+
+
 def run(args, config, pipeline: Pipeline):
     LOGGER.info('args: %s', args)
     file_list = get_file_list_for_args(args)
     LOGGER.debug('file_list: %s', file_list)
+
+    if not file_list:
+        LOGGER.warning('no files found')
+        return
+
     simple_runner = SimplePipelineRunner(pipeline.get_steps(config, args))
+
+    LOGGER.info('total number of files: %d', len(file_list))
+    if args.resume:
+        file_list = get_file_list_without_output_file(
+            file_list,
+            get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
+        )
+        LOGGER.info('remaining number of files: %d', len(file_list))
+
+    if not file_list:
+        LOGGER.info('no files to process')
+        return
 
     process_file_url = partial(
         process_file,
