@@ -8,3 +8,4 @@ def setup_logging():
     logging.root.handlers = []
     logging.basicConfig(level='WARNING')
     logging.getLogger('sciencebeam').setLevel('DEBUG')
+    logging.getLogger('tests').setLevel('DEBUG')
