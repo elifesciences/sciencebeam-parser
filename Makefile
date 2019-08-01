@@ -50,7 +50,7 @@ dev-pytest:
 
 
 dev-watch:
-	$(PYTHON) -m pytest_watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(ARGS)
+	$(PYTHON) -m pytest_watch --verbose --ext=.py,.xsl -- -p no:cacheprovider -k 'not slow' $(ARGS)
 
 
 dev-test: dev-lint dev-pytest
@@ -67,7 +67,7 @@ test: build-dev
 
 
 watch: build-dev
-	$(RUN_DEV) pytest-watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(ARGS)
+	$(RUN_DEV) pytest-watch --verbose --ext=.py,.xsl -- -p no:cacheprovider -k 'not slow' $(ARGS)
 
 
 shell-dev: build-dev
