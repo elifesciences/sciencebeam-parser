@@ -201,13 +201,6 @@ def configure_pipeline(p, opt, pipeline, config):
         LOGGER.debug('step: %s', step)
         result |= get_step_transform(step)
 
-    _ = (
-        result |
-        beam.Map(lambda x: LOGGER.info(
-            'result: %s (%s)', x.keys(), x[DataProps.TYPE]
-        ))
-    )
-
     _ = (  # noqa: F841
         result |
         "WriteOutput" >> TransformAndLog(
@@ -305,13 +298,7 @@ def parse_args(pipeline, config, argv=None):
     return args
 
 
-def run(argv=None):
-    config = get_app_config()
-
-    pipeline = get_pipeline_for_configuration_and_args(config, argv=argv)
-
-    args = parse_args(pipeline, config, argv)
-
+def run(args, config, pipeline):
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
     pipeline_options = PipelineOptions.from_dictionary(vars(args))
@@ -323,7 +310,17 @@ def run(argv=None):
         # Execute the pipeline and wait until it is completed.
 
 
+def main(argv=None):
+    config = get_app_config()
+
+    pipeline = get_pipeline_for_configuration_and_args(config, argv=argv)
+
+    args = parse_args(pipeline, config, argv)
+
+    run(args, config=config, pipeline=pipeline)
+
+
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
 
-    run()
+    main()
