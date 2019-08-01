@@ -21,6 +21,8 @@ from sciencebeam_utils.utils.file_list import (
     load_file_list
 )
 
+from sciencebeam.utils.formatting import format_size
+
 from sciencebeam.config.app_config import get_app_config
 
 from sciencebeam.pipelines import Pipeline
@@ -94,16 +96,14 @@ def process_file(
         file_url
     )
     file_content = read_all_from_path(file_url)
-    LOGGER.debug('file_content: %s', file_content)
+    LOGGER.info('read source content: %s (%s)', file_url, format_size(len(file_content)))
     data_type = guess_type(file_url)[0]
     LOGGER.debug('data_type: %s', data_type)
     result = simple_runner.convert(file_content, file_url, data_type)
-    LOGGER.debug('result: %s', result)
-    save_file_content(
-        output_file_url,
-        encode_if_text_type(result[DataProps.CONTENT])
-    )
-    LOGGER.info('saved output to: %s', output_file_url)
+    LOGGER.debug('result.keys: %s', result.keys())
+    output_content = encode_if_text_type(result[DataProps.CONTENT])
+    save_file_content(output_file_url, output_content)
+    LOGGER.info('saved output to: %s (%s)', output_file_url, format_size(len(output_content)))
 
 
 def run(args, config, pipeline: Pipeline):
