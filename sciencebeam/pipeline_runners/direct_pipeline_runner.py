@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import argparse
 import logging
+import concurrent.futures
 from functools import partial
 from mimetypes import guess_type
 from typing import Callable
@@ -99,11 +100,27 @@ def run(args, config, pipeline: Pipeline):
     file_list = load_file_list_for_args(args)
     LOGGER.debug('file_list: %s', file_list)
     simple_runner = SimplePipelineRunner(pipeline.get_steps(config, args))
-    for file_url in file_list:
-        process_file(
-            file_url, simple_runner=simple_runner,
-            get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
-        )
+
+    process_file_url = partial(
+        process_file,
+        simple_runner=simple_runner,
+        get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
+    )
+
+    # We can use a with statement to ensure threads are cleaned up promptly
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        future_to_url = {
+            executor.submit(process_file_url, url): url
+            for url in file_list
+        }
+        LOGGER.debug('future_to_url: %s', future_to_url)
+        for future in concurrent.futures.as_completed(future_to_url):
+            url = future_to_url[future]
+            try:
+                future.result()
+            except Exception as exc:  # pylint: disable=broad-except
+                LOGGER.warning('%r generated an exception: %s', url, exc)
 
 
 def main(argv=None):
