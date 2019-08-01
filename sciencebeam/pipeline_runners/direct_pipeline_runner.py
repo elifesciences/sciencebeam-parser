@@ -75,7 +75,7 @@ def parse_args(pipeline, config, argv=None):
     return args
 
 
-def load_file_list_for_args(args: argparse.Namespace):
+def get_file_list_for_args(args: argparse.Namespace):
     if args.source_file_list:
         file_list_path = join_if_relative_path(args.base_data_path, args.source_file_list)
         return load_file_list(
@@ -114,7 +114,7 @@ def process_file(
 
 def run(args, config, pipeline: Pipeline):
     LOGGER.info('args: %s', args)
-    file_list = load_file_list_for_args(args)
+    file_list = get_file_list_for_args(args)
     LOGGER.debug('file_list: %s', file_list)
     simple_runner = SimplePipelineRunner(pipeline.get_steps(config, args))
 
