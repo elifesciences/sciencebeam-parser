@@ -47,7 +47,7 @@ dev-pytest:
 
 
 dev-watch:
-	$(PYTHON) -m pytest_watch -- -p no:cacheprovider $(ARGS)
+	$(PYTHON) -m pytest_watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(ARGS)
 
 
 dev-test: dev-lint dev-pytest
