@@ -21,7 +21,7 @@ def xslt_transformer_from_file(xslt_filename, *args, **kwargs):
     )
 
 
-class xslt_transformer_from_string(object):
+class xslt_transformer_from_string:
     def __init__(self, xslt_template, to_string=True, pretty_print=False):
         self.xslt_template = xslt_template
         self.to_string = to_string

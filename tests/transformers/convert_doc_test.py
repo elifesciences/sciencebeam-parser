@@ -26,7 +26,7 @@ def _mock_temp_directory(tmpdir):
         yield m
 
 
-class TestConvertDocTo(object):
+class TestConvertDocTo:
     def test_should_return_pdf(self, tmpdir):
         tmpdir.join('temp.pdf').write(PDF_CONTENT_1)
         assert _convert_doc_to(
@@ -66,13 +66,13 @@ class TestConvertDocTo(object):
         )
 
 
-class TestDocToPdf(object):
+class TestDocToPdf:
     def test_should_return_pdf(self, tmpdir):
         tmpdir.join('temp.pdf').write(PDF_CONTENT_1)
         assert doc_to_pdf(DOC_CONTENT_1, MimeTypes.DOC) == PDF_CONTENT_1
 
 
-class TestDocToDocx(object):
+class TestDocToDocx:
     def test_should_return_pdf(self, tmpdir):
         tmpdir.join('temp.docx').write(DOCX_CONTENT_1)
         assert doc_to_docx(DOC_CONTENT_1, MimeTypes.DOC) == DOCX_CONTENT_1

@@ -61,9 +61,9 @@ def _pipeline_mock():
 @pytest.fixture(name='get_pipeline', autouse=True)
 def _get_pipeline_mock(pipeline):
     with patch.object(
-        beam_pipeline_runner_module,
-        'get_pipeline_for_configuration_and_args',
-        pipeline):  # noqa: E125
+            beam_pipeline_runner_module,
+            'get_pipeline_for_configuration_and_args',
+            pipeline):  # noqa: E125
 
         yield pipeline
 
@@ -110,12 +110,11 @@ def patch_conversion_pipeline(**kwargs):
     }
 
     with patch.multiple(
-        beam_pipeline_runner_module,
-        **{
-            k: kwargs.get(k, DEFAULT)
-            for k in always_mock
-        }
-    ) as mocks:
+            beam_pipeline_runner_module,
+            **{
+                k: kwargs.get(k, DEFAULT)
+                for k in always_mock
+            }) as mocks:
         yield mocks
 
 
@@ -320,7 +319,7 @@ class TestConfigurePipeline(BeamTest):
             ) == 1
 
 
-class TestParseArgs(object):
+class TestParseArgs:
     def test_should_parse_minimum_number_of_arguments(self, pipeline, app_config):
         parse_args(pipeline, app_config, MIN_ARGV)
 

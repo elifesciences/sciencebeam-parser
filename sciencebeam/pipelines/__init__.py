@@ -1,14 +1,14 @@
 import argparse
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from importlib import import_module
 from configparser import ConfigParser  # pylint: disable=unused-import
 
-from six import with_metaclass, text_type
+from six import text_type
 
 from sciencebeam.utils.config import parse_list
 
 
-class FieldNames(object):
+class FieldNames:
     TITLE = 'title'
     ABSTRACT = 'abstract'
     AUTHORS = 'authors'
@@ -17,14 +17,14 @@ class FieldNames(object):
     FULL_TEXT = 'full-text'
 
 
-class StepDataProps(object):
+class StepDataProps:
     FILENAME = 'filename'
     CONTENT = 'content'
     INCLUDES = 'includes'
     TYPE = 'type'
 
 
-class Pipeline(object, with_metaclass(ABCMeta)):
+class Pipeline(ABC):
     @abstractmethod
     def add_arguments(self, parser, config, argv=None):
         pass
@@ -51,7 +51,7 @@ class ChainedPipeline(Pipeline):
         ]
 
 
-class PipelineStep(object, with_metaclass(ABCMeta)):
+class PipelineStep(ABC):
     @abstractmethod
     def get_supported_types(self):
         pass

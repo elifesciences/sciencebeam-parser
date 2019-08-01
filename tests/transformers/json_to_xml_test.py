@@ -16,7 +16,7 @@ def normalize_xml_content(xml):
     )
 
 
-class TestJsonToXml(object):
+class TestJsonToXml:
     def test_should_convert_empty_json(self):
         assert normalize_xml_content(json_to_xml(r'{}')) == '<root/>'
 

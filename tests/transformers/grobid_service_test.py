@@ -21,7 +21,7 @@ def _mock_requests_post():
         yield requests_post
 
 
-class TestCreateGrobidService(object):
+class TestCreateGrobidService:
     def test_should_pass_url_and_data_as_file(self, requests_post):
         create_grobid_service(BASE_URL, PATH_1, start_service=False)(
             (FILENAME_1, PDF_CONTENT_1)

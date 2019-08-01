@@ -58,11 +58,11 @@ def get_logger():
     return logging.getLogger(__name__)
 
 
-class MetricCounters(object):
+class MetricCounters:
     FILES = 'files'
 
 
-class DataProps(object):
+class DataProps:
     SOURCE_FILENAME = 'source_filename'
     FILENAME = 'filename'
     CONTENT = 'content'
