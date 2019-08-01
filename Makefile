@@ -75,7 +75,7 @@ shell-dev: build-dev
 
 
 start:
-	$(DOCKER_COMPOSE) up -d --build
+	$(DOCKER_COMPOSE) up -d --build grobid sciencebeam
 
 
 stop:
