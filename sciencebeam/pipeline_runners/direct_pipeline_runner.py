@@ -45,10 +45,20 @@ from sciencebeam.pipeline_runners.simple_pipeline_runner import (
 LOGGER = logging.getLogger(__name__)
 
 
+def add_num_workers_argument(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        '--num-workers',
+        default=1,
+        type=int,
+        help='The number of workers.'
+    )
+
+
 def parse_args(pipeline, config, argv=None):
     parser = argparse.ArgumentParser()
     add_pipeline_args(parser)
     add_main_args(parser)
+    add_num_workers_argument(parser)
     pipeline.add_arguments(parser, config, argv)
 
     args = parser.parse_args(argv)
@@ -93,6 +103,7 @@ def process_file(
         output_file_url,
         encode_if_text_type(result[DataProps.CONTENT])
     )
+    LOGGER.info('saved output to: %s', output_file_url)
 
 
 def run(args, config, pipeline: Pipeline):
@@ -107,7 +118,9 @@ def run(args, config, pipeline: Pipeline):
         get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
     )
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    num_workers = args.num_workers
+    LOGGER.info('using %d workers', num_workers)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         future_to_url = {
             executor.submit(process_file_url, url): url
             for url in file_list
