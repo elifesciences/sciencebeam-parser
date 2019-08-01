@@ -298,11 +298,11 @@ def parse_args(pipeline, config, argv=None):
     return args
 
 
-def run(args, config, pipeline):
+def run(args, config, pipeline, save_main_session):
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
     pipeline_options = PipelineOptions.from_dictionary(vars(args))
-    pipeline_options.view_as(SetupOptions).save_main_session = True
+    pipeline_options.view_as(SetupOptions).save_main_session = save_main_session
 
     with beam.Pipeline(args.runner, options=pipeline_options) as p:
         configure_pipeline(p, args, pipeline, config)
@@ -310,14 +310,14 @@ def run(args, config, pipeline):
         # Execute the pipeline and wait until it is completed.
 
 
-def main(argv=None):
+def main(argv=None, save_main_session=True):
     config = get_app_config()
 
     pipeline = get_pipeline_for_configuration_and_args(config, argv=argv)
 
     args = parse_args(pipeline, config, argv)
 
-    run(args, config=config, pipeline=pipeline)
+    run(args, config=config, pipeline=pipeline, save_main_session=save_main_session)
 
 
 if __name__ == '__main__':
