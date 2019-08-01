@@ -9,7 +9,7 @@ PYTHON = $(VENV)/bin/python
 RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 
 NO_BUILD =
-PYTEST_ARGS =
+ARGS =
 
 
 venv-clean:
@@ -64,7 +64,7 @@ test: build-dev
 
 
 watch: build-dev
-	$(RUN_DEV) pytest-watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(PYTEST_ARGS)
+	$(RUN_DEV) pytest-watch --verbose --ext=.py,.xsl -- -p no:cacheprovider $(ARGS)
 
 
 shell-dev: build-dev
