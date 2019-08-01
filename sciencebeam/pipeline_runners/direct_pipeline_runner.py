@@ -107,9 +107,7 @@ def run(args, config, pipeline: Pipeline):
         get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
     )
 
-    # We can use a with statement to ensure threads are cleaned up promptly
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        # Start the load operations and mark each future with its URL
         future_to_url = {
             executor.submit(process_file_url, url): url
             for url in file_list
