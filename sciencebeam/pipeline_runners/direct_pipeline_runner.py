@@ -12,6 +12,8 @@ from sciencebeam_utils.beam_utils.io import (
     save_file_content
 )
 
+from sciencebeam_utils.beam_utils.files import find_matching_filenames_with_limit
+
 from sciencebeam_utils.utils.file_path import (
     join_if_relative_path,
     get_output_file
@@ -74,10 +76,14 @@ def parse_args(pipeline, config, argv=None):
 
 
 def load_file_list_for_args(args: argparse.Namespace):
-    file_list_path = join_if_relative_path(args.base_data_path, args.source_file_list)
-    return load_file_list(
-        file_list_path, column=args.source_file_column, limit=args.limit
-    )
+    if args.source_file_list:
+        file_list_path = join_if_relative_path(args.base_data_path, args.source_file_list)
+        return load_file_list(
+            file_list_path, column=args.source_file_column, limit=args.limit
+        )
+    return list(find_matching_filenames_with_limit(
+        join_if_relative_path(args.base_data_path, args.source_path), limit=args.limit
+    ))
 
 
 def get_output_file_for_source_file_fn(args):

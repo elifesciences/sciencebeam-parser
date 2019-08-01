@@ -21,7 +21,7 @@ def temp_dir(tmpdir: LocalPath):
     return Path(str(tmpdir))
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def mock_server():
     server = MockServer()
     try:
