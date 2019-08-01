@@ -98,7 +98,7 @@ class TestApiBlueprint:
             with _api_test_client(config, args) as test_client:
                 response = test_client.get('/convert')
                 assert response.status_code == 200
-                assert 'html' in response.data
+                assert 'html' in str(response.data)
 
         def test_should_reject_post_without_data(self, config, args):
             with _api_test_client(config, args) as test_client:
