@@ -250,8 +250,8 @@ def _get_text(xml, xpath):
         return text_type(item)
 
 
-class TestGrobidJatsXslt(object):
-    class TestJournalTitle(object):
+class TestGrobidJatsXslt:
+    class TestJournalTitle:
         def test_should_translate_journal_title(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(biblStruct=E.biblStruct(E.monogr(
@@ -270,7 +270,7 @@ class TestGrobidJatsXslt(object):
                 'front/journal-meta/journal-title-group/journal-title'
             ) == []
 
-    class TestArticleTitle(object):
+    class TestArticleTitle:
         def test_should_translate_title(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(titleStmt=E.titleStmt(
@@ -307,7 +307,7 @@ class TestGrobidJatsXslt(object):
                 ''.join([VALUE_1, VALUE_2, VALUE_3])
             )
 
-    class TestAuthor(object):
+    class TestAuthor:
         def test_should_translate_single_author(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(authors=[
@@ -388,7 +388,7 @@ class TestGrobidJatsXslt(object):
             assert _get_text(persons[0], './name/surname') == LAST_NAME_1
             assert _get_text(persons[1], './name/surname') == LAST_NAME_2
 
-    class TestAuthorAffiliation(object):
+    class TestAuthorAffiliation:
         def test_should_add_affiliation_of_single_author_with_xref(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(authors=[
@@ -477,7 +477,7 @@ class TestGrobidJatsXslt(object):
             assert affs[0].attrib.get('id') == AFFILIATION_1['key']
             assert affs[1].attrib.get('id') == AFFILIATION_2['key']
 
-    class TestBody(object):
+    class TestBody:
         def test_should_add_body(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei()
@@ -580,14 +580,14 @@ class TestGrobidJatsXslt(object):
             assert _get_text(jats, 'body/sec/p') == 'Some ref'
             assert not jats.xpath('body/sec/p/xref')
 
-    class TestBack(object):
+    class TestBack:
         def test_should_add_back(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei()
             ))
             assert _get_item(jats, 'back') is not None
 
-    class TestReferences(object):
+    class TestReferences:
         def test_should_convert_single_reference(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(references=[_reference(**REFERENCE_1)])

@@ -19,7 +19,7 @@ class UnsupportedDataTypeError(AssertionError):
         )
 
 
-class SimplePipelineRunner(object):
+class SimplePipelineRunner:
     def __init__(self, steps):
         # type: (List[PipelineStep])
         LOGGER.debug('creating pipeline with steps: %s', steps)

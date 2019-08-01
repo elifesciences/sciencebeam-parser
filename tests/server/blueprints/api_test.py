@@ -73,8 +73,8 @@ def _get_ok_json(response):
     return _get_json(response)
 
 
-class TestApiBlueprint(object):
-    class TestInit(object):
+class TestApiBlueprint:
+    class TestInit:
         def test_should_pass_config_and_args_to_runner_factory(
                 self, create_simple_pipeline_runner_from_config, config, args):
 
@@ -83,7 +83,7 @@ class TestApiBlueprint(object):
                     config, args
                 )
 
-    class TestRoot(object):
+    class TestRoot:
         def test_should_have_links(self, config, args):
             with _api_test_client(config, args) as test_client:
                 response = test_client.get('/')
@@ -93,12 +93,12 @@ class TestApiBlueprint(object):
                     }
                 }
 
-    class TestConvert(object):
+    class TestConvert:
         def test_should_show_form_on_get(self, config, args):
             with _api_test_client(config, args) as test_client:
                 response = test_client.get('/convert')
                 assert response.status_code == 200
-                assert 'html' in response.data
+                assert 'html' in str(response.data)
 
         def test_should_reject_post_without_data(self, config, args):
             with _api_test_client(config, args) as test_client:

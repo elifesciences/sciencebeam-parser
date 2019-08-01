@@ -67,7 +67,7 @@ def _run_pipeline(config, args, pdf_input):
     return reduce(lambda value, step: step(value), steps, pdf_input)
 
 
-class TestGrobidPipeline(object):
+class TestGrobidPipeline:
     def test_should_pass_grobid_url_and_action_to_grobid_service(
             self, config, args, grobid_service):
         args.grobid_url = 'http://grobid/api'

@@ -8,7 +8,7 @@ import atexit
 import os
 from zipfile import ZipFile
 from shutil import rmtree
-from urllib import URLopener
+from urllib.request import urlretrieve
 
 from sciencebeam_utils.utils.io import makedirs
 from sciencebeam_utils.utils.zip import extract_all_with_executable_permission
@@ -33,7 +33,7 @@ def stream_lines_to_logger(lines, logger, prefix=''):
             logger.info('%s%s', prefix, line)
 
 
-class GrobidServiceWrapper(object):
+class GrobidServiceWrapper:
     def __init__(self):
         self.grobid_service_instance = None
         temp_dir = os.path.abspath(os.path.join(
@@ -69,7 +69,7 @@ class GrobidServiceWrapper(object):
             temp_zip_filename = self.grobid_service_zip_filename + '.part'
             if os.path.isfile(temp_zip_filename):
                 os.remove(temp_zip_filename)
-            URLopener().retrieve(self.grobid_service_zip_url, temp_zip_filename)
+            urlretrieve(self.grobid_service_zip_url, temp_zip_filename)
             os.rename(temp_zip_filename, self.grobid_service_zip_filename)
 
     def unzip_grobid_service_zip_if_target_directory_does_not_exist(self):

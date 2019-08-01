@@ -24,7 +24,7 @@ def read_app_config():
     return config
 
 
-class simple_memoize(object):
+class simple_memoize:
     def __init__(self, fn):
         self.fn = fn
         self.cache = None
