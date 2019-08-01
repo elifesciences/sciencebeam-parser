@@ -11,6 +11,9 @@ ENV PYTHONUSERBASE=${VENV} PATH=${VENV}/bin:$PATH
 
 WORKDIR ${PROJECT_HOME}
 
+COPY requirements.pip.txt ${PROJECT_HOME}/
+RUN pip install -r requirements.pip.txt
+
 COPY requirements.build.txt ${PROJECT_HOME}/
 RUN pip install -r requirements.build.txt
 
