@@ -12,6 +12,9 @@ NO_BUILD =
 ARGS =
 
 
+.PHONY: logs
+
+
 venv-clean:
 	@if [ -d "$(VENV)" ]; then \
 		rm -rf "$(VENV)"; \
@@ -69,6 +72,18 @@ watch: build-dev
 
 shell-dev: build-dev
 	$(RUN_DEV) bash
+
+
+start:
+	$(DOCKER_COMPOSE) up -d --build
+
+
+stop:
+	$(DOCKER_COMPOSE) down
+
+
+logs:
+	$(DOCKER_COMPOSE) logs -f
 
 
 ci-build-all:
