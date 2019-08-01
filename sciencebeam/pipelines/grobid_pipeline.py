@@ -77,7 +77,7 @@ class GrobidPipeline(Pipeline):
         )
 
         def convert_to_tei(pdf_filename, pdf_content, includes):
-            return call_grobid(
+            return call_grobid(  # pylint: disable=redundant-keyword-arg
                 (pdf_filename, pdf_content),
                 path=args.grobid_action or get_default_grobid_action_for_fields(
                     includes

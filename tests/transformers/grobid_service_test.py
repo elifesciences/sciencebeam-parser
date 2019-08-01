@@ -36,7 +36,9 @@ class TestCreateGrobidService:
         assert kwargs['files']['input'][1].read() == PDF_CONTENT_1
 
     def test_should_be_able_to_override_path_on_call(self, requests_post):
-        create_grobid_service(BASE_URL, PATH_1, start_service=False)(
+        create_grobid_service(  # pylint: disable=redundant-keyword-arg
+            BASE_URL, PATH_1, start_service=False
+        )(
             (FILENAME_1, PDF_CONTENT_1),
             path=PATH_2
         )
