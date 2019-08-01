@@ -47,7 +47,7 @@ LOGGER = logging.getLogger(__name__)
 
 def add_num_workers_argument(parser: argparse.ArgumentParser):
     parser.add_argument(
-        '--num-workers',
+        '--num-workers', '--num_workers',
         default=1,
         type=int,
         help='The number of workers.'
