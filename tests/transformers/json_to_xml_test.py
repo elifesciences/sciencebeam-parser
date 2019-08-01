@@ -13,7 +13,7 @@ INT_VALUE_1 = 123
 def normalize_xml_content(xml):
     return etree.tostring(
         etree.fromstring(xml)
-    )
+    ).decode('utf-8')
 
 
 class TestJsonToXml:
@@ -45,8 +45,8 @@ class TestJsonToXml:
             KEY_1: [{
                 KEY_2: STRING_VALUE_1
             }]
-        }))) == (
-            '<root><key1 type="list">'
-            '<item type="dict"><key2 type="str">%s</key2></item>'
-            '</key1></root>' % STRING_VALUE_1
-        )
+        }))) == ''.join([
+            '<root><key1 type="list">',
+            '<item type="dict"><key2 type="str">%s</key2></item>' % STRING_VALUE_1,
+            '</key1></root>'
+        ])
