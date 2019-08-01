@@ -29,7 +29,7 @@ def _mock_doc_to_pdf():
         yield m
 
 
-class TestDocToPdfStep(object):
+class TestDocToPdfStep:
     def test_should_call_doc_to_pdf_and_return_pdf_content(self):
         assert DocToPdfStep()(DOC_DATA_1)['content'] == PDF_CONTENT_1
 

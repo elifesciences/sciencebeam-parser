@@ -50,7 +50,7 @@ def _step():
     return MagicMock(name='step')
 
 
-class TestGetPipelineExpressionForConfiguration(object):
+class TestGetPipelineExpressionForConfiguration:
     def test_should_return_default_pipeline(self):
         config = dict_to_config(DEFAULT_CONFIG)
         assert get_pipeline_expression_for_configuration(config, '') == DEFAULT_PIPELINE_MODULE
@@ -66,7 +66,7 @@ class TestGetPipelineExpressionForConfiguration(object):
         ) == '%s, %s' % (PIPELINE_MODULE_1, PIPELINE_MODULE_2)
 
 
-class TestGetPipelineForConfiguration(object):
+class TestGetPipelineForConfiguration:
     def test_should_call_import_module_with_configured_default_pipeline(self, import_module):
         config = dict_to_config(DEFAULT_CONFIG)
         get_pipeline_for_configuration(config)

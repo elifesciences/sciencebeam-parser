@@ -22,7 +22,7 @@ VALUE_1 = u'value1'
 VALUE_2 = u'value2'
 
 
-class TestGetAppConfigFilename(object):
+class TestGetAppConfigFilename:
     def test_should_end_with_app_cfg(self):
         assert get_app_config_filename().endswith('app.cfg')
 
@@ -30,7 +30,7 @@ class TestGetAppConfigFilename(object):
         assert os.path.isfile(get_app_defaults_config_filename())
 
 
-class TestGetAppDefaultsConfigFilename(object):
+class TestGetAppDefaultsConfigFilename:
     def test_should_end_with_app_defaults_cfg(self):
         assert get_app_defaults_config_filename().endswith('app-defaults.cfg')
 
@@ -47,7 +47,7 @@ def _dict_to_cfg_content(d):
     return content
 
 
-class TestReadAppConfig(object):
+class TestReadAppConfig:
     def test_should_read_actual_config(self):
         assert read_app_config()
 

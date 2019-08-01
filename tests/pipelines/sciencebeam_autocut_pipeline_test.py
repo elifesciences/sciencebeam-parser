@@ -83,13 +83,13 @@ def _run_pipeline(config, args, xml_input):
     return reduce(lambda value, step: step(value), steps, xml_input)
 
 
-class TestScienceBeamAutocutPipeline(object):
+class TestScienceBeamAutocutPipeline:
     def test_should_pass_api_url_and_title_to_requests_post_call(
             self, config, args, requests_post):
 
         _run_pipeline(config, args, _generate_content_with_title(TITLE_1))
         requests_post.assert_called()
-        assert requests_post.call_args[1]['data'] == TITLE_1
+        assert requests_post.call_args[1]['data'] == TITLE_1.encode('utf-8')
 
     def test_should_utf8_encode_unicode_title_to_requests_post_call(
             self, config, args, requests_post):

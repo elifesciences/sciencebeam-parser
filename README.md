@@ -19,7 +19,7 @@ Note: If you just want to use the API, you could make use of the [docker image](
 
 ## Pre-requisites
 
-- Python 2.7 ([currently Apache Beam doesn't support Python 3](https://issues.apache.org/jira/browse/BEAM-1373))
+- Python 3 (Apache Beam may still log a warning until it is fully supported)
 - [Apache Beam](https://beam.apache.org/get-started/quickstart-py/)
 - [Libre Office Write (lowrite)](https://www.libreoffice.org/discover/writer/) for converting Doc(x) files
 

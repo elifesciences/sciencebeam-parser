@@ -60,7 +60,7 @@ def _run_pipeline(config, args, pdf_input):
     return reduce(lambda value, step: step(value), steps, pdf_input)
 
 
-class TestCerminePipeline(object):
+class TestCerminePipeline:
     def test_should_pass_api_url_and_pdf_content_to_requests_post_call(
             self, config, args, requests_post):
 

@@ -1,3 +1,6 @@
+import logging
+from pathlib import Path
+
 from mock import patch, MagicMock, DEFAULT, ANY
 
 import pytest
@@ -21,8 +24,14 @@ from sciencebeam.pipeline_runners.beam_pipeline_runner import (
     parse_args,
     get_step_error_counter,
     get_step_ignored_counter,
-    get_step_processed_counter
+    get_step_processed_counter,
+    main
 )
+
+from tests.utils.mock_server import MockServer
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 BASE_TEST_PATH = '/tmp/test/conversion-pipeline'
@@ -58,14 +67,19 @@ def _pipeline_mock():
     return MagicMock(name='pipeline')
 
 
-@pytest.fixture(name='get_pipeline', autouse=True)
+@pytest.fixture(name='get_pipeline', autouse=False)
 def _get_pipeline_mock(pipeline):
     with patch.object(
-        beam_pipeline_runner_module,
-        'get_pipeline_for_configuration_and_args',
-        pipeline):  # noqa: E125
+            beam_pipeline_runner_module,
+            'get_pipeline_for_configuration_and_args') as mock:  # noqa: E125
+        mock.return_value = pipeline
+        yield mock
 
-        yield pipeline
+
+@pytest.fixture(name='beam_pipeline_mock', autouse=True)
+def _beam_pipeline_mock():
+    with patch('apache_beam.Pipeline', TestPipeline) as mock:
+        yield mock
 
 
 @pytest.fixture(name='app_config')
@@ -110,12 +124,11 @@ def patch_conversion_pipeline(**kwargs):
     }
 
     with patch.multiple(
-        beam_pipeline_runner_module,
-        **{
-            k: kwargs.get(k, DEFAULT)
-            for k in always_mock
-        }
-    ) as mocks:
+            beam_pipeline_runner_module,
+            **{
+                k: kwargs.get(k, DEFAULT)
+                for k in always_mock
+            }) as mocks:
         yield mocks
 
 
@@ -133,6 +146,11 @@ def _pdf_step(name='pdf_step', response=None):
 
 def _tei_step(name='tei_step', response=None):
     return _convert_step(name, {MimeTypes.TEI_XML}, response=response)
+
+
+def _add_test_args(parser, *_, **__):
+    parser.add_argument('--test-arg', required=True)
+    LOGGER.debug('added test arg to parser: %s', parser)
 
 
 @pytest.mark.slow
@@ -320,7 +338,7 @@ class TestConfigurePipeline(BeamTest):
             ) == 1
 
 
-class TestParseArgs(object):
+class TestParseArgs:
     def test_should_parse_minimum_number_of_arguments(self, pipeline, app_config):
         parse_args(pipeline, app_config, MIN_ARGV)
 
@@ -353,3 +371,41 @@ class TestParseArgs(object):
     def test_should_call_pipeline_add_arguments(self, pipeline, app_config):
         parse_args(pipeline, app_config, MIN_ARGV)
         pipeline.add_arguments.assert_called_with(ANY, app_config, MIN_ARGV)
+
+    def test_should_parse_pipeline_args(self, pipeline, app_config):
+        pipeline.add_arguments.side_effect = _add_test_args
+        args = parse_args(pipeline, app_config, [
+            '--data-path=' + BASE_DATA_PATH,
+            '--source-file-list=' + FILE_LIST_PATH,
+            '--source-file-column=' + FILE_COLUMN,
+            '--pipeline=test',
+            '--test-arg=123'
+        ])
+        assert args.test_arg == '123'
+
+
+@pytest.mark.slow
+class TestMainEndToEnd(BeamTest):
+    def test_should_convert_single_file(self, temp_dir: Path, mock_server: MockServer):
+        api_url = mock_server.add_response(
+            '/api/convert', XML_CONTENT_1,
+            mimetype=MimeTypes.JATS_XML,
+            methods=('POST',)
+        )
+        LOGGER.debug('api_url: %s', api_url)
+        source_path = temp_dir.joinpath('source')
+        output_path = temp_dir.joinpath('output')
+        source_path.mkdir(parents=True, exist_ok=True)
+        source_path.joinpath('file1.pdf').write_bytes(PDF_CONTENT_1)
+        source_path.joinpath('file-list.tsv').write_text('source_url\nfile1.pdf')
+        output_file = output_path.joinpath('file1.xml')
+        main([
+            '--data-path=%s' % source_path,
+            '--source-file-list=file-list.tsv',
+            '--source-file-column=source_url',
+            '--output-path=%s' % output_path,
+            '--output-suffix=.xml',
+            '--pipeline=api',
+            '--api-url=%s' % api_url
+        ], save_main_session=False)
+        assert output_file.read_bytes() == XML_CONTENT_1

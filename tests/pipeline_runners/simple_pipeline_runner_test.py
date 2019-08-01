@@ -48,7 +48,7 @@ def _step():
     return MagicMock(name='step')
 
 
-class TestCreateSimlePipelineFromConfig(object):
+class TestCreateSimlePipelineFromConfig:
     def test_should_call_get_pipeline_for_configuration_with_config_and_args(
             self, get_pipeline_for_configuration_and_args, args):
 

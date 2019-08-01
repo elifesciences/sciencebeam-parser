@@ -83,8 +83,8 @@ def _get_text(xml, xpath):
     return item.text
 
 
-class TestScienceParseJatsXslt(object):
-    class TestArticleTitle(object):
+class TestScienceParseJatsXslt:
+    class TestArticleTitle:
         def test_should_translate_title(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'title': VALUE_1
@@ -99,7 +99,7 @@ class TestScienceParseJatsXslt(object):
                 'front/article-meta/title-group/article-title'
             ) == []
 
-    class TestAbstract(object):
+    class TestAbstract:
         def test_should_translate_abstract(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'abstractText': VALUE_1
@@ -110,7 +110,7 @@ class TestScienceParseJatsXslt(object):
             jats = etree.fromstring(scienceparse_jats_xslt({}))
             assert jats.xpath('front/article-meta/abstract') == []
 
-    class TestAuthor(object):
+    class TestAuthor:
         def test_should_translate_single_author_with_first_and_last_name(
                 self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
@@ -184,17 +184,17 @@ class TestScienceParseJatsXslt(object):
             assert _get_text(persons[0], './name/surname') == LAST_NAME_1
             assert _get_text(persons[1], './name/surname') == LAST_NAME_2
 
-    class TestBody(object):
+    class TestBody:
         def test_should_add_body(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({}))
             assert _get_item(jats, 'body') is not None
 
-    class TestBack(object):
+    class TestBack:
         def test_should_add_back(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({}))
             assert _get_item(jats, 'back') is not None
 
-    class TestReferences(object):
+    class TestReferences:
         def test_should_convert_single_reference(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'references': [
@@ -254,7 +254,7 @@ class TestScienceParseJatsXslt(object):
                 assert _get_text(person, 'surname') == author['last-name']
                 assert _get_text(person, 'given-names') == author['first-name']
 
-    class TestSections(object):
+    class TestSections:
         def test_should_convert_section_with_heading(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'sections': [{
@@ -318,8 +318,8 @@ class TestScienceParseJatsXslt(object):
             ] == ['sec-1', 'sec-2']
 
 
-class TestScienceParseV2JatsXslt(object):
-    class TestArticleTitle(object):
+class TestScienceParseV2JatsXslt:
+    class TestArticleTitle:
         def test_should_translate_title(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'doc': {
@@ -330,7 +330,7 @@ class TestScienceParseV2JatsXslt(object):
                 jats, 'front/article-meta/title-group/article-title'
             ) == VALUE_1
 
-    class TestAuthor(object):
+    class TestAuthor:
         def test_should_translate_multiple_authors(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'doc': {
@@ -344,7 +344,7 @@ class TestScienceParseV2JatsXslt(object):
             assert _get_text(persons[0], './name/surname') == LAST_NAME_1
             assert _get_text(persons[1], './name/surname') == LAST_NAME_2
 
-    class TestReferences(object):
+    class TestReferences:
         def test_should_convert_single_reference(self, scienceparse_jats_xslt):
             jats = etree.fromstring(scienceparse_jats_xslt({
                 'doc': {
