@@ -1,17 +1,17 @@
 import logging
-import mimetypes
 import os
 from subprocess import check_output
 from backports.tempfile import TemporaryDirectory
 
-from sciencebeam.utils.mime_type_constants import MimeTypes
+from sciencebeam.utils.mime_type_constants import MimeTypes, guess_extension
+
 
 LOGGER = logging.getLogger(__name__)
 
 
 def _convert_doc_to(doc_content, data_type, output_type):
     with TemporaryDirectory('convert-doc-to') as path:
-        doc_ext = mimetypes.guess_extension(data_type)
+        doc_ext = guess_extension(data_type)
         temp_doc = os.path.join(path, 'temp%s' % doc_ext)
         temp_out = os.path.join(path, 'temp.%s' % output_type)
         LOGGER.info('temp_doc: %s', temp_doc)
