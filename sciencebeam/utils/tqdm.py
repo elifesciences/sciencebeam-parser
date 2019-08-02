@@ -17,27 +17,25 @@ class TqdmLoggingHandler(logging.StreamHandler):
             self.handleError(record)
 
 
+def _is_console_logging_handler(handler: logging.Handler) -> bool:
+    return isinstance(handler, logging.StreamHandler) and handler.stream in {sys.stdout, sys.stderr}
+
+
 @contextmanager
 def redirect_logging_to_tqdm(logger: logging.Logger = None):
     if logger is None:
         logger = logging.root
     tqdm_handler = TqdmLoggingHandler()
-    console_handlers = [
-        handler
-        for handler in logger.handlers
-        if isinstance(handler, logging.StreamHandler) and handler.stream in {sys.stdout, sys.stderr}
-    ]
-    if console_handlers:
-        tqdm_handler.setFormatter(console_handlers[0].formatter)
+    original_handlers = logger.handlers
     try:
-        logger.addHandler(tqdm_handler)
-        for handler in console_handlers:
-            logger.removeHandler(handler)
+        logger.handlers = [
+            handler
+            for handler in logger.handlers
+            if not _is_console_logging_handler(handler)
+        ] + [tqdm_handler]
         yield
     finally:
-        logger.removeHandler(tqdm_handler)
-        for handler in console_handlers:
-            logger.addHandler(handler)
+        logger.handlers = original_handlers
 
 
 @contextmanager
