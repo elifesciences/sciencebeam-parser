@@ -15,7 +15,7 @@ from sciencebeam_utils.beam_utils.io import (
 )
 
 from sciencebeam.utils.formatting import format_size
-from sciencebeam.utils.tqdm import log_to_tqdm
+from sciencebeam.utils.tqdm import redirect_log_to_tqdm
 
 from sciencebeam.config.app_config import get_app_config
 
@@ -107,7 +107,7 @@ def run(args, config, pipeline: Pipeline):
     LOGGER.info('using %d workers', num_workers)
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         with tqdm(total=len(file_list)) as pbar:
-            with log_to_tqdm():
+            with redirect_log_to_tqdm():
                 future_to_url = {
                     executor.submit(process_file_url, url): url
                     for url in file_list

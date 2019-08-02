@@ -14,11 +14,11 @@ class TqdmLoggingHandler(logging.StreamHandler):
         except (KeyboardInterrupt, SystemExit):
             raise
         except:  # pylint: disable=bare-except
-            self.handleError(record) 
+            self.handleError(record)
 
 
 @contextmanager
-def log_to_tqdm():
+def redirect_log_to_tqdm():
     tqdm_handler = TqdmLoggingHandler()
     console_handlers = [
         handler
