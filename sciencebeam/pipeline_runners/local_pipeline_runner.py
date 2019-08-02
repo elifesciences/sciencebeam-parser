@@ -37,7 +37,7 @@ from sciencebeam.pipelines import (
 )
 
 from sciencebeam.pipeline_runners.beam_pipeline_runner import (
-    process_main_args,
+    process_batch_args,
     encode_if_text_type,
     DataProps
 )
@@ -75,7 +75,7 @@ def parse_args(pipeline, config, argv=None):
     if args.debug:
         logging.getLogger().setLevel('DEBUG')
 
-    process_main_args(args)
+    process_batch_args(args)
 
     return args
 

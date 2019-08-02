@@ -220,7 +220,7 @@ def configure_pipeline(p, opt, pipeline, config):
     )
 
 
-def process_main_args(args):
+def process_batch_args(args):
     args.base_data_path = args.data_path.replace('/*/', '/')
 
     if not args.output_path:
@@ -242,7 +242,7 @@ def parse_args(pipeline, config, argv=None):
     if args.debug:
         logging.getLogger().setLevel('DEBUG')
 
-    process_main_args(args)
+    process_batch_args(args)
     process_cloud_args(
         args, args.output_path,
         name='sciencebeam-convert'
