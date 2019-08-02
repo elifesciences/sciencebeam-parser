@@ -122,7 +122,7 @@ def add_pipeline_args(parser):
 
 
 def parse_pipeline_args(argv=None):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
     add_pipeline_args(parser)
     args, _ = parser.parse_known_args(argv)
     return args

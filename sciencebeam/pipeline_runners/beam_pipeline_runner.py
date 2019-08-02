@@ -1,16 +1,12 @@
 from __future__ import absolute_import
 
 import argparse
-import os
 import logging
 import mimetypes
-
-from six import text_type
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 from apache_beam.metrics.metric import Metrics
-from apache_beam.io.filesystems import FileSystems
 
 from sciencebeam_utils.utils.collection import (
     extend_dict
@@ -21,11 +17,6 @@ from sciencebeam_utils.beam_utils.utils import (
     TransformAndLog,
     MapOrLog,
     PreventFusion
-)
-
-from sciencebeam_utils.beam_utils.files import (
-    ReadFileList,
-    FindFiles
 )
 
 from sciencebeam_utils.beam_utils.io import (
@@ -39,17 +30,22 @@ from sciencebeam_utils.beam_utils.main import (
     process_sciencebeam_gym_dep_args
 )
 
-from sciencebeam_utils.utils.file_path import (
-    join_if_relative_path,
-    get_output_file
-)
-
 from sciencebeam.config.app_config import get_app_config
 
 from sciencebeam.pipelines import (
     get_pipeline_for_configuration_and_args,
     add_pipeline_args
 )
+
+from sciencebeam.pipeline_runners.pipeline_runner_utils import (
+    add_batch_args,
+    process_batch_args,
+    encode_if_text_type,
+    get_output_file_for_source_file_fn,
+    get_remaining_file_list_for_args,
+    DataProps
+)
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,22 +56,6 @@ def get_logger():
 
 class MetricCounters:
     FILES = 'files'
-
-
-class DataProps:
-    SOURCE_FILENAME = 'source_filename'
-    FILENAME = 'filename'
-    CONTENT = 'content'
-    TYPE = 'type'
-
-
-def FileUrlSource(opt):
-    if opt.source_file_list:
-        return ReadFileList(
-            join_if_relative_path(opt.base_data_path, opt.source_file_list),
-            column=opt.source_file_column, limit=opt.limit
-        )
-    return FindFiles(join_if_relative_path(opt.base_data_path, opt.source_path))
 
 
 def ReadFileContent():
@@ -144,35 +124,14 @@ def get_step_transform(step):
     )
 
 
-def encode_if_text_type(data):
-    return data.encode('utf-8') if isinstance(data, text_type) else data
-
-
-def _file_exists(file_url):
-    result = FileSystems.exists(file_url)
-    LOGGER.debug('file exists: result=%s, url=%s', result, file_url)
-    return result
-
-
 def configure_pipeline(p, opt, pipeline, config):
-    def get_pipeline_output_file(source_url, ext):
-        return get_output_file(
-            source_url,
-            opt.base_data_path,
-            opt.output_path,
-            ext
-        )
+    get_default_output_file_for_source_file = get_output_file_for_source_file_fn(opt)
+    file_list = get_remaining_file_list_for_args(opt)
+    LOGGER.debug('file_list: %s', file_list)
 
-    def get_default_output_file_for_source_file(source_url):
-        return get_pipeline_output_file(
-            source_url,
-            opt.output_suffix
-        )
-
-    def output_file_not_exists(source_url):
-        return not _file_exists(
-            get_default_output_file_for_source_file(source_url)
-        )
+    if not file_list:
+        LOGGER.info('no files to process')
+        return
 
     steps = pipeline.get_steps(config, opt)
 
@@ -180,12 +139,9 @@ def configure_pipeline(p, opt, pipeline, config):
 
     input_urls = (
         p |
-        FileUrlSource(opt) |
+        beam.Create(file_list) |
         PreventFusion()
     )
-
-    if opt.resume:
-        input_urls |= beam.Filter(output_file_not_exists)
 
     input_data = (
         input_urls |
@@ -215,69 +171,10 @@ def configure_pipeline(p, opt, pipeline, config):
     )
 
 
-def add_main_args(parser):
-    parser.add_argument(
-        '--data-path', type=str, required=True,
-        help='base data path'
-    )
-
-    source_group = parser.add_argument_group('source')
-    source_one_of_group = source_group.add_mutually_exclusive_group(
-        required=True
-    )
-    source_one_of_group.add_argument(
-        '--source-path', type=str, required=False,
-        help='path to source file(s), relative to data-path'
-    )
-    source_one_of_group.add_argument(
-        '--source-file-list', type=str, required=False,
-        help='path to source csv/tsv file list'
-    )
-    source_group.add_argument(
-        '--source-file-column', type=str, required=False, default='url',
-        help='the column of the source file list to use'
-    )
-
-    parser.add_argument(
-        '--limit', type=int, required=False,
-        help='limit the number of file pairs to process'
-    )
-
-    output_group = parser.add_argument_group('output')
-    output_group.add_argument(
-        '--output-path', required=False,
-        help='Output directory to write results to.'
-    )
-    output_group.add_argument(
-        '--output-suffix', required=False, default='.xml',
-        help='Output file suffix to add to the filename (excluding the file extension).'
-    )
-
-    parser.add_argument(
-        '--resume', action='store_true', default=False,
-        help='resume conversion (skip files that already have an output file)'
-    )
-
-    parser.add_argument(
-        '--debug', action='store_true', default=False,
-        help='enable debug output'
-    )
-
-
-def process_main_args(args):
-    args.base_data_path = args.data_path.replace('/*/', '/')
-
-    if not args.output_path:
-        args.output_path = os.path.join(
-            os.path.dirname(args.base_data_path),
-            os.path.basename(args.base_data_path + '-results')
-        )
-
-
 def parse_args(pipeline, config, argv=None):
     parser = argparse.ArgumentParser()
     add_pipeline_args(parser)
-    add_main_args(parser)
+    add_batch_args(parser)
     add_cloud_args(parser)
     pipeline.add_arguments(parser, config, argv)
 
@@ -286,7 +183,7 @@ def parse_args(pipeline, config, argv=None):
     if args.debug:
         logging.getLogger().setLevel('DEBUG')
 
-    process_main_args(args)
+    process_batch_args(args)
     process_cloud_args(
         args, args.output_path,
         name='sciencebeam-convert'
