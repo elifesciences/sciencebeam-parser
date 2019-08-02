@@ -1,8 +1,14 @@
 import os
+from argparse import ArgumentParser
 
 from six import text_type
 
-from argparse import ArgumentParser
+
+class DataProps:
+    SOURCE_FILENAME = 'source_filename'
+    FILENAME = 'filename'
+    CONTENT = 'content'
+    TYPE = 'type'
 
 
 def add_batch_args(parser: ArgumentParser):

@@ -1,11 +1,8 @@
 from __future__ import absolute_import
 
 import argparse
-import os
 import logging
 import mimetypes
-
-from six import text_type
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
@@ -54,7 +51,8 @@ from sciencebeam.pipelines import (
 from sciencebeam.pipeline_runners.pipeline_runner_utils import (
     add_batch_args,
     process_batch_args,
-    encode_if_text_type
+    encode_if_text_type,
+    DataProps
 )
 
 
@@ -67,13 +65,6 @@ def get_logger():
 
 class MetricCounters:
     FILES = 'files'
-
-
-class DataProps:
-    SOURCE_FILENAME = 'source_filename'
-    FILENAME = 'filename'
-    CONTENT = 'content'
-    TYPE = 'type'
 
 
 def FileUrlSource(opt):

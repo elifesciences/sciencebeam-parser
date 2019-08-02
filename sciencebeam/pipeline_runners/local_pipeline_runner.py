@@ -36,10 +36,6 @@ from sciencebeam.pipelines import (
     add_pipeline_args
 )
 
-from sciencebeam.pipeline_runners.beam_pipeline_runner import (
-    DataProps
-)
-
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
     SimplePipelineRunner
 )
@@ -47,7 +43,8 @@ from sciencebeam.pipeline_runners.simple_pipeline_runner import (
 from sciencebeam.pipeline_runners.pipeline_runner_utils import (
     add_batch_args,
     process_batch_args,
-    encode_if_text_type
+    encode_if_text_type,
+    DataProps
 )
 
 
