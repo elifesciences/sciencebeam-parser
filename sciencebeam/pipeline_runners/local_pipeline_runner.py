@@ -15,6 +15,7 @@ from sciencebeam_utils.beam_utils.io import (
 )
 
 from sciencebeam.utils.formatting import format_size
+from sciencebeam.utils.tqdm import log_to_tqdm
 
 from sciencebeam.config.app_config import get_app_config
 
@@ -105,19 +106,20 @@ def run(args, config, pipeline: Pipeline):
     num_workers = args.num_workers
     LOGGER.info('using %d workers', num_workers)
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-        future_to_url = {
-            executor.submit(process_file_url, url): url
-            for url in file_list
-        }
-        LOGGER.debug('future_to_url: %s', future_to_url)
         with tqdm(total=len(file_list)) as pbar:
-            for future in concurrent.futures.as_completed(future_to_url):
-                pbar.update(1)
-                url = future_to_url[future]
-                try:
-                    future.result()
-                except Exception as exc:  # pylint: disable=broad-except
-                    LOGGER.warning('%r generated an exception: %s', url, exc)
+            with log_to_tqdm():
+                future_to_url = {
+                    executor.submit(process_file_url, url): url
+                    for url in file_list
+                }
+                LOGGER.debug('future_to_url: %s', future_to_url)
+                for future in concurrent.futures.as_completed(future_to_url):
+                    pbar.update(1)
+                    url = future_to_url[future]
+                    try:
+                        future.result()
+                    except Exception as exc:  # pylint: disable=broad-except
+                        LOGGER.warning('%r generated an exception: %s', url, exc)
 
 
 def main(argv=None):
