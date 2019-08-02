@@ -1,3 +1,5 @@
+import os
+
 from argparse import ArgumentParser
 
 
@@ -48,3 +50,13 @@ def add_batch_args(parser: ArgumentParser):
         '--debug', action='store_true', default=False,
         help='enable debug output'
     )
+
+
+def process_batch_args(args):
+    args.base_data_path = args.data_path.replace('/*/', '/')
+
+    if not args.output_path:
+        args.output_path = os.path.join(
+            os.path.dirname(args.base_data_path),
+            os.path.basename(args.base_data_path + '-results')
+        )

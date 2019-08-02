@@ -52,7 +52,8 @@ from sciencebeam.pipelines import (
 )
 
 from sciencebeam.pipeline_runners.pipeline_runner_utils import (
-    add_batch_args
+    add_batch_args,
+    process_batch_args
 )
 
 
@@ -218,16 +219,6 @@ def configure_pipeline(p, opt, pipeline, config):
             log_fn=lambda x: get_logger().info('saved output to: %s', x)
         )
     )
-
-
-def process_batch_args(args):
-    args.base_data_path = args.data_path.replace('/*/', '/')
-
-    if not args.output_path:
-        args.output_path = os.path.join(
-            os.path.dirname(args.base_data_path),
-            os.path.basename(args.base_data_path + '-results')
-        )
 
 
 def parse_args(pipeline, config, argv=None):

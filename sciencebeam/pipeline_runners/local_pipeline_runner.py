@@ -37,7 +37,6 @@ from sciencebeam.pipelines import (
 )
 
 from sciencebeam.pipeline_runners.beam_pipeline_runner import (
-    process_batch_args,
     encode_if_text_type,
     DataProps
 )
@@ -47,7 +46,8 @@ from sciencebeam.pipeline_runners.simple_pipeline_runner import (
 )
 
 from sciencebeam.pipeline_runners.pipeline_runner_utils import (
-    add_batch_args
+    add_batch_args,
+    process_batch_args
 )
 
 
