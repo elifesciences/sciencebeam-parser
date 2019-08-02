@@ -7,7 +7,6 @@ import mimetypes
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 from apache_beam.metrics.metric import Metrics
-from apache_beam.io.filesystems import FileSystems
 
 from sciencebeam_utils.utils.collection import (
     extend_dict
@@ -20,11 +19,6 @@ from sciencebeam_utils.beam_utils.utils import (
     PreventFusion
 )
 
-from sciencebeam_utils.beam_utils.files import (
-    ReadFileList,
-    FindFiles
-)
-
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
     save_file_content
@@ -34,10 +28,6 @@ from sciencebeam_utils.beam_utils.main import (
     add_cloud_args,
     process_cloud_args,
     process_sciencebeam_gym_dep_args
-)
-
-from sciencebeam_utils.utils.file_path import (
-    join_if_relative_path
 )
 
 from sciencebeam.config.app_config import get_app_config
@@ -52,6 +42,7 @@ from sciencebeam.pipeline_runners.pipeline_runner_utils import (
     process_batch_args,
     encode_if_text_type,
     get_output_file_for_source_file_fn,
+    get_remaining_file_list_for_args,
     DataProps
 )
 
@@ -65,15 +56,6 @@ def get_logger():
 
 class MetricCounters:
     FILES = 'files'
-
-
-def FileUrlSource(opt):
-    if opt.source_file_list:
-        return ReadFileList(
-            join_if_relative_path(opt.base_data_path, opt.source_file_list),
-            column=opt.source_file_column, limit=opt.limit
-        )
-    return FindFiles(join_if_relative_path(opt.base_data_path, opt.source_path))
 
 
 def ReadFileContent():
@@ -142,19 +124,14 @@ def get_step_transform(step):
     )
 
 
-def _file_exists(file_url):
-    result = FileSystems.exists(file_url)
-    LOGGER.debug('file exists: result=%s, url=%s', result, file_url)
-    return result
-
-
 def configure_pipeline(p, opt, pipeline, config):
     get_default_output_file_for_source_file = get_output_file_for_source_file_fn(opt)
+    file_list = get_remaining_file_list_for_args(opt)
+    LOGGER.debug('file_list: %s', file_list)
 
-    def output_file_not_exists(source_url):
-        return not _file_exists(
-            get_default_output_file_for_source_file(source_url)
-        )
+    if not file_list:
+        LOGGER.info('no files to process')
+        return
 
     steps = pipeline.get_steps(config, opt)
 
@@ -162,12 +139,9 @@ def configure_pipeline(p, opt, pipeline, config):
 
     input_urls = (
         p |
-        FileUrlSource(opt) |
+        beam.Create(file_list) |
         PreventFusion()
     )
-
-    if opt.resume:
-        input_urls |= beam.Filter(output_file_not_exists)
 
     input_data = (
         input_urls |

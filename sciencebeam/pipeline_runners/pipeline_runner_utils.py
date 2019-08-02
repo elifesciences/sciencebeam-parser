@@ -134,7 +134,7 @@ def get_remaining_file_list_for_args(args: argparse.Namespace):
 
     if not file_list:
         LOGGER.warning('no files found')
-        return
+        return file_list
 
     LOGGER.info('total number of files: %d', len(file_list))
     if args.resume:

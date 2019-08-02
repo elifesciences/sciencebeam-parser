@@ -7,8 +7,6 @@ import pytest
 
 from six import text_type
 
-import apache_beam as beam
-
 from sciencebeam_utils.beam_utils.testing import (
     BeamTest,
     TestPipeline,
@@ -116,11 +114,9 @@ def get_file_list_args(args):
 @pytest.fixture(name='mocks')
 def patch_conversion_pipeline(**kwargs):
     always_mock = {
+        'get_remaining_file_list_for_args',
         'read_all_from_path',
-        'ReadFileList',
-        'FindFiles',
-        'save_file_content',
-        'FileSystems'
+        'save_file_content'
     }
 
     with patch.multiple(
@@ -156,33 +152,15 @@ def _add_test_args(parser, *_, **__):
 @pytest.mark.slow
 @pytest.mark.usefixtures('mocks')
 class TestConfigurePipeline(BeamTest):
-    def test_should_pass_pdf_pattern_to_find_files_and_read_pdf_file(
+    def test_should_pass_args_to_get_remaining_file_list_for_args(
             self, pipeline, app_config, file_path_args, mocks):
 
         opt = file_path_args
         with TestPipeline() as p:
-            mocks['FindFiles'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             configure_pipeline(p, opt, pipeline, app_config)
 
-        mocks['FindFiles'].assert_called_with(
-            BASE_DATA_PATH + '/' + PDF_PATH
-        )
-        mocks['read_all_from_path'].assert_called_with(
-            PDF_FILE_1
-        )
-
-    def test_should_pass_pdf_file_list_and_limit_to_read_file_list_and_read_pdf_file(
-            self, pipeline, app_config, mocks, file_list_args):
-
-        opt = file_list_args
-        opt.limit = 100
-        with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-            configure_pipeline(p, opt, pipeline, app_config)
-
-        mocks['ReadFileList'].assert_called_with(
-            opt.source_file_list, column=opt.source_file_column, limit=opt.limit
-        )
+        mocks['get_remaining_file_list_for_args'].assert_called_with(opt)
         mocks['read_all_from_path'].assert_called_with(
             PDF_FILE_1
         )
@@ -198,7 +176,7 @@ class TestConfigurePipeline(BeamTest):
         pipeline.get_steps.return_value = [step1]
 
         with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             mocks['read_all_from_path'].return_value = PDF_CONTENT_1
             configure_pipeline(p, opt, pipeline, app_config)
             assert get_counter_value(
@@ -227,7 +205,7 @@ class TestConfigurePipeline(BeamTest):
         pipeline.get_steps.return_value = [step1]
 
         with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             mocks['read_all_from_path'].return_value = PDF_CONTENT_1
             configure_pipeline(p, opt, pipeline, app_config)
 
@@ -253,7 +231,7 @@ class TestConfigurePipeline(BeamTest):
         pipeline.get_steps.return_value = [step1, step2]
 
         with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             mocks['read_all_from_path'].return_value = PDF_CONTENT_1
             configure_pipeline(p, opt, pipeline, app_config)
 
@@ -268,38 +246,6 @@ class TestConfigurePipeline(BeamTest):
             XML_CONTENT_1
         )
 
-    @pytest.mark.parametrize(
-        'resume, output_exists, expect_processing', [
-            (False, True, True),
-            (True, False, True),
-            (True, True, False)
-        ]
-    )
-    def test_should_skip_item_depending_on_resume_flag_and_existing_output_file(
-            self, pipeline, app_config, file_list_args, mocks,
-            resume, output_exists, expect_processing):
-
-        opt = file_list_args
-        opt.resume = resume
-
-        step1 = _pdf_step()
-
-        pipeline.get_steps.return_value = [step1]
-
-        with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
-            mocks['read_all_from_path'].return_value = PDF_CONTENT_1
-            mocks['FileSystems'].exists.return_value = output_exists
-            configure_pipeline(p, opt, pipeline, app_config)
-
-        if resume:
-            mocks['FileSystems'].exists.assert_called_with(OUTPUT_XML_FILE_1)
-
-        if expect_processing:
-            step1.assert_called()
-        else:
-            step1.assert_not_called()
-
     def test_should_skip_item_causing_exception_and_increase_error_count(
             self, pipeline, app_config, file_list_args, mocks):
 
@@ -311,7 +257,7 @@ class TestConfigurePipeline(BeamTest):
         pipeline.get_steps.return_value = [step1]
 
         with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             mocks['read_all_from_path'].return_value = PDF_CONTENT_1
             configure_pipeline(p, opt, pipeline, app_config)
             assert get_counter_value(
@@ -330,7 +276,7 @@ class TestConfigurePipeline(BeamTest):
         pipeline.get_steps.return_value = [step1]
 
         with TestPipeline() as p:
-            mocks['ReadFileList'].return_value = beam.Create([PDF_FILE_1])
+            mocks['get_remaining_file_list_for_args'].return_value = [PDF_FILE_1]
             mocks['read_all_from_path'].return_value = PDF_CONTENT_1
             configure_pipeline(p, opt, pipeline, app_config)
             assert get_counter_value(
