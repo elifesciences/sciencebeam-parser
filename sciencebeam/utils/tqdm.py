@@ -18,7 +18,7 @@ class TqdmLoggingHandler(logging.StreamHandler):
 
 
 @contextmanager
-def redirect_log_to_tqdm():
+def redirect_logging_to_tqdm():
     tqdm_handler = TqdmLoggingHandler()
     console_handlers = [
         handler
@@ -41,5 +41,5 @@ def redirect_log_to_tqdm():
 @contextmanager
 def tqdm_with_logging_redirect(*args, **kwargs):
     with tqdm(*args, **kwargs) as pbar:
-        with redirect_log_to_tqdm():
+        with redirect_logging_to_tqdm():
             yield pbar
