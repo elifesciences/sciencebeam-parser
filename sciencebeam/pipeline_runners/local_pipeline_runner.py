@@ -37,7 +37,6 @@ from sciencebeam.pipelines import (
 )
 
 from sciencebeam.pipeline_runners.beam_pipeline_runner import (
-    add_main_args,
     process_main_args,
     encode_if_text_type,
     DataProps
@@ -45,6 +44,10 @@ from sciencebeam.pipeline_runners.beam_pipeline_runner import (
 
 from sciencebeam.pipeline_runners.simple_pipeline_runner import (
     SimplePipelineRunner
+)
+
+from sciencebeam.pipeline_runners.pipeline_runner_utils import (
+    add_batch_args
 )
 
 
@@ -63,7 +66,7 @@ def add_num_workers_argument(parser: argparse.ArgumentParser):
 def parse_args(pipeline, config, argv=None):
     parser = argparse.ArgumentParser()
     add_pipeline_args(parser)
-    add_main_args(parser)
+    add_batch_args(parser)
     add_num_workers_argument(parser)
     pipeline.add_arguments(parser, config, argv)
 
