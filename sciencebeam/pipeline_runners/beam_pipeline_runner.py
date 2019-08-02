@@ -37,8 +37,7 @@ from sciencebeam_utils.beam_utils.main import (
 )
 
 from sciencebeam_utils.utils.file_path import (
-    join_if_relative_path,
-    get_output_file
+    join_if_relative_path
 )
 
 from sciencebeam.config.app_config import get_app_config
@@ -52,6 +51,7 @@ from sciencebeam.pipeline_runners.pipeline_runner_utils import (
     add_batch_args,
     process_batch_args,
     encode_if_text_type,
+    get_output_file_for_source_file_fn,
     DataProps
 )
 
@@ -149,19 +149,7 @@ def _file_exists(file_url):
 
 
 def configure_pipeline(p, opt, pipeline, config):
-    def get_pipeline_output_file(source_url, ext):
-        return get_output_file(
-            source_url,
-            opt.base_data_path,
-            opt.output_path,
-            ext
-        )
-
-    def get_default_output_file_for_source_file(source_url):
-        return get_pipeline_output_file(
-            source_url,
-            opt.output_suffix
-        )
+    get_default_output_file_for_source_file = get_output_file_for_source_file_fn(opt)
 
     def output_file_not_exists(source_url):
         return not _file_exists(
