@@ -53,7 +53,8 @@ from sciencebeam.pipelines import (
 
 from sciencebeam.pipeline_runners.pipeline_runner_utils import (
     add_batch_args,
-    process_batch_args
+    process_batch_args,
+    encode_if_text_type
 )
 
 
@@ -148,10 +149,6 @@ def get_step_transform(step):
             )
         ), error_count=get_step_error_counter(step)
     )
-
-
-def encode_if_text_type(data):
-    return data.encode('utf-8') if isinstance(data, text_type) else data
 
 
 def _file_exists(file_url):

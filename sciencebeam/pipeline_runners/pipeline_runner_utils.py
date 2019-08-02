@@ -1,5 +1,7 @@
 import os
 
+from six import text_type
+
 from argparse import ArgumentParser
 
 
@@ -60,3 +62,7 @@ def process_batch_args(args):
             os.path.dirname(args.base_data_path),
             os.path.basename(args.base_data_path + '-results')
         )
+
+
+def encode_if_text_type(data):
+    return data.encode('utf-8') if isinstance(data, text_type) else data
