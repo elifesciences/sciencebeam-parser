@@ -13,7 +13,7 @@ class TqdmLoggingHandler(logging.StreamHandler):
             self.flush()
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:  # pylint: disable=bare-except
+        except:  # noqa pylint: disable=bare-except
             self.handleError(record)
 
 
