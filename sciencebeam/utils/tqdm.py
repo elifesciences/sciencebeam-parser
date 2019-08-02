@@ -36,3 +36,10 @@ def redirect_log_to_tqdm():
         logging.root.removeHandler(tqdm_handler)
         for handler in console_handlers:
             logging.root.addHandler(handler)
+
+
+@contextmanager
+def tqdm_with_logging_redirect(*args, **kwargs):
+    with tqdm(*args, **kwargs) as pbar:
+        with redirect_log_to_tqdm():
+            yield pbar
