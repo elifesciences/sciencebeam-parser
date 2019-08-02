@@ -7,6 +7,8 @@ from functools import partial
 from mimetypes import guess_type
 from typing import Callable
 
+from tqdm import tqdm
+
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
     save_file_content
@@ -108,12 +110,14 @@ def run(args, config, pipeline: Pipeline):
             for url in file_list
         }
         LOGGER.debug('future_to_url: %s', future_to_url)
-        for future in concurrent.futures.as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                future.result()
-            except Exception as exc:  # pylint: disable=broad-except
-                LOGGER.warning('%r generated an exception: %s', url, exc)
+        with tqdm(total=len(file_list)) as pbar:
+            for future in concurrent.futures.as_completed(future_to_url):
+                pbar.update(1)
+                url = future_to_url[future]
+                try:
+                    future.result()
+                except Exception as exc:  # pylint: disable=broad-except
+                    LOGGER.warning('%r generated an exception: %s', url, exc)
 
 
 def main(argv=None):
