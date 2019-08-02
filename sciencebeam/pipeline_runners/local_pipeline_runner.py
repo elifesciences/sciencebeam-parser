@@ -12,8 +12,9 @@ from sciencebeam_utils.beam_utils.io import (
     save_file_content
 )
 
+from sciencebeam_utils.utils.tqdm import tqdm_with_logging_redirect
+
 from sciencebeam.utils.formatting import format_size
-from sciencebeam.utils.tqdm import tqdm_with_logging_redirect
 
 from sciencebeam.config.app_config import get_app_config
 
