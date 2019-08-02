@@ -27,6 +27,7 @@ class MockServer:
 
     def stop(self):
         requests.get("http://localhost:%s/shutdown" % self.port)
+        self.thread.join()
 
     def add_callback_response(self, url, callback, methods=('GET',)):
         callback.__name__ = str(uuid4())  # change name of method to mitigate flask exception
