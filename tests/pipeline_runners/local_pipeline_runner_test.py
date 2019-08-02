@@ -5,7 +5,7 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from sciencebeam.pipeline_runners.direct_pipeline_runner import (
+from sciencebeam.pipeline_runners.local_pipeline_runner import (
     main
 )
 
