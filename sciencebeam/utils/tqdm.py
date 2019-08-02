@@ -18,28 +18,30 @@ class TqdmLoggingHandler(logging.StreamHandler):
 
 
 @contextmanager
-def redirect_logging_to_tqdm():
+def redirect_logging_to_tqdm(logger: logging.Logger = None):
+    if logger is None:
+        logger = logging.root
     tqdm_handler = TqdmLoggingHandler()
     console_handlers = [
         handler
-        for handler in logging.root.handlers
+        for handler in logger.handlers
         if isinstance(handler, logging.StreamHandler) and handler.stream in {sys.stdout, sys.stderr}
     ]
     if console_handlers:
         tqdm_handler.setFormatter(console_handlers[0].formatter)
     try:
-        logging.root.addHandler(tqdm_handler)
+        logger.addHandler(tqdm_handler)
         for handler in console_handlers:
-            logging.root.removeHandler(handler)
+            logger.removeHandler(handler)
         yield
     finally:
-        logging.root.removeHandler(tqdm_handler)
+        logger.removeHandler(tqdm_handler)
         for handler in console_handlers:
-            logging.root.addHandler(handler)
+            logger.addHandler(handler)
 
 
 @contextmanager
-def tqdm_with_logging_redirect(*args, **kwargs):
+def tqdm_with_logging_redirect(*args, logger: logging.Logger = None, **kwargs):
     with tqdm(*args, **kwargs) as pbar:
-        with redirect_logging_to_tqdm():
+        with redirect_logging_to_tqdm(logger=logger):
             yield pbar

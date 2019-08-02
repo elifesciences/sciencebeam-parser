@@ -7,8 +7,6 @@ from functools import partial
 from mimetypes import guess_type
 from typing import Callable
 
-from tqdm import tqdm
-
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
     save_file_content
