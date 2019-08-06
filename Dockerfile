@@ -1,7 +1,14 @@
-FROM python:3.5.7-stretch
+FROM python:3.5.7-buster
 
-RUN apt-get update
-RUN apt-get install -y libreoffice-writer
+# install LibreOffice Write to convert Word to PDF
+# also install fonts and fontconfig to provide common fonts or configuration to their alternatives
+RUN apt-get update \
+  && apt-get install -y \
+    libreoffice-writer \
+    fonts-liberation fonts-liberation2 \
+    fonts-crosextra-carlito fonts-crosextra-caladea \
+    fontconfig \
+  && rm -rf /var/lib/apt/lists/*
 
 ENV PROJECT_HOME=/srv/sciencebeam
 
