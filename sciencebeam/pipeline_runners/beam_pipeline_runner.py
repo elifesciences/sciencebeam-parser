@@ -26,8 +26,7 @@ from sciencebeam_utils.beam_utils.io import (
 
 from sciencebeam_utils.beam_utils.main import (
     add_cloud_args,
-    process_cloud_args,
-    process_sciencebeam_gym_dep_args
+    process_cloud_args
 )
 
 from sciencebeam.config.app_config import get_app_config
@@ -188,7 +187,6 @@ def parse_args(pipeline, config, argv=None):
         args, args.output_path,
         name='sciencebeam-convert'
     )
-    process_sciencebeam_gym_dep_args(args)
 
     get_logger().info('args: %s', args)
 
