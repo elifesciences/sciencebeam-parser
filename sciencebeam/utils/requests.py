@@ -13,18 +13,18 @@ METHOD_WHITELIST_WITH_POST = frozenset(
     Retry.DEFAULT_METHOD_WHITELIST | {'POST'}
 )
 
+DEFAULT_STATUS_FORCELIST = (500, 502, 503, 504,)
+
 
 def configure_session_retry(
         session=None,
         max_retries=3,
         max_redirect=5,
         backoff_factor=1,
-        status_forcelist=None,
+        status_forcelist: Iterable[int] = DEFAULT_STATUS_FORCELIST,
         method_whitelist: Iterable[str] = None,
         **kwargs):
 
-    if status_forcelist is None:
-        status_forcelist = [500, 502, 503, 504]
     retry = Retry(
         connect=max_retries,
         read=max_retries,
