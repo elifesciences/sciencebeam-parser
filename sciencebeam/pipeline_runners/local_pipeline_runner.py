@@ -7,6 +7,8 @@ from functools import partial
 from mimetypes import guess_type
 from typing import Callable
 
+import requests
+
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
     save_file_content
@@ -52,6 +54,12 @@ def add_num_workers_argument(parser: argparse.ArgumentParser):
         help='The number of workers.'
     )
     parser.add_argument(
+        '--max-retries',
+        default=10,
+        type=int,
+        help='The number of times to attempt to retry http requests.'
+    )
+    parser.add_argument(
         '--fail-on-error',
         action='store_true',
         help='Fail process on conversion error (rather than logging a warning and resuming).'
@@ -77,7 +85,8 @@ def parse_args(pipeline, config, argv=None):
 
 def process_file(
         file_url: str, simple_runner: SimplePipelineRunner,
-        get_output_file_for_source_url: Callable[[str], str]):
+        get_output_file_for_source_url: Callable[[str], str],
+        session: requests.Session):
     output_file_url = get_output_file_for_source_url(
         file_url
     )
@@ -85,12 +94,11 @@ def process_file(
     LOGGER.info('read source content: %s (%s)', file_url, format_size(len(file_content)))
     data_type = guess_type(file_url)[0]
     LOGGER.debug('data_type: %s', data_type)
-    with RetrySession(method_whitelist=METHOD_WHITELIST_WITH_POST) as session:
-        LOGGER.debug('session: %s', session)
-        result = simple_runner.convert(
-            file_content, file_url, data_type,
-            context={RequestsPipelineStep.REQUESTS_SESSION_KEY: session}
-        )
+    LOGGER.debug('session: %s', session)
+    result = simple_runner.convert(
+        file_content, file_url, data_type,
+        context={RequestsPipelineStep.REQUESTS_SESSION_KEY: session}
+    )
     LOGGER.debug('result.keys: %s', result.keys())
     output_content = encode_if_text_type(result[DataProps.CONTENT])
     save_file_content(output_file_url, output_content)
@@ -108,31 +116,37 @@ def run(args, config, pipeline: Pipeline):
 
     simple_runner = SimplePipelineRunner(pipeline.get_steps(config, args))
 
-    process_file_url = partial(
-        process_file,
-        simple_runner=simple_runner,
-        get_output_file_for_source_url=get_output_file_for_source_file_fn(args)
+    retry_args = dict(
+        method_whitelist=METHOD_WHITELIST_WITH_POST,
+        max_retries=args.max_retries
     )
+    with RetrySession(**retry_args) as session:
+        process_file_url = partial(
+            process_file,
+            simple_runner=simple_runner,
+            get_output_file_for_source_url=get_output_file_for_source_file_fn(args),
+            session=session
+        )
 
-    fail_on_error = args.fail_on_error
-    num_workers = args.num_workers
-    LOGGER.info('using %d workers', num_workers)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-        with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
-            future_to_url = {
-                executor.submit(process_file_url, url): url
-                for url in file_list
-            }
-            LOGGER.debug('future_to_url: %s', future_to_url)
-            for future in concurrent.futures.as_completed(future_to_url):
-                pbar.update(1)
-                url = future_to_url[future]
-                try:
-                    future.result()
-                except Exception as exc:  # pylint: disable=broad-except
-                    LOGGER.warning('%r generated an exception: %s', url, exc)
-                    if fail_on_error:
-                        raise
+        fail_on_error = args.fail_on_error
+        num_workers = args.num_workers
+        LOGGER.info('using %d workers', num_workers)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
+                future_to_url = {
+                    executor.submit(process_file_url, url): url
+                    for url in file_list
+                }
+                LOGGER.debug('future_to_url: %s', future_to_url)
+                for future in concurrent.futures.as_completed(future_to_url):
+                    pbar.update(1)
+                    url = future_to_url[future]
+                    try:
+                        future.result()
+                    except Exception as exc:  # pylint: disable=broad-except
+                        LOGGER.warning('%r generated an exception: %s', url, exc)
+                        if fail_on_error:
+                            raise
 
 
 def main(argv=None):
