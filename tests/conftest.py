@@ -7,6 +7,8 @@ from py._path.local import LocalPath
 
 from tests.utils.mock_server import MockServer
 
+from .compat_patch_mock import patch_magicmock_fixture  # noqa pylint: disable=unused-import
+
 
 @pytest.fixture(scope='session', autouse=True)
 def setup_logging():
