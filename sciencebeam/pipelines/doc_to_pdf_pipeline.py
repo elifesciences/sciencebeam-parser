@@ -15,7 +15,7 @@ class DocToPdfStep(PipelineStep):
     def get_supported_types(self):
         return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF}
 
-    def __call__(self, data):
+    def __call__(self, data, context: dict = None):
         return {
             'filename': change_ext(data['filename'], None, '.pdf'),
             'content': doc_to_pdf(data['content'], data['type']),

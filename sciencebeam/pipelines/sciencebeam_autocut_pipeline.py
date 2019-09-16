@@ -3,14 +3,14 @@ import logging
 
 from lxml import etree
 
-from requests import post as requests_post
+import requests
 
 from sciencebeam_utils.utils.collection import extend_dict
 from sciencebeam_utils.utils.xml import get_text_content
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import Pipeline, PipelineStep
+from . import Pipeline, RequestsPipelineStep
 
 
 LOGGER = logging.getLogger(__name__)
@@ -22,15 +22,15 @@ def apply_revised_value(node, revised_value):
     node.text = revised_value
 
 
-class ScienceBeamAutocutApiStep(PipelineStep):
+class ScienceBeamAutocutApiStep(RequestsPipelineStep):
     def __init__(self, api_url, xpath):
-        self._api_url = api_url
+        super().__init__(api_url=api_url)
         self._xpath = xpath
 
     def get_supported_types(self):
         return {MimeTypes.JATS_XML, MimeTypes.TEI_XML, MimeTypes.XML}
 
-    def __call__(self, data):
+    def process_request(self, data: dict, session: requests.Session):
         root = etree.fromstring(data['content'])
         matching_nodes = root.xpath(self._xpath)
         if not matching_nodes:
@@ -39,7 +39,7 @@ class ScienceBeamAutocutApiStep(PipelineStep):
         for node in matching_nodes:
             value = get_text_content(node)
             LOGGER.debug('node for xpath %s: %s (text: %s)', self._xpath, node, value)
-            response = requests_post(self._api_url, data=value.encode('utf-8'))
+            response = session.post(self._api_url, data=value.encode('utf-8'))
             response.raise_for_status()
             revised_value = response.text
             LOGGER.debug('revised_value: %s (was: %s)', revised_value, value)

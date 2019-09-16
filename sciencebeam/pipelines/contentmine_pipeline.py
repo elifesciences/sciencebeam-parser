@@ -1,28 +1,23 @@
 import argparse  # pylint: disable=unused-import
 
-from requests import post as requests_post
+import requests
 
 from sciencebeam_utils.utils.file_path import change_ext
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
-from . import Pipeline, PipelineStep
+from . import Pipeline, RequestsPipelineStep
 
 
-class ContentMineApiStep(PipelineStep):
-    def __init__(self, api_url):
-        self._api_url = api_url
-
+class ContentMineApiStep(RequestsPipelineStep):
     def get_supported_types(self):
         return {MimeTypes.PDF}
 
-    def __call__(self, data):
-        response = requests_post(
-            self._api_url,
-            headers={'Content-Type': data['type']},
-            data=data['content']
+    def process_request(self, data: dict, session: requests.Session):
+        response = self.post_data(
+            data=data,
+            session=session
         )
-        response.raise_for_status()
         return {
             'filename': change_ext(data['filename'], None, '.xml'),
             'content': response.text,
@@ -31,9 +26,6 @@ class ContentMineApiStep(PipelineStep):
 
     def __str__(self):
         return 'ContentMine API'
-
-    def __repr__(self):
-        return '%s(%s)' % (type(self).__name__, self._api_url)
 
 
 class ContentMinePipeline(Pipeline):

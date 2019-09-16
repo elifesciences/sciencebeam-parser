@@ -15,7 +15,7 @@ class DocToDocxStep(PipelineStep):
     def get_supported_types(self):
         return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF}
 
-    def __call__(self, data):
+    def __call__(self, data, context: dict = None):
         return {
             'filename': change_ext(data['filename'], None, '.docx'),
             'content': doc_to_docx(data['content'], data['type']),

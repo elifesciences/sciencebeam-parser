@@ -1,11 +1,18 @@
 import argparse
+import logging
 from abc import ABC, abstractmethod
 from importlib import import_module
 from configparser import ConfigParser  # pylint: disable=unused-import
 
 from six import text_type
 
+import requests
+from requests import Session
+
 from sciencebeam.utils.config import parse_list
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FieldNames:
@@ -57,8 +64,44 @@ class PipelineStep(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, data):
+    def __call__(self, data, context: dict = None):
         pass
+
+
+class RequestsPipelineStep(ABC):
+    REQUESTS_SESSION_KEY = 'requests_session'
+
+    def __init__(self, api_url: str):
+        self._api_url = api_url
+
+    def post_data(self, data: dict, session: requests.Session, **kwargs):
+        LOGGER.debug('session: %s', session)
+        response = session.post(
+            self._api_url,
+            headers={'Content-Type': data['type']},
+            data=data['content'],
+            **kwargs
+        )
+        response.raise_for_status()
+        return response
+
+    @abstractmethod
+    def process_request(self, data: dict, session: Session):
+        pass
+
+    def __call__(self, data, context: dict = None):
+        session = (context or {}).get(RequestsPipelineStep.REQUESTS_SESSION_KEY)
+        if session is None:
+            with requests.Session() as session:
+                LOGGER.debug('no session provided, creating new session: %s', session)
+                return self.process_request(data, session)
+        return self.process_request(data, session)
+
+    def __str__(self):
+        return type(self).__name__
+
+    def __repr__(self):
+        return '%s(%s)' % (type(self).__name__, str(self))
 
 
 class FunctionPipelineStep(PipelineStep):
@@ -70,8 +113,8 @@ class FunctionPipelineStep(PipelineStep):
     def get_supported_types(self):
         return self.supported_types
 
-    def __call__(self, data):
-        return self.fn(data)
+    def __call__(self, data, context: dict = None):
+        return self.fn(data, context=context)
 
     def __str__(self):
         return self.name

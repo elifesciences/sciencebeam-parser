@@ -85,7 +85,7 @@ class GrobidPipeline(Pipeline):
             )[1]
 
         steps = [
-            FunctionPipelineStep(lambda data: {
+            FunctionPipelineStep(lambda data, **_: {
                 StepDataProps.CONTENT: convert_to_tei(
                     pdf_filename=data[StepDataProps.FILENAME],
                     pdf_content=data[StepDataProps.CONTENT],
@@ -99,7 +99,7 @@ class GrobidPipeline(Pipeline):
                 args.grobid_xslt_path,
                 pretty_print=not args.no_grobid_pretty_print
             )
-            steps.append(FunctionPipelineStep(lambda d: {
+            steps.append(FunctionPipelineStep(lambda d, **_: {
                 StepDataProps.CONTENT: xslt_transformer(d[StepDataProps.CONTENT]),
                 StepDataProps.TYPE: MimeTypes.JATS_XML
             }, {MimeTypes.TEI_XML}, 'TEI to JATS'))

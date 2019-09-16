@@ -20,9 +20,8 @@ XML_CONTENT = b'<XML>XML</XML>'
 
 
 @pytest.fixture(name='requests_post', autouse=True)
-def _requests_post():
-    with patch.object(metypeset_pipeline_module, 'requests_post') as requests_post:
-        yield requests_post
+def _requests_post(requests_session_post_mock: MagicMock):
+    return requests_session_post_mock
 
 
 @pytest.fixture(name='response')
