@@ -61,6 +61,12 @@ def add_num_workers_argument(parser: argparse.ArgumentParser):
         help='The number of times to attempt to retry http requests.'
     )
     parser.add_argument(
+        '--retry-backoff',
+        default=0.1,
+        type=float,
+        help='The backoff factor to use.'
+    )
+    parser.add_argument(
         '--fail-on-error',
         action='store_true',
         help='Fail process on conversion error (rather than logging a warning and resuming).'
@@ -155,7 +161,8 @@ def run(args, config, pipeline: Pipeline):
 
     retry_args = dict(
         method_whitelist=METHOD_WHITELIST_WITH_POST,
-        max_retries=args.max_retries
+        max_retries=args.max_retries,
+        backoff_factor=args.retry_backoff
     )
     with RetrySession(**retry_args) as session:
         process_file_url = partial(
