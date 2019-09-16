@@ -7,3 +7,4 @@ def configure_logging(
     logging.basicConfig(level=level)
     logging.getLogger('sciencebeam').setLevel(sciencebeam_level)
     logging.getLogger('sciencebeam_utils').setLevel(sciencebeam_level)
+    logging.getLogger('__main__').setLevel(sciencebeam_level)
