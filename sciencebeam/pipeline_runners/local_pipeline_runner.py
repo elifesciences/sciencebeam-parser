@@ -5,7 +5,7 @@ import logging
 import concurrent.futures
 from functools import partial
 from mimetypes import guess_type
-from typing import Callable
+from typing import Callable, List
 
 import requests
 
@@ -105,6 +105,28 @@ def process_file(
     LOGGER.info('saved output to: %s (%s)', output_file_url, format_size(len(output_content)))
 
 
+def process_with_pool_executor(
+        executor: concurrent.futures.Executor,
+        file_list: List[str],
+        process_file_url: callable,
+        fail_on_error: bool):
+    with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
+        future_to_url = {
+            executor.submit(process_file_url, url): url
+            for url in file_list
+        }
+        LOGGER.debug('future_to_url: %s', future_to_url)
+        for future in concurrent.futures.as_completed(future_to_url):
+            pbar.update(1)
+            url = future_to_url[future]
+            try:
+                future.result()
+            except Exception as exc:  # pylint: disable=broad-except
+                LOGGER.warning('%r generated an exception: %s', url, exc)
+                if fail_on_error:
+                    raise
+
+
 def run(args, config, pipeline: Pipeline):
     LOGGER.info('args: %s', args)
     file_list = get_remaining_file_list_for_args(args)
@@ -128,25 +150,15 @@ def run(args, config, pipeline: Pipeline):
             session=session
         )
 
-        fail_on_error = args.fail_on_error
         num_workers = args.num_workers
         LOGGER.info('using %d workers', num_workers)
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-            with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
-                future_to_url = {
-                    executor.submit(process_file_url, url): url
-                    for url in file_list
-                }
-                LOGGER.debug('future_to_url: %s', future_to_url)
-                for future in concurrent.futures.as_completed(future_to_url):
-                    pbar.update(1)
-                    url = future_to_url[future]
-                    try:
-                        future.result()
-                    except Exception as exc:  # pylint: disable=broad-except
-                        LOGGER.warning('%r generated an exception: %s', url, exc)
-                        if fail_on_error:
-                            raise
+            process_with_pool_executor(
+                executor=executor,
+                file_list=file_list,
+                process_file_url=process_file_url,
+                fail_on_error=args.fail_on_error
+            )
 
 
 def main(argv=None):
