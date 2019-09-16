@@ -31,6 +31,8 @@ from sciencebeam_utils.beam_utils.main import (
 
 from sciencebeam.config.app_config import get_app_config
 
+from sciencebeam.utils.logging import configure_logging
+
 from sciencebeam.pipelines import (
     get_pipeline_for_configuration_and_args,
     add_pipeline_args
@@ -216,6 +218,6 @@ def main(argv=None, save_main_session=True):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level='INFO')
+    configure_logging()
 
     main()

@@ -17,6 +17,7 @@ from sciencebeam_utils.beam_utils.io import (
 from sciencebeam_utils.utils.tqdm import tqdm_with_logging_redirect
 
 from sciencebeam.utils.formatting import format_size
+from sciencebeam.utils.logging import configure_logging
 from sciencebeam.utils.requests import RetrySession, METHOD_WHITELIST_WITH_POST
 
 from sciencebeam.config.app_config import get_app_config
@@ -110,6 +111,15 @@ def process_with_pool_executor(
         file_list: List[str],
         process_file_url: callable,
         fail_on_error: bool):
+    error_count = 0
+    success_count = 0
+
+    def log_summary(name: str):
+        LOGGER.info(
+            '%s: %d success, %d failures (total: %d)',
+            name, success_count, error_count, len(file_list)
+        )
+
     with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
         future_to_url = {
             executor.submit(process_file_url, url): url
@@ -121,10 +131,15 @@ def process_with_pool_executor(
             url = future_to_url[future]
             try:
                 future.result()
+                success_count += 1
+                log_summary('progress')
             except Exception as exc:  # pylint: disable=broad-except
+                error_count += 1
+                log_summary('progress')
                 LOGGER.warning('%r generated an exception: %s', url, exc)
                 if fail_on_error:
                     raise
+    log_summary('done')
 
 
 def run(args, config, pipeline: Pipeline):
@@ -171,6 +186,6 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level='INFO')
+    configure_logging()
 
     main()
