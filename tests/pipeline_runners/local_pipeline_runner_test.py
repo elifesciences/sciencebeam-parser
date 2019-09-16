@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+import flask
+
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipeline_runners.local_pipeline_runner import (
@@ -21,7 +23,7 @@ XML_CONTENT_2 = b'<article>xml content 2</article>'
 
 @pytest.mark.slow
 class TestMainEndToEnd:
-    def test_should_convert_single_file_using_file_list(
+    def _test_should_convert_single_file_using_file_list(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_1,
@@ -46,7 +48,7 @@ class TestMainEndToEnd:
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
 
-    def test_should_convert_single_file_using_file_path(
+    def _test_should_convert_single_file_using_file_path(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_1,
@@ -70,7 +72,7 @@ class TestMainEndToEnd:
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
 
-    def test_should_skip_existing_file(
+    def _test_should_skip_existing_file(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_2,
@@ -97,3 +99,34 @@ class TestMainEndToEnd:
             '--resume'
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
+
+    def test_should_retry_convert_api_call(
+            self, temp_dir: Path, mock_server: MockServer):
+        callbacks = [
+            lambda: flask.Response('error', status=500),
+            lambda: flask.Response(XML_CONTENT_1, mimetype=MimeTypes.JATS_XML),
+        ]
+        api_url = mock_server.add_multiple_callbacks_response(
+            '/api/convert', callbacks,
+            # mimetype=MimeTypes.JATS_XML,
+            methods=('POST',)
+        )
+        LOGGER.debug('api_url: %s', api_url)
+        source_path = temp_dir.joinpath('source')
+        output_path = temp_dir.joinpath('output')
+        source_path.mkdir(parents=True, exist_ok=True)
+        source_path.joinpath('file1.pdf').write_bytes(PDF_CONTENT_1)
+        source_path.joinpath('file-list.tsv').write_text('source_url\nfile1.pdf')
+        output_file = output_path.joinpath('file1.xml')
+        main([
+            '--data-path=%s' % source_path,
+            '--source-file-list=file-list.tsv',
+            '--source-file-column=source_url',
+            '--output-path=%s' % output_path,
+            '--output-suffix=.xml',
+            '--fail-on-error',
+            '--pipeline=api',
+            '--api-url=%s' % api_url
+        ])
+        assert output_file.read_bytes() == XML_CONTENT_1
+        # assert False

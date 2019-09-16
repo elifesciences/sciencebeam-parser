@@ -7,5 +7,6 @@
 
 .cache
 .models
+launch_*.py
 
 *.pyc

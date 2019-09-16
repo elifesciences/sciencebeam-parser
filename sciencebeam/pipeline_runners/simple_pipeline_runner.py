@@ -32,14 +32,18 @@ class SimplePipelineRunner:
             for data_type in step.get_supported_types()
         }
 
-    def convert(self, content, filename, data_type, includes=None):
-        # type: (str, str, str) -> dict
+    def convert(
+            self, content: str, filename: str, data_type: str,
+            includes=None,
+            context: dict = None) -> dict:
         current_item = {
             StepDataProps.CONTENT: content,
             StepDataProps.FILENAME: filename,
             StepDataProps.TYPE: data_type,
             StepDataProps.INCLUDES: includes
         }
+        if context is None:
+            context = {}
         num_processed = 0
         for step in self._steps:
             data_type = current_item['type']
@@ -52,7 +56,7 @@ class SimplePipelineRunner:
                 'executing step (with type "%s"): %s',
                 data_type, step
             )
-            current_item = step(current_item)
+            current_item = step(current_item, context=context)
             num_processed += 1
         if not num_processed:
             raise UnsupportedDataTypeError(data_type)

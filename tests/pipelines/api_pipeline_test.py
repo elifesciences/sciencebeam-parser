@@ -20,13 +20,12 @@ XML_CONTENT = b'<article>XML</article>'
 
 
 @pytest.fixture(name='requests_post', autouse=True)
-def _requests_post():
-    with patch.object(api_pipeline_module, 'requests_post') as requests_post:
-        yield requests_post
+def _requests_post(requests_session_post_mock: MagicMock):
+    return requests_session_post_mock
 
 
 @pytest.fixture(name='response')
-def _response(requests_post):
+def _response(requests_post: MagicMock):
     return requests_post.return_value
 
 

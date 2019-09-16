@@ -94,7 +94,7 @@ class TestCreateSimlePipelineFromConfig:
             StepDataProps.CONTENT: PDF_CONTENT,
             StepDataProps.TYPE: MimeTypes.PDF,
             StepDataProps.INCLUDES: {FieldNames.TITLE}
-        })
+        }, context={})
 
     def test_should_skip_first_step_if_content_type_does_not_match(self, pipeline, args, step):
         config = dict_to_config(DEFAULT_CONFIG)

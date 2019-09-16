@@ -41,10 +41,9 @@ def _generate_content_with_title(title):
 
 
 @pytest.fixture(name='requests_post', autouse=True)
-def _requests_post():
-    with patch.object(sciencebeam_autocut_pipeline_module, 'requests_post') as mock:
-        mock.return_value.text = ''
-        yield mock
+def _requests_post(requests_session_post_mock: MagicMock):
+    requests_session_post_mock.return_value.text = ''
+    return requests_session_post_mock
 
 
 @pytest.fixture(name='response')
