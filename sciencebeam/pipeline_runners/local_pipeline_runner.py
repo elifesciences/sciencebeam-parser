@@ -113,6 +113,13 @@ def process_with_pool_executor(
         fail_on_error: bool):
     error_count = 0
     success_count = 0
+
+    def log_summary(name: str):
+        LOGGER.info(
+            '%s: %d success, %d failures (total: %d)',
+            name, success_count, error_count, len(file_list)
+        )
+
     with tqdm_with_logging_redirect(total=len(file_list)) as pbar:
         future_to_url = {
             executor.submit(process_file_url, url): url
@@ -125,15 +132,14 @@ def process_with_pool_executor(
             try:
                 future.result()
                 success_count += 1
+                log_summary('progress')
             except Exception as exc:  # pylint: disable=broad-except
                 error_count += 1
+                log_summary('progress')
                 LOGGER.warning('%r generated an exception: %s', url, exc)
                 if fail_on_error:
                     raise
-    LOGGER.info(
-        'done: %d success, %d failures (total: %d)',
-        success_count, error_count, len(file_list)
-    )
+    log_summary('done')
 
 
 def run(args, config, pipeline: Pipeline):
