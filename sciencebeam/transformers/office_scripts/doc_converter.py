@@ -12,15 +12,11 @@ from __future__ import absolute_import, print_function
 
 import argparse
 import os
-import mimetypes
 import logging
 import subprocess
-import sys
 import atexit
 from time import sleep
 from contextlib import contextmanager
-from tempfile import TemporaryDirectory
-from pathlib import Path
 
 import uno
 from com.sun.star.beans import PropertyValue  # pylint: disable=import-error
@@ -220,8 +216,8 @@ def dict_to_property_values(d):
 
 def property_set_to_dict(property_set):
     return {
-        prop.Name: pageStyle.getPropertyValue(prop.Name)
-        for prop in pageStyle.getPropertySetInfo().getProperties()
+        prop.Name: property_set.getPropertyValue(prop.Name)
+        for prop in property_set.getPropertySetInfo().getProperties()
     }
 
 
@@ -307,9 +303,9 @@ def run(args):
     if args.command == 'convert':
         resolver = get_resolver()
         with managed_connection(
-            resolver, args.port,
-            no_launch=args.no_launch,
-            keep_listener_running=args.keep_listener_running) as connection:
+                resolver, args.port,
+                no_launch=args.no_launch,
+                keep_listener_running=args.keep_listener_running) as connection:
 
             with managed_desktop(connection, args.keep_listener_running) as desktop:
                 convert(connection, desktop, args)

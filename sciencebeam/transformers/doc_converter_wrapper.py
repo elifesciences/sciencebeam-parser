@@ -100,7 +100,7 @@ def _exec_doc_converter(args, enable_debug=False, process_timeout=None, daemon=F
     )
 
 
-class DocConverterWrapper(object):
+class DocConverterWrapper:
     def __init__(
             self, port=2003, enable_debug=False,
             no_launch=True,
