@@ -56,6 +56,11 @@ def parse_args(argv=None):
     )
 
     convert_parser.add_argument(
+        '--output-file', type=str,
+        help='Output file (if specified, only one input file should be used)'
+    )
+
+    convert_parser.add_argument(
         'input_file', type=str, nargs='+',
         help='Input files (does not support pdf)'
     )
@@ -271,6 +276,13 @@ def convert_document_file(
 
 
 def convert(connection, desktop, args):
+    if args.output_file and len(args.input_file) > 1:
+        raise RuntimeError(
+            ''.join([
+                'only one input field should be specified together with --output-file.'
+                ' (input files: %s)'
+            ]) % args.input_file
+        )
     for input_filename in args.input_file:
         LOGGER.info(
             'processing: %s (%s)',
@@ -280,13 +292,19 @@ def convert(connection, desktop, args):
         name, input_ext = os.path.splitext(input_filename)
         if input_ext.startswith('.'):
             input_ext = input_ext[1:]
-        if input_ext == args.format:
+        if not args.output_file and input_ext == args.format:
             raise RuntimeError(
-                'input and output format should not be the same: %s -> %s' % (
+                ''.join([
+                    'input and output format should not be the same',
+                    ' (unless --output-file was specified): %s -> %s'
+                 ]) % (
                     input_ext, args.format
                 )
             )
-        output_filename = name + '.' + args.format
+        if args.output_file:
+            output_filename = args.output_file
+        else:
+            output_filename = name + '.' + args.format
         convert_document_file(
             connection,
             desktop,

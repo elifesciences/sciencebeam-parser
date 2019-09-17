@@ -136,6 +136,11 @@ class DocConverterWrapper:
 
     def convert(self, temp_source_filename, output_type: str = 'pdf'):
         self.start_listener_if_not_running()
+
+        temp_target_filename = change_ext(
+            temp_source_filename, None, '-output.%s' % output_type
+        )
+
         args = []
         args.extend([
             'convert',
@@ -144,6 +149,7 @@ class DocConverterWrapper:
             '--remove-header-footer',
             '--remove-redline',
             '--port', str(self.port),
+            '--output-file', str(temp_target_filename),
             temp_source_filename
         ])
         if self.no_launch:
@@ -156,7 +162,6 @@ class DocConverterWrapper:
             process_timeout=self.process_timeout
         )
 
-        temp_target_filename = change_ext(temp_source_filename, None, '.%s' % output_type)
         if not os.path.exists(temp_target_filename):
             raise RuntimeError('temp target file missing: %s' % temp_target_filename)
         return temp_target_filename
