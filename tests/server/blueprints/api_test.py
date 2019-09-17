@@ -137,9 +137,11 @@ class TestApiBlueprint:
                 response = test_client.post('/convert', data=dict(
                     file=(BytesIO(PDF_CONTENT), PDF_FILENAME),
                 ))
+                expected_context = {'request_args': {}}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
@@ -157,9 +159,13 @@ class TestApiBlueprint:
                     data=PDF_CONTENT,
                     content_type=MimeTypes.PDF
                 )
+                expected_context = {'request_args': {
+                    'filename': PDF_FILENAME
+                }}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
@@ -177,11 +183,13 @@ class TestApiBlueprint:
                     data=PDF_CONTENT,
                     content_type=MimeTypes.PDF
                 )
+                expected_context = {'request_args': {}}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT,
                     filename='%s.pdf' % DEFAULT_FILENAME,
                     data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
@@ -201,9 +209,14 @@ class TestApiBlueprint:
                     data=PDF_CONTENT,
                     content_type=MimeTypes.PDF
                 )
+                expected_context = {'request_args': {
+                    'filename': PDF_FILENAME,
+                    'includes': ','.join([FieldNames.TITLE, FieldNames.ABSTRACT])
+                }}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes={FieldNames.TITLE, FieldNames.ABSTRACT}
+                    includes={FieldNames.TITLE, FieldNames.ABSTRACT},
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT

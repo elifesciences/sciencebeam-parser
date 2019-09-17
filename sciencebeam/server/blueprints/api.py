@@ -85,9 +85,13 @@ def create_api_blueprint(config, args):
             'processing file: %s (%d bytes, type "%s")',
             filename, len(content), data_type
         )
+        context = {
+            'request_args': dict(request.args)
+        }
         conversion_result = pipeline_runner.convert(
             content=content, filename=filename, data_type=data_type,
-            includes=includes
+            includes=includes,
+            context=context
         )
         response_content = conversion_result['content']
         response_type = conversion_result['type']
