@@ -60,6 +60,14 @@ dev-watch-slow:
 dev-test: dev-lint dev-pytest
 
 
+dev-start:
+	$(PYTHON) -m sciencebeam.server $(ARGS)
+
+
+dev-start-doc-to-pdf:
+	$(PYTHON) -m sciencebeam.server --port=8075 --pipeline=doc_to_pdf $(ARGS)
+
+
 build-dev:
 	@if [ "$(NO_BUILD)" != "y" ]; then \
 		$(DOCKER_COMPOSE) build sciencebeam-base-dev sciencebeam-dev; \
