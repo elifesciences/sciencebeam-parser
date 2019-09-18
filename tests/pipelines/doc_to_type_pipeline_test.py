@@ -58,21 +58,21 @@ class TestDocToXyzStep:
 
     @patch.object(os, 'environ', {})
     def test_should_set_remove_line_no_to_true_if_env_var_is_y(self):
-        os.environ['REMOVE_LINE_NO'] = 'y'
+        os.environ['SCIENCEBEAM_REMOVE_LINE_NO'] = 'y'
         assert _DocToXyzStep().get_doc_to_type_kwargs(
             INPUT_DATA_1, context={}
         ).get('remove_line_no')
 
     @patch.object(os, 'environ', {})
     def test_should_set_remove_line_no_to_false_if_env_var_is_n(self):
-        os.environ['REMOVE_LINE_NO'] = 'n'
+        os.environ['SCIENCEBEAM_REMOVE_LINE_NO'] = 'n'
         assert not _DocToXyzStep().get_doc_to_type_kwargs(
             INPUT_DATA_1, context={}
         ).get('remove_line_no')
 
     @patch.object(os, 'environ', {})
     def test_should_prefer_request_args(self):
-        os.environ['REMOVE_LINE_NO'] = 'y'
+        os.environ['SCIENCEBEAM_REMOVE_LINE_NO'] = 'y'
         assert not _DocToXyzStep().get_doc_to_type_kwargs(
             INPUT_DATA_1, context={'request_args': {'remove_line_no': 'n'}}
         ).get('remove_line_no')

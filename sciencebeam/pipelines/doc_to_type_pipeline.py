@@ -31,7 +31,7 @@ class DocToTypeStep(PipelineStep):
         for key in {'remove_line_no', 'remove_header_footer', 'remove_redline'}:
             value = request_args.get(key)
             if not value:
-                value = os.environ.get(key.upper())
+                value = os.environ.get('SCIENCEBEAM_%s' % key.upper())
             if value:
                 kwargs[key] = (value == 'y')
         return kwargs
