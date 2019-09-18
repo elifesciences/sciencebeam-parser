@@ -82,15 +82,12 @@ class ApiEndToEndTestHelper:
         self.source_path.mkdir(parents=True, exist_ok=True)
         self.source_file_list_filename = None
 
-
     def get_output_file(self, filename: str = OUTPUT_FILE_1) -> Path:
         return self.output_path.joinpath(filename)
-
 
     def write_source_file_bytes(
             self, filename: str = INPUT_FILE_1, data: bytes = PDF_CONTENT_1):
         self.source_path.joinpath(filename).write_bytes(data)
-
 
     def write_source_file_list(
             self,
@@ -192,7 +189,6 @@ class TestMainEndToEnd:
             'resume': True
         }))
         assert output_file.read_bytes() == XML_CONTENT_1
-
 
     def test_should_pass_request_args(
             self, mock_server: MockServer,
