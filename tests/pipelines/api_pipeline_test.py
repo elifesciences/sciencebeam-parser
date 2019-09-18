@@ -5,6 +5,8 @@ from mock import patch, MagicMock
 
 import pytest
 
+from werkzeug.datastructures import MultiDict
+
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from sciencebeam.pipelines import api_pipeline as api_pipeline_module
@@ -50,11 +52,11 @@ def _args():
     return MagicMock(name='args')
 
 
-def _run_pipeline(config, args, pdf_input):
+def _run_pipeline(config, args, pdf_input, context: dict = None):
     parser = argparse.ArgumentParser()
     PIPELINE.add_arguments(parser, config)
     steps = PIPELINE.get_steps(config, args)
-    return reduce(lambda value, step: step(value), steps, pdf_input)
+    return reduce(lambda value, step: step(value, context=context), steps, pdf_input)
 
 
 class TestScienceParsePipeline:
@@ -81,3 +83,13 @@ class TestScienceParsePipeline:
         result = _run_pipeline(config, args, PDF_INPUT)
         assert result['content'] == XML_CONTENT
         assert result['type'] == MimeTypes.JATS_XML
+
+    def test_should_pass_passed_in_url_parameters_to_requests_post_call(
+            self, config, args, requests_post):
+
+        args.api_url = 'http://sciencebeam/api'
+        request_args = MultiDict([('remove_line_no', 'n')])
+        _run_pipeline(config, args, PDF_INPUT, context={'request_args': request_args})
+        requests_post.assert_called()
+        actual_params = requests_post.call_args[1]['params']
+        assert actual_params == {'filename': PDF_INPUT['filename'], 'remove_line_no': 'n'}

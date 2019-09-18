@@ -86,16 +86,37 @@ class RequestsPipelineStep(ABC):
         return response
 
     @abstractmethod
-    def process_request(self, data: dict, session: Session):
+    def process_request(self, data: dict, session: Session, context: dict = None):
         pass
+
+    def get_context_request_params_dict(self, context: dict) -> dict:
+        LOGGER.debug('context: %s', context)
+        request_args = (context or {}).get('request_args', {})
+        LOGGER.debug('request_args: %s', request_args)
+        try:
+            return request_args.to_dict()
+        except AttributeError:
+            return dict(request_args)
+
+    def get_data_request_params_dict(self, data: dict) -> dict:
+        filename = (data or {}).get('filename')
+        if filename:
+            return {'filename': filename}
+        return {}
+
+    def get_default_params(self, data: dict, context: dict):
+        return {
+            **self.get_context_request_params_dict(context=context),
+            **self.get_data_request_params_dict(data=data)
+        }
 
     def __call__(self, data, context: dict = None):
         session = (context or {}).get(RequestsPipelineStep.REQUESTS_SESSION_KEY)
         if session is None:
             with requests.Session() as session:
                 LOGGER.debug('no session provided, creating new session: %s', session)
-                return self.process_request(data, session)
-        return self.process_request(data, session)
+                return self.process_request(data, session, context=context)
+        return self.process_request(data, session, context=context)
 
     def __str__(self):
         return type(self).__name__

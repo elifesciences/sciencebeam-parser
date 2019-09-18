@@ -30,7 +30,7 @@ class ScienceBeamAutocutApiStep(RequestsPipelineStep):
     def get_supported_types(self):
         return {MimeTypes.JATS_XML, MimeTypes.TEI_XML, MimeTypes.XML}
 
-    def process_request(self, data: dict, session: requests.Session):
+    def process_request(self, data: dict, session: requests.Session, context: dict = None):
         root = etree.fromstring(data['content'])
         matching_nodes = root.xpath(self._xpath)
         if not matching_nodes:
