@@ -49,6 +49,11 @@ RUN useradd -ms /bin/bash sciencebeam
 USER sciencebeam
 ENV HOME=/home/sciencebeam
 
+# set and check UNO_PYTHON_PATH
+ENV UNO_PYTHON_PATH=python3.7
+RUN ${UNO_PYTHON_PATH} -c 'import uno, unohelper' \
+  && echo "UNO_PYTHON_PATH: ${UNO_PYTHON_PATH}"
+
 # labels
 LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"
 LABEL org.opencontainers.image.revision="${commit}"
