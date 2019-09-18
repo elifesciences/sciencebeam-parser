@@ -94,6 +94,12 @@ start:
 	$(DOCKER_COMPOSE) up -d --build grobid sciencebeam
 
 
+start-doc-to-pdf:
+	$(DOCKER_COMPOSE) build sciencebeam
+	$(DOCKER_COMPOSE) run --rm --no-deps -p 8075:8075 sciencebeam \
+		python -m sciencebeam.server --host=0.0.0.0 --port=8075 --pipeline=doc_to_pdf $(ARGS)
+
+
 stop:
 	$(DOCKER_COMPOSE) down
 
