@@ -1,13 +1,16 @@
 import logging
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 import flask
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
+from sciencebeam.utils.misc import dict_to_args
 
 from sciencebeam.pipeline_runners.local_pipeline_runner import (
+    parse_args,
     main
 )
 
@@ -19,6 +22,45 @@ LOGGER = logging.getLogger(__name__)
 PDF_CONTENT_1 = b'pdf content 1'
 XML_CONTENT_1 = b'<article>xml content 1</article>'
 XML_CONTENT_2 = b'<article>xml content 2</article>'
+
+
+DEFAULT_ARGS = {
+    'data-path': '/path/to/source',
+    'source-file-list': 'file-list.tsv',
+    'source-file-column': 'source_url',
+    'output-path': '/path/to/output',
+    'output-suffix': '.xml',
+    'pipeline': 'pipeline1'
+}
+
+
+DEFAULT_CONFIG = {}
+
+
+@pytest.fixture(name='pipeline_mock')
+def _pipeline_mock():
+    return MagicMock(name='pipeline')
+
+
+class TestParseArgs:
+    def test_should_parse_default_args(self, pipeline_mock: MagicMock):
+        parse_args(
+            pipeline=pipeline_mock, config=DEFAULT_CONFIG, argv=dict_to_args(DEFAULT_ARGS)
+        )
+
+    def test_should_parse_request_args(self, pipeline_mock: MagicMock):
+        args = parse_args(
+            pipeline=pipeline_mock,
+            config=DEFAULT_CONFIG,
+            argv=dict_to_args({
+                **DEFAULT_ARGS,
+                'request-args': 'remove_line_no=n&remove_redline=n'
+            })
+        )
+        assert args.request_args.to_dict() == {
+            'remove_line_no': 'n',
+            'remove_redline': 'n'
+        }
 
 
 @pytest.mark.slow

@@ -3,11 +3,13 @@ from __future__ import absolute_import
 import argparse
 import logging
 import concurrent.futures
+from urllib.parse import parse_qsl
 from functools import partial
 from mimetypes import guess_type
 from typing import Callable, List
 
 import requests
+from werkzeug.datastructures import MultiDict
 
 from sciencebeam_utils.beam_utils.io import (
     read_all_from_path,
@@ -73,11 +75,30 @@ def add_num_workers_argument(parser: argparse.ArgumentParser):
     )
 
 
+def _parse_request_args(request_args_str: str) -> MultiDict:
+    LOGGER.debug('request_args_str: %s', request_args_str)
+    return MultiDict(parse_qsl(request_args_str.strip('"')))
+
+
+def add_request_args_argument(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        '--request-args',
+        type=_parse_request_args,
+        help=''.join([
+            'The request args to use as if they were passed in to the URL',
+            ' (in the query string format).',
+            ' e.g. \'remove_line_no=n&remove_redline=n\''
+        ])
+    )
+
+
 def parse_args(pipeline, config, argv=None):
+    LOGGER.debug('argv=%s', argv)
     parser = argparse.ArgumentParser()
     add_pipeline_args(parser)
     add_batch_args(parser)
     add_num_workers_argument(parser)
+    add_request_args_argument(parser)
     pipeline.add_arguments(parser, config, argv)
 
     args = parser.parse_args(argv)
@@ -93,7 +114,8 @@ def parse_args(pipeline, config, argv=None):
 def process_file(
         file_url: str, simple_runner: SimplePipelineRunner,
         get_output_file_for_source_url: Callable[[str], str],
-        session: requests.Session):
+        session: requests.Session,
+        request_args: MultiDict = None):
     output_file_url = get_output_file_for_source_url(
         file_url
     )
@@ -102,9 +124,12 @@ def process_file(
     data_type = guess_type(file_url)[0]
     LOGGER.debug('data_type: %s', data_type)
     LOGGER.debug('session: %s', session)
+    context = {RequestsPipelineStep.REQUESTS_SESSION_KEY: session}
+    if request_args:
+        context['request_args'] = request_args
     result = simple_runner.convert(
         file_content, file_url, data_type,
-        context={RequestsPipelineStep.REQUESTS_SESSION_KEY: session}
+        context=context
     )
     LOGGER.debug('result.keys: %s', result.keys())
     output_content = encode_if_text_type(result[DataProps.CONTENT])
@@ -169,7 +194,8 @@ def run(args, config, pipeline: Pipeline):
             process_file,
             simple_runner=simple_runner,
             get_output_file_for_source_url=get_output_file_for_source_file_fn(args),
-            session=session
+            session=session,
+            request_args=args.request_args
         )
 
         num_workers = args.num_workers
