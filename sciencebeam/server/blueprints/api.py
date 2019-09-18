@@ -86,7 +86,7 @@ def create_api_blueprint(config, args):
             filename, len(content), data_type
         )
         context = {
-            'request_args': dict(request.args)
+            'request_args': request.args
         }
         conversion_result = pipeline_runner.convert(
             content=content, filename=filename, data_type=data_type,
