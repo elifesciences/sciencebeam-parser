@@ -1,3 +1,4 @@
+import os
 from mock import patch
 
 import pytest
@@ -47,10 +48,31 @@ class TestDocToXyzStep:
 
     def test_should_set_remove_line_no_to_true_if_request_args_is_y(self):
         assert _DocToXyzStep().get_doc_to_type_kwargs(
-            INPUT_DATA_1, {'request_args': {'remove_line_no': 'y'}}
+            INPUT_DATA_1, context={'request_args': {'remove_line_no': 'y'}}
         ).get('remove_line_no')
 
     def test_should_set_remove_line_no_to_false_if_request_args_is_n(self):
         assert not _DocToXyzStep().get_doc_to_type_kwargs(
-            INPUT_DATA_1, {'request_args': {'remove_line_no': 'n'}}
+            INPUT_DATA_1, context={'request_args': {'remove_line_no': 'n'}}
+        ).get('remove_line_no')
+
+    @patch.object(os, 'environ', {})
+    def test_should_set_remove_line_no_to_true_if_env_var_is_y(self):
+        os.environ['REMOVE_LINE_NO'] = 'y'
+        assert _DocToXyzStep().get_doc_to_type_kwargs(
+            INPUT_DATA_1, context={}
+        ).get('remove_line_no')
+
+    @patch.object(os, 'environ', {})
+    def test_should_set_remove_line_no_to_false_if_env_var_is_n(self):
+        os.environ['REMOVE_LINE_NO'] = 'n'
+        assert not _DocToXyzStep().get_doc_to_type_kwargs(
+            INPUT_DATA_1, context={}
+        ).get('remove_line_no')
+
+    @patch.object(os, 'environ', {})
+    def test_should_prefer_request_args(self):
+        os.environ['REMOVE_LINE_NO'] = 'y'
+        assert not _DocToXyzStep().get_doc_to_type_kwargs(
+            INPUT_DATA_1, context={'request_args': {'remove_line_no': 'n'}}
         ).get('remove_line_no')

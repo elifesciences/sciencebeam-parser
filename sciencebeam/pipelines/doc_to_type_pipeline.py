@@ -1,4 +1,5 @@
 import logging
+import os
 
 from sciencebeam_utils.utils.file_path import change_ext
 
@@ -28,8 +29,11 @@ class DocToTypeStep(PipelineStep):
             output_mime_type=self.output_mime_type
         )
         for key in {'remove_line_no', 'remove_header_footer', 'remove_redline'}:
-            if request_args.get(key):
-                kwargs[key] = (request_args[key] == 'y')
+            value = request_args.get(key)
+            if not value:
+                value = os.environ.get(key.upper())
+            if value:
+                kwargs[key] = (value == 'y')
         return kwargs
 
     def __call__(self, data, context: dict = None):
