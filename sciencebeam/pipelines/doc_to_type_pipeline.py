@@ -20,14 +20,22 @@ class DocToTypeStep(PipelineStep):
     def get_supported_types(self):
         return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF}
 
+    def get_doc_to_type_kwargs(self, data: dict, context: dict = None):
+        request_args = (context or {}).get('request_args', {})
+        kwargs = dict(
+            doc_content=data['content'],
+            data_type=data['type'],
+            output_mime_type=self.output_mime_type
+        )
+        for key in {'remove_line_no', 'remove_header_footer', 'remove_redline'}:
+            if request_args.get(key):
+                kwargs[key] = (request_args[key] == 'y')
+        return kwargs
+
     def __call__(self, data, context: dict = None):
         return {
             'filename': change_ext(data['filename'], None, self.output_ext),
-            'content': doc_to_type(
-                data['content'],
-                data['type'],
-                output_mime_type=self.output_mime_type
-            ),
+            'content': doc_to_type(**self.get_doc_to_type_kwargs(data, context=context)),
             'type': self.output_mime_type
         }
 

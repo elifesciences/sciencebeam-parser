@@ -44,3 +44,13 @@ class TestDocToXyzStep:
 
     def test_should_call_doc_to_pdf_and_return_pdf_filename(self):
         assert _DocToXyzStep()(INPUT_DATA_1)['filename'] == OUTPUT_FILENAME_1
+
+    def test_should_set_remove_line_no_to_true_if_request_args_is_y(self):
+        assert _DocToXyzStep().get_doc_to_type_kwargs(
+            INPUT_DATA_1, {'request_args': {'remove_line_no': 'y'}}
+        ).get('remove_line_no')
+
+    def test_should_set_remove_line_no_to_false_if_request_args_is_n(self):
+        assert not _DocToXyzStep().get_doc_to_type_kwargs(
+            INPUT_DATA_1, {'request_args': {'remove_line_no': 'n'}}
+        ).get('remove_line_no')

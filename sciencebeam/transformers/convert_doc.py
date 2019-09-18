@@ -37,7 +37,7 @@ def _get_doc_converter() -> DocConverterWrapper:
     return instance
 
 
-def _convert_doc_to(doc_content, data_type, output_type):
+def _convert_doc_to(doc_content, data_type, output_type, **kwargs):
     with TemporaryDirectory('convert-doc-to') as path:
         doc_ext = guess_extension(data_type)
         temp_doc = os.path.join(path, 'temp%s' % doc_ext)
@@ -45,24 +45,25 @@ def _convert_doc_to(doc_content, data_type, output_type):
         with open(temp_doc, 'wb') as f:
             f.write(doc_content)
         doc_converter = _get_doc_converter()
-        temp_out = doc_converter.convert(temp_doc, output_type=output_type)
+        temp_out = doc_converter.convert(temp_doc, output_type=output_type, **kwargs)
         with open(temp_out, 'rb') as f:
             content = f.read()
             LOGGER.debug('read %d bytes (%s)', len(content), temp_out)
             return content
 
 
-def doc_to_pdf(doc_content, data_type=MimeTypes.DOC):
-    return _convert_doc_to(doc_content, data_type, 'pdf')
+def doc_to_pdf(doc_content, data_type=MimeTypes.DOC, **kwargs):
+    return _convert_doc_to(doc_content, data_type, 'pdf', **kwargs)
 
 
-def doc_to_docx(doc_content, data_type=MimeTypes.DOC):
-    return _convert_doc_to(doc_content, data_type, 'docx')
+def doc_to_docx(doc_content, data_type=MimeTypes.DOC, **kwargs):
+    return _convert_doc_to(doc_content, data_type, 'docx', **kwargs)
 
 
 def doc_to_type(
         doc_content,
         data_type: str,
-        output_mime_type: str):
+        output_mime_type: str,
+        **kwargs):
     output_type = OUTPUT_TYPE_BY_MIME_TYPE[output_mime_type]
-    return _convert_doc_to(doc_content, data_type, output_type)
+    return _convert_doc_to(doc_content, data_type, output_type, **kwargs)

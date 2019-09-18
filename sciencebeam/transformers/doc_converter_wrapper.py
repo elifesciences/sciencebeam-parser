@@ -134,7 +134,11 @@ class DocConverterWrapper:
             get_logger().info('stopping listener')
             self._listener_process.send_signal(signal.SIGINT)
 
-    def convert(self, temp_source_filename, output_type: str = 'pdf'):
+    def convert(
+            self, temp_source_filename, output_type: str = 'pdf',
+            remove_line_no: bool = True,
+            remove_header_footer: bool = True,
+            remove_redline: bool = True):
         self.start_listener_if_not_running()
 
         temp_target_filename = change_ext(
@@ -144,10 +148,15 @@ class DocConverterWrapper:
         args = []
         args.extend([
             'convert',
-            '--format', output_type,
-            '--remove-line-no',
-            '--remove-header-footer',
-            '--remove-redline',
+            '--format', output_type
+        ])
+        if remove_line_no:
+            args.append('--remove-line-no')
+        if remove_header_footer:
+            args.append('--remove-header-footer')
+        if remove_redline:
+            args.append('--remove-redline')
+        args.extend([
             '--port', str(self.port),
             '--output-file', str(temp_target_filename),
             temp_source_filename
