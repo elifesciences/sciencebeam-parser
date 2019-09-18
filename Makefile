@@ -29,6 +29,7 @@ dev-install:
 	$(PIP) install -r requirements.prereq.txt
 	$(PIP) install -r requirements.txt
 	$(PIP) install -r requirements.dev.txt
+	$(PIP) install -e . --no-deps
 
 
 dev-venv: venv-create dev-install

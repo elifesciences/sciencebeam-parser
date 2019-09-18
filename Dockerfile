@@ -38,6 +38,8 @@ COPY sciencebeam ${PROJECT_HOME}/sciencebeam
 COPY xslt ${PROJECT_HOME}/xslt
 COPY *.cfg *.conf *.sh *.in *.txt *.py ${PROJECT_HOME}/
 
+RUN pip install -e . --no-deps
+
 ARG commit
 ARG version
 COPY docker ./docker
