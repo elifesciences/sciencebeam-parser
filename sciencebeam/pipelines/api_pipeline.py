@@ -15,11 +15,11 @@ class ApiStep(RequestsPipelineStep):
     def get_supported_types(self):
         return {MimeTypes.DOC, MimeTypes.DOCX, MimeTypes.DOTX, MimeTypes.RTF, MimeTypes.PDF}
 
-    def process_request(self, data: dict, session: requests.Session):
+    def process_request(self, data: dict, session: requests.Session, context: dict = None):
         response = self.post_data(
             data=data,
             session=session,
-            params={'filename': data['filename']}
+            params=self.get_default_params(data=data, context=context)
         )
         return {
             'filename': change_ext(data['filename'], None, '.xml'),

@@ -18,7 +18,7 @@ class ScienceParseApiStep(RequestsPipelineStep):
     def get_supported_types(self):
         return {MimeTypes.PDF}
 
-    def process_request(self, data: dict, session: requests.Session):
+    def process_request(self, data: dict, session: requests.Session, context: dict = None):
         response = self.post_data(
             data=data,
             session=session
