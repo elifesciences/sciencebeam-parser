@@ -10,6 +10,12 @@ from .doc_converter_wrapper import DocConverterWrapper
 LOGGER = logging.getLogger(__name__)
 
 
+OUTPUT_TYPE_BY_MIME_TYPE = {
+    MimeTypes.DOCX: 'docx',
+    MimeTypes.PDF: 'pdf'
+}
+
+
 DEFAULT_CONFIGURATION = dict(
     enable_debug=False,
     no_launch=True,
@@ -52,3 +58,11 @@ def doc_to_pdf(doc_content, data_type=MimeTypes.DOC):
 
 def doc_to_docx(doc_content, data_type=MimeTypes.DOC):
     return _convert_doc_to(doc_content, data_type, 'docx')
+
+
+def doc_to_type(
+        doc_content,
+        data_type: str,
+        output_mime_type: str):
+    output_type = OUTPUT_TYPE_BY_MIME_TYPE[output_mime_type]
+    return _convert_doc_to(doc_content, data_type, output_type)
