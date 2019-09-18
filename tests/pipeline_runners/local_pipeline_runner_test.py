@@ -193,6 +193,30 @@ class TestMainEndToEnd:
         }))
         assert output_file.read_bytes() == XML_CONTENT_1
 
+
+    def test_should_pass_request_args(
+            self, mock_server: MockServer,
+            api_end_to_end_test_helper: ApiEndToEndTestHelper):
+        received_request_args = {}
+
+        def _callback():
+            received_request_args.update(flask.request.args.to_dict())
+            return flask.Response(XML_CONTENT_1, mimetype=MimeTypes.JATS_XML)
+
+        api_url = mock_server.add_callback_response(
+            '/api/convert',
+            _callback,
+            methods=('POST',)
+        )
+        LOGGER.debug('api_url: %s', api_url)
+        api_end_to_end_test_helper.write_default_source_files()
+        api_end_to_end_test_helper.output_path.mkdir(parents=True, exist_ok=True)
+        main(dict_to_args({
+            **api_end_to_end_test_helper.get_args(api_url=api_url),
+            'request-args': 'remove_line_no=n'
+        }))
+        assert received_request_args.get('remove_line_no') == 'n'
+
     def test_should_retry_convert_api_call(
             self, mock_server: MockServer,
             api_end_to_end_test_helper: ApiEndToEndTestHelper):
