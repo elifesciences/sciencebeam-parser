@@ -36,7 +36,7 @@ def _DocToXyzStep():
     return DocToTypeStep(output_ext=OUTPUT_EXT_1, output_mime_type=OUTPUT_MIME_TYPE_1)
 
 
-class TestDocToXyzStep:
+class TestDocToTypeStep:
     def test_should_call_doc_to_type_and_return_pdf_content(self):
         assert _DocToXyzStep()(INPUT_DATA_1)['content'] == OUTPUT_CONTENT_1
 
