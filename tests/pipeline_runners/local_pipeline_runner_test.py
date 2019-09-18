@@ -65,7 +65,7 @@ class TestParseArgs:
 
 @pytest.mark.slow
 class TestMainEndToEnd:
-    def _test_should_convert_single_file_using_file_list(
+    def test_should_convert_single_file_using_file_list(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_1,
@@ -90,7 +90,7 @@ class TestMainEndToEnd:
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
 
-    def _test_should_convert_single_file_using_file_path(
+    def test_should_convert_single_file_using_file_path(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_1,
@@ -114,7 +114,7 @@ class TestMainEndToEnd:
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
 
-    def _test_should_skip_existing_file(
+    def test_should_skip_existing_file(
             self, temp_dir: Path, mock_server: MockServer):
         api_url = mock_server.add_response(
             '/api/convert', XML_CONTENT_2,
@@ -150,7 +150,6 @@ class TestMainEndToEnd:
         ]
         api_url = mock_server.add_multiple_callbacks_response(
             '/api/convert', callbacks,
-            # mimetype=MimeTypes.JATS_XML,
             methods=('POST',)
         )
         LOGGER.debug('api_url: %s', api_url)
@@ -171,4 +170,3 @@ class TestMainEndToEnd:
             '--api-url=%s' % api_url
         ])
         assert output_file.read_bytes() == XML_CONTENT_1
-        # assert False
