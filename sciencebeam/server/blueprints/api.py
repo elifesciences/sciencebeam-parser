@@ -85,9 +85,13 @@ def create_api_blueprint(config, args):
             'processing file: %s (%d bytes, type "%s")',
             filename, len(content), data_type
         )
+        context = {
+            'request_args': request.args
+        }
         conversion_result = pipeline_runner.convert(
             content=content, filename=filename, data_type=data_type,
-            includes=includes
+            includes=includes,
+            context=context
         )
         response_content = conversion_result['content']
         response_type = conversion_result['type']
@@ -97,7 +101,14 @@ def create_api_blueprint(config, args):
         )
         if response_type in {MimeTypes.TEI_XML, MimeTypes.JATS_XML}:
             response_type = 'text/xml'
-        return Response(response_content, mimetype=response_type)
+        filename = conversion_result.get('filename')
+        LOGGER.debug('output filename: %s', filename)
+        headers = None
+        if filename and response_type not in {'text/xml', MimeTypes.PDF}:
+            headers = {
+                'Content-Disposition': 'attachment; filename=%s' % filename
+            }
+        return Response(response_content, headers=headers, mimetype=response_type)
 
     @blueprint.route("/convert", methods=['GET'])
     def _convert_form():

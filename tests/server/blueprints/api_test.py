@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import logging
 import json
 from io import BytesIO
-from mock import patch, MagicMock
+from mock import patch, MagicMock, ANY
 
 from flask import Flask
 from werkzeug.exceptions import BadRequest
@@ -137,9 +137,11 @@ class TestApiBlueprint:
                 response = test_client.post('/convert', data=dict(
                     file=(BytesIO(PDF_CONTENT), PDF_FILENAME),
                 ))
+                expected_context = {'request_args': {}}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
@@ -159,8 +161,12 @@ class TestApiBlueprint:
                 )
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=ANY
                 )
+                actual_context = pipeline_runner.convert.call_args[1]['context']
+                actual_request_args = actual_context['request_args']
+                assert actual_request_args.get('filename') == PDF_FILENAME
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
 
@@ -177,33 +183,41 @@ class TestApiBlueprint:
                     data=PDF_CONTENT,
                     content_type=MimeTypes.PDF
                 )
+                expected_context = {'request_args': {}}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT,
                     filename='%s.pdf' % DEFAULT_FILENAME,
                     data_type=MimeTypes.PDF,
-                    includes=None
+                    includes=None,
+                    context=expected_context
                 )
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT
 
         def test_should_pass_includes_parameter_to_convert_method(
-                self, config, args, pipeline_runner):
+                self, config, args, pipeline_runner: MagicMock):
 
             with _api_test_client(config, args) as test_client:
                 pipeline_runner.convert.return_value = {
                     'content': XML_CONTENT,
                     'type': MimeTypes.JATS_XML
                 }
+                includes_arg = ','.join([FieldNames.TITLE, FieldNames.ABSTRACT])
                 response = test_client.post(
-                    '/convert?filename=%s&includes=%s,%s' % (
-                        PDF_FILENAME, FieldNames.TITLE, FieldNames.ABSTRACT
+                    '/convert?filename=%s&includes=%s' % (
+                        PDF_FILENAME, includes_arg
                     ),
                     data=PDF_CONTENT,
                     content_type=MimeTypes.PDF
                 )
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
-                    includes={FieldNames.TITLE, FieldNames.ABSTRACT}
+                    includes={FieldNames.TITLE, FieldNames.ABSTRACT},
+                    context=ANY
                 )
+                actual_context = pipeline_runner.convert.call_args[1]['context']
+                actual_request_args = actual_context['request_args']
+                assert actual_request_args.get('filename') == PDF_FILENAME
+                assert actual_request_args.get('includes') == includes_arg
                 assert response.status_code == 200
                 assert response.data == XML_CONTENT

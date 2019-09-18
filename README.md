@@ -78,6 +78,27 @@ The [ScienceBeam API](doc/API.md) will be available on port _8075_.
 
 The pipeline used by the API is currently is using the simple pipeline format described above. The pipeline can be configured via `app.cfg` (default: `app-defaults.cfg`). The default pipeline uses GROBID.
 
+## Doc to PDF
+
+The default configuration includes a Doc to PDF conversion, as most tools will accept a PDF.
+
+The Doc to PDF conversion will (by default):
+
+- remove line no
+- remove header and footer (and with it page no)
+- remove redline (accept tracked changes)
+
+This can be switched off by either:
+
+- set one of the environment variables to `n`:
+  - `SCIENCEBEAM_REMOVE_LINE_NO`
+  - `SCIENCEBEAM_REMOVE_HEADER_FOOTER`
+  - `SCIENCEBEAM_REMOVE_REDLINE`
+- or, add one of the URL request parameters to `n`:
+  - `remove_line_no`
+  - `remove_header_footer`
+  - `remove_redline`
+
 ## Extending the Pipeline
 
 You can use the [grobid_pipeline.py](sciencebeam/pipelines/grobid_pipeline.py) as a template and add your own pipelines with other step. Please see [Simple Pipeline](#simple-pipeline) for configuration details.
