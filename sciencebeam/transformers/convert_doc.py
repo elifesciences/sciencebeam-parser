@@ -18,6 +18,8 @@ OUTPUT_TYPE_BY_MIME_TYPE = {
 
 DEFAULT_CONFIGURATION = dict(
     enable_debug=False,
+    # Note: we tell the conversion not to start the uno service,
+    #   because we will start it ahead of time
     no_launch=True,
     keep_listener_running=True,
     process_timeout=60
