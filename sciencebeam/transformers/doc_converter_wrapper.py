@@ -25,12 +25,15 @@ def stream_lines_to_logger(lines, logger, prefix=''):
             logger.info('%s%s', prefix, line)
 
 
+def _send_signal(process: subprocess.Popen, sig):
+    if process.returncode is None:
+        get_logger().info('sending %s signal to process %s', sig, process.pid)
+
+
 def stop_process(process: subprocess.Popen):
-    get_logger().info('sending SIGINT signal to process %s', process.pid)
-    try:
-        process.send_signal(signal.SIGINT)
-    except (AttributeError, OSError):
-        process.terminate()
+    _send_signal(process, signal.SIGINT)
+    timer = Timer(60, lambda: _send_signal(process, signal.SIGKILL))
+    timer.start()
 
 
 def _exec_with_logging(command, logging_prefix, process_timeout=None, daemon=False):
