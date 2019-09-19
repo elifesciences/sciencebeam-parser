@@ -23,7 +23,7 @@ class ApiStep(RequestsPipelineStep):
         )
         return {
             'filename': change_ext(data['filename'], None, '.xml'),
-            'content': response.text,
+            'content': response.content,
             'type': response.headers['Content-Type']
         }
 

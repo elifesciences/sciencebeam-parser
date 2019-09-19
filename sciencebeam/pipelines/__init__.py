@@ -74,7 +74,7 @@ class RequestsPipelineStep(ABC):
     def __init__(self, api_url: str):
         self._api_url = api_url
 
-    def post_data(self, data: dict, session: requests.Session, **kwargs):
+    def post_data(self, data: dict, session: requests.Session, **kwargs) -> requests.Response:
         LOGGER.debug('session: %s', session)
         response = session.post(
             self._api_url,

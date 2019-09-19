@@ -77,7 +77,8 @@ class TestScienceParsePipeline:
 
         args.no_science_parse_xslt = True
 
-        response.text = XML_CONTENT
+        response.text = XML_CONTENT.decode('utf-8')
+        response.content = XML_CONTENT
         response.headers = {'Content-Type': MimeTypes.JATS_XML}
 
         result = _run_pipeline(config, args, PDF_INPUT)

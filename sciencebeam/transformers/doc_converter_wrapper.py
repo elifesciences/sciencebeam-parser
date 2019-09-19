@@ -3,7 +3,7 @@ import subprocess
 import os
 import atexit
 import signal
-from threading import Thread, Timer
+from threading import Thread, Timer, Lock
 from functools import partial
 
 from sciencebeam_utils.utils.file_path import (
@@ -25,12 +25,15 @@ def stream_lines_to_logger(lines, logger, prefix=''):
             logger.info('%s%s', prefix, line)
 
 
+def _send_signal(process: subprocess.Popen, sig):
+    if process.returncode is None:
+        get_logger().info('sending %s signal to process %s', sig, process.pid)
+
+
 def stop_process(process: subprocess.Popen):
-    get_logger().info('sending SIGINT signal to process %s', process.pid)
-    try:
-        process.send_signal(signal.SIGINT)
-    except (AttributeError, OSError):
-        process.terminate()
+    _send_signal(process, signal.SIGINT)
+    timer = Timer(60, lambda: _send_signal(process, signal.SIGKILL))
+    timer.start()
 
 
 def _exec_with_logging(command, logging_prefix, process_timeout=None, daemon=False):
@@ -115,6 +118,7 @@ class DocConverterWrapper:
         self.keep_listener_running = keep_listener_running
         self.process_timeout = process_timeout
         self._listener_process = None
+        self._lock = Lock()
 
     def start_listener(self):
         get_logger().info('starting listener on port %s', self.port)
@@ -137,7 +141,7 @@ class DocConverterWrapper:
             get_logger().info('stopping listener')
             self._listener_process.send_signal(signal.SIGINT)
 
-    def convert(
+    def _do_convert(
             self, temp_source_filename, output_type: str = 'pdf',
             remove_line_no: bool = True,
             remove_header_footer: bool = True,
@@ -177,3 +181,7 @@ class DocConverterWrapper:
         if not os.path.exists(temp_target_filename):
             raise RuntimeError('temp target file missing: %s' % temp_target_filename)
         return temp_target_filename
+
+    def convert(self, *args, **kwargs):
+        with self._lock:
+            return self._do_convert(*args, **kwargs)
