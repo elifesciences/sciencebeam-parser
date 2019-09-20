@@ -1,5 +1,9 @@
 import configparser
+import logging
 import os
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_app_root():
@@ -17,10 +21,45 @@ def get_app_defaults_config_filename():
     return os.path.join(get_app_root(), 'app-defaults.cfg')
 
 
+def parse_environment_variable_overrides(
+        env_vars: dict, prefix='SCIENCEBEAM__', section_separator='__'):
+    LOGGER.debug('env_vars: %s', env_vars)
+    result = {}
+    for key, value in env_vars.items():
+        if not key.startswith(prefix):
+            continue
+        key_fragments = key[len(prefix):].split(section_separator)
+        if len(key_fragments) != 2:
+            LOGGER.debug('key fragments not 2: %s', key_fragments)
+            continue
+        section_name, option_name = key_fragments
+        result.setdefault(section_name.lower(), {})[option_name.lower()] = value
+    LOGGER.debug('env var overrides: %s', result)
+    return result
+
+
+def get_environment_variable_overrides(**kwargs):
+    return parse_environment_variable_overrides(os.environ, **kwargs)
+
+
+def apply_environment_variable_overrides(
+        config: configparser.ConfigParser,
+        env_var_overrides: dict):
+    for section_name, section_options in env_var_overrides.items():
+        for option_name, value in section_options.items():
+            config.set(section_name, option_name, value)
+
+
 def read_app_config():
     config = configparser.ConfigParser()
-    config.read([get_app_defaults_config_filename(),
-                 get_app_config_filename()])
+    config.read([
+        get_app_defaults_config_filename(),
+        get_app_config_filename()
+    ])
+    apply_environment_variable_overrides(
+        config,
+        get_environment_variable_overrides()
+    )
     return config
 
 
