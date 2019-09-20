@@ -2,7 +2,7 @@ import logging
 import mimetypes
 
 from flask import Blueprint, jsonify, request, Response, url_for
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from sciencebeam_utils.utils.collection import strip_all
 
@@ -37,6 +37,8 @@ class ApiBlueprint(Blueprint):
             config, args
         )
         self.supported_types = self.pipeline_runner.get_supported_types()
+        self._concurrent_requests = 0
+        self._max_concurrent_requests = 10
 
     def api_root(self):
         return jsonify({
@@ -45,7 +47,22 @@ class ApiBlueprint(Blueprint):
             }
         })
 
-    def convert(self):
+    def _check_max_concurrent_requests(self):
+        LOGGER.debug(
+            'checking max requests (requests: %s, max: %s)',
+            self._concurrent_requests, self._max_concurrent_requests
+        )
+        if not self._max_concurrent_requests:
+            return
+        if self._concurrent_requests < self._max_concurrent_requests:
+            return
+        LOGGER.info(
+            'too many requests (%s >= %s)',
+            self._concurrent_requests, self._max_concurrent_requests
+        )
+        raise ServiceUnavailable()
+
+    def _do_convert(self):
         data_type = None
         includes = parse_includes(request.args.get('includes'))
         if not request.files:
@@ -111,6 +128,14 @@ class ApiBlueprint(Blueprint):
                 'Content-Disposition': 'attachment; filename=%s' % filename
             }
         return Response(response_content, headers=headers, mimetype=response_type)
+
+    def convert(self):
+        self._check_max_concurrent_requests()
+        try:
+            self._concurrent_requests += 1
+            return self._do_convert()
+        finally:
+            self._concurrent_requests -= 1
 
     def convert_form(self):
         return (
