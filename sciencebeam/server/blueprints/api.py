@@ -1,5 +1,6 @@
 import logging
 import mimetypes
+from configparser import ConfigParser
 
 from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
@@ -27,7 +28,7 @@ def parse_includes(includes):
 
 
 class ApiBlueprint(Blueprint):
-    def __init__(self, config, args):
+    def __init__(self, config: ConfigParser, args):
         super().__init__('api', __name__)
         self.route('/')(self.api_root)
         self.route("/convert", methods=['POST'])(self.convert)
@@ -38,7 +39,10 @@ class ApiBlueprint(Blueprint):
         )
         self.supported_types = self.pipeline_runner.get_supported_types()
         self._concurrent_requests = 0
-        self._max_concurrent_requests = 10
+        self._max_concurrent_threads = config.getint(
+            'server', 'max_concurrent_threads', fallback=0
+        )
+        LOGGER.debug('max_concurrent_threads: %s', self._max_concurrent_threads)
 
     def api_root(self):
         return jsonify({
@@ -50,15 +54,15 @@ class ApiBlueprint(Blueprint):
     def _check_max_concurrent_requests(self):
         LOGGER.debug(
             'checking max requests (requests: %s, max: %s)',
-            self._concurrent_requests, self._max_concurrent_requests
+            self._concurrent_requests, self._max_concurrent_threads
         )
-        if not self._max_concurrent_requests:
+        if not self._max_concurrent_threads:
             return
-        if self._concurrent_requests < self._max_concurrent_requests:
+        if self._concurrent_requests < self._max_concurrent_threads:
             return
         LOGGER.info(
             'too many requests (%s >= %s)',
-            self._concurrent_requests, self._max_concurrent_requests
+            self._concurrent_requests, self._max_concurrent_threads
         )
         raise ServiceUnavailable()
 
