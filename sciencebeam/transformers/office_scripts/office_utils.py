@@ -1,5 +1,6 @@
 import os
 from collections import namedtuple
+from typing import List
 
 import subprocess
 
@@ -26,3 +27,19 @@ def find_pyuno_office():
     raise RuntimeError(
         'none of the potential office installations seem to function, tried: %s' % offices
     )
+
+
+def get_start_listener_command(port: int) -> List[str]:
+    return [
+        'soffice',
+        '--headless',
+        '--invisible',
+        '--nocrashreport',
+        '--nodefault',
+        '--nofirststartwizard',
+        '--nologo',
+        '--norestore',
+        '--accept=socket,host=localhost,port={port};urp;StarOffice.ServiceManager'.format(
+            port=port
+        )
+    ]
