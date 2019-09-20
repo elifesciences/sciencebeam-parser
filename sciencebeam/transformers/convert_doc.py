@@ -16,24 +16,49 @@ OUTPUT_TYPE_BY_MIME_TYPE = {
 }
 
 
+class EnvironmentVariables:
+    DOC_CONVERT_PROCESS_TIMEOUT = 'SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT'
+
+
+DEFAULT_DOC_CONVERT_PROCESS_TIMEOUT = 5 * 60
+
+
 DEFAULT_CONFIGURATION = dict(
     enable_debug=False,
     # Note: we tell the conversion not to start the uno service,
     #   because we will start it ahead of time
     no_launch=True,
     keep_listener_running=True,
-    process_timeout=60
+    process_timeout=DEFAULT_DOC_CONVERT_PROCESS_TIMEOUT
 )
 
+
 _STATE = {
-    'config': DEFAULT_CONFIGURATION
 }
+
+
+def _get_default_config():
+    config = DEFAULT_CONFIGURATION
+    process_timeout = os.environ.get(EnvironmentVariables.DOC_CONVERT_PROCESS_TIMEOUT)
+    if process_timeout:
+        config = {
+            **config,
+            'process_timeout': int(process_timeout)
+        }
+    return config
+
+
+def _get_config():
+    config = _STATE.get('config')
+    if not config:
+        config = _get_default_config()
+    return config
 
 
 def _get_doc_converter() -> DocConverterWrapper:
     instance = _STATE.get('instance')
     if instance is None:
-        config = _STATE.get('config', DEFAULT_CONFIGURATION)
+        config = _get_config()
         instance = DocConverterWrapper(**config)
         _STATE['instance'] = instance
     return instance
