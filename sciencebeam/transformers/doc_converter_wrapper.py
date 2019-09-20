@@ -28,6 +28,7 @@ def stream_lines_to_logger(lines, logger, prefix=''):
 def _send_signal(process: subprocess.Popen, sig):
     if process.returncode is None:
         get_logger().info('sending %s signal to process %s', sig, process.pid)
+        process.send_signal(sig)
 
 
 def stop_process(process: subprocess.Popen):
