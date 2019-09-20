@@ -9,6 +9,7 @@ from sciencebeam_utils.utils.file_path import (
 )
 
 from sciencebeam.utils.background_process import (
+    ChildProcessReturnCodeError,
     CommandRestartableBackgroundProcess,
     exec_with_logging
 )
@@ -39,18 +40,20 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         script_filename
     ] + args
     LOGGER.info('executing: %s', command)
-    p = exec_with_logging(
-        command,
-        'converter output: ',
-        process_timeout=process_timeout,
-        daemon=daemon
-    )
-    if not daemon:
-        LOGGER.debug('converter return code: %s', p.returncode)
-        if p.returncode == 9:
-            raise UnoConnectionError('failed to connect to uno server: %s' % p.returncode)
-        if p.returncode != 0:
-            raise ChildProcessError('failed to run converter: %s' % p.returncode)
+    try:
+        p = exec_with_logging(
+            command,
+            logging_prefix='converter',
+            process_timeout=process_timeout,
+            daemon=daemon
+        )
+    except ChildProcessReturnCodeError as e:
+        if e.returncode == 9:
+            raise UnoConnectionError('failed to connect to uno server: %s' % e.returncode)
+        raise type(e)(
+            'failed to run converter: %s' % e.returncode,
+            returncode=e.returncode
+        ) from e
     return p
 
 
@@ -105,15 +108,19 @@ class ListenerProcess(CommandRestartableBackgroundProcess):
 
 class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
     def __init__(
-            self, port=2003, enable_debug=False,
-            no_launch=True,
-            keep_listener_running=True,
-            process_timeout=None):
+            self,
+            port: int = 2003,
+            enable_debug: bool = False,
+            no_launch: bool = True,
+            keep_listener_running: bool = True,
+            process_timeout: int = None,
+            stop_listener_on_error: bool = True):
         self.port = port
         self.enable_debug = enable_debug
         self.no_launch = no_launch
         self.keep_listener_running = keep_listener_running
         self.process_timeout = process_timeout
+        self.stop_listener_on_error = stop_listener_on_error
         self._listener_process = ListenerProcess(port=port)
         self._lock = Lock()
         self._concurrent_count = 0
@@ -163,6 +170,10 @@ class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
             )
         except UnoConnectionError:
             self.stop_listener_if_running()
+            raise
+        except Exception:
+            if self.stop_listener_on_error:
+                self.stop_listener_if_running()
             raise
 
         if not os.path.exists(temp_target_filename):

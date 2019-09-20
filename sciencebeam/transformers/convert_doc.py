@@ -2,6 +2,7 @@ import logging
 import os
 from backports.tempfile import TemporaryDirectory
 
+from sciencebeam.config.app_config import get_app_config
 from sciencebeam.utils.mime_type_constants import MimeTypes, guess_extension
 
 from .doc_converter_wrapper import DocConverterWrapper
@@ -14,6 +15,15 @@ OUTPUT_TYPE_BY_MIME_TYPE = {
     MimeTypes.DOCX: 'docx',
     MimeTypes.PDF: 'pdf'
 }
+
+
+DOC_CONVERT_SECTION_NAME = 'doc_convert'
+
+
+class AppConfigOptions:
+    STOP_LISTENER_ON_ERROR = 'stop_listener_on_error'
+    PROCESS_TIMEOUT = 'process_timeout'
+    ENABLE_DEBUG = 'enable_debug'
 
 
 class EnvironmentVariables:
@@ -39,12 +49,23 @@ _STATE = {
 
 def _get_default_config():
     config = DEFAULT_CONFIGURATION
+    app_config = get_app_config()
     process_timeout = os.environ.get(EnvironmentVariables.DOC_CONVERT_PROCESS_TIMEOUT)
-    if process_timeout:
-        config = {
-            **config,
-            'process_timeout': int(process_timeout)
-        }
+    if not process_timeout:
+        process_timeout = app_config.getint(
+            DOC_CONVERT_SECTION_NAME, AppConfigOptions.PROCESS_TIMEOUT,
+            fallback=DEFAULT_DOC_CONVERT_PROCESS_TIMEOUT
+        )
+    config = {
+        **config,
+        'process_timeout': int(process_timeout),
+        'stop_listener_on_error': app_config.getboolean(
+            DOC_CONVERT_SECTION_NAME, AppConfigOptions.STOP_LISTENER_ON_ERROR
+        ),
+        'enable_debug': app_config.getboolean(
+            DOC_CONVERT_SECTION_NAME, AppConfigOptions.ENABLE_DEBUG
+        )
+    }
     return config
 
 
