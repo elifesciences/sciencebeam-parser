@@ -1,6 +1,6 @@
 import logging
 import os
-from threading import Lock
+from threading import Lock, current_thread
 
 from sciencebeam_utils.utils.file_path import (
     change_ext
@@ -15,8 +15,7 @@ from .office_scripts import get_office_script_directory
 from .office_scripts.office_utils import find_pyuno_office, get_start_listener_command
 
 
-def get_logger():
-    return logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class UnoConnectionError(RuntimeError):
@@ -26,7 +25,7 @@ class UnoConnectionError(RuntimeError):
 def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False):
     if not os.path.exists(script_filename):
         from glob import glob
-        get_logger().info(
+        LOGGER.info(
             '%s does not exist, found: %s',
             script_filename,
             list(glob('%s/**/*' % os.path.dirname(script_filename)))
@@ -37,7 +36,7 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         office.python,
         script_filename
     ] + args
-    get_logger().info('executing: %s', command)
+    LOGGER.info('executing: %s', command)
     p = exec_with_logging(
         command,
         'converter output: ',
@@ -45,7 +44,7 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         daemon=daemon
     )
     if not daemon:
-        get_logger().debug('converter return code: %s', p.returncode)
+        LOGGER.debug('converter return code: %s', p.returncode)
         if p.returncode == 9:
             raise UnoConnectionError('failed to connect to uno server: %s' % p.returncode)
         if p.returncode != 0:
@@ -69,7 +68,7 @@ def _exec_doc_converter(args, enable_debug=False, process_timeout=None, daemon=F
     )
 
 
-class DocConverterWrapper:
+class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
     def __init__(
             self, port=2003, enable_debug=False,
             no_launch=True,
@@ -87,6 +86,7 @@ class DocConverterWrapper:
             stop_at_exit=True
         )
         self._lock = Lock()
+        self._concurrent_count = 0
 
     def start_listener_if_not_running(self):
         self._listener_process.start_if_not_running()
@@ -140,5 +140,23 @@ class DocConverterWrapper:
         return temp_target_filename
 
     def convert(self, *args, **kwargs):
-        with self._lock:
-            return self._do_convert(*args, **kwargs)
+        thread_id = current_thread().ident
+        try:
+            self._concurrent_count += 1
+            LOGGER.debug(
+                'attempting to aquire lock, thread id: %s, concurrent count: %s',
+                thread_id, self._concurrent_count
+            )
+            with self._lock:
+                LOGGER.debug(
+                    'aquired lock, thread id: %s, concurrent count: %s',
+                    thread_id, self._concurrent_count
+                )
+                return self._do_convert(*args, **kwargs)
+        finally:
+            self._concurrent_count -= 1
+            LOGGER.debug(
+                'exiting convert (released lock if it was aquired),'
+                ' thread id: %s, concurrent count: %s',
+                thread_id, self._concurrent_count
+            )
