@@ -21,7 +21,8 @@ class ScienceParseApiStep(RequestsPipelineStep):
     def process_request(self, data: dict, session: requests.Session, context: dict = None):
         response = self.post_data(
             data=data,
-            session=session
+            session=session,
+            timeout=self.get_default_request_timeout(context=context)
         )
         return {
             'filename': change_ext(data['filename'], None, '.xml'),

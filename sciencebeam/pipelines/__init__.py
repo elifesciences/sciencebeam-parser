@@ -8,11 +8,16 @@ from six import text_type
 
 import requests
 from requests import Session
+from werkzeug.datastructures import MultiDict
 
 from sciencebeam.utils.config import parse_list
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+# use a rather generous 10 minute timeout by default
+DEFAULT_REQUEST_TIMEOUT = 10 * 60
 
 
 class FieldNames:
@@ -89,9 +94,12 @@ class RequestsPipelineStep(ABC):
     def process_request(self, data: dict, session: Session, context: dict = None):
         pass
 
+    def get_context_request_args(self, context: dict) -> MultiDict:
+        return (context or {}).get('request_args', {})
+
     def get_context_request_params_dict(self, context: dict) -> dict:
         LOGGER.debug('context: %s', context)
-        request_args = (context or {}).get('request_args', {})
+        request_args = self.get_context_request_args(context)
         LOGGER.debug('request_args: %s', request_args)
         try:
             return request_args.to_dict()
@@ -109,6 +117,16 @@ class RequestsPipelineStep(ABC):
             **self.get_context_request_params_dict(context=context),
             **self.get_data_request_params_dict(data=data)
         }
+
+    def get_default_request_timeout(self, context: dict) -> int:
+        request_args = self.get_context_request_args(context)
+        try:
+            timeout = int(request_args.get('timeout', DEFAULT_REQUEST_TIMEOUT))
+            if not timeout:
+                timeout = None
+            return timeout
+        except ValueError:
+            return DEFAULT_REQUEST_TIMEOUT
 
     def __call__(self, data, context: dict = None):
         session = (context or {}).get(RequestsPipelineStep.REQUESTS_SESSION_KEY)

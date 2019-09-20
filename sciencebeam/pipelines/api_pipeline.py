@@ -19,7 +19,8 @@ class ApiStep(RequestsPipelineStep):
         response = self.post_data(
             data=data,
             session=session,
-            params=self.get_default_params(data=data, context=context)
+            params=self.get_default_params(data=data, context=context),
+            timeout=self.get_default_request_timeout(context=context)
         )
         return {
             'filename': change_ext(data['filename'], None, '.xml'),

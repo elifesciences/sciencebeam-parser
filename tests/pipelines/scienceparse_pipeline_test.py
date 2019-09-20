@@ -7,6 +7,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam.pipelines import DEFAULT_REQUEST_TIMEOUT
+
 from sciencebeam.pipelines import scienceparse_pipeline as scienceparse_pipeline_module
 from sciencebeam.pipelines.scienceparse_pipeline import PIPELINE
 
@@ -87,7 +89,8 @@ class TestScienceParsePipeline:
         requests_post.assert_called_with(
             args.science_parse_url,
             data=PDF_INPUT['content'],
-            headers={'Content-Type': MimeTypes.PDF}
+            headers={'Content-Type': MimeTypes.PDF},
+            timeout=DEFAULT_REQUEST_TIMEOUT
         )
 
     def test_should_return_json_content_as_xml_content_without_xslt(

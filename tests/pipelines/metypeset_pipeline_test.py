@@ -7,6 +7,8 @@ import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam.pipelines import DEFAULT_REQUEST_TIMEOUT
+
 from sciencebeam.pipelines import metypeset_pipeline as metypeset_pipeline_module
 from sciencebeam.pipelines.metypeset_pipeline import PIPELINE
 
@@ -68,7 +70,8 @@ class TestCerminePipeline:
         requests_post.assert_called_with(
             args.metypeset_url,
             data=DOCX_INPUT['content'],
-            headers={'Content-Type': MimeTypes.DOCX}
+            headers={'Content-Type': MimeTypes.DOCX},
+            timeout=DEFAULT_REQUEST_TIMEOUT
         )
 
     def test_should_return_xml_response(
