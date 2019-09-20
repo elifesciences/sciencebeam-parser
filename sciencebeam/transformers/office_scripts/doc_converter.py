@@ -12,6 +12,7 @@ from __future__ import absolute_import, print_function
 
 import argparse
 import os
+import sys
 import logging
 import subprocess
 import atexit
@@ -337,9 +338,24 @@ def run(args):
         raise RuntimeError('invalid command: %s' % args.command)
 
 
+class ExitCodes:
+    UNO_CONNECTION_ERROR = 9
+
+
+# def _is_uno_connect_exception(e):
+#     return 'uno.NoConnectException' in e
+
+
 def main(argv=None):
     args = parse_args(argv)
-    run(args)
+    try:
+        run(args)
+    except NoConnectException as e:
+        LOGGER.error('failed to connect to uno service: %s', e, exc_info=e)
+        sys.exit(ExitCodes.UNO_CONNECTION_ERROR)
+    except Exception as e:
+        LOGGER.error('failed to to run: %s (%s)', e, type(e), exc_info=e)
+        raise
 
 
 if __name__ == '__main__':

@@ -1,66 +1,26 @@
 import logging
-import subprocess
 import os
-import atexit
-import signal
-from threading import Thread, Timer, Lock
-from functools import partial
+from threading import Lock
 
 from sciencebeam_utils.utils.file_path import (
     change_ext
 )
 
+from sciencebeam.utils.background_process import (
+    CommandRestartableBackgroundProcess,
+    exec_with_logging
+)
+
 from .office_scripts import get_office_script_directory
-from .office_scripts.office_utils import find_pyuno_office
+from .office_scripts.office_utils import find_pyuno_office, get_start_listener_command
 
 
 def get_logger():
     return logging.getLogger(__name__)
 
 
-def stream_lines_to_logger(lines, logger, prefix=''):
-    for line in lines:
-        line = line.strip()
-        if line:
-            logger.info('%s%s', prefix, line)
-
-
-def _send_signal(process: subprocess.Popen, sig):
-    if process.returncode is None:
-        get_logger().info('sending %s signal to process %s', sig, process.pid)
-        process.send_signal(sig)
-
-
-def stop_process(process: subprocess.Popen):
-    _send_signal(process, signal.SIGINT)
-    timer = Timer(60, lambda: _send_signal(process, signal.SIGKILL))
-    timer.start()
-
-
-def _exec_with_logging(command, logging_prefix, process_timeout=None, daemon=False):
-    p = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
-    if not daemon:
-        timer = None
-        if process_timeout:
-            timer = Timer(process_timeout, lambda: stop_process(p))
-            timer.start()
-        stream_lines_to_logger(p.stdout, get_logger(), logging_prefix)
-        p.wait()
-        if timer:
-            timer.cancel()
-        return p
-    t = Thread(target=partial(
-        stream_lines_to_logger,
-        lines=p.stdout,
-        logger=get_logger(),
-        prefix=logging_prefix
-    ))
-    t.daemon = True
-    t.start()
-    return p
+class UnoConnectionError(RuntimeError):
+    pass
 
 
 def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False):
@@ -78,7 +38,7 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         script_filename
     ] + args
     get_logger().info('executing: %s', command)
-    p = _exec_with_logging(
+    p = exec_with_logging(
         command,
         'converter output: ',
         process_timeout=process_timeout,
@@ -86,6 +46,8 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
     )
     if not daemon:
         get_logger().debug('converter return code: %s', p.returncode)
+        if p.returncode == 9:
+            raise UnoConnectionError('failed to connect to uno server: %s' % p.returncode)
         if p.returncode != 0:
             raise RuntimeError('failed to run converter: %s' % p.returncode)
     return p
@@ -118,29 +80,19 @@ class DocConverterWrapper:
         self.no_launch = no_launch
         self.keep_listener_running = keep_listener_running
         self.process_timeout = process_timeout
-        self._listener_process = None
+        self._listener_process = CommandRestartableBackgroundProcess(
+            command=get_start_listener_command(port=port),
+            name='listener on port %s' % port,
+            logging_prefix='listener[port:%s]' % port,
+            stop_at_exit=True
+        )
         self._lock = Lock()
 
-    def start_listener(self):
-        get_logger().info('starting listener on port %s', self.port)
-        self._listener_process = _exec_doc_converter([
-            'start-listener',
-            '--port', str(self.port)
-        ], enable_debug=self.enable_debug, daemon=True)
-        atexit.register(self.stop_listener_if_running)
-
     def start_listener_if_not_running(self):
-        if self._listener_process:
-            self._listener_process.poll()
-            if self._listener_process.returncode is not None:
-                get_logger().info('listener has stopped: %s', self._listener_process.returncode)
-        if not self._listener_process:
-            self.start_listener()
+        self._listener_process.start_if_not_running()
 
     def stop_listener_if_running(self):
-        if self._listener_process:
-            get_logger().info('stopping listener')
-            self._listener_process.send_signal(signal.SIGINT)
+        self._listener_process.stop_if_running()
 
     def _do_convert(
             self, temp_source_filename, output_type: str = 'pdf',
@@ -173,11 +125,15 @@ class DocConverterWrapper:
             args.append('--no-launch')
         if self.keep_listener_running:
             args.append('--keep-listener-running')
-        _exec_doc_converter(
-            args,
-            enable_debug=self.enable_debug,
-            process_timeout=self.process_timeout
-        )
+        try:
+            _exec_doc_converter(
+                args,
+                enable_debug=self.enable_debug,
+                process_timeout=self.process_timeout
+            )
+        except UnoConnectionError:
+            self.stop_listener_if_running()
+            raise
 
         if not os.path.exists(temp_target_filename):
             raise RuntimeError('temp target file missing: %s' % temp_target_filename)
