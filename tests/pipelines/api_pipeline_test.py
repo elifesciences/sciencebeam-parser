@@ -9,6 +9,8 @@ from werkzeug.datastructures import MultiDict
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
+from sciencebeam.pipelines import DEFAULT_REQUEST_TIMEOUT
+
 from sciencebeam.pipelines import api_pipeline as api_pipeline_module
 from sciencebeam.pipelines.api_pipeline import PIPELINE
 
@@ -69,7 +71,8 @@ class TestScienceParsePipeline:
             args.api_url,
             data=PDF_INPUT['content'],
             headers={'Content-Type': MimeTypes.PDF},
-            params={'filename': PDF_INPUT['filename']}
+            params={'filename': PDF_INPUT['filename']},
+            timeout=DEFAULT_REQUEST_TIMEOUT
         )
 
     def test_should_return_response_content(
