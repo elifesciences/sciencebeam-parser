@@ -1,7 +1,10 @@
 from io import StringIO
 import logging
 import os
-from mock import patch
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+import pytest
 
 from sciencebeam.utils.config import dict_to_config
 
@@ -20,6 +23,12 @@ KEY_1 = u'key1'
 KEY_2 = u'key2'
 VALUE_1 = u'value1'
 VALUE_2 = u'value2'
+
+
+@pytest.fixture(name='get_app_root_mock')
+def _get_app_root_mock():
+    with patch.object(app_config_module, 'get_app_root') as mock:
+        yield mock
 
 
 class TestGetAppConfigFilename:
@@ -91,3 +100,15 @@ class TestReadAppConfig:
             app_config = read_app_config()
             assert app_config.get(SECTION_1, KEY_1) == VALUE_1
             assert app_config.get(SECTION_2, KEY_2) == VALUE_2
+
+    @patch.object(os, 'environ', {})
+    def test_should_override_with_environment_variables(
+            self, temp_dir: Path,
+            get_app_root_mock: MagicMock):
+        temp_dir.joinpath('app-defaults.cfg').write_text(_dict_to_cfg_content({
+            SECTION_1: {KEY_1: VALUE_1}
+        }))
+        get_app_root_mock.return_value = str(temp_dir)
+        os.environ['__'.join(['SCIENCEBEAM', SECTION_1, KEY_1]).upper()] = VALUE_2
+        app_config = read_app_config()
+        assert app_config.get(SECTION_1, KEY_1) == VALUE_2

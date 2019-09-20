@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest
 import pytest
 
 from sciencebeam.utils.mime_type_constants import MimeTypes
+from sciencebeam.utils.config import dict_to_config
 
 from sciencebeam.pipelines import FieldNames
 
@@ -56,7 +57,7 @@ def _pipeline_runner(create_simple_pipeline_runner_from_config):
 
 @pytest.fixture(name='config')
 def _config():
-    return MagicMock(name='config')
+    return dict_to_config({})
 
 
 @pytest.fixture(name='args')

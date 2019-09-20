@@ -1,8 +1,9 @@
 import logging
 import mimetypes
+from configparser import ConfigParser
 
 from flask import Blueprint, jsonify, request, Response, url_for
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from sciencebeam_utils.utils.collection import strip_all
 
@@ -26,24 +27,46 @@ def parse_includes(includes):
     return includes and set(strip_all(includes.split(',')))
 
 
-def create_api_blueprint(config, args):
-    blueprint = Blueprint('api', __name__)
+class ApiBlueprint(Blueprint):
+    def __init__(self, config: ConfigParser, args):
+        super().__init__('api', __name__)
+        self.route('/')(self.api_root)
+        self.route("/convert", methods=['POST'])(self.convert)
+        self.route("/convert", methods=['GET'])(self.convert_form)
 
-    pipeline_runner = create_simple_pipeline_runner_from_config(
-        config, args
-    )
-    supported_types = pipeline_runner.get_supported_types()
+        self.pipeline_runner = create_simple_pipeline_runner_from_config(
+            config, args
+        )
+        self.supported_types = self.pipeline_runner.get_supported_types()
+        self._concurrent_requests = 0
+        self._max_concurrent_threads = config.getint(
+            'server', 'max_concurrent_threads', fallback=0
+        )
+        LOGGER.debug('max_concurrent_threads: %s', self._max_concurrent_threads)
 
-    @blueprint.route("/")
-    def _api_root():
+    def api_root(self):
         return jsonify({
             'links': {
-                'convert': url_for('api._convert')
+                'convert': url_for('.convert')
             }
         })
 
-    @blueprint.route("/convert", methods=['POST'])
-    def _convert():
+    def _check_max_concurrent_requests(self):
+        LOGGER.debug(
+            'checking max requests (requests: %s, max: %s)',
+            self._concurrent_requests, self._max_concurrent_threads
+        )
+        if not self._max_concurrent_threads:
+            return
+        if self._concurrent_requests < self._max_concurrent_threads:
+            return
+        LOGGER.info(
+            'too many requests (%s >= %s)',
+            self._concurrent_requests, self._max_concurrent_threads
+        )
+        raise ServiceUnavailable()
+
+    def _do_convert(self):
         data_type = None
         includes = parse_includes(request.args.get('includes'))
         if not request.files:
@@ -74,9 +97,9 @@ def create_api_blueprint(config, args):
         elif data_type == 'application/octet-stream':
             data_type = mimetypes.guess_type(filename)[0]
 
-        if data_type not in supported_types:
+        if data_type not in self.supported_types:
             error_message = 'unsupported type: %s (supported: %s)' % (
-                data_type, ', '.join(sorted(supported_types))
+                data_type, ', '.join(sorted(self.supported_types))
             )
             LOGGER.info('%s (filename: %s)', error_message, filename)
             raise BadRequest(error_message)
@@ -88,7 +111,7 @@ def create_api_blueprint(config, args):
         context = {
             'request_args': request.args
         }
-        conversion_result = pipeline_runner.convert(
+        conversion_result = self.pipeline_runner.convert(
             content=content, filename=filename, data_type=data_type,
             includes=includes,
             context=context
@@ -110,8 +133,15 @@ def create_api_blueprint(config, args):
             }
         return Response(response_content, headers=headers, mimetype=response_type)
 
-    @blueprint.route("/convert", methods=['GET'])
-    def _convert_form():
+    def convert(self):
+        self._check_max_concurrent_requests()
+        try:
+            self._concurrent_requests += 1
+            return self._do_convert()
+        finally:
+            self._concurrent_requests -= 1
+
+    def convert_form(self):
         return (
             '''
             <!doctype html>
@@ -124,4 +154,6 @@ def create_api_blueprint(config, args):
             '''
         )
 
-    return blueprint
+
+def create_api_blueprint(config, args):
+    return ApiBlueprint(config, args)
