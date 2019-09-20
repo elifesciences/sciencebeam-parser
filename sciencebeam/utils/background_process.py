@@ -10,9 +10,21 @@ from typing import Union, List
 LOGGER = logging.getLogger(__name__)
 
 
+class ChildProcessReturnCodeError(ChildProcessError):
+    def __init__(self, *args, returncode: int, process=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.returncode = returncode
+        self.process = process
+
+
+class ChildProcessTimeoutError(ChildProcessReturnCodeError):
+    pass
+
+
 class BackgroundProcess:
     def __init__(self, process: subprocess.Popen):
         self.process = process
+        self._stopped_by_timeout = False
 
     def is_running(self):
         self.process.poll()
@@ -52,6 +64,31 @@ class BackgroundProcess:
             self.wait()
             LOGGER.info('process has stopped: %s', self.process.pid)
 
+    def stop_due_to_timeout(self, **kwargs):
+        LOGGER.info('process timeout, stopping: %s', self.process.pid)
+        self._stopped_by_timeout = True
+        self.stop(**kwargs)
+
+    def is_stopped_by_timeout(self):
+        return self._stopped_by_timeout
+
+    def check_returncode(self):
+        returncode = self.process.returncode
+        if returncode is None:
+            return
+        if self.is_stopped_by_timeout():
+            LOGGER.debug('process stopped by timeout, return code: %s', returncode)
+            raise ChildProcessTimeoutError(
+                'process stopped by timeout, return code: %s' % returncode,
+                returncode=returncode
+            )
+        if returncode != 0:
+            LOGGER.debug('process failed with return code: %s', returncode)
+            raise ChildProcessReturnCodeError(
+                'process failed with return code: %s' % returncode,
+                returncode=returncode
+            )
+
     def stop_if_running(self, **kwargs):
         if not self.is_running():
             return
@@ -69,7 +106,8 @@ def exec_with_logging(
         command: Union[str, List[str]],
         logging_prefix: str = None,
         process_timeout: int = None,
-        daemon: bool = False) -> BackgroundProcess:
+        daemon: bool = False,
+        check_returncode: bool = True) -> BackgroundProcess:
     p = BackgroundProcess(subprocess.Popen(
         command,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -80,12 +118,14 @@ def exec_with_logging(
     if not daemon:
         timer = None
         if process_timeout:
-            timer = Timer(process_timeout, p.stop)
+            timer = Timer(process_timeout, p.stop_due_to_timeout)
             timer.start()
         stream_lines_to_logger(p.process.stdout, LOGGER, logging_prefix)
         p.wait()
         if timer:
             timer.cancel()
+        if check_returncode:
+            p.check_returncode()
         return p
     t = Thread(target=partial(
         stream_lines_to_logger,

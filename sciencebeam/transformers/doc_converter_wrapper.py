@@ -9,6 +9,7 @@ from sciencebeam_utils.utils.file_path import (
 )
 
 from sciencebeam.utils.background_process import (
+    ChildProcessReturnCodeError,
     CommandRestartableBackgroundProcess,
     exec_with_logging
 )
@@ -39,18 +40,20 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         script_filename
     ] + args
     LOGGER.info('executing: %s', command)
-    p = exec_with_logging(
-        command,
-        'converter output: ',
-        process_timeout=process_timeout,
-        daemon=daemon
-    )
-    if not daemon:
-        LOGGER.debug('converter return code: %s', p.returncode)
-        if p.returncode == 9:
-            raise UnoConnectionError('failed to connect to uno server: %s' % p.returncode)
-        if p.returncode != 0:
-            raise ChildProcessError('failed to run converter: %s' % p.returncode)
+    try:
+        p = exec_with_logging(
+            command,
+            logging_prefix='converter',
+            process_timeout=process_timeout,
+            daemon=daemon
+        )
+    except ChildProcessReturnCodeError as e:
+        if e.returncode == 9:
+            raise UnoConnectionError('failed to connect to uno server: %s' % e.returncode)
+        raise type(e)(
+            'failed to run converter: %s' % e.returncode,
+            returncode=e.returncode
+        ) from e
     return p
 
 
