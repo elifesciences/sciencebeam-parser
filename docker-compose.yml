@@ -12,6 +12,8 @@ services:
         command: ./server.sh \
             --host=0.0.0.0 --port=8075 \
             --grobid-url http://grobid:8070/api
+        environment:
+            - SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT=${SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT}
         ports:
             - "8075:8075"
         networks:
