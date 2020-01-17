@@ -27,7 +27,7 @@ class UnoConnectionError(ConnectionError):
 
 def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False):
     if not os.path.exists(script_filename):
-        from glob import glob
+        from glob import glob  # pylint: disable=import-outside-toplevel
         LOGGER.info(
             '%s does not exist, found: %s',
             script_filename,
