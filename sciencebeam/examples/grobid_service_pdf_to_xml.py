@@ -24,7 +24,7 @@ def get_logger():
 
 
 def create_fn_api_runner():
-    from apache_beam.runners.portability.fn_api_runner import FnApiRunner
+    from apache_beam.runners.portability.fn_api_runner import FnApiRunner  # noqa pylint: disable=import-outside-toplevel
     return FnApiRunner()
 
 
