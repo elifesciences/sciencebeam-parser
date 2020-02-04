@@ -5,4 +5,4 @@ lxml==4.4.2
 requests==2.22.0
 sciencebeam-utils==0.1.0
 six==1.14.0
-tqdm==4.41.1
+tqdm==4.42.1
