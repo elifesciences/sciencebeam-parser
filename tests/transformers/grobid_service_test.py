@@ -66,6 +66,8 @@ class TestCreateGrobidService:
             files=ANY,
             data={
                 'consolidateHeader': '0',
-                'consolidateCitations': '0'
+                'consolidateCitations': '0',
+                'includeRawAffiliations': '1',
+                'includeRawCitations': '1'
             }
         )
