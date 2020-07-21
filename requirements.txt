@@ -1,7 +1,7 @@
 dicttoxml==1.7.4
 Flask==1.1.2
 Flask-Cors==3.0.8
-lxml==4.5.1
+lxml==4.5.2
 requests==2.23.0
 sciencebeam-utils==0.1.0
 six==1.15.0
