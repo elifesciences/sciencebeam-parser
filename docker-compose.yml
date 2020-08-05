@@ -14,11 +14,12 @@ services:
             --grobid-url http://grobid:8070/api
         environment:
             - SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT=${SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT}
+            - SCIENCEBEAM_CONSOLIDATE_HEADER=${SCIENCEBEAM_CONSOLIDATE_HEADER}
+            - SCIENCEBEAM_CONSOLIDATE_CITATIONS=${SCIENCEBEAM_CONSOLIDATE_CITATIONS}
+            - SCIENCEBEAM_INCLUDE_RAW_AFFILIATIONS=${SCIENCEBEAM_INCLUDE_RAW_AFFILIATIONS}
+            - SCIENCEBEAM_INCLUDE_RAW_CITATIONS=${SCIENCEBEAM_INCLUDE_RAW_CITATIONS}
         ports:
             - "8075:8075"
-        networks:
-            - default
-            - grobid
 
     sciencebeam-base-dev:
         build:
@@ -46,11 +47,3 @@ services:
             - JAVA_OPTS=-Xmx1g
         ports:
             - "8070:8070"
-        networks:
-            - grobid
-
-networks:
-    default:
-        internal: false
-    grobid:
-        internal: true

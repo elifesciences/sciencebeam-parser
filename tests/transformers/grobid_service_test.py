@@ -2,7 +2,14 @@ from mock import patch, ANY
 
 import pytest
 
-from sciencebeam.transformers.grobid_service import grobid_service as create_grobid_service
+from sciencebeam.transformers.grobid_service import (
+    GrobidServiceConfigEnvVariables,
+    GrobidServiceConfig,
+    get_grobid_service_config,
+    get_request_data_for_config,
+    grobid_service as create_grobid_service
+)
+
 
 BASE_URL = 'http://grobid/api'
 PATH_1 = '/path1'
@@ -19,6 +26,52 @@ FIELD_VALUE_1 = 'value1'
 def _mock_requests_post():
     with patch('requests.post') as requests_post:
         yield requests_post
+
+
+@pytest.fixture(name='environ', autouse=True)
+def _mock_environ():
+    with patch('os.environ', {}) as mock:
+        yield mock
+
+
+@pytest.fixture(name='grobid_service_config')
+def _grobid_service_config() -> GrobidServiceConfig:
+    return GrobidServiceConfig()
+
+
+class TestGetGrobidServiceConfig:
+    def test_should_return_default_config(self):
+        config = get_grobid_service_config()
+        assert not config.consolidate_header
+        assert not config.consolidate_citations
+        assert config.include_raw_affiliations
+        assert config.include_raw_citations
+
+    def test_should_be_able_toggle_config(self, environ: dict):
+        environ[GrobidServiceConfigEnvVariables.CONSOLIDATE_HEADER] = '1'
+        environ[GrobidServiceConfigEnvVariables.CONSOLIDATE_CITATIONS] = '1'
+        environ[GrobidServiceConfigEnvVariables.INCLUDE_RAW_AFFILIATIONS] = '0'
+        environ[GrobidServiceConfigEnvVariables.INCLUDE_RAW_CITATIONS] = '0'
+        config = get_grobid_service_config()
+        assert config.consolidate_header
+        assert config.consolidate_citations
+        assert not config.include_raw_affiliations
+        assert not config.include_raw_citations
+
+
+class TestGetRequestDataForConfig:
+    def test_should_generate_dict_for_default_config(
+            self, grobid_service_config: GrobidServiceConfig):
+        grobid_service_config.consolidate_header = False
+        grobid_service_config.consolidate_citations = False
+        grobid_service_config.include_raw_affiliations = True
+        grobid_service_config.include_raw_citations = True
+        assert get_request_data_for_config(grobid_service_config) == {
+            'consolidateHeader': '0',
+            'consolidateCitations': '0',
+            'includeRawAffiliations': '1',
+            'includeRawCitations': '1'
+        }
 
 
 class TestCreateGrobidService:
