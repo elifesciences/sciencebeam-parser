@@ -1,4 +1,4 @@
-FROM python:3.5.7-buster
+FROM python:3.7.9-buster
 
 # install LibreOffice Write to convert Word to PDF
 # also install fonts and fontconfig to provide common fonts or configuration to their alternatives
