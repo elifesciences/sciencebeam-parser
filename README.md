@@ -1,6 +1,5 @@
 # ScienceBeam
 
-[![Build Status](https://travis-ci.org/elifesciences/sciencebeam.svg?branch=develop)](https://travis-ci.org/elifesciences/sciencebeam)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A set of tools to allow PDF to XML conversion, utilising [Apache Beam](https://beam.apache.org/) and other tools.
