@@ -95,8 +95,12 @@ shell-dev: build-dev
 	$(RUN_DEV) bash
 
 
-start:
+build-and-start:
 	$(DOCKER_COMPOSE) up -d --build grobid sciencebeam
+
+
+start:
+	$(DOCKER_COMPOSE) up -d grobid sciencebeam
 
 
 start-doc-to-pdf:
