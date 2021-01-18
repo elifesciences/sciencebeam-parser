@@ -22,7 +22,7 @@ docker_stats_json_run_to_file() {
 }
 
 
-source_file="$1"
+source_file="${1:-./test-data/minimal-office-open.docx}"
 
 if [ -z "${source_file}" ]; then
     echo "Usage: $0 <source file>"
