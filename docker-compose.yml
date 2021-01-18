@@ -47,3 +47,7 @@ services:
             - JAVA_OPTS=-Xmx1g
         ports:
             - "8070:8070"
+
+
+    wait-for-it:
+        image: willwill/wait-for-it

@@ -8,7 +8,8 @@ PYTHON = $(VENV)/bin/python
 
 RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 
-CONVERT_API_URL = http://localhost:8075/api/convert
+SCIENCEBEAM_PORT = 8075
+CONVERT_API_URL = http://localhost:$(SCIENCEBEAM_PORT)/api/convert
 EXAMPLE_DOCUMENT = test-data/minimal-office-open.docx
 
 NO_BUILD =
@@ -111,8 +112,25 @@ convert-example-document:
 			> /dev/null
 
 
+wait-for-sciencebeam:
+	$(DOCKER_COMPOSE) run --rm wait-for-it \
+		"sciencebeam:$(SCIENCEBEAM_PORT)" \
+		--timeout=10 \
+		--strict \
+		-- echo "ScienceBeam is up"
+
+
+wait-for-grobid:
+	$(DOCKER_COMPOSE) run --rm wait-for-it \
+		"grobid:8070" \
+		--timeout=10 \
+		--strict \
+		-- echo "GROBID is up"
+
+
 end-to-end-test:
 	$(MAKE) start
+	$(MAKE) wait-for-sciencebeam wait-for-grobid
 	$(MAKE) convert-example-document
 	$(MAKE) stop
 
