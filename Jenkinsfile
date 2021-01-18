@@ -28,6 +28,14 @@ elifePipeline {
             }
         }
 
+        stage 'End-to-end tests', {
+            try {
+                sh "make IMAGE_TAG=${commit} NO_BUILD=y ci-end-to-end-test"
+            } finally {
+                sh "make ci-clean"
+            }
+        }
+
         elifeMainlineOnly {
             stage 'Merge to master', {
                 elifeGitMoveToBranch commit, 'master'

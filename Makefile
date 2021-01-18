@@ -8,6 +8,9 @@ PYTHON = $(VENV)/bin/python
 
 RUN_DEV = $(DOCKER_COMPOSE) run --rm sciencebeam-dev
 
+CONVERT_API_URL = http://localhost:8075/api/convert
+EXAMPLE_DOCUMENT = test-data/minimal-office-open.docx
+
 NO_BUILD =
 ARGS =
 
@@ -101,6 +104,19 @@ start-doc-to-pdf:
 		python -m sciencebeam.server --host=0.0.0.0 --port=8075 --pipeline=doc_to_pdf $(ARGS)
 
 
+convert-example-document:
+	curl --fail --show-error \
+			--form "file=@$(EXAMPLE_DOCUMENT);filename=$(EXAMPLE_DOCUMENT)" \
+			--silent "$(CONVERT_API_URL)" \
+			> /dev/null
+
+
+end-to-end-test:
+	$(MAKE) start
+	$(MAKE) convert-example-document
+	$(MAKE) stop
+
+
 stop:
 	$(DOCKER_COMPOSE) down
 
@@ -115,6 +131,10 @@ ci-build-all:
 
 ci-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" test
+
+
+ci-end-to-end-test:
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" end-to-end-test
 
 
 ci-clean:
