@@ -2,6 +2,7 @@ import atexit
 import logging
 import signal
 import subprocess
+import time
 from functools import partial
 from threading import Timer, Thread
 from typing import Union, List
@@ -25,15 +26,30 @@ class BackgroundProcess:
     def __init__(self, process: subprocess.Popen):
         self.process = process
         self._stopped_by_timeout = False
+        self._created_time = time.monotonic()
+        self._returncode = None
+
+    def __repr__(self):
+        return (
+            '{type_name}('
+            'pid={self.process.pid}'
+            ', returncode={self.process.returncode}'
+            ')'
+        ).format(
+            type_name=type(self).__name__,
+            self=self
+        )
 
     def is_running(self):
         self.process.poll()
-        LOGGER.debug('process.returncode: %s', self.process.returncode)
-        return self.process.returncode is None
+        return self.returncode is None
 
     @property
     def returncode(self):
-        return self.process.returncode
+        if self.process.returncode != self._returncode:
+            self._returncode = self.process.returncode
+            LOGGER.debug('process(pid=%s).returncode: %s', self.process.pid, self._returncode)
+        return self._returncode
 
     @property
     def pid(self):
@@ -41,7 +57,10 @@ class BackgroundProcess:
 
     def send_signal(self, sig):
         if self.process.returncode is not None:
-            LOGGER.debug('not sending signal, process has already stopped: %s', self.process.pid)
+            LOGGER.debug(
+                'not sending signal %r, process has already stopped: %s',
+                sig, self.process.pid
+            )
             return
         LOGGER.info('sending %s to process %s', sig, self.process.pid)
         self.process.send_signal(sig)
@@ -52,17 +71,29 @@ class BackgroundProcess:
     def kill(self):
         self.send_signal(signal.SIGKILL)
 
-    def wait(self):
-        return self.process.wait()
+    def kill_if_runing(self):
+        if not self.is_running():
+            return
+        self.kill()
+
+    def wait(self) -> int:
+        self.process.wait()
+        return self.returncode
+
+    def get_uptime(self) -> float:
+        return time.monotonic() - self._created_time
 
     def stop(self, wait: bool = True, kill_timeout: int = 60):
         self.terminate()
         if kill_timeout:
-            Timer(kill_timeout, self.kill).start()
+            Timer(kill_timeout, self.kill_if_runing).start()
         if wait:
-            LOGGER.info('waiting for process to stop: %s', self.process.pid)
+            LOGGER.info('waiting for process(pid=%s) to stop', self.process.pid)
             self.wait()
-            LOGGER.info('process has stopped: %s', self.process.pid)
+            LOGGER.info(
+                'process(pid=%s) has stopped with returncode: %s',
+                self.process.pid, self.returncode
+            )
 
     def stop_due_to_timeout(self, **kwargs):
         LOGGER.info('process timeout, stopping: %s', self.process.pid)
@@ -156,16 +187,18 @@ class CommandRestartableBackgroundProcess:
         if self.process:
             self.process.stop(wait=wait)
 
-    def stop_if_running(self, **kwargs):
-        self.stop(**kwargs)
+    def stop_if_running(self, wait: bool = True, **kwargs):
+        if self.process:
+            self.process.stop_if_running(wait=wait, **kwargs)
 
     def start(self, stop: bool = True):
         if stop:
-            self.stop(wait=True)
+            self.stop_if_running(wait=True)
         if self.stop_at_exit and not self._atexit_registered:
-            atexit.register(self.stop)
+            atexit.register(self.stop_if_running)
             self._atexit_registered = True
         LOGGER.info('starting %s', self.name)
+        LOGGER.debug('running background command: %s', self.command)
         self.process = exec_with_logging(
             self.command,
             logging_prefix=self.logging_prefix or self.name,
@@ -174,6 +207,9 @@ class CommandRestartableBackgroundProcess:
 
     def is_running(self):
         return self.process and self.process.is_running()
+
+    def get_uptime(self) -> float:
+        return self.process.get_uptime()
 
     def start_if_not_running(self):
         if not self.is_running():
