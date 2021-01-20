@@ -86,7 +86,8 @@ class TestGetDefaultConfig:
 
     @patch('os.environ', {
         EnvironmentVariables.DOC_CONVERT_PROCESS_TIMEOUT: '123',
-        EnvironmentVariables.DOC_CONVERT_MAX_UPTIME: '101'
+        EnvironmentVariables.DOC_CONVERT_MAX_UPTIME: '101',
+        EnvironmentVariables.DOC_CONVERT_ENABLE_DEBUG: 'true'
     })
     def test_should_load_config_from_env(self, app_config_mock: ConfigParser):
         app_config_mock.read_dict({
@@ -94,13 +95,14 @@ class TestGetDefaultConfig:
                 AppConfigOptions.PROCESS_TIMEOUT: '1',
                 AppConfigOptions.MAX_UPTIME: '1',
                 AppConfigOptions.STOP_LISTENER_ON_ERROR: 'true',
-                AppConfigOptions.ENABLE_DEBUG: 'true'
+                AppConfigOptions.ENABLE_DEBUG: 'false'
             }
         })
         config = _get_default_config()
         LOGGER.debug('config: %s', config)
         assert config.get('process_timeout') == 123
         assert config.get('max_uptime') == 101
+        assert config.get('enable_debug') is True
 
     @patch('os.environ', {})
     def test_should_use_defaults(self, app_config_mock: ConfigParser):

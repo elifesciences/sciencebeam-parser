@@ -1,5 +1,6 @@
 import logging
 import os
+from distutils.util import strtobool
 from backports.tempfile import TemporaryDirectory
 
 from sciencebeam.config.app_config import get_app_config
@@ -30,6 +31,7 @@ class AppConfigOptions:
 class EnvironmentVariables:
     DOC_CONVERT_PROCESS_TIMEOUT = 'SCIENCEBEAM_DOC_CONVERT_PROCESS_TIMEOUT'
     DOC_CONVERT_MAX_UPTIME = 'SCIENCEBEAM_DOC_CONVERT_MAX_UPTIME'
+    DOC_CONVERT_ENABLE_DEBUG = 'SCIENCEBEAM_DOC_CONVERT_ENABLE_DEBUG'
 
 
 DEFAULT_DOC_CONVERT_PROCESS_TIMEOUT = 5 * 60  # 5 minutes
@@ -65,6 +67,14 @@ def _get_default_config():
             DOC_CONVERT_SECTION_NAME, AppConfigOptions.MAX_UPTIME,
             fallback=DEFAULT_DOC_CONVERT_MAX_UPTIME
         )
+    enable_debug = os.environ.get(EnvironmentVariables.DOC_CONVERT_ENABLE_DEBUG)
+    if enable_debug:
+        enable_debug = bool(strtobool(enable_debug))
+    else:
+        enable_debug = app_config.getboolean(
+            DOC_CONVERT_SECTION_NAME, AppConfigOptions.ENABLE_DEBUG,
+            fallback=DEFAULT_CONFIGURATION['enable_debug']
+        )
     config = {
         **config,
         'process_timeout': int(process_timeout),
@@ -72,9 +82,7 @@ def _get_default_config():
         'stop_listener_on_error': app_config.getboolean(
             DOC_CONVERT_SECTION_NAME, AppConfigOptions.STOP_LISTENER_ON_ERROR
         ),
-        'enable_debug': app_config.getboolean(
-            DOC_CONVERT_SECTION_NAME, AppConfigOptions.ENABLE_DEBUG
-        )
+        'enable_debug': enable_debug
     }
     return config
 
