@@ -28,7 +28,7 @@ services:
             args: 
                 commit: ${IMAGE_TAG}
                 version: ${VERSION}
-                install_dev: y
+                install_dev: "y"
         image: elifesciences/sciencebeam-base-dev:${IMAGE_TAG}
 
     sciencebeam-dev:
@@ -47,3 +47,7 @@ services:
             - JAVA_OPTS=-Xmx1g
         ports:
             - "8070:8070"
+
+
+    wait-for-it:
+        image: willwill/wait-for-it

@@ -8,6 +8,24 @@ import subprocess
 Office = namedtuple('Office', ['python'])
 
 
+class EnvironmentVariables:
+    UNO_PYTHON_PATH = 'UNO_PYTHON_PATH'
+    UNO_OFFICE_BINARY_PATH = 'UNO_OFFICE_BINARY_PATH'
+
+
+class DefaultValues:
+    UNO_PYTHON_PATH = 'python3'
+    UNO_OFFICE_BINARY_PATH = '/usr/lib/libreoffice/program/soffice.bin'
+
+
+def get_uno_python_path() -> str:
+    return os.environ.get('UNO_PYTHON_PATH') or DefaultValues.UNO_PYTHON_PATH
+
+
+def get_uno_office_binary_path() -> str:
+    return os.environ.get('UNO_OFFICE_BINARY_PATH') or DefaultValues.UNO_OFFICE_BINARY_PATH
+
+
 def find_offices():
     return [Office(python=os.environ.get('UNO_PYTHON_PATH') or 'python3')]
 
@@ -31,7 +49,7 @@ def find_pyuno_office():
 
 def get_start_listener_command(port: int) -> List[str]:
     return [
-        'soffice',
+        get_uno_office_binary_path(),
         '--headless',
         '--invisible',
         '--nocrashreport',
