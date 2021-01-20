@@ -280,8 +280,10 @@ def convert_document_file(
         )
     finally:
         # close, parameter: DeliverOwnership
-        # "  true: delegates the ownership of ths closing object to any one which throw the CloseVetoException.
-        #    This new owner has to close the closing object again if his still running processes will be finished."
+        #    "true: delegates the ownership of ths closing object to any one
+        #    which throw the CloseVetoException.
+        #    This new owner has to close the closing object again
+        #    if his still running processes will be finished."
         document.close(True)
 
 
