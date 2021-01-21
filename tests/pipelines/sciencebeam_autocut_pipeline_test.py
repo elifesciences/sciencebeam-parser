@@ -17,6 +17,10 @@ from sciencebeam.pipelines import sciencebeam_autocut_pipeline as \
 from sciencebeam.pipelines.sciencebeam_autocut_pipeline import PIPELINE
 
 
+# Note: disable "not-callable" to avoid "E is not callable (not-callable)"
+# pylint: disable=not-callable
+
+
 TITLE_1 = 'Title 1'
 TITLE_2 = 'Title 2'
 
