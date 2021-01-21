@@ -5,17 +5,23 @@ from typing import List
 import subprocess
 
 
-Office = namedtuple('Office', ['python'])
+Office = namedtuple('Office', ['unopath', 'python'])
 
 
 class EnvironmentVariables:
+    UNO_PATH = 'UNO_PATH'
     UNO_PYTHON_PATH = 'UNO_PYTHON_PATH'
     UNO_OFFICE_BINARY_PATH = 'UNO_OFFICE_BINARY_PATH'
 
 
 class DefaultValues:
+    UNO_PATH = '/usr/lib/python3/dist-packages'
     UNO_PYTHON_PATH = 'python3'
     UNO_OFFICE_BINARY_PATH = '/usr/lib/libreoffice/program/soffice.bin'
+
+
+def get_uno_path() -> str:
+    return os.environ.get('UNO_PATH') or DefaultValues.UNO_PATH
 
 
 def get_uno_python_path() -> str:
@@ -27,7 +33,10 @@ def get_uno_office_binary_path() -> str:
 
 
 def find_offices():
-    return [Office(python=os.environ.get('UNO_PYTHON_PATH') or 'python3')]
+    return [Office(
+        unopath=get_uno_path(),
+        python=get_uno_python_path()
+    )]
 
 
 def find_pyuno_office():
@@ -36,7 +45,10 @@ def find_pyuno_office():
         raise RuntimeError('no suitable office installation found')
     for office in offices:
         try:
-            subprocess.check_output([office.python, '-c', 'import uno, unohelper'])
+            subprocess.check_output(
+                [office.python, '-c', 'import uno, unohelper'],
+                env={'PYTHONPATH': office.unopath}
+            )
             return office
         except subprocess.CalledProcessError:
             pass

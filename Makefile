@@ -77,6 +77,10 @@ dev-start-doc-to-docx:
 	$(PYTHON) -m sciencebeam.server --port=8075 --pipeline=doc_to_docx $(ARGS)
 
 
+build:
+	$(DOCKER_COMPOSE) build sciencebeam
+
+
 build-dev:
 	@if [ "$(NO_BUILD)" != "y" ]; then \
 		$(DOCKER_COMPOSE) build sciencebeam-base-dev sciencebeam-dev; \
