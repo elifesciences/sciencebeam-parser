@@ -19,7 +19,7 @@ class _ReadFullFileSource(filebasedsource.FileBasedSource):
             output_content=True,
             buffer_size=4096):
 
-        super(_ReadFullFileSource, self).__init__(
+        super().__init__(
             file_pattern=file_pattern,
             compression_type=compression_type,
             splittable=False,
@@ -70,7 +70,7 @@ class _ReadFullFile(PTransform):
             output_filename=True,
             output_content=True,
             **kwargs):
-        super(_ReadFullFile, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._source = _ReadFullFileSource(
             file_pattern, coder, compression_type,
             validate,
@@ -96,7 +96,7 @@ def ReadFileNamesAndContent(*args, **kwargs):
 class _WriteFullFileSink(filebasedsink.FileBasedSink):
     def __init__(self, file_path_prefix, coder, file_name_suffix, num_shards,
                  shard_name_template, compression_type):
-        super(_WriteFullFileSink, self).__init__(
+        super().__init__(
             file_path_prefix=file_path_prefix,
             coder=coder,
             file_name_suffix=file_name_suffix,
@@ -126,7 +126,7 @@ class WriteToFile(PTransform):
                  shard_name_template=None,
                  compression_type=CompressionTypes.AUTO,
                  **kwargs):
-        super(WriteToFile, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._sink = _WriteFullFileSink(
             'dummy', coder, file_name_suffix,
             num_shards, shard_name_template,

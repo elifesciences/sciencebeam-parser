@@ -74,7 +74,7 @@ def get_cloud_project():
                     'gcloud is not installed. The Google Cloud SDK is '
                     'necessary to communicate with the Cloud ML service. '
                     'Please install and set up gcloud.'
-                )
+                ) from e
             raise
 
 

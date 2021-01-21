@@ -52,7 +52,7 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         )
     except ChildProcessReturnCodeError as e:
         if e.returncode == 9:
-            raise UnoConnectionError('failed to connect to uno server: %s' % e.returncode)
+            raise UnoConnectionError('failed to connect to uno server: %s' % e.returncode) from e
         raise type(e)(
             'failed to run converter: %s' % e.returncode,
             returncode=e.returncode

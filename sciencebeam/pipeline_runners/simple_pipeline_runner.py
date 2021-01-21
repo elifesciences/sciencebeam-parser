@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 class UnsupportedDataTypeError(AssertionError):
     def __init__(self, data_type):
         self.data_type = data_type
-        super(UnsupportedDataTypeError, self).__init__(
+        super().__init__(
             'Unsupported data type %s' % data_type
         )
 
