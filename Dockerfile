@@ -49,13 +49,17 @@ RUN useradd -ms /bin/bash sciencebeam
 USER sciencebeam
 ENV HOME=/home/sciencebeam
 
-# set and check UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
+# set and check UNO_PATH, UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
+ENV UNO_PATH=/usr/lib/python3/dist-packages
 ENV UNO_PYTHON_PATH=python3.7
 ENV UNO_OFFICE_BINARY_PATH=/usr/lib/libreoffice/program/soffice.bin
-RUN ${UNO_PYTHON_PATH} -c 'import uno, unohelper' \
+RUN \
+  echo "UNO_PATH: ${UNO_PATH}" \
+  && ls -l ${UNO_PATH} \
   && echo "UNO_PYTHON_PATH: ${UNO_PYTHON_PATH}" \
-  && ls -l ${UNO_OFFICE_BINARY_PATH} \
-  && echo "UNO_OFFICE_BINARY_PATH: ${UNO_OFFICE_BINARY_PATH}"
+  && PYTHONPATH=${UNO_PATH} ${UNO_PYTHON_PATH} -c 'import uno, unohelper' \
+  && echo "UNO_OFFICE_BINARY_PATH: ${UNO_OFFICE_BINARY_PATH}" \
+  && ls -l ${UNO_OFFICE_BINARY_PATH}
 
 # labels
 LABEL org.opencontainers.image.source="https://github.com/elifesciences/sciencebeam"

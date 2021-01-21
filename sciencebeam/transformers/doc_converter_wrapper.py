@@ -40,10 +40,12 @@ def _exec_pyuno_script(script_filename, args, process_timeout=None, daemon=False
         office.python,
         script_filename
     ] + args
-    LOGGER.info('executing: %s', command)
+    env = {'PYTHONPATH': office.unopath}
+    LOGGER.info('executing: %s (env: %s)', command, env)
     try:
         p = exec_with_logging(
             command,
+            env=env,
             logging_prefix='converter',
             process_timeout=process_timeout,
             daemon=daemon

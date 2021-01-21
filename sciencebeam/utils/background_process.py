@@ -138,10 +138,12 @@ def exec_with_logging(
         logging_prefix: str = None,
         process_timeout: int = None,
         daemon: bool = False,
-        check_returncode: bool = True) -> BackgroundProcess:
+        check_returncode: bool = True,
+        **kwargs) -> BackgroundProcess:
     p = BackgroundProcess(subprocess.Popen(
         command,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        **kwargs
     ))
     if logging_prefix is None:
         logging_prefix = 'process'
