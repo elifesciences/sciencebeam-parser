@@ -141,6 +141,7 @@ class TestApiBlueprint:
                 expected_context = {'request_args': {}}
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+                    accept_types=ANY,
                     includes=None,
                     context=expected_context
                 )
@@ -162,6 +163,7 @@ class TestApiBlueprint:
                 )
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+                    accept_types=ANY,
                     includes=None,
                     context=ANY
                 )
@@ -189,6 +191,7 @@ class TestApiBlueprint:
                     content=PDF_CONTENT,
                     filename='%s.pdf' % DEFAULT_FILENAME,
                     data_type=MimeTypes.PDF,
+                    accept_types=ANY,
                     includes=None,
                     context=expected_context
                 )
@@ -214,6 +217,37 @@ class TestApiBlueprint:
                 pipeline_runner.convert.assert_called_with(
                     content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
                     includes={FieldNames.TITLE, FieldNames.ABSTRACT},
+                    accept_types=ANY,
+                    context=ANY
+                )
+                actual_context = pipeline_runner.convert.call_args[1]['context']
+                actual_request_args = actual_context['request_args']
+                assert actual_request_args.get('filename') == PDF_FILENAME
+                assert actual_request_args.get('includes') == includes_arg
+                assert response.status_code == 200
+                assert response.data == XML_CONTENT
+
+        def test_should_pass_accept_mimetypes_to_convert_method(
+                self, config, args, pipeline_runner: MagicMock):
+
+            with _api_test_client(config, args) as test_client:
+                pipeline_runner.convert.return_value = {
+                    'content': XML_CONTENT,
+                    'type': MimeTypes.JATS_XML
+                }
+                includes_arg = ','.join([FieldNames.TITLE, FieldNames.ABSTRACT])
+                response = test_client.post(
+                    '/convert?filename=%s&includes=%s' % (
+                        PDF_FILENAME, includes_arg
+                    ),
+                    headers={'Accept': MimeTypes.XML},
+                    data=PDF_CONTENT,
+                    content_type=MimeTypes.PDF
+                )
+                pipeline_runner.convert.assert_called_with(
+                    content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+                    includes={FieldNames.TITLE, FieldNames.ABSTRACT},
+                    accept_types={MimeTypes.XML},
                     context=ANY
                 )
                 actual_context = pipeline_runner.convert.call_args[1]['context']

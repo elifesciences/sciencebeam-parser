@@ -148,7 +148,9 @@ def connect_with_timeout(resolver, port, timeout):
     elapsed = 0.0
     while True:
         try:
-            return connect(resolver, port)
+            connect_result = connect(resolver, port)
+            LOGGER.debug('connected to port %s', port)
+            return connect_result
         except NoConnectException as e:
             if elapsed >= timeout:
                 LOGGER.debug(
@@ -192,6 +194,7 @@ def managed_connection(resolver, port, no_launch, keep_listener_running):
 
 @contextmanager
 def managed_desktop(connection, keep_listener_running):
+    LOGGER.debug('starting desktop session')
     desktop = connection.ServiceManager.createInstanceWithContext(
         "com.sun.star.frame.Desktop", connection
     )
@@ -259,21 +262,29 @@ def convert_document_file(
     if not document:
         raise RuntimeError('failed to load document: %s' % input_file_url)
 
-    if remove_line_no:
-        document.getLineNumberingProperties().IsOn = False
+    try:
+        if remove_line_no:
+            document.getLineNumberingProperties().IsOn = False
 
-    if remove_header_footer:
-        disable_document_header_footer(document)
+        if remove_header_footer:
+            disable_document_header_footer(document)
 
-    if remove_redline:
-        document.setPropertyValue('RedlineDisplayType', RedlineDisplayType.NONE)
+        if remove_redline:
+            document.setPropertyValue('RedlineDisplayType', RedlineDisplayType.NONE)
 
-    output_url = "file://" + os.path.abspath(output_file)
-    LOGGER.debug("output_url: %s", output_url)
-    document.storeToURL(
-        output_url,
-        dict_to_property_values({'FilterName': output_filter_name})
-    )
+        output_url = "file://" + os.path.abspath(output_file)
+        LOGGER.debug("output_url: %s", output_url)
+        document.storeToURL(
+            output_url,
+            dict_to_property_values({'FilterName': output_filter_name})
+        )
+    finally:
+        # close, parameter: DeliverOwnership
+        #    "true: delegates the ownership of ths closing object to any one
+        #    which throw the CloseVetoException.
+        #    This new owner has to close the closing object again
+        #    if his still running processes will be finished."
+        document.close(True)
 
 
 def convert(connection, desktop, args):

@@ -112,3 +112,24 @@ class TestCreateSimlePipelineFromConfig:
             ) ==
             step.return_value
         )
+
+    def test_should_skip_last_step_if_accept_type_matches_earlier_result(
+            self, pipeline, args, step):
+        config = dict_to_config(DEFAULT_CONFIG)
+        step.return_value = {
+            'data': 'expected data',
+            'type': MimeTypes.XML
+        }
+        pipeline.get_steps.return_value = [
+            step,
+            FunctionPipelineStep(lambda _, **__: None, {MimeTypes.XML}, 'dummy')
+        ]
+        pipeline_runner = create_simple_pipeline_runner_from_config(
+            config, args
+        )
+        step.get_supported_types.return_value = {MimeTypes.PDF}
+        result = pipeline_runner.convert(
+            content=PDF_CONTENT, filename=PDF_FILENAME, data_type=MimeTypes.PDF,
+            accept_types={MimeTypes.XML}
+        )
+        assert result == step.return_value

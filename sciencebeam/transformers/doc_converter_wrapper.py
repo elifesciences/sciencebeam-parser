@@ -1,6 +1,7 @@
 import logging
 import os
 import socket
+import time
 from contextlib import closing
 from threading import Lock, current_thread
 
@@ -85,6 +86,21 @@ class ListenerProcess(CommandRestartableBackgroundProcess):
         self.host = host
         self.connect_timeout = connect_timeout
 
+    def __repr__(self):
+        return (
+            '{type_name}('
+            'port={self.port}'
+            ', host={self.host}'
+            ', connect_timeout={self.connect_timeout}'
+            ', command={command}'
+            ', process={self.process}'
+            ')'
+        ).format(
+            type_name=type(self).__name__,
+            self=self,
+            command=repr(self.command)
+        )
+
     def is_alive(self):
         if not self.is_running():
             return False
@@ -94,15 +110,36 @@ class ListenerProcess(CommandRestartableBackgroundProcess):
                 return True
         return False
 
-    def start_and_check_alive(self, **kwargs):
-        super().start(**kwargs)
-        if not self.is_alive():
-            self.stop()
-            raise ConnectionError('failed to start listener (unable to connect)')
+    def wait_for_is_alive(self, timeout: float) -> bool:
+        start_time = time.monotonic()
+        while not self.is_alive():
+            if not self.is_running():
+                return False
+            if time.monotonic() - start_time >= timeout:
+                return False
+            time.sleep(0.5)
+        return True
 
-    def start_listener_if_not_running(self, **kwargs):
-        if self.is_alive():
+    def start_and_check_alive(self, timeout=10, **kwargs):
+        super().start(**kwargs)
+        if self.wait_for_is_alive(timeout=timeout):
             return
+        self.stop_if_running()
+        if self.process.returncode == 81:
+            # see https://bugs.documentfoundation.org/show_bug.cgi?id=107912
+            #     "headless firstrun crashes (exit code 81)"
+            LOGGER.info('detected first-run error code 81, re-trying..')
+            self.start_and_check_alive(timeout=timeout, **kwargs)
+            return
+        raise ConnectionError('failed to start listener (unable to connect)')
+
+    def start_listener_if_not_running(self, max_uptime: float = None, **kwargs):
+        if self.is_alive():
+            uptime = self.get_uptime()
+            if not max_uptime or uptime <= max_uptime:
+                return
+            LOGGER.info('stopping listener, exceeded max uptime: %.3f > %.3f', uptime, max_uptime)
+            self.stop()
         self.start_and_check_alive(**kwargs)
 
 
@@ -114,19 +151,33 @@ class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
             no_launch: bool = True,
             keep_listener_running: bool = True,
             process_timeout: int = None,
+            max_uptime: float = 10,
             stop_listener_on_error: bool = True):
         self.port = port
         self.enable_debug = enable_debug
         self.no_launch = no_launch
         self.keep_listener_running = keep_listener_running
         self.process_timeout = process_timeout
+        self.max_uptime = max_uptime
         self.stop_listener_on_error = stop_listener_on_error
         self._listener_process = ListenerProcess(port=port)
         self._lock = Lock()
         self._concurrent_count = 0
 
+    def __repr__(self):
+        return (
+            '{type_name}('
+            'port={self.port}'
+            ', keep_listener_running={self.keep_listener_running}'
+            ', _listener_process={self._listener_process}'
+            ')'
+        ).format(
+            type_name=type(self).__name__,
+            self=self
+        )
+
     def start_listener_if_not_running(self):
-        self._listener_process.start_if_not_running()
+        self._listener_process.start_listener_if_not_running(max_uptime=self.max_uptime)
 
     def stop_listener_if_running(self):
         self._listener_process.stop_if_running()
@@ -136,7 +187,8 @@ class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
             remove_line_no: bool = True,
             remove_header_footer: bool = True,
             remove_redline: bool = True):
-        self.start_listener_if_not_running()
+        if self.no_launch:
+            self.start_listener_if_not_running()
 
         temp_target_filename = change_ext(
             temp_source_filename, None, '-output.%s' % output_type

@@ -69,6 +69,8 @@ class ApiBlueprint(Blueprint):
     def _do_convert(self):
         data_type = None
         includes = parse_includes(request.args.get('includes'))
+        accept_types = set(request.accept_mimetypes.values())
+        LOGGER.info('accept_types: %s', accept_types)
         if not request.files:
             data_type = request.mimetype
             filename = request.args.get('filename')
@@ -114,12 +116,13 @@ class ApiBlueprint(Blueprint):
         conversion_result = self.pipeline_runner.convert(
             content=content, filename=filename, data_type=data_type,
             includes=includes,
-            context=context
+            context=context,
+            accept_types=accept_types
         )
         response_content = conversion_result['content']
         response_type = conversion_result['type']
         LOGGER.debug(
-            'response_content: %s (%s)',
+            'response_content: %s bytes (%s)',
             len(response_content), response_type
         )
         if response_type in {MimeTypes.TEI_XML, MimeTypes.JATS_XML}:

@@ -1,7 +1,7 @@
 import logging
-from typing import List  # pylint: disable=unused-import
+from typing import List, Set
 
-from sciencebeam.pipelines import PipelineStep  # pylint: disable=unused-import
+from sciencebeam.pipelines import PipelineStep
 from sciencebeam.pipelines import (
     get_pipeline_for_configuration_and_args,
     add_pipeline_args,
@@ -20,8 +20,7 @@ class UnsupportedDataTypeError(AssertionError):
 
 
 class SimplePipelineRunner:
-    def __init__(self, steps):
-        # type: (List[PipelineStep])
+    def __init__(self, steps: List[PipelineStep]):
         LOGGER.debug('creating pipeline with steps: %s', steps)
         self._steps = steps
 
@@ -34,6 +33,7 @@ class SimplePipelineRunner:
 
     def convert(
             self, content: str, filename: str, data_type: str,
+            accept_types: Set[str] = None,
             includes=None,
             context: dict = None) -> dict:
         current_item = {
@@ -47,9 +47,15 @@ class SimplePipelineRunner:
         num_processed = 0
         for step in self._steps:
             data_type = current_item['type']
+            if accept_types and data_type in accept_types:
+                LOGGER.debug(
+                    'skipping step (type %r already in accept types: %r): %s',
+                    data_type, accept_types, step
+                )
+                continue
             if data_type not in step.get_supported_types():
                 LOGGER.debug(
-                    'skipping step (type "%s" not supported): %s', data_type, step
+                    'skipping step (type %r not supported): %s', data_type, step
                 )
                 continue
             LOGGER.debug(
