@@ -13,6 +13,18 @@ SYSTEM_PYTHON = python3
 
 ARGS =
 
+GROBID_HOME = ./grobid-home
+
+PYGROBID_PORT = 8080
+
+PDFALTO_CONVERT_API_URL = http://localhost:$(PYGROBID_PORT)/api/pdfalto
+EXAMPLE_PDF_DOCUMENT = test-data/minimal-example.pdf
+
+
+PDFALTO_BINARY_PATH = grobid-home/pdf2xml/lin-64/pdfalto
+GROBID_HOME_BASE_DOWNLOAD_URL = https://github.com/kermitt2/grobid/raw/0.6.1/grobid-home
+PDFALTO_BINARY_DOWNLOAD_URL = $(GROBID_HOME_BASE_DOWNLOAD_URL)/pdf2xml/lin-64/pdfalto
+
 
 venv-clean:
 	@if [ -d "$(VENV)" ]; then \
@@ -31,6 +43,22 @@ dev-install:
 
 
 dev-venv: venv-create dev-install
+
+
+download-pdfalto:
+	@echo "downloading: $(PDFALTO_BINARY_DOWNLOAD_URL)"
+	mkdir -p "$(dir $(PDFALTO_BINARY_PATH))"
+	curl --fail --show-error --connect-timeout 60 --user-agent "$USER_AGENT" --location \
+    "$(PDFALTO_BINARY_DOWNLOAD_URL)" \
+		--silent -o \
+		"$(PDFALTO_BINARY_PATH)"
+
+
+grobid-home-setup:
+	@if [ ! -f "$(PDFALTO_BINARY_PATH)" ]; then \
+		$(MAKE) download-pdfalto; \
+	fi
+	chmod u+x "$(PDFALTO_BINARY_PATH)"
 
 
 dev-flake8:
@@ -57,6 +85,18 @@ dev-watch:
 
 
 dev-test: dev-lint dev-pytest
+
+
+dev-start:
+	GROBID_HOME=$(GROBID_HOME) \
+		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
+
+
+dev-end-to-end:
+	curl --fail --show-error \
+		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
+		--silent "$(PDFALTO_CONVERT_API_URL)" \
+		> /dev/null
 
 
 run:

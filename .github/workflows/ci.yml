@@ -19,10 +19,6 @@ jobs:
         include:
         - python-version: 3.8
           push-package: true
-        - os: windows-latest
-          python-version: 3.8
-        - os: macos-latest
-          python-version: 3.8
 
     steps:
       - uses: actions/checkout@v2
@@ -33,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: |
           make dev-venv SYSTEM_PYTHON=python
+      - name: Setup grobid-home
+        run: |
+          make grobid-home-setup
       - name: Lint
         run: |
           make dev-lint
