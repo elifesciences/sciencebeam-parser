@@ -92,6 +92,12 @@ dev-start:
 		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
 
 
+dev-start-debug:
+	GROBID_HOME=$(GROBID_HOME) \
+	FLASK_ENV=development \
+		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
+
+
 dev-end-to-end:
 	curl --fail --show-error \
 		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
