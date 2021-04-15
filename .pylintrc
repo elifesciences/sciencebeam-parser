@@ -3,6 +3,10 @@ extension-pkg-whitelist=
     lxml
 
 
+[TYPECHECK]
+ignored-classes=ElementMaker
+
+
 [MESSAGES CONTROL]
 disable=
     missing-docstring,

@@ -18,6 +18,7 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 from pygrobid.models.header.data import HeaderDataGenerator
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.document.tei_document import TeiDocument
 
 
 LOGGER = logging.getLogger(__name__)
@@ -83,6 +84,8 @@ class ApiBlueprint(Blueprint):
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
         self.route("/models/header", methods=['GET'])(self.models_header_form)
         self.route("/models/header", methods=['POST'])(self.models_header)
+        self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
+        self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
         self.pdfalto_wrapper = PdfAltoWrapper.get()
         self.header_model = HeaderModel(config['models']['header']['path'])
 
@@ -172,6 +175,51 @@ class ApiBlueprint(Blueprint):
                 response_content = ''.join(formatted_tag_result_iterable)
                 if output_format == TagOutputFormats.JSON:
                     response_type = 'application/json'
+            LOGGER.debug('response_content: %r', response_content)
+        headers = None
+        return Response(response_content, headers=headers, mimetype=response_type)
+
+    def process_pdf_to_tei_form(self):
+        return self._get_form('Convert PDF to TEI')
+
+    def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
+        data = get_required_post_data()
+        with TemporaryDirectory(suffix='-request') as temp_dir:
+            temp_path = Path(temp_dir)
+            pdf_path = temp_path / 'test.pdf'
+            output_path = temp_path / 'test.lxml'
+            first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
+            last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
+            pdf_path.write_bytes(data)
+            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
+                str(pdf_path),
+                str(output_path),
+                first_page=first_page,
+                last_page=last_page
+            )
+            xml_content = output_path.read_bytes()
+            root = etree.fromstring(xml_content)
+            data_lines = HeaderDataGenerator().iter_data_lines_for_xml_root(root)
+            texts, features = load_data_crf_lines(data_lines)
+            texts = texts.tolist()
+            tag_result = self.header_model.predict_labels(
+                texts=texts, features=features, output_format=None
+            )
+            LOGGER.info('tag_result: %s', tag_result)
+            entities = list(self.header_model.iter_entity_values_predicted_labels(tag_result[0]))
+            LOGGER.info('entities: %s', entities)
+            document = TeiDocument()
+            current_title = None
+            current_abstract = None
+            for name, value in entities:
+                if name == '<title>' and not current_title:
+                    current_title = value
+                    document.set_title(value)
+                if name == '<abstract>' and not current_abstract:
+                    current_abstract = value
+                    document.set_abstract(value)
+            response_type = 'application/xml'
+            response_content = etree.tostring(document.root, pretty_print=True)
             LOGGER.debug('response_content: %r', response_content)
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)

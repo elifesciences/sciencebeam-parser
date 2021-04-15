@@ -1,6 +1,14 @@
-from typing import Optional, Iterable, List
+import logging
+from typing import Optional, Iterable, List, Tuple
+
+from delft.sequenceLabelling.evaluation import (
+    get_entities
+)
 
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class HeaderModel:
@@ -25,3 +33,13 @@ class HeaderModel:
     ) -> Iterable[str]:
         model = self.model
         return model.tag(texts, features=features, output_format=output_format)
+
+    def iter_entity_values_predicted_labels(
+        self,
+        tag_result: List[Tuple[str, str]]
+    ) -> Iterable[Tuple[str, str]]:
+        tokens, labels = zip(*tag_result)
+        LOGGER.info('tokens: %s', tokens)
+        LOGGER.info('labels: %s', labels)
+        for tag, start, end in get_entities(list(labels)):
+            yield tag, ' '.join(tokens[start:end])
