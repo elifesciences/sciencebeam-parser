@@ -1,0 +1,3 @@
+models:
+  header:
+    path: 'gs://sciencebeam-biorxiv-eu/delft/dev/2021-03-23-delft-biorxiv-seg-v23-auto-v0.0.23-1941-header/checkpoints/2021-03-23-CustomBidLSTM_CRF_no_word_embedding_features=9-15,19-25,27-29_no_feature_embedding_max_char=30_char_lstm_units=25_char_emb=25_word_lstm_units=200_mseq=2000_stride=1800_transfer1/epoch-00339'

@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from typing import Optional
 
 from subprocess import Popen, STDOUT
 
@@ -24,18 +25,31 @@ class PdfAltoWrapper:
     def get():
         return PdfAltoWrapper(get_pdfalto_binary_path())
 
-    def get_command(self, pdf_path: str, output_path: str):
-        return [
+    def get_command(
+        self,
+        pdf_path: str,
+        output_path: str,
+        first_page: Optional[int] = None,
+        last_page: Optional[int] = None
+    ):
+        command = [
             self.binary_path,
             '-noImageInline',
             '-fullFontName',
-            '-noLineNumbers',
+            '-noLineNumbers'
+        ]
+        if first_page:
+            command.extend(['-f', str(first_page)])
+        if last_page:
+            command.extend(['-l', str(last_page)])
+        command.extend([
             pdf_path,
             output_path
-        ]
+        ])
+        return command
 
-    def convert_pdf_to_pdfalto_xml(self, pdf_path: str, output_path: str):
-        command = self.get_command(pdf_path, output_path)
+    def convert_pdf_to_pdfalto_xml(self,  *args, **kwargs):
+        command = self.get_command(*args, **kwargs)
         LOGGER.info('command: %s', command)
         LOGGER.info('command str: %s', ' '.join(command))
         with Popen(command, stdout=sys.stderr, stderr=STDOUT) as _:
