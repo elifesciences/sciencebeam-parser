@@ -61,3 +61,15 @@ curl --fail --show-error \
     --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
     --silent "http://localhost:8080/api/processFulltextDocument?first_page=1&last_page=1"
 ```
+
+### Docker Usage
+
+```bash
+docker pull de4code/pygrobid-poc_unstable
+```
+
+```bash
+docker run --rm \
+    -p 8070:8070 \
+    de4code/pygrobid-poc_unstable
+```

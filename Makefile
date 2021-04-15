@@ -26,6 +26,10 @@ GROBID_HOME_BASE_DOWNLOAD_URL = https://github.com/kermitt2/grobid/raw/0.6.1/gro
 PDFALTO_BINARY_DOWNLOAD_URL = $(GROBID_HOME_BASE_DOWNLOAD_URL)/pdf2xml/lin-64/pdfalto
 
 
+IMAGE_NAME = de4code/pygrobid-poc_unstable
+IMAGE_TAG = develop
+
+
 venv-clean:
 	@if [ -d "$(VENV)" ]; then \
 		rm -rf "$(VENV)"; \
@@ -109,3 +113,13 @@ dev-end-to-end:
 
 run:
 	$(PYTHON) -m pygrobid $(ARGS)
+
+
+docker-build:
+	docker build . -t $(IMAGE_NAME):$(IMAGE_TAG)
+
+
+docker-run:
+	docker run --rm \
+		-p 8070:8070 \
+		$(IMAGE_NAME):$(IMAGE_TAG) $(ARGS)

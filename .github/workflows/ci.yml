@@ -38,3 +38,49 @@ jobs:
       - name: Test with pytest
         run: |
           make dev-pytest
+
+  docker-build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set tags
+        id: set_tags
+        run: |
+          DOCKER_IMAGE=de4code/pygrobid-poc
+          VERSION=""
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
+          else
+            TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:latest"
+          fi
+          echo "TAGS=${TAGS}"
+          echo ::set-output name=tags::${TAGS}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        env:
+            DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        if: ${{ env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/checkout@v2
+      - name: Setup grobid-home
+        run: |
+          make grobid-home-setup
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.set_tags.outputs.tags }}
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
