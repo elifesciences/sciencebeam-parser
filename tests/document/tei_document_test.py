@@ -14,7 +14,8 @@ class TestTeiDocument:
         document.set_title('test')
         LOGGER.debug('xml: %r', etree.tostring(document.root))
         nodes = document.root.xpath(
-            '//tei:title[@level="a"][@type="main"]', namespaces=TEI_NS_MAP
+            '//tei:fileDesc/tei:titleStmt/tei:title[@level="a"][@type="main"]',
+            namespaces=TEI_NS_MAP
         )
         assert [e.text for e in nodes] == ['test']
 

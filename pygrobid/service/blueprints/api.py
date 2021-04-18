@@ -46,12 +46,15 @@ VALID_MODEL_OUTPUT_FORMATS = {
 def get_post_data():
     if not request.files:
         return request.data
-    if 'file' not in request.files:
-        raise BadRequest(
-            'missing file named "file", found: %s ' % request.files.keys()
-        )
-    uploaded_file = request.files['file']
-    return uploaded_file.read()
+    supported_file_keys = ['file', 'input']
+    for name in supported_file_keys:
+        if name not in request.files:
+            continue
+        uploaded_file = request.files[name]
+        return uploaded_file.read()
+    raise BadRequest(
+        f'missing file named one pf "{supported_file_keys}", found: {request.files.keys()}'
+    )
 
 
 def get_required_post_data():

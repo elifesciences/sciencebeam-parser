@@ -103,3 +103,22 @@ class TestApiBlueprint:
             )
             assert response.status_code == 200
             assert response.data == XML_CONTENT_1
+
+        def test_should_accept_file_as_input_name_and_pass_to_convert_method(
+            self,
+            test_client,
+            pdfalto_wrapper_mock: MagicMock,
+            request_temp_path: Path
+        ):
+            expected_pdf_path = request_temp_path / 'test.pdf'
+            expected_output_path = request_temp_path / 'test.lxml'
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            response = test_client.post('/pdfalto', data=dict(
+                input=(BytesIO(PDF_CONTENT_1), PDF_FILENAME_1),
+            ))
+            pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
+                str(expected_pdf_path),
+                str(expected_output_path)
+            )
+            assert response.status_code == 200
+            assert response.data == XML_CONTENT_1

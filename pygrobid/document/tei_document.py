@@ -15,7 +15,9 @@ TEI_NS_MAP = {
     'tei': TEI_NS
 }
 
-TEI_E = ElementMaker(namespace=TEI_NS, nsmap=TEI_NS_MAP)
+TEI_E = ElementMaker(namespace=TEI_NS, nsmap={
+    None: TEI_NS
+})
 
 
 def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etree.ElementBase:
@@ -32,7 +34,7 @@ def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etre
 class TeiDocument:
     def __init__(self, root: Optional[etree.ElementBase] = None):
         if root is None:
-            self.root = TEI_E.tei()
+            self.root = TEI_E.TEI()
         else:
             self.root = root
 
