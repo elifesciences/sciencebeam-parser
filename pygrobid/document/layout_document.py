@@ -3,8 +3,21 @@ from typing import List, Iterable, Optional
 
 
 @dataclass
+class LayoutFont:
+    font_id: str
+    font_family: Optional[str] = None
+    font_size: Optional[float] = None
+    is_bold: Optional[bool] = None
+    is_italics: Optional[bool] = None
+
+
+EMPTY_FONT = LayoutFont(font_id='_EMPTY')
+
+
+@dataclass
 class LayoutToken:
     text: Optional[str]
+    font: LayoutFont = EMPTY_FONT
 
 
 @dataclass

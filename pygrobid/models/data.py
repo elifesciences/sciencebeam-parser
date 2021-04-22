@@ -53,3 +53,29 @@ def feature_linear_scaling_int(pos: int, total: int, bin_count: int) -> int:
     if pos <= 0:
         return 0
     return math.floor((pos / total) * bin_count)
+
+
+def get_token_font_status(previous_token: Optional[LayoutToken], current_token: LayoutToken):
+    if not previous_token:
+        return 'NEWFONT'
+    return (
+        'SAMEFONT' if current_token.font.font_family == previous_token
+        else 'NEWFONT'
+    )
+
+
+def get_token_font_size_feature(
+    previous_token: Optional[LayoutToken],
+    current_token: LayoutToken
+):
+    if not previous_token:
+        return 'HIGHERFONT'
+    previous_font_size = previous_token.font.font_size
+    current_font_size = current_token.font.font_size
+    if not previous_font_size or not current_font_size:
+        return 'HIGHERFONT'
+    if previous_font_size < current_font_size:
+        return 'LOWERFONT'
+    if previous_font_size > current_font_size:
+        return 'HIGHERFONT'
+    return 'SAMEFONTSIZE'

@@ -1,7 +1,12 @@
-from typing import Iterable
+from typing import Iterable, Optional
 
-from pygrobid.document.layout_document import LayoutDocument
-from pygrobid.models.data import ModelDataGenerator, LayoutModelData
+from pygrobid.document.layout_document import LayoutDocument, LayoutToken
+from pygrobid.models.data import (
+    ModelDataGenerator,
+    LayoutModelData,
+    get_token_font_status,
+    get_token_font_size_feature
+)
 
 
 class HeaderDataGenerator(ModelDataGenerator):
@@ -9,6 +14,7 @@ class HeaderDataGenerator(ModelDataGenerator):
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelData]:
+        previous_token: Optional[LayoutToken] = None
         for block in layout_document.iter_all_blocks():
             block_lines = block.lines
             for line_index, line in enumerate(block_lines):
@@ -31,10 +37,10 @@ class HeaderDataGenerator(ModelDataGenerator):
                         )
                     )
                     alignment_status = 'ALIGNEDLEFT'  # may also be 'LINEINDENT'
-                    font_status = 'SAMEFONT'  # may also be 'NEWFONT
-                    font_size = 'SAMEFONTSIZE'  # one of HIGHERFONT, SAMEFONTSIZE, LOWERFONT
-                    is_bold = False
-                    is_italic = False
+                    font_status = get_token_font_status(previous_token, token)
+                    font_size = get_token_font_size_feature(previous_token, token)
+                    is_bold = token.font.is_bold
+                    is_italic = token.font.is_italics
                     digit_status = 'NODIGIT'  # one of ALLDIGIT, CONTAINDIGIT, NODIGIT
                     capitalisation_status = 'NOCAPS'  # one of INITCAP, ALLCAPS, NOCAPS
                     if digit_status == 'ALLDIGIT':
@@ -92,3 +98,4 @@ class HeaderDataGenerator(ModelDataGenerator):
                         layout_token=token,
                         data_line=' '.join(features)
                     )
+                    previous_token = token
