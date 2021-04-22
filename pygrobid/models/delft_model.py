@@ -1,6 +1,8 @@
 import logging
 from typing import Optional, Iterable, List, Tuple
 
+import tensorflow as tf
+
 from delft.sequenceLabelling.evaluation import (
     get_entities
 )
@@ -13,6 +15,23 @@ from pygrobid.models.model import Model
 LOGGER = logging.getLogger(__name__)
 
 
+class SeparateSessionSequenceWrapper(Sequence):
+    def __init__(self, *args, **kwargs):
+        self._graph = tf.Graph()
+        self._session = tf.Session(graph=self._graph)
+        super().__init__(*args, **kwargs)
+
+    def load_from(self, *args, **kwargs):
+        with self._graph.as_default():
+            with self._session.as_default():
+                return super().load_from(*args, **kwargs)
+
+    def tag(self, *args, **kwargs):
+        with self._graph.as_default():
+            with self._session.as_default():
+                return super().tag(*args, **kwargs)
+
+
 class DelftModel(Model):
     def __init__(self, model_url: str):
         self.model_url = model_url
@@ -22,7 +41,7 @@ class DelftModel(Model):
     def model(self) -> Sequence:
         if self._model is not None:
             return self._model
-        model = Sequence('dummy-model')
+        model = SeparateSessionSequenceWrapper('dummy-model')
         model.load_from(self.model_url)
         self._model = model
         return model
