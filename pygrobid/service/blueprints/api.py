@@ -201,9 +201,13 @@ class ApiBlueprint(Blueprint):
             pdf_path = temp_path / 'test.pdf'
             output_path = temp_path / 'test.lxml'
             pdf_path.write_bytes(data)
+            first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
+            last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
             self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
                 str(pdf_path),
-                str(output_path)
+                str(output_path),
+                first_page=first_page,
+                last_page=last_page
             )
             response_content = output_path.read_text()
         response_type = 'text/xml'

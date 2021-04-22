@@ -99,7 +99,9 @@ class TestApiBlueprint:
             ))
             pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
                 str(expected_pdf_path),
-                str(expected_output_path)
+                str(expected_output_path),
+                first_page=None,
+                last_page=None
             )
             assert response.status_code == 200
             assert response.data == XML_CONTENT_1
@@ -118,7 +120,9 @@ class TestApiBlueprint:
             ))
             pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
                 str(expected_pdf_path),
-                str(expected_output_path)
+                str(expected_output_path),
+                first_page=None,
+                last_page=None
             )
             assert response.status_code == 200
             assert response.data == XML_CONTENT_1
