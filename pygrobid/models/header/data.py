@@ -1,14 +1,14 @@
 from typing import Iterable
 
 from pygrobid.document.layout_document import LayoutDocument
-from pygrobid.models.data import ModelDataGenerator
+from pygrobid.models.data import ModelDataGenerator, LayoutModelData
 
 
 class HeaderDataGenerator(ModelDataGenerator):
-    def iter_data_lines_for_layout_document(  # pylint: disable=too-many-locals
+    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
-    ) -> Iterable[str]:
+    ) -> Iterable[LayoutModelData]:
         for block in layout_document.iter_all_blocks():
             block_lines = block.lines
             for line_index, line in enumerate(block_lines):
@@ -53,7 +53,7 @@ class HeaderDataGenerator(ModelDataGenerator):
                     is_smallest_font = False
                     is_larger_than_average_font = False
                     label = '0'
-                    yield ' '.join([
+                    features = [
                         token_text,
                         token_text.lower(),
                         token_text[:1],
@@ -86,4 +86,9 @@ class HeaderDataGenerator(ModelDataGenerator):
                         '1' if is_smallest_font else '0',
                         '1' if is_larger_than_average_font else '0',
                         label
-                    ])
+                    ]
+                    yield LayoutModelData(
+                        layout_line=line,
+                        layout_token=token,
+                        data_line=' '.join(features)
+                    )

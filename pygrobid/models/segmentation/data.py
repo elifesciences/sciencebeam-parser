@@ -3,7 +3,7 @@ import re
 from typing import Iterable, List, Optional
 
 from pygrobid.document.layout_document import LayoutDocument
-from pygrobid.models.data import ModelDataGenerator
+from pygrobid.models.data import ModelDataGenerator, LayoutModelData
 
 
 LOGGER = logging.getLogger(__name__)
@@ -17,10 +17,10 @@ def format_feature_text(text: str) -> str:
 
 
 class SegmentationDataGenerator(ModelDataGenerator):
-    def iter_data_lines_for_layout_document(  # pylint: disable=too-many-locals
+    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
-    ) -> Iterable[str]:
+    ) -> Iterable[LayoutModelData]:
         for page in layout_document.pages:
             blocks = page.blocks
             for block_index, block in enumerate(blocks):
@@ -129,4 +129,7 @@ class SegmentationDataGenerator(ModelDataGenerator):
                                 len(line_features), line_features
                             )
                         )
-                    yield ' '.join(line_features)
+                    yield LayoutModelData(
+                        layout_line=line,
+                        data_line=' '.join(line_features)
+                    )

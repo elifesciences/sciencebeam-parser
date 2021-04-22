@@ -1,11 +1,19 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Iterable
+from dataclasses import dataclass
+from typing import Iterable, Optional
 
 from lxml import etree
 
-from pygrobid.document.layout_document import LayoutDocument
+from pygrobid.document.layout_document import LayoutDocument, LayoutToken,  LayoutLine
 from pygrobid.external.pdfalto.parser import parse_alto_root
+
+
+@dataclass
+class LayoutModelData:
+    data_line: str
+    layout_line: Optional[LayoutLine] = None
+    layout_token: Optional[LayoutToken] = None
 
 
 class ModelDataGenerator(ABC):
@@ -18,11 +26,20 @@ class ModelDataGenerator(ABC):
         )
 
     @abstractmethod
-    def iter_data_lines_for_layout_document(
+    def iter_model_data_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ) -> Iterable[LayoutModelData]:
+        pass
+
+    def iter_data_lines_for_layout_document(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
     ) -> Iterable[str]:
-        pass
+        return (
+            model_data.data_line
+            for model_data in self.iter_model_data_for_layout_document(layout_document)
+        )
 
 
 def feature_linear_scaling_int(pos: int, total: int, bin_count: int) -> int:

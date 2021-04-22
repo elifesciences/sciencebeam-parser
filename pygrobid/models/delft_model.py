@@ -51,7 +51,7 @@ class DelftModel(Model):
         texts: List[List[str]],
         features: List[List[List[str]]],
         output_format: Optional[str] = None
-    ) -> Iterable[str]:
+    ) -> List[List[Tuple[str, str]]]:
         model = self.model
         return model.tag(texts, features=features, output_format=output_format)
 

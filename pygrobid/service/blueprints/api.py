@@ -16,9 +16,11 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 )
 
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
+from pygrobid.external.pdfalto.parser import parse_alto_root
 from pygrobid.models.model import Model
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.tei_document import TeiDocument
 
 
@@ -217,6 +219,29 @@ class ApiBlueprint(Blueprint):
     def process_pdf_to_tei_form(self):
         return _get_file_upload_form('Convert PDF to TEI')
 
+    def get_tei_document_for_layout_document(self, layout_document: LayoutDocument):
+        segmentation_label_result = self.segmentation_model.get_label_layout_document_result(
+            layout_document
+        )
+        header_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<header>'
+        )
+        LOGGER.info('header_layout_document: %s', header_layout_document)
+        if not header_layout_document.pages:
+            return TeiDocument()
+        data_generator = self.header_model.get_data_generator()
+        data_lines = data_generator.iter_data_lines_for_layout_document(header_layout_document)
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = self.header_model.predict_labels(
+            texts=texts, features=features, output_format=None
+        )
+        LOGGER.info('tag_result: %s', tag_result)
+        entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
+        document = TeiDocument()
+        self.header_model.update_document_with_entity_values(document, entity_values)
+        return document
+
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
         with TemporaryDirectory(suffix='-request') as temp_dir:
@@ -234,17 +259,8 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            data_generator = self.header_model.get_data_generator()
-            data_lines = data_generator.iter_data_lines_for_xml_root(root)
-            texts, features = load_data_crf_lines(data_lines)
-            texts = texts.tolist()
-            tag_result = self.header_model.predict_labels(
-                texts=texts, features=features, output_format=None
-            )
-            LOGGER.info('tag_result: %s', tag_result)
-            entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
-            document = TeiDocument()
-            self.header_model.update_document_with_entity_values(document, entity_values)
+            layout_document = parse_alto_root(root)
+            document = self.get_tei_document_for_layout_document(layout_document)
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=True)
             LOGGER.debug('response_content: %r', response_content)
