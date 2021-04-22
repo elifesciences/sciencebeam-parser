@@ -1,19 +1,12 @@
-from typing import Iterable, List
+from typing import Iterable
 
 from lxml import etree
 
 
-ALTO_NS = 'http://www.loc.gov/standards/alto/ns-v3#'
-ALTO_NS_MAP = {
-    'alto': ALTO_NS
-}
+from pygrobid.models.data import alto_xpath, ModelDataGenerator
 
 
-def alto_xpath(parent: etree.ElementBase, xpath: str) -> List[etree.ElementBase]:
-    return parent.xpath(xpath, namespaces=ALTO_NS_MAP)
-
-
-class HeaderDataGenerator:
+class HeaderDataGenerator(ModelDataGenerator):
     def iter_data_lines_for_xml_root(  # pylint: disable=too-many-locals
         self,
         root: etree.ElementBase

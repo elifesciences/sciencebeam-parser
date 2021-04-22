@@ -1,3 +1,5 @@
 models:
+  segmentation:
+    path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-segmentation-biorxiv-no-word-embedding-text-feature.tar.gz'
   header:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-header-biorxiv-no-word-embedding.tar.gz'

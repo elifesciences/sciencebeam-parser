@@ -16,7 +16,8 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 )
 
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
-from pygrobid.models.header.data import HeaderDataGenerator
+from pygrobid.models.model import Model
+from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
 from pygrobid.document.tei_document import TeiDocument
 
@@ -77,64 +78,43 @@ def get_int_request_arg(
     return default_value
 
 
-class ApiBlueprint(Blueprint):
-    def __init__(self):
-        super().__init__('api', __name__)
-        config = yaml.safe_load(Path('config.yml').read_text())
-        LOGGER.info('config: %s', config)
-        self.route('/')(self.api_root)
-        self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
-        self.route("/pdfalto", methods=['POST'])(self.pdfalto)
-        self.route("/models/header", methods=['GET'])(self.models_header_form)
-        self.route("/models/header", methods=['POST'])(self.models_header)
-        self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
-        self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
-        self.pdfalto_wrapper = PdfAltoWrapper.get()
-        self.header_model = HeaderModel(config['models']['header']['path'])
+def _get_file_upload_form(title: str):
+    return (
+        '''
+        <!doctype html>
+        <title>{title}</title>
+        <h1>{title}</h1>
+        <form target=_blank method=post enctype=multipart/form-data>
+        <input type=file name=file>
+        <input type=submit value=Upload>
+        </form>
+        '''
+    ).format(title=title)
 
-    def api_root(self):
-        return jsonify({
-            'links': {
-                'pdfalto': url_for('.pdfalto')
-            }
-        })
 
-    def _get_form(self, title: str):
-        return (
-            '''
-            <!doctype html>
-            <title>{title}</title>
-            <h1>{title}</h1>
-            <form target=_blank method=post enctype=multipart/form-data>
-            <input type=file name=file>
-            <input type=submit value=Upload>
-            </form>
-            '''
-        ).format(title=title)
+class ModelNestedBluePrint:
+    def __init__(
+        self,
+        name: str,
+        model: Model,
+        pdfalto_wrapper: PdfAltoWrapper
+    ):
+        self.name = name
+        self.model = model
+        self.pdfalto_wrapper = pdfalto_wrapper
 
-    def pdfalto_form(self):
-        return self._get_form('PdfAlto convert PDF to LXML')
+    def add_routes(self, parent_blueprint: Blueprint, url_prefix: str):
+        parent_blueprint.route(
+            url_prefix, methods=['GET'], endpoint=f'{url_prefix}_get'
+        )(self.handle_get)
+        parent_blueprint.route(
+            url_prefix, methods=['POST'], endpoint=f'{url_prefix}_post'
+        )(self.handle_post)
 
-    def pdfalto(self):
-        data = get_required_post_data()
-        with TemporaryDirectory(suffix='-request') as temp_dir:
-            temp_path = Path(temp_dir)
-            pdf_path = temp_path / 'test.pdf'
-            output_path = temp_path / 'test.lxml'
-            pdf_path.write_bytes(data)
-            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-                str(pdf_path),
-                str(output_path)
-            )
-            response_content = output_path.read_text()
-        response_type = 'text/xml'
-        headers = None
-        return Response(response_content, headers=headers, mimetype=response_type)
+    def handle_get(self):
+        return _get_file_upload_form(f'{self.name} Model: convert PDF to data')
 
-    def models_header_form(self):
-        return self._get_form('Header Model: convert PDF to data')
-
-    def models_header(self):  # pylint: disable=too-many-locals
+    def handle_post(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
         with TemporaryDirectory(suffix='-request') as temp_dir:
             temp_path = Path(temp_dir)
@@ -156,14 +136,15 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            data_lines = HeaderDataGenerator().iter_data_lines_for_xml_root(root)
+            data_generator = self.model.get_data_generator()
+            data_lines = data_generator.iter_data_lines_for_xml_root(root)
             response_type = 'text/plain'
             if output_format == ModelOutputFormats.RAW_DATA:
                 response_content = '\n'.join(data_lines) + '\n'
             else:
                 texts, features = load_data_crf_lines(data_lines)
                 texts = texts.tolist()
-                tag_result = self.header_model.predict_labels(
+                tag_result = self.model.predict_labels(
                     texts=texts, features=features, output_format=None
                 )
                 LOGGER.info('tag_result: %s', tag_result)
@@ -182,8 +163,55 @@ class ApiBlueprint(Blueprint):
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)
 
+
+class ApiBlueprint(Blueprint):
+    def __init__(self):
+        super().__init__('api', __name__)
+        config = yaml.safe_load(Path('config.yml').read_text())
+        LOGGER.info('config: %s', config)
+        self.route('/')(self.api_root)
+        self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
+        self.route("/pdfalto", methods=['POST'])(self.pdfalto)
+        self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
+        self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
+        self.pdfalto_wrapper = PdfAltoWrapper.get()
+        self.segmentation_model = SegmentationModel(config['models']['segmentation']['path'])
+        self.header_model = HeaderModel(config['models']['header']['path'])
+        ModelNestedBluePrint(
+            'Segmentation', model=self.segmentation_model, pdfalto_wrapper=self.pdfalto_wrapper
+        ).add_routes(self, '/models/segmentation')
+        ModelNestedBluePrint(
+            'Header', model=self.header_model, pdfalto_wrapper=self.pdfalto_wrapper
+        ).add_routes(self, '/models/header')
+
+    def api_root(self):
+        return jsonify({
+            'links': {
+                'pdfalto': url_for('.pdfalto')
+            }
+        })
+
+    def pdfalto_form(self):
+        return _get_file_upload_form('PdfAlto convert PDF to LXML')
+
+    def pdfalto(self):
+        data = get_required_post_data()
+        with TemporaryDirectory(suffix='-request') as temp_dir:
+            temp_path = Path(temp_dir)
+            pdf_path = temp_path / 'test.pdf'
+            output_path = temp_path / 'test.lxml'
+            pdf_path.write_bytes(data)
+            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
+                str(pdf_path),
+                str(output_path)
+            )
+            response_content = output_path.read_text()
+        response_type = 'text/xml'
+        headers = None
+        return Response(response_content, headers=headers, mimetype=response_type)
+
     def process_pdf_to_tei_form(self):
-        return self._get_form('Convert PDF to TEI')
+        return _get_file_upload_form('Convert PDF to TEI')
 
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
@@ -202,7 +230,8 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            data_lines = HeaderDataGenerator().iter_data_lines_for_xml_root(root)
+            data_generator = self.header_model.get_data_generator()
+            data_lines = data_generator.iter_data_lines_for_xml_root(root)
             texts, features = load_data_crf_lines(data_lines)
             texts = texts.tolist()
             tag_result = self.header_model.predict_labels(

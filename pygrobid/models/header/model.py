@@ -8,15 +8,20 @@ from delft.sequenceLabelling.evaluation import (
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
 from pygrobid.document.tei_document import TeiDocument
+from pygrobid.models.header.data import HeaderDataGenerator
+from pygrobid.models.model import Model
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class HeaderModel:
+class HeaderModel(Model):
     def __init__(self, model_url: str):
         self.model_url = model_url
         self._model: Optional[Sequence] = None
+
+    def get_data_generator(self) -> HeaderDataGenerator:
+        return HeaderDataGenerator()
 
     @property
     def model(self) -> Sequence:
