@@ -5,7 +5,10 @@ from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
     get_token_font_status,
-    get_token_font_size_feature
+    get_token_font_size_feature,
+    get_digit_feature,
+    get_capitalisation_feature,
+    get_punctuation_profile_feature
 )
 
 
@@ -41,8 +44,8 @@ class HeaderDataGenerator(ModelDataGenerator):
                     font_size = get_token_font_size_feature(previous_token, token)
                     is_bold = token.font.is_bold
                     is_italic = token.font.is_italics
-                    digit_status = 'NODIGIT'  # one of ALLDIGIT, CONTAINDIGIT, NODIGIT
-                    capitalisation_status = 'NOCAPS'  # one of INITCAP, ALLCAPS, NOCAPS
+                    digit_status = get_digit_feature(token_text)
+                    capitalisation_status = get_capitalisation_feature(token_text)
                     if digit_status == 'ALLDIGIT':
                         capitalisation_status = 'NOCAPS'
                     is_single_char = len(token_text) == 1
@@ -54,7 +57,7 @@ class HeaderDataGenerator(ModelDataGenerator):
                     is_email = False
                     is_http = False
                     # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
-                    punct_type = 'NOPUNCT'
+                    punct_type = get_punctuation_profile_feature(token_text)
                     is_largest_font = False
                     is_smallest_font = False
                     is_larger_than_average_font = False

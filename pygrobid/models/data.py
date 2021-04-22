@@ -1,4 +1,5 @@
 import math
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Optional
@@ -79,3 +80,57 @@ def get_token_font_size_feature(
     if previous_font_size > current_font_size:
         return 'HIGHERFONT'
     return 'SAMEFONTSIZE'
+
+
+def get_digit_feature(text: str) -> str:
+    if text.isdigit():
+        return 'ALLDIGIT'
+    for c in text:
+        if c.isdigit():
+            return 'CONTAINSDIGITS'
+    return 'NODIGIT'
+
+
+def get_capitalisation_feature(text: str) -> str:
+    if text.isupper():
+        return 'ALLCAP'
+    if text and text[0].isupper():
+        return 'INITCAP'
+    return 'NOCAPS'
+
+
+class PunctuationProfileValues:
+    OPENBRACKET = 'OPENBRACKET'
+    ENDBRACKET = 'ENDBRACKET'
+    DOT = 'DOT'
+    COMMA = 'COMMA'
+    HYPHEN = 'HYPHEN'
+    QUOTE = 'QUOTE'
+    PUNCT = 'PUNCT'
+    NOPUNCT = 'NOPUNCT'
+
+
+PUNCTUATION_PROFILE_MAP = {
+    '(': PunctuationProfileValues.OPENBRACKET,
+    '[': PunctuationProfileValues.OPENBRACKET,
+    ')': PunctuationProfileValues.ENDBRACKET,
+    ']': PunctuationProfileValues.ENDBRACKET,
+    '.': PunctuationProfileValues.DOT,
+    ',': PunctuationProfileValues.COMMA,
+    '-': PunctuationProfileValues.HYPHEN,
+    '"': PunctuationProfileValues.QUOTE,
+    '\'': PunctuationProfileValues.QUOTE,
+    '`': PunctuationProfileValues.QUOTE,
+}
+
+
+IS_PUNCT_PATTERN = r"^[\,\:;\?\.]+$"
+
+
+def get_punctuation_profile_feature(text: str) -> str:
+    result = PUNCTUATION_PROFILE_MAP.get(text)
+    if not result and re.match(IS_PUNCT_PATTERN, text):
+        return PunctuationProfileValues.PUNCT
+    if not result:
+        return PunctuationProfileValues.NOPUNCT
+    return result

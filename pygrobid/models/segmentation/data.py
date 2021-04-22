@@ -7,7 +7,9 @@ from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
     get_token_font_status,
-    get_token_font_size_feature
+    get_token_font_size_feature,
+    get_digit_feature,
+    get_capitalisation_feature
 )
 
 
@@ -70,8 +72,8 @@ class SegmentationDataGenerator(ModelDataGenerator):
                     font_size = get_token_font_size_feature(previous_token, token)
                     is_bold = token.font.is_bold
                     is_italic = token.font.is_italics
-                    digit_status = 'NODIGIT'  # one of ALLDIGIT, CONTAINDIGIT, NODIGIT
-                    capitalisation_status = 'NOCAPS'  # one of INITCAP, ALLCAPS, NOCAPS
+                    digit_status = get_digit_feature(token_text)
+                    capitalisation_status = get_capitalisation_feature(token_text)
                     if digit_status == 'ALLDIGIT':
                         capitalisation_status = 'NOCAPS'
                     is_single_char = len(token_text) == 1
