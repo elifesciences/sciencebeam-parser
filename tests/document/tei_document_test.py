@@ -18,6 +18,7 @@ class TestTeiDocument:
             namespaces=TEI_NS_MAP
         )
         assert [e.text for e in nodes] == ['test']
+        assert document.get_title() == 'test'
 
     def test_should_be_able_to_set_abstract(self):
         document = TeiDocument()
@@ -27,3 +28,4 @@ class TestTeiDocument:
             '//tei:abstract/tei:p', namespaces=TEI_NS_MAP
         )
         assert [e.text for e in nodes] == ['test']
+        assert document.get_abstract() == 'test'

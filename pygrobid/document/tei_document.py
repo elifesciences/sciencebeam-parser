@@ -24,11 +24,21 @@ def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etre
     if not path:
         return parent
     child = parent.find(TEI_NS_PREFIX + path[0])
-    if not child:
+    if child is None:
         LOGGER.debug('creating element: %s', path[0])
         child = TEI_E(path[0])
         parent.append(child)
     return get_or_create_element_at(child, path[1:])
+
+
+def get_text_content(node: etree.ElementBase) -> str:
+    if node is None:
+        return ''
+    return ''.join(node.itertext())
+
+
+def get_tei_xpath_text_content_list(parent: etree.ElementBase, xpath: str) -> List[str]:
+    return [get_text_content(node) for node in parent.xpath(xpath, namespaces=TEI_NS_MAP)]
 
 
 class TeiDocument:
@@ -45,11 +55,23 @@ class TeiDocument:
         parent = self.get_or_create_element_at(path)
         parent.append(child)
 
+    def get_title(self) -> str:
+        return '\n'.join(get_tei_xpath_text_content_list(
+            self.root,
+            '//tei:fileDesc/tei:titleStmt/tei:title[@level="a"][@type="main"]',
+        ))
+
     def set_title(self, title: str):
         self.set_child_element_at(
             ['teiHeader', 'fileDesc', 'titleStmt'],
             TEI_E.title(title, level="a", type="main")
         )
+
+    def get_abstract(self) -> str:
+        return '\n'.join(get_tei_xpath_text_content_list(
+            self.root,
+            '//tei:abstract/tei:p',
+        ))
 
     def set_abstract(self, abstract: str):
         self.set_child_element_at(

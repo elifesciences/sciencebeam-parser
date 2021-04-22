@@ -7,6 +7,8 @@ from delft.sequenceLabelling.evaluation import (
 
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
+from pygrobid.document.tei_document import TeiDocument
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,3 +45,20 @@ class HeaderModel:
         LOGGER.info('labels: %s', labels)
         for tag, start, end in get_entities(list(labels)):
             yield tag, ' '.join(tokens[start:end])
+
+    def update_document_with_entity_values(
+        self,
+        document: TeiDocument,
+        entity_values: Iterable[Tuple[str, str]]
+    ):
+        entity_values = list(entity_values)
+        LOGGER.info('entity_values: %s', entity_values)
+        current_title = None
+        current_abstract = None
+        for name, value in entity_values:
+            if name == '<title>' and not current_title:
+                current_title = value
+                document.set_title(value)
+            if name == '<abstract>' and not current_abstract:
+                current_abstract = value
+                document.set_abstract(value)

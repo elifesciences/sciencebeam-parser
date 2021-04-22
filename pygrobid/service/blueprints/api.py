@@ -209,18 +209,9 @@ class ApiBlueprint(Blueprint):
                 texts=texts, features=features, output_format=None
             )
             LOGGER.info('tag_result: %s', tag_result)
-            entities = list(self.header_model.iter_entity_values_predicted_labels(tag_result[0]))
-            LOGGER.info('entities: %s', entities)
+            entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
             document = TeiDocument()
-            current_title = None
-            current_abstract = None
-            for name, value in entities:
-                if name == '<title>' and not current_title:
-                    current_title = value
-                    document.set_title(value)
-                if name == '<abstract>' and not current_abstract:
-                    current_abstract = value
-                    document.set_abstract(value)
+            self.header_model.update_document_with_entity_values(document, entity_values)
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=True)
             LOGGER.debug('response_content: %r', response_content)
