@@ -2,12 +2,8 @@ import logging
 import re
 from typing import Iterable, List, Optional
 
-from lxml import etree
-
-from pygrobid.models.data import (
-    alto_xpath,
-    ModelDataGenerator
-)
+from pygrobid.document.layout_document import LayoutDocument
+from pygrobid.models.data import ModelDataGenerator
 
 
 LOGGER = logging.getLogger(__name__)
@@ -21,22 +17,22 @@ def format_feature_text(text: str) -> str:
 
 
 class SegmentationDataGenerator(ModelDataGenerator):
-    def iter_data_lines_for_xml_root(  # pylint: disable=too-many-locals
+    def iter_data_lines_for_layout_document(  # pylint: disable=too-many-locals
         self,
-        root: etree.ElementBase
+        layout_document: LayoutDocument
     ) -> Iterable[str]:
-        for page_node in alto_xpath(root, './/alto:Page'):
-            blocks = alto_xpath(page_node, './/alto:TextBlock')
-            for block_index, block_node in enumerate(blocks):
-                block_lines = alto_xpath(block_node, './/alto:TextLine[alto:String]')
-                for line_index, line_node in enumerate(block_lines):
-                    line_tokens = alto_xpath(line_node, './/alto:String')
-                    token_texts = [
-                        string_node.attrib.get('CONTENT') or ''
-                        for string_node in line_tokens
+        for page in layout_document.pages:
+            blocks = page.blocks
+            for block_index, block in enumerate(blocks):
+                block_lines = block.lines
+                for line_index, line in enumerate(block_lines):
+                    line_tokens = line.tokens
+                    token_texts: List[str] = [
+                        layout_token.text or ''
+                        for layout_token in line_tokens
                     ]
-                    line = ' '.join(token_texts)
-                    retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line)
+                    line_text = ' '.join(token_texts)
+                    retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line_text)
                     if not retokenized_token_texts:
                         continue
                     token_text = retokenized_token_texts[0].strip()
@@ -87,7 +83,7 @@ class SegmentationDataGenerator(ModelDataGenerator):
                     is_http = False
                     # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
                     # punct_type = None
-                    formatted_whole_line = format_feature_text(line)
+                    formatted_whole_line = format_feature_text(line_text)
                     line_features: List[str] = [
                         token_text,
                         second_token_text or token_text,

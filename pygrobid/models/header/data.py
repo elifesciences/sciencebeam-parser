@@ -1,22 +1,20 @@
 from typing import Iterable
 
-from lxml import etree
-
-
-from pygrobid.models.data import alto_xpath, ModelDataGenerator
+from pygrobid.document.layout_document import LayoutDocument
+from pygrobid.models.data import ModelDataGenerator
 
 
 class HeaderDataGenerator(ModelDataGenerator):
-    def iter_data_lines_for_xml_root(  # pylint: disable=too-many-locals
+    def iter_data_lines_for_layout_document(  # pylint: disable=too-many-locals
         self,
-        root: etree.ElementBase
+        layout_document: LayoutDocument
     ) -> Iterable[str]:
-        for block_node in alto_xpath(root, './/alto:TextBlock'):
-            block_lines = alto_xpath(block_node, './/alto:TextLine[alto:String]')
-            for line_index, line_node in enumerate(block_lines):
-                line_tokens = alto_xpath(line_node, './/alto:String')
-                for token_index, string_node in enumerate(line_tokens):
-                    token_text: str = string_node.attrib.get('CONTENT') or ''
+        for block in layout_document.iter_all_blocks():
+            block_lines = block.lines
+            for line_index, line in enumerate(block_lines):
+                line_tokens = line.tokens
+                for token_index, token in enumerate(line_tokens):
+                    token_text: str = token.text or ''
                     line_status = (
                         'LINESTART' if token_index == 0
                         else (

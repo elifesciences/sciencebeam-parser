@@ -1,25 +1,26 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Iterable, List
+from typing import Iterable
 
 from lxml import etree
 
-
-ALTO_NS = 'http://www.loc.gov/standards/alto/ns-v3#'
-ALTO_NS_MAP = {
-    'alto': ALTO_NS
-}
-
-
-def alto_xpath(parent: etree.ElementBase, xpath: str) -> List[etree.ElementBase]:
-    return parent.xpath(xpath, namespaces=ALTO_NS_MAP)
+from pygrobid.document.layout_document import LayoutDocument
+from pygrobid.external.pdfalto.parser import parse_alto_root
 
 
 class ModelDataGenerator(ABC):
-    @abstractmethod
     def iter_data_lines_for_xml_root(
         self,
         root: etree.ElementBase
+    ) -> Iterable[str]:
+        return self.iter_data_lines_for_layout_document(
+            parse_alto_root(root)
+        )
+
+    @abstractmethod
+    def iter_data_lines_for_layout_document(
+        self,
+        layout_document: LayoutDocument
     ) -> Iterable[str]:
         pass
 
