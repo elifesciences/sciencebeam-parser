@@ -1,5 +1,5 @@
 dicttoxml==1.7.4
-Flask==1.1.2
+Flask==2.0.0
 Flask-Cors==3.0.10
 lxml==4.6.3
 requests==2.25.1
