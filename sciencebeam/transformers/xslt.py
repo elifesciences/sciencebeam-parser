@@ -13,7 +13,8 @@ T_XSLT_Input = Union[Element, ElementTree]
 
 def _to_xslt_input(value: Union[bytes, str, T_XSLT_Input]) -> T_XSLT_Input:
     if isinstance(value, (bytes, str)):
-        return etree.fromstring(value)
+        parser = etree.XMLParser(recover=True)
+        return etree.fromstring(value, parser=parser)
     return value
 
 
