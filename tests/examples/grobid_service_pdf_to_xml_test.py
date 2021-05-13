@@ -1,5 +1,5 @@
 import logging
-from mock import patch, DEFAULT
+from unittest.mock import patch, DEFAULT
 
 import pytest
 

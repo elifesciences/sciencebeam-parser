@@ -1,7 +1,7 @@
 import argparse
 from functools import reduce  # pylint: disable=W0622
 
-from mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 

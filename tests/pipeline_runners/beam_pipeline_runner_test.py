@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from mock import patch, MagicMock, DEFAULT, ANY
+from unittest.mock import patch, MagicMock, DEFAULT, ANY
 
 import pytest
 

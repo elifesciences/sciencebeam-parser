@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import logging
 import json
 from io import BytesIO
-from mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY
 
 from flask import Flask
 from werkzeug.exceptions import BadRequest
