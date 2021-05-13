@@ -114,7 +114,7 @@ class GrobidServiceWrapper:
             args = shlex.split(command_line)
             get_logger().info('command_line: %s', command_line)
             get_logger().info('args: %s', args)
-            self.grobid_service_instance = subprocess.Popen(
+            self.grobid_service_instance = subprocess.Popen(  # pylint: disable=consider-using-with
                 args, cwd=cwd, stdout=PIPE, stderr=subprocess.STDOUT
             )
             if self.grobid_service_instance is None:
