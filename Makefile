@@ -69,6 +69,11 @@ dev-start:
 	$(PYTHON) -m sciencebeam.server $(ARGS)
 
 
+dev-start-debug:
+	FLASK_ENV=development \
+		$(PYTHON) -m sciencebeam.server $(ARGS)
+
+
 dev-start-doc-to-pdf:
 	$(PYTHON) -m sciencebeam.server --port=8075 --pipeline=doc_to_pdf $(ARGS)
 
