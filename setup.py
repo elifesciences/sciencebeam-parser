@@ -55,14 +55,14 @@ class CustomCommands(Command):
 
     def _run_custom_command(self, command_list):
         print('Running command: %s' % command_list)
-        p = subprocess.Popen(
+        with subprocess.Popen(
             command_list,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        # Can use communicate(input='y\n'.encode()) if the command run requires
-        # some confirmation.
-        stdout_data, _ = p.communicate()
-        print('Command output: %s' % stdout_data)
+        ) as p:
+            # Can use communicate(input='y\n'.encode()) if the command run requires
+            # some confirmation.
+            stdout_data, _ = p.communicate()
+            print('Command output: %s' % stdout_data)
         if p.returncode != 0:
             raise RuntimeError(
                 'Command %s failed: exit code: %s (output: %s)' %
