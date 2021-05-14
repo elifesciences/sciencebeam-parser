@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import logging
 from typing import List, Optional, Protocol
 
