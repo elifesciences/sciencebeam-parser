@@ -10,7 +10,7 @@
 >
   <xsl:param name="output_parameters" select="'false'"/>
   <xsl:param name="acknowledgement_target" select="'ack'"/>
-  <xsl:param name="annex_target" select="'body'"/>
+  <xsl:param name="annex_target" select="'back'"/>
 
   <xsl:template match="/">
     <article article-type="research-article">
@@ -115,6 +115,10 @@
             <meta-name>xslt-param-acknowledgement_target</meta-name>
             <meta-value><xsl:value-of select="$acknowledgement_target"/></meta-value>
           </custom-meta>
+          <custom-meta>
+            <meta-name>xslt-param-annex_target</meta-name>
+            <meta-value><xsl:value-of select="$annex_target"/></meta-value>
+          </custom-meta>
         </custom-meta-group>
       </xsl:if>
     </article-meta>
@@ -188,6 +192,9 @@
       <ack>
         <xsl:apply-templates select="tei:div[@type='acknowledgement']/tei:div"/>
       </ack>
+    </xsl:if>
+    <xsl:if test="tei:div[@type='annex'] and $annex_target = 'back'">
+      <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
     </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
   </xsl:template>
