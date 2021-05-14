@@ -197,6 +197,14 @@
       <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
     </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
+    <xsl:if test="tei:div[@type='annex'] and $annex_target = 'app'">
+      <app-group>
+        <app id="appendix-1">
+          <title>Appendix 1</title>
+          <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
+        </app>
+      </app-group>
+    </xsl:if>
   </xsl:template>
 
   <xsl:template match="tei:listBibl">
