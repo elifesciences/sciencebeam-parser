@@ -8,6 +8,8 @@
   exclude-result-prefixes="xlink xs mml tei"
   version="1.0"
 >
+  <xsl:param name="acknowledgementTarget" select="'ack'"/>
+
   <xsl:template match="/">
     <article article-type="research-article">
       <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
@@ -165,6 +167,11 @@
   </xsl:template>
 
   <xsl:template match="tei:back">
+    <xsl:if test="tei:div[@type='acknowledgement'] and $acknowledgementTarget = 'ack'">
+      <ack>
+        <xsl:apply-templates select="tei:div[@type='acknowledgement']/tei:div"/>
+      </ack>
+    </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
   </xsl:template>
 

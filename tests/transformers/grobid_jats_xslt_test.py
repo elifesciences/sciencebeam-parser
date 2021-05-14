@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional, Protocol
 
 from six import text_type
 
@@ -82,6 +83,11 @@ def setup_module():
     logging.basicConfig(level='DEBUG')
 
 
+class T_GrobidJatsXslt(Protocol):
+    def __call__(self, xml: str) -> str:
+        pass
+
+
 @pytest.fixture(name='grobid_jats_xslt', scope='session')
 def _grobid_jats_xslt():
     transformer = xslt_transformer_from_file(DEFAULT_GROBID_XSLT_PATH)
@@ -95,7 +101,14 @@ def _grobid_jats_xslt():
     return wrapper
 
 
-def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=None):
+def _tei(
+    titleStmt: Optional[etree.ElementBase] = None,
+    biblStruct: Optional[etree.ElementBase] = None,
+    authors: Optional[List[etree.ElementBase]] = None,
+    body: Optional[etree.ElementBase] = None,
+    back: Optional[etree.ElementBase] = None,
+    references: Optional[List[etree.ElementBase]] = None
+) -> etree.ElementBase:
     if authors is None:
         authors = []
     fileDesc = E.fileDesc()
@@ -110,7 +123,8 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=No
     tei_text = E.text()
     if body is not None:
         tei_text.append(body)
-    back = E.back()
+    if back is None:
+        back = E.back()
     tei_text.append(back)
     if references is not None:
         back.append(
@@ -586,6 +600,23 @@ class TestGrobidJatsXslt:
                 _tei()
             ))
             assert _get_item(jats, 'back') is not None
+
+        def test_should_extract_acknowledgement_head_and_p_divs_as_ack(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'acknowledgement'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                ))
+            ))
+            assert _get_text(jats, 'back/ack/sec/title') == VALUE_1
+            assert _get_text(jats, 'back/ack/sec/p') == VALUE_2
 
     class TestReferences:
         def test_should_convert_single_reference(self, grobid_jats_xslt):
