@@ -126,6 +126,10 @@
 
   <xsl:template match="tei:body">
     <xsl:apply-templates select="tei:div"/>
+    <xsl:call-template name="tei_figures_section"/>
+  </xsl:template>
+
+  <xsl:template name="tei_figures_section">
     <xsl:if test="tei:figure">
       <sec id="figures">
         <title>Figures</title>
@@ -194,7 +198,10 @@
       </ack>
     </xsl:if>
     <xsl:if test="tei:div[@type='annex'] and $annex_target = 'back'">
-      <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
+      <xsl:for-each select="tei:div[@type='annex']">
+        <xsl:apply-templates select="tei:div"/>
+        <xsl:call-template name="tei_figures_section"/>
+      </xsl:for-each>
     </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
     <xsl:if test="tei:div[@type='annex'] and $annex_target = 'app'">
