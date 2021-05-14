@@ -615,7 +615,7 @@ class TestGrobidJatsXslt:
                     )
                 )),
                 {
-                    'acknowledgementTarget': 'ack'
+                    'acknowledgement_target': 'ack'
                 }
             ))
             assert _get_text(jats, 'back/ack/sec/title') == VALUE_1
@@ -635,7 +635,7 @@ class TestGrobidJatsXslt:
                     )
                 )),
                 {
-                    'acknowledgementTarget': 'body'
+                    'acknowledgement_target': 'body'
                 }
             ))
             assert _get_text(jats, 'body/sec/title') == VALUE_1

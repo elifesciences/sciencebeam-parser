@@ -8,22 +8,17 @@
   exclude-result-prefixes="xlink xs mml tei"
   version="1.0"
 >
-  <xsl:param name="acknowledgementTarget" select="'ack'"/>
+  <xsl:param name="output_parameters" select="'false'"/>
+  <xsl:param name="acknowledgement_target" select="'ack'"/>
 
   <xsl:template match="/">
     <article article-type="research-article">
       <front>
-        <custom-meta-group>
-          <custom-meta>
-            <meta-name>xslt-param-acknowledgementTarget</meta-name>
-            <meta-value><xsl:value-of select="$acknowledgementTarget"/></meta-value>
-          </custom-meta>
-        </custom-meta-group>
         <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
       </front>
       <body>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
-        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement'] and $acknowledgementTarget = 'body'">
+        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement'] and $acknowledgement_target = 'body'">
           <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement']/tei:div"/>
         </xsl:if>
       </body>
@@ -109,6 +104,15 @@
       <abstract>
         <xsl:apply-templates select="tei:profileDesc/tei:abstract"/>
       </abstract>
+
+      <xsl:if test="$output_parameters = 'true'">
+        <custom-meta-group>
+          <custom-meta>
+            <meta-name>xslt-param-acknowledgement_target</meta-name>
+            <meta-value><xsl:value-of select="$acknowledgement_target"/></meta-value>
+          </custom-meta>
+        </custom-meta-group>
+      </xsl:if>
     </article-meta>
   </xsl:template>
 
@@ -176,7 +180,7 @@
   </xsl:template>
 
   <xsl:template match="tei:back">
-    <xsl:if test="tei:div[@type='acknowledgement'] and $acknowledgementTarget = 'ack'">
+    <xsl:if test="tei:div[@type='acknowledgement'] and $acknowledgement_target = 'ack'">
       <ack>
         <xsl:apply-templates select="tei:div[@type='acknowledgement']/tei:div"/>
       </ack>

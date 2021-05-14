@@ -1,4 +1,7 @@
-import argparse  # pylint: disable=unused-import
+import argparse
+import logging
+from configparser import ConfigParser
+from typing import Dict, List, Optional
 
 from sciencebeam.transformers.grobid_service import (
     grobid_service,
@@ -10,6 +13,10 @@ from sciencebeam.transformers.xslt import xslt_transformer_from_file
 from sciencebeam.utils.mime_type_constants import MimeTypes
 
 from . import Pipeline, FunctionPipelineStep, FieldNames, StepDataProps
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 DEFAULT_GROBID_ACTION = GrobidApiPaths.PROCESS_HEADER_DOCUMENT
 DEFAULT_GROBID_XSLT_PATH = 'xslt/grobid-jats.xsl'
@@ -36,9 +43,21 @@ def get_default_grobid_action_for_fields(fields):
     )
 
 
+def get_xslt_template_parameters(config: ConfigParser) -> Dict[str, str]:
+    return {
+        key: value
+        for key, value in config.items('xslt_template_parameters')
+        if value
+    }
+
+
 class GrobidPipeline(Pipeline):
-    def add_arguments(self, parser, config, argv=None):
-        # type: (argparse.ArgumentParser, dict, object) -> None
+    def add_arguments(
+        self,
+        parser: argparse.ArgumentParser,
+        config: ConfigParser,
+        argv: Optional[List[str]] = None
+    ):
         grobid_group = parser.add_argument_group('Grobid')
         grobid_group.add_argument(
             '--grobid-url', required=False, default=None,
@@ -99,8 +118,16 @@ class GrobidPipeline(Pipeline):
                 args.grobid_xslt_path,
                 pretty_print=not args.no_grobid_pretty_print
             )
+            xslt_template_parameters = get_xslt_template_parameters(config)
+            LOGGER.info(
+                'grobid_xslt_path=%r (xslt_template_parameters=%r)',
+                args.grobid_xslt_path, xslt_template_parameters
+            )
             steps.append(FunctionPipelineStep(lambda d, **_: {
-                StepDataProps.CONTENT: xslt_transformer(d[StepDataProps.CONTENT]),
+                StepDataProps.CONTENT: xslt_transformer(
+                    d[StepDataProps.CONTENT],
+                    xslt_template_parameters=xslt_template_parameters
+                ),
                 StepDataProps.TYPE: MimeTypes.JATS_XML
             }, {MimeTypes.TEI_XML}, 'TEI to JATS'))
         return steps

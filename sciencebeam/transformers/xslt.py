@@ -59,21 +59,21 @@ class xslt_transformer_from_string:
     def __call__(
         self,
         x: Union[bytes, str, T_XSLT_Input],
-        template_arguments: Optional[dict] = None
+        xslt_template_parameters: Optional[dict] = None
     ):
         xslt_input = _to_xslt_input(x)
-        if template_arguments is None:
-            template_arguments = {}
+        if xslt_template_parameters is None:
+            xslt_template_parameters = {}
         LOGGER.debug(
-            'xslt_input: %r (template_arguments=%r)',
-            xslt_input, template_arguments
+            'xslt_input: %r (xslt_template_parameters=%r)',
+            xslt_input, xslt_template_parameters
         )
         return _format_output(
             self._get_transform()(
                 xslt_input,
                 **{
                     key: etree.XSLT.strparam(value)
-                    for key, value in template_arguments.items()
+                    for key, value in xslt_template_parameters.items()
                 }
             ),
             to_string=self.to_string,

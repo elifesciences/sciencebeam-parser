@@ -150,7 +150,7 @@ class TestGrobidPipeline:
             PDF_INPUT['filename'], TEI_CONTENT
         )
         result = _run_pipeline(config, args, PDF_INPUT)
-        xslt_transformer.assert_called_with(TEI_CONTENT)
+        xslt_transformer.assert_called_with(TEI_CONTENT, xslt_template_parameters={})
         assert result['content'] == xslt_transformer.return_value
         assert result['type'] == MimeTypes.JATS_XML
 

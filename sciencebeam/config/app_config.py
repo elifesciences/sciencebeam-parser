@@ -24,6 +24,7 @@ def get_app_defaults_config_filename():
 def parse_environment_variable_overrides(
         env_vars: dict, prefix='SCIENCEBEAM__', section_separator='__'):
     result = {}
+    LOGGER.debug('env_vars: %r', env_vars)
     for key, value in env_vars.items():
         if not key.startswith(prefix):
             continue
