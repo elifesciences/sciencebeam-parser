@@ -641,6 +641,26 @@ class TestGrobidJatsXslt:
             assert _get_text(jats, 'body/sec/title') == VALUE_1
             assert _get_text(jats, 'body/sec/p') == VALUE_2
 
+        def test_should_extract_annex_head_and_p_divs_as_body(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+
     class TestReferences:
         def test_should_convert_single_reference(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(

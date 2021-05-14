@@ -10,6 +10,7 @@
 >
   <xsl:param name="output_parameters" select="'false'"/>
   <xsl:param name="acknowledgement_target" select="'ack'"/>
+  <xsl:param name="annex_target" select="'body'"/>
 
   <xsl:template match="/">
     <article article-type="research-article">
@@ -20,6 +21,9 @@
         <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
         <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement'] and $acknowledgement_target = 'body'">
           <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement']/tei:div"/>
+        </xsl:if>
+        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='annex'] and $annex_target = 'body'">
+          <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='annex']/tei:div"/>
         </xsl:if>
       </body>
       <back>
