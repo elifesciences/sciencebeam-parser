@@ -4,6 +4,7 @@
 /venv
 /logs
 /.temp
+/.pytest_cache
 
 .cache
 .models
