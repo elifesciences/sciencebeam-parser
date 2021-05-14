@@ -12,9 +12,20 @@
 
   <xsl:template match="/">
     <article article-type="research-article">
-      <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
+      <front>
+        <custom-meta-group>
+          <custom-meta>
+            <meta-name>xslt-param-acknowledgementTarget</meta-name>
+            <meta-value><xsl:value-of select="$acknowledgementTarget"/></meta-value>
+          </custom-meta>
+        </custom-meta-group>
+        <xsl:apply-templates select="tei:TEI/tei:teiHeader"/>
+      </front>
       <body>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
+        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement'] and $acknowledgementTarget = 'body'">
+          <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement']/tei:div"/>
+        </xsl:if>
       </body>
       <back>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:back"/>
@@ -23,84 +34,82 @@
   </xsl:template>
 
   <xsl:template match="tei:teiHeader">
-    <front>
-      <xsl:if test="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:monogr/tei:title">
-        <journal-meta>
-          <journal-title-group>
-            <journal-title>
-              <xsl:value-of select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:monogr/tei:title"/>
-            </journal-title>
-          </journal-title-group>
-        </journal-meta>
-      </xsl:if>
+    <xsl:if test="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:monogr/tei:title">
+      <journal-meta>
+        <journal-title-group>
+          <journal-title>
+            <xsl:value-of select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:monogr/tei:title"/>
+          </journal-title>
+        </journal-title-group>
+      </journal-meta>
+    </xsl:if>
 
-      <article-meta>
-        <title-group>
-          <article-title>
-            <xsl:apply-templates select="tei:fileDesc/tei:titleStmt/tei:title"/>
-          </article-title>
-        </title-group>
+    <article-meta>
+      <title-group>
+        <article-title>
+          <xsl:apply-templates select="tei:fileDesc/tei:titleStmt/tei:title"/>
+        </article-title>
+      </title-group>
 
-        <contrib-group content-type="author">
-          <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
-            <contrib contrib-type="person">
-              <xsl:apply-templates select="tei:persName"/>
+      <contrib-group content-type="author">
+        <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
+          <contrib contrib-type="person">
+            <xsl:apply-templates select="tei:persName"/>
 
-              <xsl:if test="tei:email">
-                <email>
-                  <xsl:value-of select="tei:email"/>
-                </email>
-              </xsl:if>
+            <xsl:if test="tei:email">
+              <email>
+                <xsl:value-of select="tei:email"/>
+              </email>
+            </xsl:if>
 
-              <xsl:if test="tei:affiliation">
-                <xref ref-type="aff">
-                  <xsl:attribute name='rid'>
-                    <xsl:value-of select="tei:affiliation/@key"/>
-                  </xsl:attribute>
-                </xref>
-              </xsl:if>
-            </contrib>
-          </xsl:for-each>
-        </contrib-group>
-
-        <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author/tei:affiliation">
-          <aff>
-            <xsl:attribute name='id'>
-              <xsl:value-of select="@key"/>
-            </xsl:attribute>
-            <xsl:if test="tei:orgName[@type='institution']">
-              <institution content-type="orgname">
-                <xsl:value-of select="tei:orgName[@type='institution']"/>
-              </institution>
+            <xsl:if test="tei:affiliation">
+              <xref ref-type="aff">
+                <xsl:attribute name='rid'>
+                  <xsl:value-of select="tei:affiliation/@key"/>
+                </xsl:attribute>
+              </xref>
             </xsl:if>
-            <xsl:if test="tei:orgName[@type='department']">
-              <institution content-type="orgdiv1">
-                <xsl:value-of select="tei:orgName[@type='department']"/>
-              </institution>
-            </xsl:if>
-            <xsl:if test="tei:orgName[@type='laboratory']">
-              <institution content-type="orgdiv2">
-                <xsl:value-of select="tei:orgName[@type='laboratory']"/>
-              </institution>
-            </xsl:if>
-            <xsl:if test="tei:address/tei:settlement">
-              <city>
-                <xsl:value-of select="tei:address/tei:settlement"/>
-              </city>
-            </xsl:if>
-            <xsl:if test="tei:address/tei:country">
-              <country>
-                <xsl:value-of select="tei:address/tei:country"/>
-              </country>
-            </xsl:if>
-          </aff>
+          </contrib>
         </xsl:for-each>
+      </contrib-group>
 
-        <abstract>
-          <xsl:apply-templates select="tei:profileDesc/tei:abstract"/>
-        </abstract>
-      </article-meta>
-    </front>
+      <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author/tei:affiliation">
+        <aff>
+          <xsl:attribute name='id'>
+            <xsl:value-of select="@key"/>
+          </xsl:attribute>
+          <xsl:if test="tei:orgName[@type='institution']">
+            <institution content-type="orgname">
+              <xsl:value-of select="tei:orgName[@type='institution']"/>
+            </institution>
+          </xsl:if>
+          <xsl:if test="tei:orgName[@type='department']">
+            <institution content-type="orgdiv1">
+              <xsl:value-of select="tei:orgName[@type='department']"/>
+            </institution>
+          </xsl:if>
+          <xsl:if test="tei:orgName[@type='laboratory']">
+            <institution content-type="orgdiv2">
+              <xsl:value-of select="tei:orgName[@type='laboratory']"/>
+            </institution>
+          </xsl:if>
+          <xsl:if test="tei:address/tei:settlement">
+            <city>
+              <xsl:value-of select="tei:address/tei:settlement"/>
+            </city>
+          </xsl:if>
+          <xsl:if test="tei:address/tei:country">
+            <country>
+              <xsl:value-of select="tei:address/tei:country"/>
+            </country>
+          </xsl:if>
+        </aff>
+      </xsl:for-each>
+
+      <abstract>
+        <xsl:apply-templates select="tei:profileDesc/tei:abstract"/>
+      </abstract>
+    </article-meta>
   </xsl:template>
 
   <xsl:template match="tei:body">

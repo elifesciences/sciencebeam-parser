@@ -84,7 +84,7 @@ def setup_module():
 
 
 class T_GrobidJatsXslt(Protocol):
-    def __call__(self, xml: str) -> str:
+    def __call__(self, xml: str, template_arguments: Optional[dict] = None) -> str:
         pass
 
 
@@ -92,10 +92,10 @@ class T_GrobidJatsXslt(Protocol):
 def _grobid_jats_xslt():
     transformer = xslt_transformer_from_file(DEFAULT_GROBID_XSLT_PATH)
 
-    def wrapper(xml):
+    def wrapper(xml, *args, **kwargs):
         xml_str = etree.tostring(xml)
         LOGGER.debug('tei: %s', etree.tostring(xml, pretty_print=True))
-        result = transformer(xml_str)
+        result = transformer(xml_str, *args, **kwargs)
         LOGGER.debug('jats: %s', etree.tostring(etree.fromstring(result), pretty_print=True))
         return result
     return wrapper
@@ -613,10 +613,33 @@ class TestGrobidJatsXslt:
                             E.p(VALUE_2)
                         )
                     )
-                ))
+                )),
+                {
+                    'acknowledgementTarget': 'ack'
+                }
             ))
             assert _get_text(jats, 'back/ack/sec/title') == VALUE_1
             assert _get_text(jats, 'back/ack/sec/p') == VALUE_2
+
+        def test_should_extract_acknowledgement_head_and_p_divs_as_body(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'acknowledgement'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'acknowledgementTarget': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
 
     class TestReferences:
         def test_should_convert_single_reference(self, grobid_jats_xslt):
