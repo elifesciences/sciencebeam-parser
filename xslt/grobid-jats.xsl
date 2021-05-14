@@ -23,7 +23,15 @@
           <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement']/tei:div"/>
         </xsl:if>
         <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='annex'] and $annex_target = 'body'">
-          <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='annex']/tei:div"/>
+          <xsl:for-each select="tei:TEI/tei:text/tei:back/tei:div[@type='annex']">
+            <xsl:apply-templates select="tei:div"/>
+            <xsl:if test="tei:figure">
+              <sec id="annex_figures">
+                <title>Annex Figures</title>
+                <xsl:apply-templates select="tei:figure"/>
+              </sec>
+            </xsl:if>
+          </xsl:for-each>
         </xsl:if>
       </body>
       <back>
@@ -126,28 +134,15 @@
 
   <xsl:template match="tei:body">
     <xsl:apply-templates select="tei:div"/>
-    <xsl:call-template name="tei_figures_section"/>
-  </xsl:template>
-
-  <xsl:template name="tei_figures_section">
     <xsl:if test="tei:figure">
       <sec id="figures">
         <title>Figures</title>
-        <xsl:for-each select="tei:figure">
-          <xsl:choose>
-            <xsl:when test="@type = 'table'">
-              <xsl:call-template name="tei_table"/>
-            </xsl:when>
-            <xsl:otherwise>
-              <xsl:call-template name="tei_figure"/>
-            </xsl:otherwise>
-          </xsl:choose>
-        </xsl:for-each>
+        <xsl:apply-templates select="tei:figure"/>
       </sec>
     </xsl:if>
   </xsl:template>
 
-  <xsl:template name="tei_figure">
+  <xsl:template match="tei:figure[not(@type='table')]">
     <fig>
       <xsl:attribute name='id'>
         <xsl:value-of select="@xml:id"/>
@@ -162,7 +157,7 @@
     </fig>
   </xsl:template>
 
-  <xsl:template name="tei_table">
+  <xsl:template match="tei:figure[@type='table']">
     <table-wrap>
       <xsl:attribute name='id'>
         <xsl:value-of select="@xml:id"/>
@@ -200,7 +195,12 @@
     <xsl:if test="tei:div[@type='annex'] and $annex_target = 'back'">
       <xsl:for-each select="tei:div[@type='annex']">
         <xsl:apply-templates select="tei:div"/>
-        <xsl:call-template name="tei_figures_section"/>
+        <xsl:if test="tei:figure">
+          <sec id="annex_figures">
+            <title>Annex Figures</title>
+            <xsl:apply-templates select="tei:figure"/>
+          </sec>
+        </xsl:if>
       </xsl:for-each>
     </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
@@ -209,6 +209,7 @@
         <app id="appendix-1">
           <title>Appendix 1</title>
           <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
+          <xsl:apply-templates select="tei:div[@type='annex']/tei:figure"/>
         </app>
       </app-group>
     </xsl:if>
