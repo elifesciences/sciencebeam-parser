@@ -2,9 +2,8 @@ import argparse
 import logging
 from abc import ABC, abstractmethod
 from importlib import import_module
-from configparser import ConfigParser  # pylint: disable=unused-import
-
-from six import text_type
+from configparser import ConfigParser
+from typing import Optional
 
 import requests
 from requests import Session
@@ -177,19 +176,23 @@ def get_pipeline_for_pipeline_expression(pipeline_expression):
     return ChainedPipeline(pipelines)
 
 
-def get_pipeline_expression_for_configuration(config, name=None):
-    # type: (ConfigParser) -> str
+def get_pipeline_expression_for_configuration(
+    config: ConfigParser,
+    name: Optional[str] = None
+) -> str:
     pipelines = config[u'pipelines']
     pipeline_names = parse_list(name or u'default')
     expressions = [pipelines[pipeline_name] for pipeline_name in pipeline_names]
-    return text_type(', ').join(
+    return ', '.join(
         pipelines.get(expression, expression)
         for expression in expressions
     )
 
 
-def get_pipeline_for_configuration(config, name=None):
-    # type: (ConfigParser) -> Pipeline
+def get_pipeline_for_configuration(
+    config: ConfigParser,
+    name: Optional[str] = None
+) -> Pipeline:
     return get_pipeline_for_pipeline_expression(
         get_pipeline_expression_for_configuration(config, name=name)
     )
