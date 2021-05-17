@@ -1,6 +1,11 @@
 # pylint: disable=too-many-lines
 import logging
-from typing import List, Optional, Protocol
+from typing import List, Optional
+
+try:
+    from typing import Protocol
+except ImportError:
+    from typing import Generic as Protocol
 
 from six import text_type
 
