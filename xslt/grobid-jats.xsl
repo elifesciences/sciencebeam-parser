@@ -19,10 +19,10 @@
       </front>
       <body>
         <xsl:apply-templates select="tei:TEI/tei:text/tei:body"/>
-        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement'] and $acknowledgement_target = 'body'">
+        <xsl:if test="$acknowledgement_target = 'body'">
           <xsl:apply-templates select="tei:TEI/tei:text/tei:back/tei:div[@type='acknowledgement']/tei:div"/>
         </xsl:if>
-        <xsl:if test="tei:TEI/tei:text/tei:back/tei:div[@type='annex'] and $annex_target = 'body'">
+        <xsl:if test="$annex_target = 'body'">
           <xsl:for-each select="tei:TEI/tei:text/tei:back/tei:div[@type='annex']">
             <xsl:apply-templates select="tei:div"/>
             <xsl:if test="tei:figure">
@@ -187,12 +187,14 @@
   </xsl:template>
 
   <xsl:template match="tei:back">
-    <xsl:if test="tei:div[@type='acknowledgement'] and $acknowledgement_target = 'ack'">
-      <ack>
-        <xsl:apply-templates select="tei:div[@type='acknowledgement']/tei:div"/>
-      </ack>
+    <xsl:if test="$acknowledgement_target = 'ack'">
+      <xsl:if test="tei:div[@type='acknowledgement']">
+        <ack>
+          <xsl:apply-templates select="tei:div[@type='acknowledgement']/tei:div"/>
+        </ack>
+      </xsl:if>
     </xsl:if>
-    <xsl:if test="tei:div[@type='annex'] and $annex_target = 'back'">
+    <xsl:if test="$annex_target = 'back'">
       <xsl:for-each select="tei:div[@type='annex']">
         <xsl:apply-templates select="tei:div"/>
         <xsl:if test="tei:figure">
@@ -204,14 +206,16 @@
       </xsl:for-each>
     </xsl:if>
     <xsl:apply-templates select="tei:div/tei:listBibl"/>
-    <xsl:if test="tei:div[@type='annex'] and $annex_target = 'app'">
-      <app-group>
-        <app id="appendix-1">
-          <title>Appendix 1</title>
-          <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
-          <xsl:apply-templates select="tei:div[@type='annex']/tei:figure"/>
-        </app>
-      </app-group>
+    <xsl:if test="$annex_target = 'app'">
+      <xsl:if test="tei:div[@type='annex']">
+        <app-group>
+          <app id="appendix-1">
+            <title>Appendix 1</title>
+            <xsl:apply-templates select="tei:div[@type='annex']/tei:div"/>
+            <xsl:apply-templates select="tei:div[@type='annex']/tei:figure"/>
+          </app>
+        </app-group>
+      </xsl:if>
     </xsl:if>
   </xsl:template>
 
