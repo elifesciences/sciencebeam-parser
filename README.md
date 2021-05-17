@@ -77,6 +77,8 @@ The [ScienceBeam API](doc/API.md) will be available on port _8075_.
 
 The pipeline used by the API is currently is using the simple pipeline format described above. The pipeline can be configured via `app.cfg` (default: `app-defaults.cfg`). The default pipeline uses GROBID.
 
+See [CONFIG.md](docs/CONFIG.md) for more information.
+
 ## Doc to PDF
 
 The default configuration includes a Doc to PDF conversion, as most tools will accept a PDF.

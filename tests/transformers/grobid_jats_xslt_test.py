@@ -1,4 +1,11 @@
+# pylint: disable=too-many-lines
 import logging
+from typing import List, Optional
+
+try:
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
 
 from six import text_type
 
@@ -82,20 +89,32 @@ def setup_module():
     logging.basicConfig(level='DEBUG')
 
 
+class T_GrobidJatsXslt(Protocol):
+    def __call__(self, xml: str, template_arguments: Optional[dict] = None) -> str:
+        pass
+
+
 @pytest.fixture(name='grobid_jats_xslt', scope='session')
 def _grobid_jats_xslt():
     transformer = xslt_transformer_from_file(DEFAULT_GROBID_XSLT_PATH)
 
-    def wrapper(xml):
+    def wrapper(xml, *args, **kwargs):
         xml_str = etree.tostring(xml)
         LOGGER.debug('tei: %s', etree.tostring(xml, pretty_print=True))
-        result = transformer(xml_str)
+        result = transformer(xml_str, *args, **kwargs)
         LOGGER.debug('jats: %s', etree.tostring(etree.fromstring(result), pretty_print=True))
         return result
     return wrapper
 
 
-def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=None):
+def _tei(
+    titleStmt: Optional[etree.ElementBase] = None,
+    biblStruct: Optional[etree.ElementBase] = None,
+    authors: Optional[List[etree.ElementBase]] = None,
+    body: Optional[etree.ElementBase] = None,
+    back: Optional[etree.ElementBase] = None,
+    references: Optional[List[etree.ElementBase]] = None
+) -> etree.ElementBase:
     if authors is None:
         authors = []
     fileDesc = E.fileDesc()
@@ -110,7 +129,8 @@ def _tei(titleStmt=None, biblStruct=None, authors=None, body=None, references=No
     tei_text = E.text()
     if body is not None:
         tei_text.append(body)
-    back = E.back()
+    if back is None:
+        back = E.back()
     tei_text.append(back)
     if references is not None:
         back.append(
@@ -586,6 +606,245 @@ class TestGrobidJatsXslt:
                 _tei()
             ))
             assert _get_item(jats, 'back') is not None
+
+        def test_should_extract_acknowledgement_head_and_p_divs_as_ack(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'acknowledgement'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'acknowledgement_target': 'ack'
+                }
+            ))
+            assert _get_text(jats, 'back/ack/sec/title') == VALUE_1
+            assert _get_text(jats, 'back/ack/sec/p') == VALUE_2
+
+        def test_should_extract_acknowledgement_head_and_p_divs_as_body(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'acknowledgement'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'acknowledgement_target': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+
+        def test_should_extract_annex_head_and_p_divs_as_back_section(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'back'
+                }
+            ))
+            assert _get_text(jats, 'back/sec/title') == VALUE_1
+            assert _get_text(jats, 'back/sec/p') == VALUE_2
+
+        def test_should_extract_annex_head_and_p_divs_as_body(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+
+        def test_should_extract_annex_head_and_p_divs_as_app_group(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.div(
+                            E.head(VALUE_1),
+                            E.p(VALUE_2)
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'app'
+                }
+            ))
+            assert _get_text(jats, 'back/app-group/app/sec/title') == VALUE_1
+            assert _get_text(jats, 'back/app-group/app/sec/p') == VALUE_2
+
+        def test_should_extract_annex_figures_as_back_section(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            E.head('Figure 1'),
+                            E.label('1'),
+                            E.figDesc('Figure 1. This is the figure')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'back'
+                }
+            ))
+            assert _get_text(jats, 'back/sec/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'back/sec/fig/caption/title') == 'Figure 1'
+            assert _get_text(jats, 'back/sec/fig/caption/p') == 'Figure 1. This is the figure'
+
+        def test_should_extract_annex_figures_as_body_section(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            E.head('Figure 1'),
+                            E.label('1'),
+                            E.figDesc('Figure 1. This is the figure')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/title') == 'Figure 1'
+            assert _get_text(jats, 'body/sec/fig/caption/p') == 'Figure 1. This is the figure'
+
+        def test_should_extract_annex_figures_as_app_group(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            E.head('Figure 1'),
+                            E.label('1'),
+                            E.figDesc('Figure 1. This is the figure')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'app'
+                }
+            ))
+            assert _get_text(jats, 'back/app-group/app/fig/label') == 'Figure 1'
+            assert _get_text(jats, 'back/app-group/app/fig/caption/title') == 'Figure 1'
+            assert _get_text(jats, 'back/app-group/app/fig/caption/p') == (
+                'Figure 1. This is the figure'
+            )
+
+        def test_should_extract_annex_tables_as_back_section(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            {'type': 'table'},
+                            E.head('Table 1'),
+                            E.label('1'),
+                            E.figDesc('Table 1. This is the table')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'back'
+                }
+            ))
+            assert _get_text(jats, 'back/sec/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'back/sec/table-wrap/caption/title') == 'Table 1'
+            assert _get_text(jats, 'back/sec/table-wrap/caption/p') == 'Table 1. This is the table'
+
+        def test_should_extract_annex_tables_as_body_section(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            {'type': 'table'},
+                            E.head('Table 1'),
+                            E.label('1'),
+                            E.figDesc('Table 1. This is the table')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'body'
+                }
+            ))
+            assert _get_text(jats, 'body/sec/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/title') == 'Table 1'
+            assert _get_text(jats, 'body/sec/table-wrap/caption/p') == 'Table 1. This is the table'
+
+        def test_should_extract_annex_tables_as_app_group(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(back=E.back(
+                    E.div(
+                        {'type': 'annex'},
+                        E.figure(
+                            {'type': 'table'},
+                            E.head('Table 1'),
+                            E.label('1'),
+                            E.figDesc('Table 1. This is the table')
+                        )
+                    )
+                )),
+                {
+                    'annex_target': 'app'
+                }
+            ))
+            assert _get_text(jats, 'back/app-group/app/table-wrap/label') == 'Table 1'
+            assert _get_text(jats, 'back/app-group/app/table-wrap/caption/title') == 'Table 1'
+            assert _get_text(jats, 'back/app-group/app/table-wrap/caption/p') == (
+                'Table 1. This is the table'
+            )
 
     class TestReferences:
         def test_should_convert_single_reference(self, grobid_jats_xslt):
