@@ -1,14 +1,13 @@
 from configparser import ConfigParser
+from typing import Dict
 
-from six import text_type
 
-
-def dict_to_config(d):
+def dict_to_config(d: Dict[str, Dict[str, str]]) -> ConfigParser:
     config = ConfigParser()
     for section in d.keys():
         config.add_section(section)
         for key, value in d[section].items():
-            config.set(text_type(section), text_type(key), text_type(value))
+            config.set(str(section), str(key), str(value))
     return config
 
 

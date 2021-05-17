@@ -1,7 +1,5 @@
 from unittest.mock import patch, MagicMock
 
-from six import text_type
-
 import pytest
 
 from sciencebeam.utils.config import dict_to_config
@@ -17,8 +15,8 @@ DEFAULT_PIPELINE_MODULE = 'sciencebeam.pipelines.default_pipeline'
 PIPELINE_MODULE_1 = 'sciencebeam.pipelines.pipeline1'
 PIPELINE_MODULE_2 = 'sciencebeam.pipelines.pipeline2'
 
-PIPELINE_1 = text_type('pipeline1')
-PIPELINE_2 = text_type('pipeline2')
+PIPELINE_1 = 'pipeline1'
+PIPELINE_2 = 'pipeline2'
 
 DEFAULT_CONFIG = {
     u'pipelines': {

@@ -7,8 +7,6 @@ try:
 except ImportError:
     from typing_extensions import Protocol
 
-from six import text_type
-
 import pytest
 
 from lxml import etree
@@ -267,7 +265,7 @@ def _get_text(xml, xpath):
     try:
         return get_text_content(item)
     except AttributeError:
-        return text_type(item)
+        return str(item)
 
 
 class TestGrobidJatsXslt:

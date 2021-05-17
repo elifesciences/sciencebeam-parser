@@ -4,8 +4,6 @@ import os
 from functools import partial
 from typing import Callable, List
 
-from six import text_type
-
 from sciencebeam_utils.beam_utils.files import find_matching_filenames_with_limit
 
 from sciencebeam_utils.utils.file_path import (
@@ -90,7 +88,7 @@ def process_batch_args(args):
 
 
 def encode_if_text_type(data):
-    return data.encode('utf-8') if isinstance(data, text_type) else data
+    return data.encode('utf-8') if isinstance(data, str) else data
 
 
 def get_file_list_for_args(args: argparse.Namespace):

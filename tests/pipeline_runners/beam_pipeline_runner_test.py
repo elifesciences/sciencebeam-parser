@@ -5,8 +5,6 @@ from unittest.mock import patch, MagicMock, DEFAULT, ANY
 
 import pytest
 
-from six import text_type
-
 from sciencebeam_utils.beam_utils.testing import (
     BeamTest,
     TestPipeline,
@@ -199,7 +197,7 @@ class TestConfigurePipeline(BeamTest):
         opt = file_list_args
 
         step1 = _pdf_step(response={
-            'content': text_type(UNICODE_CONTENT_1)
+            'content': UNICODE_CONTENT_1
         })
 
         pipeline.get_steps.return_value = [step1]
