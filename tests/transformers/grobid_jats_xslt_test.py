@@ -5,7 +5,7 @@ from typing import List, Optional
 try:
     from typing import Protocol
 except ImportError:
-    from typing import Generic as Protocol
+    from typing_extensions import Protocol
 
 from six import text_type
 
