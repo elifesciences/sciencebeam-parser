@@ -31,6 +31,16 @@ class TestRetokenizeLayoutDocument:
         assert [t.text for t in line.tokens] == ['token1', 'token2']
         assert [t.whitespace for t in line.tokens] == [' ', '\n']
 
+    def test_should_remove_blank_token(self):
+        layout_document = LayoutDocument(
+            pages=[LayoutPage(blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                LayoutToken(' ')
+            ])])])]
+        )
+        retokenized_layout_document = retokenize_layout_document(layout_document)
+        line = retokenized_layout_document.pages[0].blocks[0].lines[0]
+        assert line.tokens == []
+
 
 class TestRemoveEmptyBlocks:
     def test_should_not_remove_empty_line_block_and_page(self):

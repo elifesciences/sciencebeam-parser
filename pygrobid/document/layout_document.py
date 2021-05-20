@@ -23,6 +23,8 @@ class LayoutToken:
     whitespace: str = ' '
 
     def retokenize(self) -> List['LayoutToken']:
+        if not self.text.strip():
+            return []
         token_texts = get_tokenized_tokens(self.text, keep_whitespace=True)
         if token_texts == [self.text]:
             return [self]

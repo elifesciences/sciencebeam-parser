@@ -96,7 +96,8 @@ class DelftModel(Model):
         for model_data, token_tag in zip(model_data_list, tag_result[0]):
             token, tag = token_tag
             assert model_data.layout_token
-            assert token == model_data.layout_token.text
+            assert token == model_data.layout_token.text, \
+                f'actual: {repr(token)}, expected: {repr(model_data.layout_token.text)}'
             yield LabelledLayoutToken(label=tag, layout_token=model_data.layout_token)
 
     def predict_labels_for_layout_document(
