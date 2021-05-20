@@ -60,7 +60,7 @@ def get_token_font_status(previous_token: Optional[LayoutToken], current_token: 
     if not previous_token:
         return 'NEWFONT'
     return (
-        'SAMEFONT' if current_token.font.font_family == previous_token
+        'SAMEFONT' if current_token.font.font_family == previous_token.font.font_family
         else 'NEWFONT'
     )
 
