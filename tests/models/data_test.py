@@ -1,8 +1,70 @@
+from pygrobid.document.layout_document import LayoutFont, LayoutToken
 from pygrobid.models.data import (
+    get_token_font_size_feature,
     get_digit_feature,
     get_capitalisation_feature,
     get_punctuation_profile_feature
 )
+
+
+class TestGetTokenFontSizeFeature:
+    def test_should_return_higherfont_without_previous_token(self):
+        assert get_token_font_size_feature(
+            previous_token=None,
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy'
+            ))
+        ) == 'HIGHERFONT'
+
+    def test_should_return_lowerfont_if_font_size_is_smaller(self):
+        assert get_token_font_size_feature(
+            previous_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=2
+            )),
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            ))
+        ) == 'LOWERFONT'
+
+    def test_should_return_samefont_if_font_size_is_the_same(self):
+        assert get_token_font_size_feature(
+            previous_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            )),
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            ))
+        ) == 'SAMEFONTSIZE'
+
+    def test_should_return_higherfont_if_font_size_is_larger(self):
+        assert get_token_font_size_feature(
+            previous_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            )),
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=2
+            ))
+        ) == 'HIGHERFONT'
+
+    def test_should_return_higherfont_if_previous_font_has_no_size(self):
+        assert get_token_font_size_feature(
+            previous_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=None
+            )),
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            ))
+        ) == 'HIGHERFONT'
+
+    def test_should_return_higherfont_if_new_font_has_no_size(self):
+        assert get_token_font_size_feature(
+            previous_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=1
+            )),
+            current_token=LayoutToken('', font=LayoutFont(
+                font_id='dummy', font_size=None
+            ))
+        ) == 'HIGHERFONT'
 
 
 class TestGetDigitFeature:

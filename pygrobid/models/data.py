@@ -76,9 +76,9 @@ def get_token_font_size_feature(
     if not previous_font_size or not current_font_size:
         return 'HIGHERFONT'
     if previous_font_size < current_font_size:
-        return 'LOWERFONT'
-    if previous_font_size > current_font_size:
         return 'HIGHERFONT'
+    if previous_font_size > current_font_size:
+        return 'LOWERFONT'
     return 'SAMEFONTSIZE'
 
 
