@@ -15,6 +15,16 @@ from pygrobid.models.model import Model
 LOGGER = logging.getLogger(__name__)
 
 
+def iter_entity_values_predicted_labels(
+    tag_result: List[Tuple[str, str]]
+) -> Iterable[Tuple[str, str]]:
+    tokens, labels = zip(*tag_result)
+    LOGGER.info('tokens: %s', tokens)
+    LOGGER.info('labels: %s', labels)
+    for tag, start, end in get_entities(list(labels)):
+        yield tag, ' '.join(tokens[start:end + 1])
+
+
 class SeparateSessionSequenceWrapper(Sequence):
     def __init__(self, *args, **kwargs):
         self._graph = tf.Graph()
@@ -59,8 +69,4 @@ class DelftModel(Model):
         self,
         tag_result: List[Tuple[str, str]]
     ) -> Iterable[Tuple[str, str]]:
-        tokens, labels = zip(*tag_result)
-        LOGGER.info('tokens: %s', tokens)
-        LOGGER.info('labels: %s', labels)
-        for tag, start, end in get_entities(list(labels)):
-            yield tag, ' '.join(tokens[start:end])
+        return iter_entity_values_predicted_labels(tag_result)
