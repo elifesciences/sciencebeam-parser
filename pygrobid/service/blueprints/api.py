@@ -234,15 +234,6 @@ class ApiBlueprint(Blueprint):
             header_layout_document
         )
         LOGGER.info('labeled_layout_tokens: %r', labeled_layout_tokens)
-        # data_generator = self.header_model.get_data_generator()
-        # data_lines = data_generator.iter_data_lines_for_layout_document(header_layout_document)
-        # texts, features = load_data_crf_lines(data_lines)
-        # texts = texts.tolist()
-        # tag_result = self.header_model.predict_labels(
-        #     texts=texts, features=features, output_format=None
-        # )
-        # LOGGER.info('tag_result: %s', tag_result)
-        # entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
         entity_values = self.header_model.iter_entity_values_for_labelled_layout_tokens(
             labeled_layout_tokens
         )
