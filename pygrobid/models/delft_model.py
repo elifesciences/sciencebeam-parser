@@ -10,7 +10,11 @@ from delft.sequenceLabelling.evaluation import (
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
-from pygrobid.document.layout_document import LayoutDocument, LayoutToken
+from pygrobid.document.layout_document import (
+    LayoutDocument,
+    LayoutToken,
+    join_layout_tokens
+)
 from pygrobid.models.model import Model
 
 
@@ -30,17 +34,6 @@ def iter_entity_values_predicted_labels(
     LOGGER.info('labels: %s', labels)
     for tag, start, end in get_entities(list(labels)):
         yield tag, ' '.join(tokens[start:end + 1])
-
-
-def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
-    return ''.join([
-        (
-            token.text + token.whitespace
-            if index < len(layout_tokens) - 1
-            else token.text
-        )
-        for index, token in enumerate(layout_tokens)
-    ])
 
 
 def iter_entity_values_for_labelled_layout_tokens(

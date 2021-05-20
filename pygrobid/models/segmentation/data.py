@@ -2,7 +2,11 @@ import logging
 import re
 from typing import Iterable, List, Optional
 
-from pygrobid.document.layout_document import LayoutDocument, LayoutToken
+from pygrobid.document.layout_document import (
+    LayoutDocument,
+    LayoutToken,
+    join_layout_tokens
+)
 from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
@@ -35,11 +39,7 @@ class SegmentationDataGenerator(ModelDataGenerator):
                 block_lines = block.lines
                 for line_index, line in enumerate(block_lines):
                     line_tokens = line.tokens
-                    token_texts: List[str] = [
-                        layout_token.text or ''
-                        for layout_token in line_tokens
-                    ]
-                    line_text = ' '.join(token_texts)
+                    line_text = join_layout_tokens(line_tokens)
                     retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line_text)
                     if not retokenized_token_texts:
                         continue

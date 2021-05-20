@@ -50,6 +50,17 @@ class LayoutToken:
         ]
 
 
+def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
+    return ''.join([
+        (
+            token.text + token.whitespace
+            if index < len(layout_tokens) - 1
+            else token.text
+        )
+        for index, token in enumerate(layout_tokens)
+    ])
+
+
 @dataclass
 class LayoutLine:
     tokens: List[LayoutToken]
