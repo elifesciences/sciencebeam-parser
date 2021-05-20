@@ -138,8 +138,9 @@ class ModelNestedBluePrint:
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
+            layout_document = parse_alto_root(root).retokenize()
             data_generator = self.model.get_data_generator()
-            data_lines = data_generator.iter_data_lines_for_xml_root(root)
+            data_lines = data_generator.iter_data_lines_for_layout_document(layout_document)
             response_type = 'text/plain'
             if output_format == ModelOutputFormats.RAW_DATA:
                 response_content = '\n'.join(data_lines) + '\n'
@@ -229,15 +230,22 @@ class ApiBlueprint(Blueprint):
         LOGGER.info('header_layout_document: %s', header_layout_document)
         if not header_layout_document.pages:
             return TeiDocument()
-        data_generator = self.header_model.get_data_generator()
-        data_lines = data_generator.iter_data_lines_for_layout_document(header_layout_document)
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        tag_result = self.header_model.predict_labels(
-            texts=texts, features=features, output_format=None
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
+            header_layout_document
         )
-        LOGGER.info('tag_result: %s', tag_result)
-        entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
+        LOGGER.info('labeled_layout_tokens: %r', labeled_layout_tokens)
+        # data_generator = self.header_model.get_data_generator()
+        # data_lines = data_generator.iter_data_lines_for_layout_document(header_layout_document)
+        # texts, features = load_data_crf_lines(data_lines)
+        # texts = texts.tolist()
+        # tag_result = self.header_model.predict_labels(
+        #     texts=texts, features=features, output_format=None
+        # )
+        # LOGGER.info('tag_result: %s', tag_result)
+        # entity_values = self.header_model.iter_entity_values_predicted_labels(tag_result[0])
+        entity_values = self.header_model.iter_entity_values_for_labelled_layout_tokens(
+            labeled_layout_tokens
+        )
         document = TeiDocument()
         self.header_model.update_document_with_entity_values(document, entity_values)
         return document
@@ -259,7 +267,7 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = parse_alto_root(root)
+            layout_document = parse_alto_root(root).retokenize()
             document = self.get_tei_document_for_layout_document(layout_document)
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=True)
