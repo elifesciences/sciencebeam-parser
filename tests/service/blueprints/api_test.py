@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock
 from typing import Iterator
 
 from flask import Flask
+from flask.testing import FlaskClient
 from werkzeug.exceptions import BadRequest
 
 import pytest
@@ -49,7 +50,7 @@ def _pdfalto_wrapper_mock(pdfalto_wrapper_get_mock: MagicMock) -> MagicMock:
 
 
 @pytest.fixture(name='test_client')
-def _test_client():
+def _test_client() -> Iterator[FlaskClient]:
     blueprint = ApiBlueprint()
     app = Flask(__name__)
     app.register_blueprint(blueprint)
