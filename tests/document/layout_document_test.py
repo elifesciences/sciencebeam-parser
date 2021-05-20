@@ -4,7 +4,8 @@ from pygrobid.document.layout_document import (
     LayoutBlock,
     LayoutPage,
     LayoutDocument,
-    retokenize_layout_document
+    retokenize_layout_document,
+    remove_empty_blocks
 )
 
 
@@ -29,3 +30,20 @@ class TestRetokenizeLayoutDocument:
         line = retokenized_layout_document.pages[0].blocks[0].lines[0]
         assert [t.text for t in line.tokens] == ['token1', 'token2']
         assert [t.whitespace for t in line.tokens] == [' ', '\n']
+
+
+class TestRemoveEmptyBlocks:
+    def test_should_not_remove_empty_line_block_and_page(self):
+        layout_document = LayoutDocument(
+            pages=[
+                LayoutPage(blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                    LayoutToken('token1')
+                ])])]),
+                LayoutPage(blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                ])])]),
+            ]
+        )
+        cleaned_layout_document = remove_empty_blocks(layout_document)
+        assert len(cleaned_layout_document.pages) == 1
+        line = cleaned_layout_document.pages[0].blocks[0].lines[0]
+        assert [t.text for t in line.tokens] == ['token1']

@@ -83,6 +83,13 @@ class LayoutBlock:
             for line in self.lines
         ])
 
+    def remove_empty_lines(self) -> 'LayoutBlock':
+        return LayoutBlock(lines=[
+            line
+            for line in self.lines
+            if line.tokens
+        ])
+
 
 @dataclass
 class LayoutPage:
@@ -92,6 +99,17 @@ class LayoutPage:
         return LayoutPage(blocks=[
             block.retokenize()
             for block in self.blocks
+        ])
+
+    def remove_empty_blocks(self) -> 'LayoutPage':
+        blocks: List[LayoutBlock] = [
+            block.remove_empty_lines()
+            for block in self.blocks
+        ]
+        return LayoutPage(blocks=[
+            block
+            for block in blocks
+            if block.lines
         ])
 
 
@@ -120,6 +138,21 @@ class LayoutDocument:
             for page in self.pages
         ])
 
+    def remove_empty_blocks(self) -> 'LayoutDocument':
+        pages: List[LayoutPage] = [
+            page.remove_empty_blocks()
+            for page in self.pages
+        ]
+        return LayoutDocument(pages=[
+            page
+            for page in pages
+            if page.blocks
+        ])
+
 
 def retokenize_layout_document(layout_document: LayoutDocument) -> LayoutDocument:
     return layout_document.retokenize()
+
+
+def remove_empty_blocks(layout_document: LayoutDocument) -> LayoutDocument:
+    return layout_document.remove_empty_blocks()

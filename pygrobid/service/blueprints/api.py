@@ -138,7 +138,7 @@ class ModelNestedBluePrint:
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = parse_alto_root(root).retokenize()
+            layout_document = parse_alto_root(root).retokenize().remove_empty_blocks()
             data_generator = self.model.get_data_generator()
             data_lines = data_generator.iter_data_lines_for_layout_document(layout_document)
             response_type = 'text/plain'
@@ -226,7 +226,7 @@ class ApiBlueprint(Blueprint):
         )
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
-        )
+        ).remove_empty_blocks()
         LOGGER.info('header_layout_document: %s', header_layout_document)
         if not header_layout_document.pages:
             return TeiDocument()
@@ -258,7 +258,7 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = parse_alto_root(root).retokenize()
+            layout_document = parse_alto_root(root).retokenize().remove_empty_blocks()
             document = self.get_tei_document_for_layout_document(layout_document)
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=True)
