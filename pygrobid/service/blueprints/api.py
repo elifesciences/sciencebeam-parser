@@ -1,7 +1,7 @@
 import logging
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import Callable, Optional, TypeVar
+from typing import Callable, List, Optional, TypeVar
 
 import yaml
 from flask import Blueprint, jsonify, request, Response, url_for
@@ -22,6 +22,8 @@ from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.tei_document import TeiDocument
+from pygrobid.utils.text import normalize_text
+from pygrobid.utils.tokenizer import get_tokenized_tokens
 
 
 LOGGER = logging.getLogger(__name__)
@@ -128,6 +130,21 @@ def _get_file_upload_form(title: str):
     ).format(title=title)
 
 
+def normalize_and_tokenize_text(text: str) -> List[str]:
+    return get_tokenized_tokens(
+        normalize_text(text),
+        keep_whitespace=True
+    )
+
+
+def normalize_layout_document(layout_document: LayoutDocument) -> LayoutDocument:
+    return (
+        layout_document
+        .retokenize(tokenize_fn=normalize_and_tokenize_text)
+        .remove_empty_blocks()
+    )
+
+
 class ModelNestedBluePrint:
     def __init__(
         self,
@@ -176,7 +193,9 @@ class ModelNestedBluePrint:
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = parse_alto_root(root).retokenize().remove_empty_blocks()
+            layout_document = normalize_layout_document(
+                parse_alto_root(root)
+            )
             if (
                 self.segmentation_model
                 and self.segmentation_label
@@ -311,7 +330,9 @@ class ApiBlueprint(Blueprint):
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = parse_alto_root(root).retokenize().remove_empty_blocks()
+            layout_document = normalize_layout_document(
+                parse_alto_root(root)
+            )
             document = self.get_tei_document_for_layout_document(layout_document)
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=True)

@@ -1,5 +1,6 @@
 from lxml.builder import ElementMaker
 
+from pygrobid.document.layout_document import LayoutCoordinates
 from pygrobid.external.pdfalto.parser import parse_alto_root, ALTO_NS
 
 
@@ -21,6 +22,14 @@ ITALICS = 'italics'
 
 TOKEN_1 = 'token1'
 TOKEN_2 = 'token2'
+
+COORDINATES_1 = LayoutCoordinates(
+    x=100.1, y=101.1, width=102.2, height=103.3
+)
+
+COORDINATES_2 = LayoutCoordinates(
+    x=200.1, y=201.1, width=202.2, height=203.3
+)
 
 
 class TestParseAltoRoot:
@@ -46,11 +55,19 @@ class TestParseAltoRoot:
                             ALTO_E.TextLine(
                                 ALTO_E.String(
                                     CONTENT=TOKEN_1,
-                                    STYLEREFS=FONT_ID_1
+                                    STYLEREFS=FONT_ID_1,
+                                    HPOS=str(COORDINATES_1.x),
+                                    VPOS=str(COORDINATES_1.y),
+                                    WIDTH=str(COORDINATES_1.width),
+                                    HEIGHT=str(COORDINATES_1.height)
                                 ),
                                 ALTO_E.String(
                                     CONTENT=TOKEN_2,
-                                    STYLEREFS=FONT_ID_2
+                                    STYLEREFS=FONT_ID_2,
+                                    HPOS=str(COORDINATES_2.x),
+                                    VPOS=str(COORDINATES_2.y),
+                                    WIDTH=str(COORDINATES_2.width),
+                                    HEIGHT=str(COORDINATES_2.height)
                                 )
                             )
                         )
@@ -69,9 +86,11 @@ class TestParseAltoRoot:
         assert token.font.font_size == FONTSIZE_1
         assert token.font.is_bold is False
         assert token.font.is_italics is False
+        assert token.coordinates == COORDINATES_1
         token = tokens[1]
         assert token.text == TOKEN_2
         assert token.font.font_family == FONTFAMILY_2
         assert token.font.font_size == FONTSIZE_2
         assert token.font.is_bold is True
         assert token.font.is_italics is True
+        assert token.coordinates == COORDINATES_2

@@ -92,7 +92,7 @@ def get_digit_feature(text: str) -> str:
 
 
 def get_capitalisation_feature(text: str) -> str:
-    if text.isupper():
+    if text and all(not c.islower() for c in text):
         return 'ALLCAP'
     if text and text[0].isupper():
         return 'INITCAP'
@@ -118,13 +118,61 @@ PUNCTUATION_PROFILE_MAP = {
     '.': PunctuationProfileValues.DOT,
     ',': PunctuationProfileValues.COMMA,
     '-': PunctuationProfileValues.HYPHEN,
+    '–': PunctuationProfileValues.HYPHEN,
     '"': PunctuationProfileValues.QUOTE,
     '\'': PunctuationProfileValues.QUOTE,
     '`': PunctuationProfileValues.QUOTE,
+    '’': PunctuationProfileValues.QUOTE
 }
 
 
 IS_PUNCT_PATTERN = r"^[\,\:;\?\.]+$"
+
+
+class RelativeFontSizeFeature:
+    def __init__(self, layout_tokens: Iterable[LayoutToken]):
+        font_sizes = [
+            layout_token.font.font_size
+            for layout_token in layout_tokens
+            if layout_token.font.font_size
+        ]
+        self.largest_font_size = max(font_sizes) if font_sizes else 0.0
+        self.smallest_font_size = min(font_sizes) if font_sizes else 0.0
+        self.mean_font_size = sum(font_sizes) / len(font_sizes) if font_sizes else 0.0
+
+    def is_largest_font_size(self, layout_token: LayoutToken):
+        return layout_token.font.font_size == self.largest_font_size
+
+    def is_smallest_font_size(self, layout_token: LayoutToken):
+        return layout_token.font.font_size == self.smallest_font_size
+
+    def is_larger_than_average_font_size(self, layout_token: LayoutToken):
+        if not layout_token.font.font_size:
+            return False
+        return layout_token.font.font_size > self.mean_font_size
+
+
+class LineIndentationStatusFeature:
+    def __init__(self):
+        self._line_start_x = None
+        self._is_new_line = True
+        self._is_indented = False
+
+    def on_new_line(self):
+        self._is_new_line = True
+
+    def get_is_indented_and_update(self, layout_token: LayoutToken):
+        if self._is_new_line and layout_token.coordinates and layout_token.text:
+            previous_line_start_x = self._line_start_x
+            self._line_start_x = layout_token.coordinates.x
+            character_width = layout_token.coordinates.width / len(layout_token.text)
+            if previous_line_start_x is not None:
+                if self._line_start_x - previous_line_start_x > character_width:
+                    self._is_indented = True
+                if previous_line_start_x - self._line_start_x > character_width:
+                    self._is_indented = False
+        self._is_new_line = False
+        return self._is_indented
 
 
 def get_punctuation_profile_feature(text: str) -> str:

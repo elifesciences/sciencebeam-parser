@@ -1,7 +1,12 @@
+import logging
 from dataclasses import dataclass
-from typing import List, Iterable, Optional, Tuple
+from functools import partial
+from typing import Callable, List, Iterable, NamedTuple, Optional, Tuple
 
 from pygrobid.utils.tokenizer import get_tokenized_tokens
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -16,40 +21,103 @@ class LayoutFont:
 EMPTY_FONT = LayoutFont(font_id='_EMPTY')
 
 
+class LayoutCoordinates(NamedTuple):
+    x: float
+    y: float
+    width: float
+    height: float
+
+
 @dataclass
 class LayoutToken:
     text: str
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '
+    coordinates: Optional[LayoutCoordinates] = None
 
-    def retokenize(self) -> List['LayoutToken']:
-        if not self.text.strip():
-            return []
-        token_texts = get_tokenized_tokens(self.text, keep_whitespace=True)
-        if token_texts == [self.text]:
-            return [self]
-        texts_with_whitespace: List[Tuple[str, str]] = []
-        pending_token_text = ''
-        pending_whitespace = ''
-        for token_text in token_texts:
-            if not token_text.strip():
-                pending_whitespace += token_text
-                continue
-            if pending_token_text:
-                texts_with_whitespace.append((pending_token_text, pending_whitespace))
-            pending_token_text = token_text
-            pending_whitespace = ''
-        pending_whitespace += self.whitespace
+
+T_FlatMapLayoutTokensFn = Callable[[LayoutToken], List[LayoutToken]]
+
+
+def default_get_tokenized_tokens_keep_whitespace(text: str) -> List[str]:
+    return get_tokenized_tokens(text, keep_whitespace=True)
+
+
+def get_relative_coordinates(
+    coordinates: Optional[LayoutCoordinates],
+    text: str,
+    text_character_offset: int,
+    total_text_length: int
+) -> Optional[LayoutCoordinates]:
+    if not coordinates:
+        return None
+    return LayoutCoordinates(
+        x=(
+            coordinates.x
+            + coordinates.width * text_character_offset / total_text_length
+        ),
+        y=coordinates.y,
+        width=(
+            coordinates.width
+            * len(text) / total_text_length
+        ),
+        height=coordinates.height
+    )
+
+
+def retokenize_layout_token(
+    layout_token: LayoutToken,
+    tokenize_fn: Optional[Callable[[str], List[str]]] = None
+) -> List[LayoutToken]:
+    if not layout_token.text.strip():
+        return []
+    if tokenize_fn is None:
+        tokenize_fn = default_get_tokenized_tokens_keep_whitespace
+    token_texts = tokenize_fn(layout_token.text)
+    if token_texts == [layout_token.text]:
+        return [layout_token]
+    total_text_length = sum(len(token_text) for token_text in token_texts)
+    texts_with_whitespace: List[Tuple[str, str, int]] = []
+    pending_token_text = ''
+    pending_whitespace = ''
+    text_character_offset = 0
+    pending_text_character_offset = 0
+    for token_text in token_texts:
+        if not token_text.strip():
+            pending_whitespace += token_text
+            text_character_offset += len(token_text)
+            continue
         if pending_token_text:
-            texts_with_whitespace.append((pending_token_text, pending_whitespace))
-        return [
-            LayoutToken(
-                text=token_text,
-                font=self.font,
-                whitespace=whitespace
+            texts_with_whitespace.append((
+                pending_token_text,
+                pending_whitespace,
+                pending_text_character_offset
+            ))
+        pending_token_text = token_text
+        pending_whitespace = ''
+        pending_text_character_offset = text_character_offset
+        text_character_offset += len(token_text)
+    pending_whitespace += layout_token.whitespace
+    if pending_token_text:
+        texts_with_whitespace.append((
+            pending_token_text,
+            pending_whitespace,
+            pending_text_character_offset
+        ))
+    return [
+        LayoutToken(
+            text=token_text,
+            font=layout_token.font,
+            whitespace=whitespace,
+            coordinates=get_relative_coordinates(
+                layout_token.coordinates,
+                pending_token_text,
+                text_character_offset,
+                total_text_length
             )
-            for token_text, whitespace in texts_with_whitespace
-        ]
+        )
+        for token_text, whitespace, text_character_offset in texts_with_whitespace
+    ]
 
 
 def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
@@ -67,11 +135,11 @@ def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
 class LayoutLine:
     tokens: List[LayoutToken]
 
-    def retokenize(self) -> 'LayoutLine':
+    def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutLine':
         return LayoutLine(tokens=[
             tokenized_token
             for token in self.tokens
-            for tokenized_token in token.retokenize()
+            for tokenized_token in fn(token)
         ])
 
 
@@ -79,9 +147,9 @@ class LayoutLine:
 class LayoutBlock:
     lines: List[LayoutLine]
 
-    def retokenize(self) -> 'LayoutBlock':
+    def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutBlock':
         return LayoutBlock(lines=[
-            line.retokenize()
+            line.flat_map_layout_tokens(fn)
             for line in self.lines
         ])
 
@@ -97,9 +165,9 @@ class LayoutBlock:
 class LayoutPage:
     blocks: List[LayoutBlock]
 
-    def retokenize(self) -> 'LayoutPage':
+    def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutPage':
         return LayoutPage(blocks=[
-            block.retokenize()
+            block.flat_map_layout_tokens(fn)
             for block in self.blocks
         ])
 
@@ -134,11 +202,18 @@ class LayoutDocument:
             for token in line.tokens
         )
 
-    def retokenize(self) -> 'LayoutDocument':
+    def flat_map_layout_tokens(
+        self, fn: T_FlatMapLayoutTokensFn, **kwargs
+    ) -> 'LayoutDocument':
+        if kwargs:
+            fn = partial(fn, **kwargs)
         return LayoutDocument(pages=[
-            page.retokenize()
+            page.flat_map_layout_tokens(fn)
             for page in self.pages
         ])
+
+    def retokenize(self, **kwargs) -> 'LayoutDocument':
+        return self.flat_map_layout_tokens(retokenize_layout_token, **kwargs)
 
     def remove_empty_blocks(self) -> 'LayoutDocument':
         pages: List[LayoutPage] = [
@@ -152,8 +227,19 @@ class LayoutDocument:
         ])
 
 
-def retokenize_layout_document(layout_document: LayoutDocument) -> LayoutDocument:
-    return layout_document.retokenize()
+def flat_map_layout_document_tokens(
+    layout_document: LayoutDocument,
+    fn: T_FlatMapLayoutTokensFn,
+    **kwargs
+) -> LayoutDocument:
+    return layout_document.flat_map_layout_tokens(fn, **kwargs)
+
+
+def retokenize_layout_document(
+    layout_document: LayoutDocument,
+    **kwargs
+) -> LayoutDocument:
+    return layout_document.retokenize(**kwargs)
 
 
 def remove_empty_blocks(layout_document: LayoutDocument) -> LayoutDocument:

@@ -3,6 +3,7 @@ from typing import Dict, List
 from lxml import etree
 
 from pygrobid.document.layout_document import (
+    LayoutCoordinates,
     LayoutFont,
     LayoutToken,
     LayoutLine,
@@ -33,6 +34,12 @@ class AltoParser:
             font=self.font_by_id_map.get(
                 token_node.attrib.get('STYLEREFS'),
                 EMPTY_FONT
+            ),
+            coordinates=LayoutCoordinates(
+                x=float(token_node.attrib.get('HPOS', 0)),
+                y=float(token_node.attrib.get('VPOS', 0)),
+                width=float(token_node.attrib.get('WIDTH', 0)),
+                height=float(token_node.attrib.get('HEIGHT', 0))
             )
         )
 

@@ -4,6 +4,8 @@ from pygrobid.document.layout_document import LayoutDocument, LayoutToken
 from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
+    RelativeFontSizeFeature,
+    LineIndentationStatusFeature,
     get_token_font_status,
     get_token_font_size_feature,
     get_digit_feature,
@@ -17,32 +19,41 @@ class HeaderDataGenerator(ModelDataGenerator):
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelData]:
+        relative_font_size_feature = RelativeFontSizeFeature(
+            layout_document.iter_all_tokens()
+        )
+        line_indentation_status_feature = LineIndentationStatusFeature()
         previous_token: Optional[LayoutToken] = None
         for block in layout_document.iter_all_blocks():
             block_lines = block.lines
             for line_index, line in enumerate(block_lines):
+                line_indentation_status_feature.on_new_line()
                 line_tokens = line.tokens
                 for token_index, token in enumerate(line_tokens):
                     token_text: str = token.text or ''
                     line_status = (
-                        'LINESTART' if token_index == 0
+                        'LINEEND' if token_index == len(line_tokens) - 1
                         else (
-                            'LINEEND' if token_index == len(line_tokens) - 1
+                            'LINESTART' if token_index == 0
                             else 'LINEIN'
                         )
                     )
                     block_status = (
-                        'BLOCKSTART' if line_index == 0 and line_status == 'LINESTART'
+                        'BLOCKEND'
+                        if line_index == len(block_lines) - 1 and line_status == 'LINEEND'
                         else (
-                            'BLOCKEND'
-                            if line_index == len(block_lines) - 1 and line_status == 'LINEEND'
+                            'BLOCKSTART'
+                            if line_index == 0 and line_status == 'LINESTART'
                             else 'BLOCKIN'
                         )
                     )
-                    if block_status == 'BLOCKSTART':
-                        # replicate "bug" in GROBID
-                        block_status = 'BLOCKIN'
-                    alignment_status = 'ALIGNEDLEFT'  # may also be 'LINEINDENT'
+                    # if block_status == 'BLOCKSTART':
+                    #     # replicate "bug" in GROBID
+                    #     block_status = 'BLOCKIN'
+                    indented = line_indentation_status_feature.get_is_indented_and_update(
+                        token
+                    )
+                    alignment_status = 'LINEINDENT' if indented else 'ALIGNEDLEFT'
                     font_status = get_token_font_status(previous_token, token)
                     font_size = get_token_font_size_feature(previous_token, token)
                     is_bold = token.font.is_bold
@@ -61,9 +72,17 @@ class HeaderDataGenerator(ModelDataGenerator):
                     is_http = False
                     # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
                     punct_type = get_punctuation_profile_feature(token_text)
-                    is_largest_font = False
-                    is_smallest_font = False
-                    is_larger_than_average_font = False
+                    is_largest_font = relative_font_size_feature.is_largest_font_size(
+                        token
+                    )
+                    is_smallest_font = relative_font_size_feature.is_smallest_font_size(
+                        token
+                    )
+                    is_larger_than_average_font = (
+                        relative_font_size_feature.is_larger_than_average_font_size(
+                            token
+                        )
+                    )
                     label = '0'
                     features = [
                         token_text,
