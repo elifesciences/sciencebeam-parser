@@ -150,7 +150,7 @@ class ModelNestedBluePrint:
                 tag_result = self.model.predict_labels(
                     texts=texts, features=features, output_format=None
                 )
-                LOGGER.info('tag_result: %s', tag_result)
+                LOGGER.debug('tag_result: %s', tag_result)
                 formatted_tag_result_iterable = iter_format_tag_result(
                     tag_result,
                     output_format=output_format,
@@ -227,13 +227,13 @@ class ApiBlueprint(Blueprint):
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
         ).remove_empty_blocks()
-        LOGGER.info('header_layout_document: %s', header_layout_document)
+        LOGGER.debug('header_layout_document: %s', header_layout_document)
         if not header_layout_document.pages:
             return TeiDocument()
         labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
             header_layout_document
         )
-        LOGGER.info('labeled_layout_tokens: %r', labeled_layout_tokens)
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         entity_values = self.header_model.iter_entity_values_for_labelled_layout_tokens(
             labeled_layout_tokens
         )

@@ -30,8 +30,8 @@ def iter_entity_values_predicted_labels(
     tag_result: List[Tuple[str, str]]
 ) -> Iterable[Tuple[str, str]]:
     tokens, labels = zip(*tag_result)
-    LOGGER.info('tokens: %s', tokens)
-    LOGGER.info('labels: %s', labels)
+    LOGGER.debug('tokens: %s', tokens)
+    LOGGER.debug('labels: %s', labels)
     for tag, start, end in get_entities(list(labels)):
         yield tag, ' '.join(tokens[start:end + 1])
 
@@ -41,8 +41,8 @@ def iter_entity_values_for_labelled_layout_tokens(
 ) -> Iterable[Tuple[str, str]]:
     layout_tokens = [result.layout_token for result in labeled_layout_tokens]
     labels = [result.label for result in labeled_layout_tokens]
-    LOGGER.info('layout_tokens: %s', layout_tokens)
-    LOGGER.info('labels: %s', labels)
+    LOGGER.debug('layout_tokens: %s', layout_tokens)
+    LOGGER.debug('labels: %s', labels)
     for tag, start, end in get_entities(list(labels)):
         yield tag, join_layout_tokens(layout_tokens[start:end + 1])
 
@@ -87,12 +87,12 @@ class DelftModel(Model):
         data_lines = [model_data.data_line for model_data in model_data_list]
         texts, features = load_data_crf_lines(data_lines)
         texts = texts.tolist()
-        LOGGER.info('texts: %s', texts)
+        LOGGER.debug('texts: %s', texts)
         tag_result = self.predict_labels(
             texts=texts, features=features, output_format=None
         )
-        LOGGER.info('model_data_list: %s', model_data_list)
-        LOGGER.info('tag_result: %s', tag_result)
+        LOGGER.debug('model_data_list: %s', model_data_list)
+        LOGGER.debug('tag_result: %s', tag_result)
         for model_data, token_tag in zip(model_data_list, tag_result[0]):
             token, tag = token_tag
             assert model_data.layout_token
