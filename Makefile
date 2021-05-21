@@ -22,8 +22,9 @@ EXAMPLE_PDF_DOCUMENT = test-data/minimal-example.pdf
 
 
 PDFALTO_BINARY_PATH = grobid-home/pdf2xml/lin-64/pdfalto
-GROBID_HOME_BASE_DOWNLOAD_URL = https://github.com/kermitt2/grobid/raw/0.6.1/grobid-home
-PDFALTO_BINARY_DOWNLOAD_URL = $(GROBID_HOME_BASE_DOWNLOAD_URL)/pdf2xml/lin-64/pdfalto
+GROBID_HOME_BASE_DOWNLOAD_URL = https://github.com/kermitt2/grobid/raw/0.6.2/grobid-home
+# PDFALTO_BINARY_DOWNLOAD_URL = $(GROBID_HOME_BASE_DOWNLOAD_URL)/pdf2xml/lin-64/pdfalto
+PDFALTO_BINARY_DOWNLOAD_URL = https://github.com/kermitt2/pdfalto/files/6104204/pdfalto-4b4e983413278a07bb4cc4b2836de03adc8ca6dc-dockcross-linux-64.gz
 
 
 IMAGE_NAME = de4code/pygrobid-poc_unstable
@@ -54,10 +55,9 @@ dev-venv: venv-create dev-install
 download-pdfalto:
 	@echo "downloading: $(PDFALTO_BINARY_DOWNLOAD_URL)"
 	mkdir -p "$(dir $(PDFALTO_BINARY_PATH))"
-	curl --fail --show-error --connect-timeout 60 --user-agent "$USER_AGENT" --location \
-    "$(PDFALTO_BINARY_DOWNLOAD_URL)" \
-		--silent -o \
-		"$(PDFALTO_BINARY_PATH)"
+	$(PYTHON) -m sciencebeam_trainer_delft.sequence_labelling.tools.install_file \
+		--source="${PDFALTO_BINARY_DOWNLOAD_URL}" \
+		--target="${PDFALTO_BINARY_PATH}"
 
 
 grobid-home-setup:
