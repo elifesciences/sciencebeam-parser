@@ -39,6 +39,9 @@ class HeaderDataGenerator(ModelDataGenerator):
                             else 'BLOCKIN'
                         )
                     )
+                    if block_status == 'BLOCKSTART':
+                        # replicate "bug" in GROBID
+                        block_status = 'BLOCKIN'
                     alignment_status = 'ALIGNEDLEFT'  # may also be 'LINEINDENT'
                     font_status = get_token_font_status(previous_token, token)
                     font_size = get_token_font_size_feature(previous_token, token)
