@@ -1,7 +1,7 @@
 import logging
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional, TypeVar
 
 import yaml
 from flask import Blueprint, jsonify, request, Response, url_for
@@ -27,10 +27,14 @@ from pygrobid.document.tei_document import TeiDocument
 LOGGER = logging.getLogger(__name__)
 
 
+T = TypeVar('T')
+
+
 class RequestArgs:
     FIRST_PAGE = 'first_page'
     LAST_PAGE = 'last_page'
     OUTPUT_FORMAT = 'output_format'
+    NO_USE_SEGMENTATION = 'no_use_segmentation'
 
 
 class ModelOutputFormats:
@@ -67,17 +71,47 @@ def get_required_post_data():
     return data
 
 
+def get_typed_request_arg(
+    name: str,
+    type_: Callable[[str], T],
+    default_value: Optional[T] = None,
+    required: bool = False
+) -> Optional[T]:
+    value = request.args.get(name)
+    if value:
+        return type_(value)
+    if required:
+        raise ValueError(f'request arg {name} is required')
+    return default_value
+
+
+def str_to_bool(value: str) -> bool:
+    value_lower = value.lower()
+    if value_lower in {'true', '1'}:
+        return True
+    if value_lower in {'false', '0'}:
+        return False
+    raise ValueError('unrecognised boolean value: %r' % value)
+
+
+def get_bool_request_arg(
+    name: str,
+    default_value: Optional[bool] = None,
+    required: bool = False
+) -> Optional[bool]:
+    return get_typed_request_arg(
+        name, str_to_bool, default_value=default_value, required=required
+    )
+
+
 def get_int_request_arg(
     name: str,
     default_value: Optional[int] = None,
     required: bool = False
 ) -> Optional[int]:
-    value = request.args.get(name)
-    if value:
-        return int(value)
-    if required:
-        raise ValueError(f'request arg {name} is required')
-    return default_value
+    return get_typed_request_arg(
+        name, int, default_value=default_value, required=required
+    )
 
 
 def _get_file_upload_form(title: str):
@@ -99,11 +133,15 @@ class ModelNestedBluePrint:
         self,
         name: str,
         model: Model,
-        pdfalto_wrapper: PdfAltoWrapper
+        pdfalto_wrapper: PdfAltoWrapper,
+        segmentation_model: Optional[Model] = None,
+        segmentation_label: Optional[str] = None
     ):
         self.name = name
         self.model = model
         self.pdfalto_wrapper = pdfalto_wrapper
+        self.segmentation_model = segmentation_model
+        self.segmentation_label = segmentation_label
 
     def add_routes(self, parent_blueprint: Blueprint, url_prefix: str):
         parent_blueprint.route(
@@ -139,6 +177,19 @@ class ModelNestedBluePrint:
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
             layout_document = parse_alto_root(root).retokenize().remove_empty_blocks()
+            if (
+                self.segmentation_model
+                and self.segmentation_label
+                and not get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False)
+            ):
+                segmentation_label_result = (
+                    self.segmentation_model.get_label_layout_document_result(
+                        layout_document
+                    )
+                )
+                layout_document = segmentation_label_result.get_filtered_document_by_label(
+                    self.segmentation_label
+                ).remove_empty_blocks()
             data_generator = self.model.get_data_generator()
             data_lines = data_generator.iter_data_lines_for_layout_document(layout_document)
             response_type = 'text/plain'
@@ -184,7 +235,9 @@ class ApiBlueprint(Blueprint):
             'Segmentation', model=self.segmentation_model, pdfalto_wrapper=self.pdfalto_wrapper
         ).add_routes(self, '/models/segmentation')
         ModelNestedBluePrint(
-            'Header', model=self.header_model, pdfalto_wrapper=self.pdfalto_wrapper
+            'Header', model=self.header_model, pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=self.segmentation_model,
+            segmentation_label='<header>'
         ).add_routes(self, '/models/header')
 
     def api_root(self):
