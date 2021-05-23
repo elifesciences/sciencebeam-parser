@@ -3,6 +3,7 @@ venv_temp
 data
 dist
 build
+logs
 *.egg-info
 
 grobid-home

@@ -12,6 +12,7 @@ from flask.testing import FlaskClient
 from werkzeug.exceptions import BadRequest
 
 import pytest
+import yaml
 
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 
@@ -51,7 +52,8 @@ def _pdfalto_wrapper_mock(pdfalto_wrapper_get_mock: MagicMock) -> MagicMock:
 
 @pytest.fixture(name='test_client')
 def _test_client() -> Iterator[FlaskClient]:
-    blueprint = ApiBlueprint()
+    config = yaml.safe_load(Path('config.yml').read_text())
+    blueprint = ApiBlueprint(config)
     app = Flask(__name__)
     app.register_blueprint(blueprint)
     yield app.test_client()

@@ -3,7 +3,6 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from typing import Callable, List, Optional, TypeVar
 
-import yaml
 from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
 from lxml import etree
@@ -238,10 +237,8 @@ class ModelNestedBluePrint:
 
 
 class ApiBlueprint(Blueprint):
-    def __init__(self):
+    def __init__(self, config: dict):
         super().__init__('api', __name__)
-        config = yaml.safe_load(Path('config.yml').read_text())
-        LOGGER.info('config: %s', config)
         self.route('/')(self.api_root)
         self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)

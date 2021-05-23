@@ -1,3 +1,34 @@
+logging:
+  # Python logging config (passed to dictConfig)
+  version: 1
+  formatters:
+    default:
+      format: '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+  handlers:
+    wsgi:
+      level: INFO
+      formatter: default
+      class: logging.StreamHandler
+      stream: 'ext://flask.logging.wsgi_errors_stream'
+    log_file:
+      level: DEBUG
+      formatter: default
+      class: logging.handlers.RotatingFileHandler
+      filename: 'logs/server.log'
+      mode: 'a'
+      maxBytes: 67108864  # 64 MB
+      backupCount: 10
+  loggers:
+    # root logger
+    '':
+      level: INFO
+      handlers:
+        - wsgi
+        - log_file
+    pygrobid:
+      level: DEBUG
+    __main__:
+      level: DEBUG
 models:
   segmentation:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/biorxiv-grobid/2021-05-11-delft-grobid-segmentation-biorxiv-10k-auto-v0.0.23-train-1966-e133.tar.gz'
