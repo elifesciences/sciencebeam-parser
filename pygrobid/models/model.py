@@ -64,7 +64,7 @@ class LayoutDocumentLabelResult:
             for layout_document_label in layout_document_labels
             if layout_document_label.layout_line
         ]
-        LOGGER.info('layout_lines_to_include: %s', layout_lines_to_include)
+        LOGGER.debug('layout_lines_to_include: %s', layout_lines_to_include)
         result_page: Optional[LayoutPage] = None
         for page in self.layout_document.pages:
             result_page = None

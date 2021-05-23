@@ -31,6 +31,10 @@ IMAGE_NAME = de4code/pygrobid-poc_unstable
 IMAGE_TAG = develop
 
 
+SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH = 2000
+SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE = 1800
+
+
 venv-clean:
 	@if [ -d "$(VENV)" ]; then \
 		rm -rf "$(VENV)"; \
@@ -95,13 +99,14 @@ dev-test: dev-lint dev-pytest
 
 dev-start:
 	GROBID_HOME=$(GROBID_HOME) \
+	SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=$(SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH) \
+	SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=$(SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE) \
 		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
 
 
 dev-start-debug:
-	GROBID_HOME=$(GROBID_HOME) \
 	FLASK_ENV=development \
-		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
+	$(MAKE) dev-start
 
 
 dev-end-to-end:
