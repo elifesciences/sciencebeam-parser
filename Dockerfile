@@ -43,8 +43,8 @@ COPY docker/entrypoint.sh ./docker/entrypoint.sh
 COPY grobid-home ./grobid-home
 COPY config.yml ./
 
-ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH = 2000
-ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE = 1800
+ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
+ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
 
 CMD [ "--port=8070", "--host=0.0.0.0" ]
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/opt/pygrobid/docker/entrypoint.sh"]
