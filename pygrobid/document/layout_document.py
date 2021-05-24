@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Callable, List, Iterable, NamedTuple, Optional, Tuple
 
-from pygrobid.utils.tokenizer import get_tokenized_tokens
+from pygrobid.utils.tokenizer import iter_tokenized_tokens, get_tokenized_tokens
 
 
 LOGGER = logging.getLogger(__name__)
@@ -120,20 +120,36 @@ def retokenize_layout_token(
     ]
 
 
-def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
-    return ''.join([
-        (
-            token.text + token.whitespace
-            if index < len(layout_tokens) - 1
-            else token.text
-        )
-        for index, token in enumerate(layout_tokens)
-    ])
+def iter_layout_tokens_for_text(
+    text: str,
+    tail_whitespace: str = ' '
+) -> Iterable[LayoutToken]:
+    pending_text = ''
+    pending_whitespace = ' '
+    for token_text in iter_tokenized_tokens(text, keep_whitespace=True):
+        if not token_text.strip():
+            pending_whitespace += token_text
+            continue
+        if pending_text:
+            yield LayoutToken(pending_text, whitespace=pending_whitespace)
+        pending_text = token_text
+        pending_whitespace = ''
+    if pending_text:
+        pending_whitespace += tail_whitespace
+        yield LayoutToken(pending_text, whitespace=pending_whitespace)
+
+
+def get_layout_tokens_for_text(*args, **kwargs) -> List[LayoutToken]:
+    return list(iter_layout_tokens_for_text(*args, **kwargs))
 
 
 @dataclass
 class LayoutLine:
     tokens: List[LayoutToken]
+
+    @staticmethod
+    def for_text(text: str, **kwargs) -> 'LayoutLine':
+        return LayoutLine(tokens=get_layout_tokens_for_text(text, **kwargs))
 
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutLine':
         return LayoutLine(tokens=[
@@ -146,6 +162,14 @@ class LayoutLine:
 @dataclass
 class LayoutBlock:
     lines: List[LayoutLine]
+
+    @staticmethod
+    def for_tokens(tokens: List[LayoutToken]) -> 'LayoutBlock':
+        return LayoutBlock(lines=[LayoutLine(tokens=tokens)])
+
+    @staticmethod
+    def for_text(text: str, **kwargs) -> 'LayoutBlock':
+        return LayoutBlock(lines=[LayoutLine.for_text(text, **kwargs)])
 
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutBlock':
         return LayoutBlock(lines=[
@@ -225,6 +249,67 @@ class LayoutDocument:
             for page in pages
             if page.blocks
         ])
+
+
+class LayoutTokenIndexRange(NamedTuple):
+    layout_token: LayoutToken
+    start: int
+    end: int
+
+
+class LayoutTokensText:
+    def __init__(self, layout_block: LayoutBlock) -> None:
+        self.layout_block = layout_block
+        text_fragments = []
+        pending_whitespace = ''
+        text_offset = 0
+        token_index_ranges: List[LayoutTokenIndexRange] = []
+        for line in layout_block.lines:
+            for token in line.tokens:
+                if pending_whitespace:
+                    text_fragments.append(pending_whitespace)
+                    text_offset += len(pending_whitespace)
+                    pending_whitespace = ''
+                token_text = token.text
+                token_index_ranges.append(LayoutTokenIndexRange(
+                    layout_token=token,
+                    start=text_offset,
+                    end=text_offset + len(token_text)
+                ))
+                text_fragments.append(token_text)
+                text_offset += len(token_text)
+                pending_whitespace += token.whitespace
+        self.token_index_ranges = token_index_ranges
+        self.text = ''.join(text_fragments)
+
+    def __str__(self):
+        return self.text
+
+    def iter_layout_tokens_between(
+        self, start: int, end: int
+    ) -> Iterable[LayoutToken]:
+        for token_index_range in self.token_index_ranges:
+            if token_index_range.start >= end:
+                break
+            if token_index_range.end <= start:
+                continue
+            yield token_index_range.layout_token
+
+    def get_layout_tokens_between(
+        self, start: int, end: int
+    ) -> List[LayoutToken]:
+        return list(self.iter_layout_tokens_between(start, end))
+
+
+def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
+    return ''.join([
+        (
+            token.text + token.whitespace
+            if index < len(layout_tokens) - 1
+            else token.text
+        )
+        for index, token in enumerate(layout_tokens)
+    ])
 
 
 def flat_map_layout_document_tokens(

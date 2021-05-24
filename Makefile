@@ -126,5 +126,5 @@ docker-build:
 
 docker-run:
 	docker run --rm \
-		-p 8070:8070 \
+		-p 8072:8070 \
 		$(IMAGE_NAME):$(IMAGE_TAG) $(ARGS)

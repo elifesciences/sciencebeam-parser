@@ -1,8 +1,14 @@
-from pygrobid.models.header.model import (
-    HeaderModel,
-    get_cleaned_abstract_text
+from pygrobid.document.layout_document import (
+    LayoutBlock,
+    join_layout_tokens
 )
 from pygrobid.document.tei_document import TeiDocument
+
+from pygrobid.models.header.model import (
+    HeaderModel,
+    get_cleaned_abstract_text,
+    get_cleaned_abstract_layout_block
+)
 
 
 TITLE_1 = 'the title 1'
@@ -33,6 +39,35 @@ class TestGetCleanedAbstractText:
         assert get_cleaned_abstract_text(
             'Abstract: ' + ABSTRACT_1
         ) == ABSTRACT_1
+
+
+class TestGetCleanedAbstractLayoutBlock:
+    def test_should_return_none_if_passed_in_text_was_none(self):
+        assert get_cleaned_abstract_layout_block(None) is None
+
+    def test_should_return_empty_str_if_passed_in_text_was_empty(self):
+        layout_block = LayoutBlock(lines=[])
+        assert get_cleaned_abstract_layout_block(layout_block) == layout_block
+
+    def test_should_return_abstract_if_it_doesnt_contain_prefix(self):
+        layout_block = LayoutBlock.for_text(ABSTRACT_1)
+        cleaned_layout_block = get_cleaned_abstract_layout_block(layout_block)
+        assert join_layout_tokens(cleaned_layout_block.lines[0].tokens) == ABSTRACT_1
+
+    def test_should_return_remove_abstract_prefix(self):
+        layout_block = LayoutBlock.for_text('Abstract ' + ABSTRACT_1)
+        cleaned_layout_block = get_cleaned_abstract_layout_block(layout_block)
+        assert join_layout_tokens(cleaned_layout_block.lines[0].tokens) == ABSTRACT_1
+
+    def test_should_return_remove_abstract_dot_prefix(self):
+        layout_block = LayoutBlock.for_text('Abstract. ' + ABSTRACT_1)
+        cleaned_layout_block = get_cleaned_abstract_layout_block(layout_block)
+        assert join_layout_tokens(cleaned_layout_block.lines[0].tokens) == ABSTRACT_1
+
+    def test_should_return_remove_abstract_colon_prefix(self):
+        layout_block = LayoutBlock.for_text('Abstract: ' + ABSTRACT_1)
+        cleaned_layout_block = get_cleaned_abstract_layout_block(layout_block)
+        assert join_layout_tokens(cleaned_layout_block.lines[0].tokens) == ABSTRACT_1
 
 
 class TestHeaderModel:

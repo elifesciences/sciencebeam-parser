@@ -11,6 +11,7 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_li
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
 from pygrobid.document.layout_document import (
+    LayoutBlock,
     LayoutDocument,
     LayoutToken,
     join_layout_tokens
@@ -21,7 +22,7 @@ from pygrobid.models.model import Model
 LOGGER = logging.getLogger(__name__)
 
 
-class LabelledLayoutToken(NamedTuple):
+class LabeledLayoutToken(NamedTuple):
     label: str
     layout_token: LayoutToken
 
@@ -36,8 +37,8 @@ def iter_entity_values_predicted_labels(
         yield tag, ' '.join(tokens[start:end + 1])
 
 
-def iter_entity_values_for_labelled_layout_tokens(
-    labeled_layout_tokens: Iterable[LabelledLayoutToken]
+def iter_entity_values_for_labeled_layout_tokens(
+    labeled_layout_tokens: Iterable[LabeledLayoutToken]
 ) -> Iterable[Tuple[str, str]]:
     layout_tokens = [result.layout_token for result in labeled_layout_tokens]
     labels = [result.label for result in labeled_layout_tokens]
@@ -45,6 +46,17 @@ def iter_entity_values_for_labelled_layout_tokens(
     LOGGER.debug('labels: %s', labels)
     for tag, start, end in get_entities(list(labels)):
         yield tag, join_layout_tokens(layout_tokens[start:end + 1])
+
+
+def iter_entity_layout_blocks_for_labeled_layout_tokens(
+    labeled_layout_tokens: Iterable[LabeledLayoutToken]
+) -> Iterable[Tuple[str, LayoutBlock]]:
+    layout_tokens = [result.layout_token for result in labeled_layout_tokens]
+    labels = [result.label for result in labeled_layout_tokens]
+    LOGGER.debug('layout_tokens: %s', layout_tokens)
+    LOGGER.debug('labels: %s', labels)
+    for tag, start, end in get_entities(list(labels)):
+        yield tag, LayoutBlock.for_tokens(layout_tokens[start:end + 1])
 
 
 class SeparateSessionSequenceWrapper(Sequence):
@@ -81,7 +93,7 @@ class DelftModel(Model):
     def iter_predict_labels_for_layout_document(
         self,
         layout_document: LayoutDocument
-    ) -> Iterable[LabelledLayoutToken]:
+    ) -> Iterable[LabeledLayoutToken]:
         data_generator = self.get_data_generator()
         model_data_list = list(data_generator.iter_model_data_for_layout_document(layout_document))
         data_lines = [model_data.data_line for model_data in model_data_list]
@@ -98,12 +110,12 @@ class DelftModel(Model):
             assert model_data.layout_token
             assert token == model_data.layout_token.text, \
                 f'actual: {repr(token)}, expected: {repr(model_data.layout_token.text)}'
-            yield LabelledLayoutToken(label=tag, layout_token=model_data.layout_token)
+            yield LabeledLayoutToken(label=tag, layout_token=model_data.layout_token)
 
     def predict_labels_for_layout_document(
         self,
         layout_document: LayoutDocument
-    ) -> List[LabelledLayoutToken]:
+    ) -> List[LabeledLayoutToken]:
         return list(self.iter_predict_labels_for_layout_document(layout_document))
 
     def predict_labels(
@@ -121,8 +133,14 @@ class DelftModel(Model):
     ) -> Iterable[Tuple[str, str]]:
         return iter_entity_values_predicted_labels(tag_result)
 
-    def iter_entity_values_for_labelled_layout_tokens(
+    def iter_entity_values_for_labeled_layout_tokens(
         self,
-        labeled_layout_tokens: Iterable[LabelledLayoutToken]
+        labeled_layout_tokens: Iterable[LabeledLayoutToken]
     ) -> Iterable[Tuple[str, str]]:
-        return iter_entity_values_for_labelled_layout_tokens(labeled_layout_tokens)
+        return iter_entity_values_for_labeled_layout_tokens(labeled_layout_tokens)
+
+    def iter_entity_layout_blocks_for_labeled_layout_tokens(
+        self,
+        labeled_layout_tokens: Iterable[LabeledLayoutToken]
+    ) -> Iterable[Tuple[str, LayoutBlock]]:
+        return iter_entity_layout_blocks_for_labeled_layout_tokens(labeled_layout_tokens)

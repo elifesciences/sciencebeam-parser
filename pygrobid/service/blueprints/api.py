@@ -303,11 +303,13 @@ class ApiBlueprint(Blueprint):
             header_layout_document
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
-        entity_values = self.header_model.iter_entity_values_for_labelled_layout_tokens(
+        entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
             labeled_layout_tokens
         )
         document = TeiDocument()
-        self.header_model.update_document_with_entity_values(document, entity_values)
+        self.header_model.update_document_with_entity_blocks(
+            document, entity_blocks
+        )
         return document
 
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
