@@ -1,4 +1,8 @@
-from pygrobid.document.layout_document import LayoutCoordinates, LayoutFont, LayoutToken
+from pygrobid.document.layout_document import (
+    LayoutPageCoordinates,
+    LayoutFont,
+    LayoutToken
+)
 from pygrobid.models.data import (
     RelativeFontSizeFeature,
     LineIndentationStatusFeature,
@@ -54,15 +58,15 @@ class TestRelativeFontSizeFeature:
 
 
 class TestLineIndentationStatusFeature:
-    def test_(self):
+    def test_should_detect_indented_blocks(self):
         line_indentation_status_feature = LineIndentationStatusFeature()
         line_indentation_status_feature.on_new_line()
         assert line_indentation_status_feature.get_is_indented_and_update(
-            LayoutToken('x', coordinates=LayoutCoordinates(x=10, y=10, width=10, height=10))
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
         ) is False
         line_indentation_status_feature.on_new_line()
         assert line_indentation_status_feature.get_is_indented_and_update(
-            LayoutToken('x', coordinates=LayoutCoordinates(x=50, y=10, width=10, height=10))
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=50, y=10, width=10, height=10))
         ) is True
 
 

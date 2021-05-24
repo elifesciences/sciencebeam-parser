@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional, Union
 from lxml import etree
 from lxml.builder import ElementMaker
 
-from pygrobid.document.layout_document import LayoutBlock, LayoutToken
+from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
 
 
 LOGGER = logging.getLogger(__name__)
@@ -65,12 +65,36 @@ def get_element_for_styles(styles: List[str], text: str) -> etree.ElementBase:
     return child
 
 
+def format_coordinates(coordinates: LayoutPageCoordinates) -> str:
+    return '%d,%.2f,%.2f,%.2f,%.2f' % (
+        coordinates.page_number,
+        coordinates.x,
+        coordinates.y,
+        coordinates.width,
+        coordinates.height
+    )
+
+
+def format_coordinates_list(coordinates_list: List[LayoutPageCoordinates]) -> str:
+    return ';'.join((
+        format_coordinates(coordinates)
+        for coordinates in coordinates_list
+    ))
+
+
 def iter_layout_block_tei_children(
-    layout_block: LayoutBlock
+    layout_block: LayoutBlock,
+    enable_coordinates: bool = True
 ) -> Iterable[Union[str, etree.ElementBase]]:
     pending_styles: List[str] = []
     pending_text = ''
     pending_whitespace = ''
+    if enable_coordinates:
+        yield {
+            'coords': format_coordinates_list(
+                layout_block.get_merged_coordinates_list()
+            )
+        }
     for line in layout_block.lines:
         for token in line.tokens:
             required_styles = get_required_styles(token)

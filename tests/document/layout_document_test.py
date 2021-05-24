@@ -1,14 +1,36 @@
 from pygrobid.document.layout_document import (
-    LayoutCoordinates,
+    LayoutPageCoordinates,
     LayoutToken,
     LayoutLine,
     LayoutBlock,
     LayoutPage,
     LayoutDocument,
     LayoutTokensText,
+    get_merged_coordinates_list,
     retokenize_layout_document,
     remove_empty_blocks
 )
+
+
+class TestGetMergedCoordinatesList:
+    def test_should_merge_coordinates_on_same_line(self):
+        assert get_merged_coordinates_list([
+            LayoutPageCoordinates(x=10, y=10, width=100, height=100, page_number=1),
+            LayoutPageCoordinates(x=110, y=10, width=100, height=100, page_number=1)
+        ]) == [LayoutPageCoordinates(x=10, y=10, width=110 - 10 + 100, height=100, page_number=1)]
+
+    def test_should_merge_coordinates_above_each_other(self):
+        assert get_merged_coordinates_list([
+            LayoutPageCoordinates(x=10, y=10, width=100, height=100, page_number=1),
+            LayoutPageCoordinates(x=10, y=110, width=100, height=100, page_number=1)
+        ]) == [LayoutPageCoordinates(x=10, y=10, width=100, height=110 - 10 + 100, page_number=1)]
+
+    def test_should_not_merge_coordinates_on_different_pages(self):
+        coordinates_list = [
+            LayoutPageCoordinates(x=10, y=10, width=100, height=100, page_number=1),
+            LayoutPageCoordinates(x=110, y=10, width=100, height=100, page_number=2)
+        ]
+        assert get_merged_coordinates_list(coordinates_list) == coordinates_list
 
 
 class TestLayoutBlock:
@@ -82,7 +104,7 @@ class TestRetokenizeLayoutDocument:
             pages=[LayoutPage(blocks=[LayoutBlock.for_tokens([
                 LayoutToken(
                     text, whitespace='\n',
-                    coordinates=LayoutCoordinates(x=10, y=10, width=100, height=50)
+                    coordinates=LayoutPageCoordinates(x=10, y=10, width=100, height=50)
                 )
             ])])]
         )

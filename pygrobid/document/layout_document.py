@@ -21,11 +21,47 @@ class LayoutFont:
 EMPTY_FONT = LayoutFont(font_id='_EMPTY')
 
 
-class LayoutCoordinates(NamedTuple):
+class LayoutPageCoordinates(NamedTuple):
     x: float
     y: float
     width: float
     height: float
+    page_number: int = 0
+
+    def get_merged_with(
+        self,
+        other: 'LayoutPageCoordinates'
+    ) -> 'LayoutPageCoordinates':
+        assert self.page_number == other.page_number, \
+            'cannot merge coordinates on different pages'
+        x = min(self.x, other.x)
+        y = min(self.y, other.y)
+        width = max(self.x + self.width, other.x + other.width) - x
+        height = max(self.y + self.height, other.y + other.height) - y
+        return LayoutPageCoordinates(
+            x=x, y=y, width=width, height=height, page_number=self.page_number
+        )
+
+
+def get_merged_coordinates_list(
+    coordinates_list: Iterable[LayoutPageCoordinates]
+) -> List[LayoutPageCoordinates]:
+    result: List[LayoutPageCoordinates] = []
+    pending_coordinates: Optional[LayoutPageCoordinates] = None
+    for coordinates in coordinates_list:
+        if not pending_coordinates:
+            pending_coordinates = coordinates
+            continue
+        if coordinates.page_number != pending_coordinates.page_number:
+            result.append(pending_coordinates)
+            pending_coordinates = coordinates
+            continue
+        pending_coordinates = pending_coordinates.get_merged_with(
+            coordinates
+        )
+    if pending_coordinates:
+        result.append(pending_coordinates)
+    return result
 
 
 @dataclass
@@ -33,7 +69,7 @@ class LayoutToken:
     text: str
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '
-    coordinates: Optional[LayoutCoordinates] = None
+    coordinates: Optional[LayoutPageCoordinates] = None
 
 
 T_FlatMapLayoutTokensFn = Callable[[LayoutToken], List[LayoutToken]]
@@ -44,14 +80,15 @@ def default_get_tokenized_tokens_keep_whitespace(text: str) -> List[str]:
 
 
 def get_relative_coordinates(
-    coordinates: Optional[LayoutCoordinates],
+    coordinates: Optional[LayoutPageCoordinates],
     text: str,
     text_character_offset: int,
     total_text_length: int
-) -> Optional[LayoutCoordinates]:
+) -> Optional[LayoutPageCoordinates]:
     if not coordinates:
         return None
-    return LayoutCoordinates(
+    return LayoutPageCoordinates(
+        page_number=coordinates.page_number,
         x=(
             coordinates.x
             + coordinates.width * text_character_offset / total_text_length
@@ -171,6 +208,20 @@ class LayoutBlock:
     def for_text(text: str, **kwargs) -> 'LayoutBlock':
         return LayoutBlock(lines=[LayoutLine.for_text(text, **kwargs)])
 
+    def iter_all_tokens(self) -> Iterable[LayoutToken]:
+        return (
+            token
+            for line in self.lines
+            for token in line.tokens
+        )
+
+    def get_merged_coordinates_list(self) -> List[LayoutPageCoordinates]:
+        return get_merged_coordinates_list([
+            token.coordinates
+            for token in self.iter_all_tokens()
+            if token.coordinates
+        ])
+
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutBlock':
         return LayoutBlock(lines=[
             line.flat_map_layout_tokens(fn)
@@ -222,8 +273,7 @@ class LayoutDocument:
         return (
             token
             for block in self.iter_all_blocks()
-            for line in block.lines
-            for token in line.tokens
+            for token in block.iter_all_tokens()
         )
 
     def flat_map_layout_tokens(

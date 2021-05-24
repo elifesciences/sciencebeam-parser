@@ -1,6 +1,6 @@
 from lxml.builder import ElementMaker
 
-from pygrobid.document.layout_document import LayoutCoordinates
+from pygrobid.document.layout_document import LayoutPageCoordinates
 from pygrobid.external.pdfalto.parser import parse_alto_root, ALTO_NS
 
 
@@ -23,12 +23,12 @@ ITALICS = 'italics'
 TOKEN_1 = 'token1'
 TOKEN_2 = 'token2'
 
-COORDINATES_1 = LayoutCoordinates(
-    x=100.1, y=101.1, width=102.2, height=103.3
+COORDINATES_1 = LayoutPageCoordinates(
+    x=100.1, y=101.1, width=102.2, height=103.3, page_number=1
 )
 
-COORDINATES_2 = LayoutCoordinates(
-    x=200.1, y=201.1, width=202.2, height=203.3
+COORDINATES_2 = LayoutPageCoordinates(
+    x=200.1, y=201.1, width=202.2, height=203.3, page_number=1
 )
 
 
