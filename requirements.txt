@@ -4,5 +4,5 @@ Flask-Cors==3.0.10
 lxml==4.6.3
 requests==2.25.1
 sciencebeam-utils==0.1.4
-tqdm==4.60.0
+tqdm==4.61.0
 typing-extensions==3.10.0.0
