@@ -39,8 +39,12 @@ def get_text_content(node: etree.ElementBase) -> str:
     return ''.join(node.itertext())
 
 
+def tei_xpath(parent: etree.ElementBase, xpath: str) -> List[etree.ElementBase]:
+    return parent.xpath(xpath, namespaces=TEI_NS_MAP)
+
+
 def get_tei_xpath_text_content_list(parent: etree.ElementBase, xpath: str) -> List[str]:
-    return [get_text_content(node) for node in parent.xpath(xpath, namespaces=TEI_NS_MAP)]
+    return [get_text_content(node) for node in tei_xpath(parent, xpath)]
 
 
 def get_required_styles(layout_token: LayoutToken) -> List[str]:
@@ -122,12 +126,97 @@ def iter_layout_block_tei_children(
         )
 
 
-class TeiDocument:
+def extend_element(
+    element: etree.ElementBase,
+    children_or_attributes: Iterable[etree.ElementBase]
+):
+    for item in children_or_attributes:
+        if isinstance(item, dict):
+            element.attrib.update(item)
+            continue
+        if isinstance(item, str):
+            children = list(element)
+            previous_element = children[-1] if children else None
+            if previous_element is not None:
+                previous_element.tail = (
+                    (previous_element.tail or '')
+                    + item
+                )
+            else:
+                element.text = (
+                    (element.text or '')
+                    + item
+                )
+            continue
+        element.append(item)
+
+
+class TeiElementWrapper:
+    def __init__(self, element: etree.ElementBase):
+        self.element = element
+
+    def get_notes_text_list(self, note_type: str) -> List[str]:
+        return get_tei_xpath_text_content_list(
+            self.element,
+            '//tei:note[@type="%s"]' % note_type,
+        )
+
+    def add_note(self, note_type: str, layout_block: LayoutBlock):
+        self.element.append(
+            TEI_E.note(
+                {'type': note_type},
+                *iter_layout_block_tei_children(layout_block)
+            )
+        )
+
+
+class TeiSectionParagraph(TeiElementWrapper):
+    def __init__(self, element: etree.ElementBase):
+        super().__init__(element)
+        self._pending_whitespace: Optional[str] = None
+
+    def add_content(self, layout_block: LayoutBlock):
+        if self._pending_whitespace:
+            extend_element(self.element, [self._pending_whitespace])
+        self._pending_whitespace = layout_block.whitespace
+        extend_element(
+            self.element,
+            iter_layout_block_tei_children(layout_block)
+        )
+
+
+class TeiSection(TeiElementWrapper):
+    def get_title_text(self) -> str:
+        return '\n'.join(get_tei_xpath_text_content_list(
+            self.element,
+            '//tei:head',
+        ))
+
+    def get_paragraph_text_list(self) -> List[str]:
+        return get_tei_xpath_text_content_list(
+            self.element,
+            '//tei:p',
+        )
+
+    def add_title(self, layout_block: LayoutBlock):
+        self.element.append(
+            TEI_E.head(*iter_layout_block_tei_children(layout_block))
+        )
+
+    def add_paragraph(self, paragraph: TeiSectionParagraph):
+        self.element.append(paragraph.element)
+
+    def create_paragraph(self) -> TeiSectionParagraph:
+        return TeiSectionParagraph(TEI_E.p())
+
+
+class TeiDocument(TeiElementWrapper):
     def __init__(self, root: Optional[etree.ElementBase] = None):
         if root is None:
             self.root = TEI_E.TEI()
         else:
             self.root = root
+        super().__init__(self.root)
 
     def get_or_create_element_at(self, path: List[str]) -> etree.ElementBase:
         return get_or_create_element_at(self.root, path)
@@ -174,3 +263,21 @@ class TeiDocument:
             ['teiHeader', 'profileDesc', 'abstract'],
             TEI_E.p(*iter_layout_block_tei_children(abstract_block))
         )
+
+    def get_body_element(self) -> etree.ElementBase:
+        return self.get_or_create_element_at(['text', 'body'])
+
+    def get_body(self) -> TeiElementWrapper:
+        return TeiElementWrapper(self.get_body_element())
+
+    def get_body_sections(self) -> List[TeiSection]:
+        return [
+            TeiSection(element)
+            for element in tei_xpath(self.get_body_element(), './tei:div')
+        ]
+
+    def add_body_section(self, section: TeiSection):
+        self.get_body_element().append(section.element)
+
+    def create_section(self) -> TeiSection:
+        return TeiSection(TEI_E.div())

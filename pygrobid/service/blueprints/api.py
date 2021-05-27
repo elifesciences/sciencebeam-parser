@@ -19,6 +19,7 @@ from pygrobid.external.pdfalto.parser import parse_alto_root
 from pygrobid.models.model import Model
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.tei_document import TeiDocument
 from pygrobid.utils.text import normalize_text
@@ -247,6 +248,7 @@ class ApiBlueprint(Blueprint):
         self.pdfalto_wrapper = PdfAltoWrapper.get()
         self.segmentation_model = SegmentationModel(config['models']['segmentation']['path'])
         self.header_model = HeaderModel(config['models']['header']['path'])
+        self.fulltext_model = FullTextModel(config['models']['fulltext']['path'])
         ModelNestedBluePrint(
             'Segmentation', model=self.segmentation_model, pdfalto_wrapper=self.pdfalto_wrapper
         ).add_routes(self, '/models/segmentation')
@@ -255,6 +257,11 @@ class ApiBlueprint(Blueprint):
             segmentation_model=self.segmentation_model,
             segmentation_label='<header>'
         ).add_routes(self, '/models/header')
+        ModelNestedBluePrint(
+            'FullText', model=self.fulltext_model, pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=self.segmentation_model,
+            segmentation_label='<body>'
+        ).add_routes(self, '/models/fulltext')
 
     def api_root(self):
         return jsonify({
@@ -297,19 +304,35 @@ class ApiBlueprint(Blueprint):
             '<header>'
         ).remove_empty_blocks()
         LOGGER.debug('header_layout_document: %s', header_layout_document)
-        if not header_layout_document.pages:
-            return TeiDocument()
-        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-            header_layout_document
-        )
-        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
-        entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
-            labeled_layout_tokens
-        )
         document = TeiDocument()
-        self.header_model.update_document_with_entity_blocks(
-            document, entity_blocks
-        )
+        if header_layout_document.pages:
+            labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
+                header_layout_document
+            )
+            LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+            entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
+                labeled_layout_tokens
+            )
+            self.header_model.update_document_with_entity_blocks(
+                document, entity_blocks
+            )
+
+        body_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<body>'
+        ).remove_empty_blocks()
+        LOGGER.debug('body_layout_document: %s', body_layout_document)
+        if body_layout_document.pages:
+            labeled_layout_tokens = self.fulltext_model.predict_labels_for_layout_document(
+                body_layout_document
+            )
+            LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+            entity_blocks = self.fulltext_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
+                labeled_layout_tokens
+            )
+            self.fulltext_model.update_document_with_entity_blocks(
+                document, entity_blocks
+            )
+
         return document
 
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals

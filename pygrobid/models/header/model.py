@@ -73,7 +73,7 @@ class HeaderModel(DelftModel):
         entity_tokens: Iterable[Tuple[str, LayoutBlock]]
     ):
         entity_tokens = list(entity_tokens)
-        LOGGER.info('entity_tokens: %s', entity_tokens)
+        LOGGER.debug('entity_tokens: %s', entity_tokens)
         current_title_layout_block = None
         current_abstract_layout_block = None
         for name, layout_block in entity_tokens:

@@ -235,6 +235,12 @@ class LayoutBlock:
             if line.tokens
         ])
 
+    @property
+    def whitespace(self) -> str:
+        if not self.lines or not self.lines[-1].tokens:
+            return ''
+        return self.lines[-1].tokens[-1].whitespace
+
 
 @dataclass
 class LayoutPage:
