@@ -528,7 +528,7 @@ class TestGrobidJatsXslt:
                 ))),
                 {'output_italic': 'true'}
             ))
-            # assert _get_text(jats, 'body/sec/title/i') == VALUE_1
+            assert _get_text(jats, 'body/sec/title/i') == VALUE_1
             assert _get_text(jats, 'body/sec/p/i') == VALUE_2
 
         def test_should_not_add_italics_formatting_if_disabled(
@@ -556,7 +556,7 @@ class TestGrobidJatsXslt:
                 ))),
                 {'output_bold': 'true'}
             ))
-            # assert _get_text(jats, 'body/sec/title/b') == VALUE_1
+            assert _get_text(jats, 'body/sec/title/b') == VALUE_1
             assert _get_text(jats, 'body/sec/p/b') == VALUE_2
 
         def test_should_not_add_bold_formatting_to_head_and_p_divs_if_disabled(
