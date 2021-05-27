@@ -518,6 +518,62 @@ class TestGrobidJatsXslt:
             assert _get_text(jats, 'body/sec/title') == VALUE_1
             assert _get_text(jats, 'body/sec/p') == VALUE_2
 
+        def test_should_add_italics_formatting_to_head_and_p_divs(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(E.hi({'rend': 'italic'}, VALUE_1)),
+                    E.p(E.hi({'rend': 'italic'}, VALUE_2))
+                ))),
+                {'output_italic': 'true'}
+            ))
+            # assert _get_text(jats, 'body/sec/title/i') == VALUE_1
+            assert _get_text(jats, 'body/sec/p/i') == VALUE_2
+
+        def test_should_not_add_italics_formatting_if_disabled(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(E.hi({'rend': 'italic'}, VALUE_1)),
+                    E.p(E.hi({'rend': 'italic'}, VALUE_2))
+                ))),
+                {'output_italic': 'false'}
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert not jats.xpath('body/sec/title/i')
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+            assert not jats.xpath('body/sec/p/i')
+
+        def test_should_add_bold_formatting_to_head_and_p_divs(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(E.hi({'rend': 'bold'}, VALUE_1)),
+                    E.p(E.hi({'rend': 'bold'}, VALUE_2))
+                ))),
+                {'output_bold': 'true'}
+            ))
+            # assert _get_text(jats, 'body/sec/title/b') == VALUE_1
+            assert _get_text(jats, 'body/sec/p/b') == VALUE_2
+
+        def test_should_not_add_bold_formatting_to_head_and_p_divs_if_disabled(
+            self, grobid_jats_xslt: T_GrobidJatsXslt
+        ):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(body=E.body(E.div(
+                    E.head(E.hi({'rend': 'bold'}, VALUE_1)),
+                    E.p(E.hi({'rend': 'bold'}, VALUE_2))
+                ))),
+                {'output_bold': 'false'}
+            ))
+            assert _get_text(jats, 'body/sec/title') == VALUE_1
+            assert not jats.xpath('body/sec/p/b')
+            assert _get_text(jats, 'body/sec/p') == VALUE_2
+            assert not jats.xpath('body/sec/p/b')
+
         def test_should_extract_figures(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(body=E.body(

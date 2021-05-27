@@ -9,6 +9,8 @@
   version="1.0"
 >
   <xsl:param name="output_parameters" select="'false'"/>
+  <xsl:param name="output_bold" select="'false'"/>
+  <xsl:param name="output_italic" select="'false'"/>
   <xsl:param name="acknowledgement_target" select="'ack'"/>
   <xsl:param name="annex_target" select="'back'"/>
 
@@ -367,7 +369,7 @@
   </xsl:template>
 
   <xsl:template match="tei:head">
-    <title><xsl:value-of select="."/></title>
+    <title><xsl:apply-templates select="node()"/></title>
   </xsl:template>
 
   <xsl:template match="tei:title">
@@ -376,8 +378,30 @@
 
   <xsl:template match="tei:p">
     <p>
-      <xsl:apply-templates select="node()|@*"/>
+      <xsl:apply-templates select="node()"/>
     </p>
+  </xsl:template>
+
+  <xsl:template match="tei:hi[@rend='italic']">
+    <xsl:choose>
+      <xsl:when test="$output_italic = 'true'">
+        <i><xsl:apply-templates select="node()"/></i>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="node()"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <xsl:template match="tei:hi[@rend='bold']">
+    <xsl:choose>
+      <xsl:when test="$output_bold = 'true'">
+        <b><xsl:apply-templates select="node()"/></b>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="node()"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <!--
