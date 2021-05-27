@@ -326,6 +326,12 @@ class TestGrobidJatsXslt:
             )
 
     class TestAuthor:
+        def test_should_not_output_contribut_group_without_authors(self, grobid_jats_xslt):
+            jats = etree.fromstring(grobid_jats_xslt(
+                _tei(authors=[])
+            ))
+            assert not jats.xpath('front/article-meta/contrib-group')
+
         def test_should_translate_single_author(self, grobid_jats_xslt):
             jats = etree.fromstring(grobid_jats_xslt(
                 _tei(authors=[

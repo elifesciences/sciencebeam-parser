@@ -58,27 +58,29 @@
         </article-title>
       </title-group>
 
-      <contrib-group content-type="author">
-        <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
-          <contrib contrib-type="person">
-            <xsl:apply-templates select="tei:persName"/>
+      <xsl:if test="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
+        <contrib-group content-type="author">
+          <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
+            <contrib contrib-type="person">
+              <xsl:apply-templates select="tei:persName"/>
 
-            <xsl:if test="tei:email">
-              <email>
-                <xsl:value-of select="tei:email"/>
-              </email>
-            </xsl:if>
+              <xsl:if test="tei:email">
+                <email>
+                  <xsl:value-of select="tei:email"/>
+                </email>
+              </xsl:if>
 
-            <xsl:if test="tei:affiliation">
-              <xref ref-type="aff">
-                <xsl:attribute name='rid'>
-                  <xsl:value-of select="tei:affiliation/@key"/>
-                </xsl:attribute>
-              </xref>
-            </xsl:if>
-          </contrib>
-        </xsl:for-each>
-      </contrib-group>
+              <xsl:if test="tei:affiliation">
+                <xref ref-type="aff">
+                  <xsl:attribute name='rid'>
+                    <xsl:value-of select="tei:affiliation/@key"/>
+                  </xsl:attribute>
+                </xref>
+              </xsl:if>
+            </contrib>
+          </xsl:for-each>
+        </contrib-group>
+      </xsl:if>
 
       <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author/tei:affiliation">
         <aff>
