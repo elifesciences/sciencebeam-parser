@@ -9,6 +9,8 @@
   version="1.0"
 >
   <xsl:param name="output_parameters" select="'false'"/>
+  <xsl:param name="output_bold" select="'false'"/>
+  <xsl:param name="output_italic" select="'false'"/>
   <xsl:param name="acknowledgement_target" select="'ack'"/>
   <xsl:param name="annex_target" select="'back'"/>
 
@@ -58,27 +60,29 @@
         </article-title>
       </title-group>
 
-      <contrib-group content-type="author">
-        <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
-          <contrib contrib-type="person">
-            <xsl:apply-templates select="tei:persName"/>
+      <xsl:if test="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
+        <contrib-group content-type="author">
+          <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author">
+            <contrib contrib-type="person">
+              <xsl:apply-templates select="tei:persName"/>
 
-            <xsl:if test="tei:email">
-              <email>
-                <xsl:value-of select="tei:email"/>
-              </email>
-            </xsl:if>
+              <xsl:if test="tei:email">
+                <email>
+                  <xsl:value-of select="tei:email"/>
+                </email>
+              </xsl:if>
 
-            <xsl:if test="tei:affiliation">
-              <xref ref-type="aff">
-                <xsl:attribute name='rid'>
-                  <xsl:value-of select="tei:affiliation/@key"/>
-                </xsl:attribute>
-              </xref>
-            </xsl:if>
-          </contrib>
-        </xsl:for-each>
-      </contrib-group>
+              <xsl:if test="tei:affiliation">
+                <xref ref-type="aff">
+                  <xsl:attribute name='rid'>
+                    <xsl:value-of select="tei:affiliation/@key"/>
+                  </xsl:attribute>
+                </xref>
+              </xsl:if>
+            </contrib>
+          </xsl:for-each>
+        </contrib-group>
+      </xsl:if>
 
       <xsl:for-each select="tei:fileDesc/tei:sourceDesc/tei:biblStruct/tei:analytic/tei:author/tei:affiliation">
         <aff>
@@ -150,8 +154,8 @@
       <object-id><xsl:value-of select="@xml:id"/></object-id>
       <label><xsl:value-of select="tei:head"/></label>
       <caption>
-        <title><xsl:value-of select="tei:head"/></title>
-        <p><xsl:value-of select="tei:figDesc"/></p>
+        <title><xsl:apply-templates select="tei:head"/></title>
+        <p><xsl:apply-templates select="tei:figDesc"/></p>
       </caption>
       <graphic />
     </fig>
@@ -164,8 +168,8 @@
       </xsl:attribute>
       <label><xsl:value-of select="tei:head"/></label>
       <caption>
-        <title><xsl:value-of select="tei:head"/></title>
-        <p><xsl:value-of select="tei:figDesc"/></p>
+        <title><xsl:apply-templates select="tei:head"/></title>
+        <p><xsl:apply-templates select="tei:figDesc"/></p>
       </caption>
       <table>
         <tbody>
@@ -365,7 +369,7 @@
   </xsl:template>
 
   <xsl:template match="tei:head">
-    <title><xsl:value-of select="."/></title>
+    <title><xsl:apply-templates select="node()"/></title>
   </xsl:template>
 
   <xsl:template match="tei:title">
@@ -374,8 +378,30 @@
 
   <xsl:template match="tei:p">
     <p>
-      <xsl:apply-templates select="node()|@*"/>
+      <xsl:apply-templates select="node()"/>
     </p>
+  </xsl:template>
+
+  <xsl:template match="tei:hi[@rend='italic']">
+    <xsl:choose>
+      <xsl:when test="$output_italic = 'true'">
+        <i><xsl:apply-templates select="node()"/></i>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="node()"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <xsl:template match="tei:hi[@rend='bold']">
+    <xsl:choose>
+      <xsl:when test="$output_bold = 'true'">
+        <b><xsl:apply-templates select="node()"/></b>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:apply-templates select="node()"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <!--
