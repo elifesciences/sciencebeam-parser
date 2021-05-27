@@ -357,7 +357,7 @@ class ApiBlueprint(Blueprint):
             )
             document = self.get_tei_document_for_layout_document(layout_document)
             response_type = 'application/xml'
-            response_content = etree.tostring(document.root, pretty_print=True)
+            response_content = etree.tostring(document.root, pretty_print=False)
             LOGGER.debug('response_content: %r', response_content)
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)
