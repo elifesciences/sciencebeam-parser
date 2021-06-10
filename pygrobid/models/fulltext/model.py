@@ -4,7 +4,10 @@ from typing import Iterable, Optional, Tuple
 from pygrobid.document.layout_document import (
     LayoutBlock
 )
-from pygrobid.document.tei_document import TeiDocument, TeiSection, TeiSectionParagraph
+from pygrobid.document.semantic_document import (
+    SemanticSection,
+    SemanticParagraph
+)
 from pygrobid.models.delft_model import DelftModel
 
 from pygrobid.models.fulltext.data import FullTextDataGenerator
@@ -17,15 +20,15 @@ class FullTextModel(DelftModel):
     def get_data_generator(self) -> FullTextDataGenerator:
         return FullTextDataGenerator()
 
-    def update_document_with_entity_blocks(
+    def update_section_with_entity_blocks(
         self,
-        document: TeiDocument,
+        parent_section: SemanticSection,
         entity_tokens: Iterable[Tuple[str, LayoutBlock]]
     ):
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)
-        section: Optional[TeiSection] = None
-        paragraph: Optional[TeiSectionParagraph] = None
+        section: Optional[SemanticSection] = None
+        paragraph: Optional[SemanticParagraph] = None
         _previous_tag: Optional[str] = None
         for name, layout_block in entity_tokens:
             previous_tag = _previous_tag
@@ -34,35 +37,32 @@ class FullTextModel(DelftModel):
                 LOGGER.debug('ignoring content (%r): %r', name, layout_block)
                 note_type = 'other' if name == 'O' else name
                 if section:
-                    section.add_note(note_type, layout_block)
+                    section.add_note(layout_block, note_type=note_type)
                 else:
-                    document.get_body().add_note(note_type, layout_block)
+                    parent_section.add_note(layout_block, note_type=note_type)
                 continue
             if name == '<section>':
-                if section:
-                    if paragraph:
-                        section.add_paragraph(paragraph)
-                        paragraph = None
-                    document.add_body_section(section)
-                    section = None
-                section = document.create_section()
-                section.add_title(layout_block)
+                paragraph = None
+                section = parent_section.add_new_section()
+                section.add_heading_block(layout_block)
                 continue
             # treat everything else as paragraph text
-            if (
-                paragraph
-                and section
-                and name == '<paragraph>'
-                and previous_tag == '<paragraph>'
-            ):
-                section.add_paragraph(paragraph)
-                paragraph = None
             if not section:
-                section = document.create_section()
-            if not paragraph:
-                paragraph = section.create_paragraph()
-            paragraph.add_content(layout_block)
-        if section:
-            if paragraph:
-                section.add_paragraph(paragraph)
-            document.add_body_section(section)
+                section = parent_section.add_new_section()
+            if (
+                not paragraph
+                or (
+                    name == '<paragraph>'
+                    and previous_tag == '<paragraph>'
+                )
+            ):
+                paragraph = section.add_new_paragraph()
+            paragraph.add_block_content(layout_block)
+
+    def get_section_for_entity_blocks(
+        self,
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+    ) -> SemanticSection:
+        parent_section = SemanticSection()
+        self.update_section_with_entity_blocks(parent_section, entity_tokens)
+        return parent_section

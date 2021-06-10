@@ -200,9 +200,20 @@ class LayoutLine:
 class LayoutBlock:
     lines: List[LayoutLine]
 
+    def __len__(self):
+        return len(self.lines)
+
     @staticmethod
     def for_tokens(tokens: List[LayoutToken]) -> 'LayoutBlock':
         return LayoutBlock(lines=[LayoutLine(tokens=tokens)])
+
+    @staticmethod
+    def merge_blocks(blocks: Iterable['LayoutBlock']) -> 'LayoutBlock':
+        return LayoutBlock(lines=[
+            line
+            for block in blocks
+            for line in block.lines
+        ])
 
     @staticmethod
     def for_text(text: str, **kwargs) -> 'LayoutBlock':
@@ -234,6 +245,10 @@ class LayoutBlock:
             for line in self.lines
             if line.tokens
         ])
+
+    @property
+    def text(self) -> str:
+        return join_layout_tokens(self.iter_all_tokens())
 
     @property
     def whitespace(self) -> str:
@@ -357,7 +372,8 @@ class LayoutTokensText:
         return list(self.iter_layout_tokens_between(start, end))
 
 
-def join_layout_tokens(layout_tokens: List[LayoutToken]) -> str:
+def join_layout_tokens(layout_tokens: Iterable[LayoutToken]) -> str:
+    layout_tokens = list(layout_tokens)
     return ''.join([
         (
             token.text + token.whitespace

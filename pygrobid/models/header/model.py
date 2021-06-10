@@ -6,7 +6,7 @@ from pygrobid.document.layout_document import (
     LayoutBlock,
     LayoutTokensText
 )
-from pygrobid.document.tei_document import TeiDocument
+from pygrobid.document.semantic_document import SemanticDocument
 from pygrobid.models.header.data import HeaderDataGenerator
 from pygrobid.models.delft_model import DelftModel
 
@@ -49,39 +49,18 @@ class HeaderModel(DelftModel):
     def get_data_generator(self) -> HeaderDataGenerator:
         return HeaderDataGenerator()
 
-    def update_document_with_entity_values(
+    def update_semantic_document_with_entity_blocks(
         self,
-        document: TeiDocument,
-        entity_values: Iterable[Tuple[str, str]]
-    ):
-        entity_values = list(entity_values)
-        LOGGER.info('entity_values: %s', entity_values)
-        current_title = None
-        current_abstract = None
-        for name, value in entity_values:
-            if name == '<title>' and not current_title:
-                current_title = value
-                document.set_title(value)
-            if name == '<abstract>' and not current_abstract:
-                value = get_cleaned_abstract_text(value)
-                current_abstract = value
-                document.set_abstract(value)
-
-    def update_document_with_entity_blocks(
-        self,
-        document: TeiDocument,
+        document: SemanticDocument,
         entity_tokens: Iterable[Tuple[str, LayoutBlock]]
     ):
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)
-        current_title_layout_block = None
-        current_abstract_layout_block = None
         for name, layout_block in entity_tokens:
-            if name == '<title>' and not current_title_layout_block:
-                current_title_layout_block = layout_block
-                document.set_title_layout_block(layout_block)
-            if name == '<abstract>' and not current_abstract_layout_block:
-                current_abstract_layout_block = get_cleaned_abstract_layout_block(
+            if name == '<title>' and not document.meta.title:
+                document.meta.title.add_block_content(layout_block)
+            if name == '<abstract>' and not document.meta.abstract:
+                abstract_layout_block = get_cleaned_abstract_layout_block(
                     layout_block
                 )
-                document.set_abstract_layout_block(current_abstract_layout_block)
+                document.meta.abstract.add_block_content(abstract_layout_block)

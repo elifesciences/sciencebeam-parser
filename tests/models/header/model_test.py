@@ -1,8 +1,9 @@
+from pygrobid.document.semantic_document import SemanticDocument
 from pygrobid.document.layout_document import (
+    LOGGER,
     LayoutBlock,
     join_layout_tokens
 )
-from pygrobid.document.tei_document import TeiDocument
 
 from pygrobid.models.header.model import (
     HeaderModel,
@@ -72,24 +73,32 @@ class TestGetCleanedAbstractLayoutBlock:
 
 class TestHeaderModel:
     def test_should_set_title_and_abstract(self):
-        document = TeiDocument()
+        document = SemanticDocument()
         header_model = HeaderModel('dummy-path')
-        header_model.update_document_with_entity_values(
-            document,
-            [('<title>', TITLE_1), ('<abstract>', ABSTRACT_1)]
-        )
-        assert document.get_title() == TITLE_1
-        assert document.get_abstract() == ABSTRACT_1
-
-    def test_should_ignore_additional_title_and_abstract(self):
-        document = TeiDocument()
-        header_model = HeaderModel('dummy-path')
-        header_model.update_document_with_entity_values(
+        header_model.update_semantic_document_with_entity_blocks(
             document,
             [
-                ('<title>', TITLE_1), ('<abstract>', ABSTRACT_1),
-                ('<title>', 'other'), ('<abstract>', 'other')
+                ('<title>', LayoutBlock.for_text(TITLE_1)),
+                ('<abstract>', LayoutBlock.for_text(ABSTRACT_1))
             ]
         )
-        assert document.get_title() == TITLE_1
-        assert document.get_abstract() == ABSTRACT_1
+        LOGGER.debug('document: %s', document)
+        assert document.meta.title.get_text() == TITLE_1
+        assert document.meta.abstract.get_text() == ABSTRACT_1
+
+    def test_should_ignore_additional_title_and_abstract(self):
+        # Note: this behaviour should be reviewed
+        document = SemanticDocument()
+        header_model = HeaderModel('dummy-path')
+        header_model.update_semantic_document_with_entity_blocks(
+            document,
+            [
+                ('<title>', LayoutBlock.for_text(TITLE_1)),
+                ('<abstract>', LayoutBlock.for_text(ABSTRACT_1)),
+                ('<title>', LayoutBlock.for_text('other')),
+                ('<abstract>', LayoutBlock.for_text('other'))
+            ]
+        )
+        LOGGER.debug('document: %s', document)
+        assert document.meta.title.get_text() == TITLE_1
+        assert document.meta.abstract.get_text() == ABSTRACT_1

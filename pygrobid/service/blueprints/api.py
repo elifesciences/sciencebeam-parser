@@ -21,9 +21,9 @@ from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.document.layout_document import LayoutDocument
-from pygrobid.document.tei_document import TeiDocument
 from pygrobid.utils.text import normalize_text
 from pygrobid.utils.tokenizer import get_tokenized_tokens
+from pygrobid.processors.fulltext import FullTextProcessor, FullTextModels
 
 
 LOGGER = logging.getLogger(__name__)
@@ -249,6 +249,11 @@ class ApiBlueprint(Blueprint):
         self.segmentation_model = SegmentationModel(config['models']['segmentation']['path'])
         self.header_model = HeaderModel(config['models']['header']['path'])
         self.fulltext_model = FullTextModel(config['models']['fulltext']['path'])
+        self.fulltext_processor = FullTextProcessor(FullTextModels(
+            segmentation_model=self.segmentation_model,
+            header_model=self.header_model,
+            fulltext_model=self.fulltext_model
+        ))
         ModelNestedBluePrint(
             'Segmentation', model=self.segmentation_model, pdfalto_wrapper=self.pdfalto_wrapper
         ).add_routes(self, '/models/segmentation')
@@ -296,45 +301,6 @@ class ApiBlueprint(Blueprint):
     def process_pdf_to_tei_form(self):
         return _get_file_upload_form('Convert PDF to TEI')
 
-    def get_tei_document_for_layout_document(self, layout_document: LayoutDocument):
-        segmentation_label_result = self.segmentation_model.get_label_layout_document_result(
-            layout_document
-        )
-        header_layout_document = segmentation_label_result.get_filtered_document_by_label(
-            '<header>'
-        ).remove_empty_blocks()
-        LOGGER.debug('header_layout_document: %s', header_layout_document)
-        document = TeiDocument()
-        if header_layout_document.pages:
-            labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-                header_layout_document
-            )
-            LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
-            entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
-                labeled_layout_tokens
-            )
-            self.header_model.update_document_with_entity_blocks(
-                document, entity_blocks
-            )
-
-        body_layout_document = segmentation_label_result.get_filtered_document_by_label(
-            '<body>'
-        ).remove_empty_blocks()
-        LOGGER.debug('body_layout_document: %s', body_layout_document)
-        if body_layout_document.pages:
-            labeled_layout_tokens = self.fulltext_model.predict_labels_for_layout_document(
-                body_layout_document
-            )
-            LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
-            entity_blocks = self.fulltext_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
-                labeled_layout_tokens
-            )
-            self.fulltext_model.update_document_with_entity_blocks(
-                document, entity_blocks
-            )
-
-        return document
-
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
         with TemporaryDirectory(suffix='-request') as temp_dir:
@@ -355,7 +321,9 @@ class ApiBlueprint(Blueprint):
             layout_document = normalize_layout_document(
                 parse_alto_root(root)
             )
-            document = self.get_tei_document_for_layout_document(layout_document)
+            document = self.fulltext_processor.get_tei_document_for_layout_document(
+                layout_document
+            )
             response_type = 'application/xml'
             response_content = etree.tostring(document.root, pretty_print=False)
             LOGGER.debug('response_content: %r', response_content)

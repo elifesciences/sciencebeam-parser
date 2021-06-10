@@ -7,10 +7,12 @@ from pygrobid.document.layout_document import (
     LayoutToken,
     LayoutFont
 )
+from pygrobid.document.semantic_document import SemanticDocument
 from pygrobid.document.tei_document import (
     get_text_content,
     get_tei_xpath_text_content_list,
     iter_layout_block_tei_children,
+    get_tei_for_semantic_document,
     TeiDocument,
     TEI_E,
     TEI_NS_MAP
@@ -143,3 +145,43 @@ class TestTeiDocument:
             './tei:hi[@rend="italic"]'
         ) == ['italic1']
         assert document.get_title() == 'rend italic1 test'
+
+
+class TestGetTeiForSemanticDocument:
+    def test_should_return_empty_document(self):
+        semantic_document = SemanticDocument()
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        assert not tei_document.xpath('//tei:div')
+
+    def test_should_set_manuscript_title(self):
+        semantic_document = SemanticDocument()
+        semantic_document.meta.title.add_block_content(LayoutBlock.for_text(TOKEN_1))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:fileDesc/tei:titleStmt/tei:title[@level="a"][@type="main"]'
+        ) == [TOKEN_1]
+
+    def test_should_set_abstract(self):
+        semantic_document = SemanticDocument()
+        semantic_document.meta.abstract.add_block_content(LayoutBlock.for_text(TOKEN_1))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:abstract/tei:p'
+        ) == [TOKEN_1]
+
+    def test_should_create_body_section(self):
+        semantic_document = SemanticDocument()
+        section = semantic_document.body_section.add_new_section()
+        section.add_heading_block(LayoutBlock.for_text(TOKEN_1))
+        paragraph = section.add_new_paragraph()
+        paragraph.add_block_content(LayoutBlock.for_text(TOKEN_2))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:head'
+        ) == [TOKEN_1]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p'
+        ) == [TOKEN_2]

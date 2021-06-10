@@ -5,6 +5,7 @@ from lxml import etree
 from lxml.builder import ElementMaker
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
+from pygrobid.document.semantic_document import SemanticDocument, SemanticHeading, SemanticParagraph
 
 
 LOGGER = logging.getLogger(__name__)
@@ -155,6 +156,15 @@ class TeiElementWrapper:
     def __init__(self, element: etree.ElementBase):
         self.element = element
 
+    def xpath_nodes(self, xpath: str) -> List[etree.ElementBase]:
+        return tei_xpath(self.element, xpath)
+
+    def xpath(self, xpath: str) -> List['TeiElementWrapper']:
+        return [TeiElementWrapper(node) for node in self.xpath_nodes(xpath)]
+
+    def get_xpath_text_content_list(self, xpath: str) -> List[str]:
+        return get_tei_xpath_text_content_list(self.element, xpath)
+
     def get_notes_text_list(self, note_type: str) -> List[str]:
         return get_tei_xpath_text_content_list(
             self.element,
@@ -281,3 +291,30 @@ class TeiDocument(TeiElementWrapper):
 
     def create_section(self) -> TeiSection:
         return TeiSection(TEI_E.div())
+
+
+def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDocument:
+    LOGGER.debug('semantic_document: %s', semantic_document)
+    tei_document = TeiDocument()
+    title_block = semantic_document.meta.title.merged_block
+    if title_block:
+        tei_document.set_title_layout_block(title_block)
+    abstract_block = semantic_document.meta.abstract.merged_block
+    if abstract_block:
+        tei_document.set_abstract_layout_block(abstract_block)
+    for semantic_section in semantic_document.body_section.sections:
+        LOGGER.debug('semantic_section: %s', semantic_section)
+        tei_section = tei_document.create_section()
+        tei_document.add_body_section(tei_section)
+        for semantic_content in semantic_section:
+            if isinstance(semantic_content, SemanticHeading):
+                tei_section.add_title(LayoutBlock.for_tokens(
+                    list(semantic_content.iter_tokens())
+                ))
+            if isinstance(semantic_content, SemanticParagraph):
+                paragraph = tei_section.create_paragraph()
+                paragraph.add_content(LayoutBlock.for_tokens(
+                    list(semantic_content.iter_tokens())
+                ))
+                tei_section.add_paragraph(paragraph)
+    return tei_document
