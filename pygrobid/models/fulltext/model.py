@@ -6,7 +6,8 @@ from pygrobid.document.layout_document import (
 )
 from pygrobid.document.semantic_document import (
     SemanticSection,
-    SemanticParagraph
+    SemanticParagraph,
+    SemanticSectionTypes
 )
 from pygrobid.models.delft_model import DelftModel
 
@@ -23,7 +24,8 @@ class FullTextModel(DelftModel):
     def update_section_with_entity_blocks(
         self,
         parent_section: SemanticSection,
-        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        section_type: str = SemanticSectionTypes.OTHER
     ):
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)
@@ -43,12 +45,12 @@ class FullTextModel(DelftModel):
                 continue
             if name == '<section>':
                 paragraph = None
-                section = parent_section.add_new_section()
+                section = parent_section.add_new_section(section_type=section_type)
                 section.add_heading_block(layout_block)
                 continue
             # treat everything else as paragraph text
             if not section:
-                section = parent_section.add_new_section()
+                section = parent_section.add_new_section(section_type=section_type)
             if (
                 not paragraph
                 or (

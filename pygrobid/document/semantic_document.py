@@ -4,7 +4,7 @@ It doesn't have a specific structure as that depends on the output format (e.g. 
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Iterable, Iterator, List, Type, TypeVar
+from typing import Iterable, Iterator, List, Optional, Type, TypeVar, cast
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutToken
 
@@ -118,7 +118,15 @@ class SemanticParagraph(SemanticMixedContentWrapper):
     pass
 
 
+class SemanticSectionTypes:
+    ACKNOWLEDGEMENT = 'ACKNOWLEDGEMENT'
+    OTHER = 'OTHER'
+
+
+@dataclass
 class SemanticSection(SemanticMixedContentWrapper):
+    section_type: str = SemanticSectionTypes.OTHER
+
     @property
     def headings(self) -> List[SemanticHeading]:
         return list(self.iter_by_type(SemanticHeading))
@@ -158,9 +166,27 @@ class SemanticSection(SemanticMixedContentWrapper):
     def sections(self) -> List['SemanticSection']:
         return list(self.iter_by_type(SemanticSection))
 
-    def add_new_section(self) -> 'SemanticSection':
+    def get_sections(
+        self,
+        section_type: Optional[str] = None
+    ) -> List['SemanticSection']:
+        return [
+            section
+            for section in self.iter_by_type(SemanticSection)
+            if not section_type or section.section_type == section_type
+        ]
+
+    def view_by_section_type(self, section_type: str) -> 'SemanticMixedContentWrapper':
+        return SemanticMixedContentWrapper(
+            cast(List[SemanticContentWrapper], self.get_sections(section_type))
+        )
+
+    def add_new_section(
+        self,
+        section_type: str = SemanticSectionTypes.OTHER
+    ) -> 'SemanticSection':
         return self.add_content_and_return_content(
-            SemanticSection()
+            SemanticSection(section_type=section_type)
         )
 
 

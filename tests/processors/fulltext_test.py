@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
+from pygrobid.document.semantic_document import SemanticSectionTypes
 from pygrobid.models.delft_model import DelftModel, LabeledLayoutToken
 from pygrobid.models.model import LayoutModelLabel
 from pygrobid.models.segmentation.model import SegmentationModel
@@ -158,6 +159,7 @@ class TestFullTextProcessor:
         fulltext_processor = FullTextProcessor(fulltext_models_mock)
         header_block = LayoutBlock.for_text('This is the header')
         body_block = LayoutBlock.for_text('This is the body')
+        acknowledgment_block = LayoutBlock.for_text('Some acknowledgement')
         back_block = LayoutBlock.for_text('This is the back')
 
         segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
@@ -171,6 +173,9 @@ class TestFullTextProcessor:
             body_block, '<body>'
         )
         segmentation_model_mock.update_label_by_layout_block(
+            acknowledgment_block, '<acknowledgement>'
+        )
+        segmentation_model_mock.update_label_by_layout_block(
             back_block, '<annex>'
         )
 
@@ -182,12 +187,16 @@ class TestFullTextProcessor:
             body_block, '<paragraph>'
         )
         fulltext_model_mock.update_label_by_layout_block(
+            acknowledgment_block, '<paragraph>'
+        )
+        fulltext_model_mock.update_label_by_layout_block(
             back_block, '<paragraph>'
         )
 
         layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
             header_block,
             body_block,
+            acknowledgment_block,
             back_block
         ])])
         semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
@@ -196,4 +205,37 @@ class TestFullTextProcessor:
         assert semantic_document is not None
         assert semantic_document.meta.title.get_text() == header_block.text
         assert semantic_document.body_section.get_text() == body_block.text
-        assert semantic_document.back_section.get_text() == back_block.text
+        assert semantic_document.back_section.view_by_section_type(
+            SemanticSectionTypes.OTHER
+        ).get_text() == back_block.text
+        assert semantic_document.back_section.view_by_section_type(
+            SemanticSectionTypes.ACKNOWLEDGEMENT
+        ).get_text() == acknowledgment_block.text
+
+    def test_should_extract_acknowledgement_only(
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        acknowledgment_block = LayoutBlock.for_text('Some acknowledgement')
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            acknowledgment_block, '<acknowledgement>'
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            acknowledgment_block, '<paragraph>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            acknowledgment_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        assert semantic_document is not None
+        assert semantic_document.back_section.view_by_section_type(
+            SemanticSectionTypes.ACKNOWLEDGEMENT
+        ).get_text() == acknowledgment_block.text

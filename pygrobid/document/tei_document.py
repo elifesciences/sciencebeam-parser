@@ -10,7 +10,8 @@ from pygrobid.document.semantic_document import (
     SemanticDocument,
     SemanticHeading,
     SemanticParagraph,
-    SemanticSection
+    SemanticSection,
+    SemanticSectionTypes
 )
 
 
@@ -316,6 +317,9 @@ class TeiDocument(TeiElementWrapper):
     def get_body(self) -> TeiElementWrapper:
         return TeiElementWrapper(self.get_body_element())
 
+    def get_back_element(self) -> etree.ElementBase:
+        return self.get_or_create_element_at(['text', 'back'])
+
     def get_back_annex_element(self) -> etree.ElementBase:
         return self.get_or_create_element_at(['text', 'back', 'div[@type="annex"]'])
 
@@ -333,6 +337,10 @@ class TeiDocument(TeiElementWrapper):
 
     def add_back_annex_section(self, section: TeiSection):
         self.get_back_annex_element().append(section.element)
+
+    def add_acknowledgement_section(self, section: TeiSection):
+        section.element.attrib['type'] = 'acknowledgement'
+        self.get_back_element().append(section.element)
 
     def create_section(self) -> TeiSection:
         return TeiSection(TEI_E.div())
@@ -358,16 +366,29 @@ def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> 
 def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDocument:
     LOGGER.debug('semantic_document: %s', semantic_document)
     tei_document = TeiDocument()
+
     title_block = semantic_document.meta.title.merged_block
     if title_block:
         tei_document.set_title_layout_block(title_block)
+
     abstract_block = semantic_document.meta.abstract.merged_block
     if abstract_block:
         tei_document.set_abstract_layout_block(abstract_block)
     for semantic_section in semantic_document.body_section.sections:
         tei_section = _get_tei_section_for_semantic_section(semantic_section)
         tei_document.add_body_section(tei_section)
-    for semantic_section in semantic_document.back_section.sections:
+
+    acknowledgment_sections = semantic_document.back_section.get_sections(
+        SemanticSectionTypes.ACKNOWLEDGEMENT
+    )
+    for semantic_section in acknowledgment_sections:
+        tei_section = _get_tei_section_for_semantic_section(semantic_section)
+        tei_document.add_acknowledgement_section(tei_section)
+
+    annex_sections = semantic_document.back_section.get_sections(
+        SemanticSectionTypes.OTHER
+    )
+    for semantic_section in annex_sections:
         tei_section = _get_tei_section_for_semantic_section(semantic_section)
         tei_document.add_back_annex_section(tei_section)
     return tei_document

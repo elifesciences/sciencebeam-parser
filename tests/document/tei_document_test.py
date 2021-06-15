@@ -7,7 +7,7 @@ from pygrobid.document.layout_document import (
     LayoutToken,
     LayoutFont
 )
-from pygrobid.document.semantic_document import SemanticDocument
+from pygrobid.document.semantic_document import SemanticDocument, SemanticSectionTypes
 from pygrobid.document.tei_document import (
     get_text_content,
     get_tei_xpath_text_content_list,
@@ -199,4 +199,21 @@ class TestGetTeiForSemanticDocument:
         ) == [TOKEN_1]
         assert tei_document.get_xpath_text_content_list(
             '//tei:back/tei:div[@type="annex"]/tei:div/tei:p'
+        ) == [TOKEN_2]
+
+    def test_should_create_acknowledgment_section(self):
+        semantic_document = SemanticDocument()
+        section = semantic_document.back_section.add_new_section(
+            SemanticSectionTypes.ACKNOWLEDGEMENT
+        )
+        section.add_heading_block(LayoutBlock.for_text(TOKEN_1))
+        paragraph = section.add_new_paragraph()
+        paragraph.add_block_content(LayoutBlock.for_text(TOKEN_2))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="acknowledgement"]/tei:head'
+        ) == [TOKEN_1]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="acknowledgement"]/tei:p'
         ) == [TOKEN_2]

@@ -3,7 +3,11 @@ import logging
 from dataclasses import dataclass
 from pygrobid.models.model import LayoutDocumentLabelResult
 
-from pygrobid.document.semantic_document import SemanticDocument, SemanticSection
+from pygrobid.document.semantic_document import (
+    SemanticDocument,
+    SemanticSection,
+    SemanticSectionTypes
+)
 from pygrobid.document.tei_document import TeiDocument, get_tei_for_semantic_document
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.models.segmentation.model import SegmentationModel
@@ -68,11 +72,19 @@ class FullTextProcessor:
             document.body_section,
             segmentation_label_result,
             '<body>',
+            SemanticSectionTypes.OTHER
+        )
+        self._update_semantic_section_using_segmentation_result_and_fulltext_model(
+            document.back_section,
+            segmentation_label_result,
+            '<acknowledgement>',
+            SemanticSectionTypes.ACKNOWLEDGEMENT
         )
         self._update_semantic_section_using_segmentation_result_and_fulltext_model(
             document.back_section,
             segmentation_label_result,
             '<annex>',
+            SemanticSectionTypes.OTHER
         )
         return document
 
@@ -81,6 +93,7 @@ class FullTextProcessor:
         semantic_section: SemanticSection,
         segmentation_label_result: LayoutDocumentLabelResult,
         segmentation_tag: str,
+        section_type: str
     ):
         layout_document = segmentation_label_result.get_filtered_document_by_label(
             segmentation_tag
@@ -88,14 +101,16 @@ class FullTextProcessor:
         self._update_semantic_section_using_layout_document_and_fulltext_model(
             semantic_section,
             layout_document,
-            section_name=segmentation_tag
+            section_name=segmentation_tag,
+            section_type=section_type
         )
 
     def _update_semantic_section_using_layout_document_and_fulltext_model(
         self,
         semantic_section: SemanticSection,
         layout_document: LayoutDocument,
-        section_name: str
+        section_name: str,
+        section_type: str
     ):
         LOGGER.debug('layout_document (%r): %s', section_name, layout_document)
         if not layout_document.pages:
@@ -109,7 +124,8 @@ class FullTextProcessor:
         )
         self.fulltext_model.update_section_with_entity_blocks(
             semantic_section,
-            entity_blocks
+            entity_blocks,
+            section_type=section_type
         )
 
     def get_tei_document_for_layout_document(
