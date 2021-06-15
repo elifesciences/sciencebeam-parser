@@ -9,8 +9,7 @@ from pygrobid.utils.tokenizer import iter_tokenized_tokens, get_tokenized_tokens
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
-class LayoutFont:
+class LayoutFont(NamedTuple):
     font_id: str
     font_family: Optional[str] = None
     font_size: Optional[float] = None
@@ -64,8 +63,7 @@ def get_merged_coordinates_list(
     return result
 
 
-@dataclass
-class LayoutToken:
+class LayoutToken(NamedTuple):
     text: str
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '

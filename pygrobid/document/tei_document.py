@@ -1,11 +1,17 @@
 import logging
+import re
+from typing import Iterable, Dict, List, Optional, Union
 
-from typing import Iterable, List, Optional, Union
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
-from pygrobid.document.semantic_document import SemanticDocument, SemanticHeading, SemanticParagraph
+from pygrobid.document.semantic_document import (
+    SemanticDocument,
+    SemanticHeading,
+    SemanticParagraph,
+    SemanticSection
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -23,13 +29,43 @@ TEI_E = ElementMaker(namespace=TEI_NS, nsmap={
 })
 
 
+class TagExpression:
+    def __init__(self, tag: str, attrib: Dict[str, str]):
+        self.tag = tag
+        self.attrib = attrib
+
+    def create_node(self):
+        try:
+            return TEI_E(self.tag, self.attrib)
+        except ValueError as e:
+            raise ValueError(
+                'failed to create node with tag=%r, attrib=%r due to %s' % (
+                    self.tag, self.attrib, e
+                )
+            ) from e
+
+
+def _parse_tag_expression(tag_expression):
+    match = re.match(r'^([^\[]+)(\[@?([^=]+)="(.+)"\])?$', tag_expression)
+    if not match:
+        raise ValueError('invalid tag expression: %s' % tag_expression)
+    LOGGER.debug('match: %s', match.groups())
+    tag_name = match.group(1)
+    if match.group(2):
+        attrib = {match.group(3): match.group(4)}
+    else:
+        attrib = {}
+    return TagExpression(tag=tag_name, attrib=attrib)
+
+
 def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etree.ElementBase:
     if not path:
         return parent
     child = parent.find(TEI_NS_PREFIX + path[0])
     if child is None:
         LOGGER.debug('creating element: %s', path[0])
-        child = TEI_E(path[0])
+        tag_expression = _parse_tag_expression(path[0])
+        child = tag_expression.create_node()
         parent.append(child)
     return get_or_create_element_at(child, path[1:])
 
@@ -280,6 +316,12 @@ class TeiDocument(TeiElementWrapper):
     def get_body(self) -> TeiElementWrapper:
         return TeiElementWrapper(self.get_body_element())
 
+    def get_back_annex_element(self) -> etree.ElementBase:
+        return self.get_or_create_element_at(['text', 'back', 'div[@type="annex"]'])
+
+    def get_back_annex(self) -> TeiElementWrapper:
+        return TeiElementWrapper(self.get_back_annex_element())
+
     def get_body_sections(self) -> List[TeiSection]:
         return [
             TeiSection(element)
@@ -289,8 +331,28 @@ class TeiDocument(TeiElementWrapper):
     def add_body_section(self, section: TeiSection):
         self.get_body_element().append(section.element)
 
+    def add_back_annex_section(self, section: TeiSection):
+        self.get_back_annex_element().append(section.element)
+
     def create_section(self) -> TeiSection:
         return TeiSection(TEI_E.div())
+
+
+def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> TeiSection:
+    LOGGER.debug('semantic_section: %s', semantic_section)
+    tei_section = TeiSection(TEI_E.div())
+    for semantic_content in semantic_section:
+        if isinstance(semantic_content, SemanticHeading):
+            tei_section.add_title(LayoutBlock.for_tokens(
+                list(semantic_content.iter_tokens())
+            ))
+        if isinstance(semantic_content, SemanticParagraph):
+            paragraph = tei_section.create_paragraph()
+            paragraph.add_content(LayoutBlock.for_tokens(
+                list(semantic_content.iter_tokens())
+            ))
+            tei_section.add_paragraph(paragraph)
+    return tei_section
 
 
 def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDocument:
@@ -303,18 +365,9 @@ def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDoc
     if abstract_block:
         tei_document.set_abstract_layout_block(abstract_block)
     for semantic_section in semantic_document.body_section.sections:
-        LOGGER.debug('semantic_section: %s', semantic_section)
-        tei_section = tei_document.create_section()
+        tei_section = _get_tei_section_for_semantic_section(semantic_section)
         tei_document.add_body_section(tei_section)
-        for semantic_content in semantic_section:
-            if isinstance(semantic_content, SemanticHeading):
-                tei_section.add_title(LayoutBlock.for_tokens(
-                    list(semantic_content.iter_tokens())
-                ))
-            if isinstance(semantic_content, SemanticParagraph):
-                paragraph = tei_section.create_paragraph()
-                paragraph.add_content(LayoutBlock.for_tokens(
-                    list(semantic_content.iter_tokens())
-                ))
-                tei_section.add_paragraph(paragraph)
+    for semantic_section in semantic_document.back_section.sections:
+        tei_section = _get_tei_section_for_semantic_section(semantic_section)
+        tei_document.add_back_annex_section(tei_section)
     return tei_document

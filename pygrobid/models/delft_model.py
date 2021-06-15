@@ -94,6 +94,7 @@ class DelftModel(Model):
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LabeledLayoutToken]:
+        # Note: this should get merged with Model.iter_label_layout_document
         data_generator = self.get_data_generator()
         model_data_list = list(data_generator.iter_model_data_for_layout_document(layout_document))
         data_lines = [model_data.data_line for model_data in model_data_list]
