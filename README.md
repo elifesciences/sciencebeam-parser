@@ -11,11 +11,11 @@ This currently only supports Linux.
 make dev-venv
 ```
 
-### Setup grobid-home
+### Configuration
 
-```bash
-make grobid-home-setup
-```
+There is no implicit "grobid-home" directory. The only configuration file is [config.yml](config.yml).
+
+Paths may point to local or remote files. Remote files are downloaded and cached locally (urls are assumed to be versioned).
 
 ### Run tests (linting, pytest, etc.)
 

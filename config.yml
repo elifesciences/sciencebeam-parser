@@ -33,6 +33,8 @@ logging:
       level: INFO
     sciencebeam_trainer_delft:
       level: INFO
+pdfalto:
+  path: https://github.com/kermitt2/pdfalto/files/6104204/pdfalto-4b4e983413278a07bb4cc4b2836de03adc8ca6dc-dockcross-linux-64.gz
 models:
   segmentation:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/biorxiv-grobid/2021-05-11-delft-grobid-segmentation-biorxiv-10k-auto-v0.0.23-train-1966-e133.tar.gz'

@@ -29,9 +29,6 @@ jobs:
       - name: Install dependencies
         run: |
           make dev-venv SYSTEM_PYTHON=python
-      - name: Setup grobid-home
-        run: |
-          make grobid-home-setup
       - name: Lint
         run: |
           make dev-lint
@@ -73,16 +70,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: actions/checkout@v2
       # install dependencies in order to be able to download pdfalto
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-      - name: Install dependencies
-        run: |
-          make dev-venv SYSTEM_PYTHON=python
-      - name: Setup grobid-home
-        run: |
-          make grobid-home-setup
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2

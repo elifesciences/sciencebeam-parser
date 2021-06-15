@@ -1,5 +1,6 @@
 import logging
 import os
+import stat
 import sys
 from typing import Optional
 
@@ -9,21 +10,13 @@ from subprocess import Popen, STDOUT
 LOGGER = logging.getLogger(__name__)
 
 
-def get_grobid_home_path() -> str:
-    return os.environ.get('GROBID_HOME') or './grobid-home'
-
-
-def get_pdfalto_binary_path() -> str:
-    return get_grobid_home_path() + '/pdf2xml/lin-64/pdfalto'
-
-
 class PdfAltoWrapper:
     def __init__(self, binary_path: str):
         self.binary_path = binary_path
 
-    @staticmethod
-    def get():
-        return PdfAltoWrapper(get_pdfalto_binary_path())
+    def ensure_excutable(self):
+        st = os.stat(self.binary_path)
+        os.chmod(self.binary_path, st.st_mode | stat.S_IEXEC)
 
     def get_command(
         self,

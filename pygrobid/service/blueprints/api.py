@@ -8,6 +8,7 @@ from werkzeug.exceptions import BadRequest
 from lxml import etree
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
+from sciencebeam_trainer_delft.utils.download_manager import DownloadManager
 
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
@@ -245,7 +246,11 @@ class ApiBlueprint(Blueprint):
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
         self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
         self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
-        self.pdfalto_wrapper = PdfAltoWrapper.get()
+        self.download_manager = DownloadManager()
+        self.pdfalto_wrapper = PdfAltoWrapper(
+            self.download_manager.download_if_url(config['pdfalto']['path'])
+        )
+        self.pdfalto_wrapper.ensure_excutable()
         self.segmentation_model = SegmentationModel(config['models']['segmentation']['path'])
         self.header_model = HeaderModel(config['models']['header']['path'])
         self.fulltext_model = FullTextModel(config['models']['fulltext']['path'])

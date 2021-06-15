@@ -14,8 +14,6 @@ from werkzeug.exceptions import BadRequest
 import pytest
 import yaml
 
-from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
-
 from pygrobid.service.blueprints import api as api_module
 from pygrobid.service.blueprints.api import (
     ApiBlueprint
@@ -38,16 +36,15 @@ def _request_temp_path(tmp_path: Path) -> Iterator[Path]:
         yield request_temp_path
 
 
-@pytest.fixture(name='pdfalto_wrapper_get_mock')
-def _pdfalto_wrapper_get_mock() -> Iterator[MagicMock]:
-    with patch.object(PdfAltoWrapper, 'get') as mock:
-        mock.return_value = MagicMock(name='PdfAltoWrapper')
+@pytest.fixture(name='pdfalto_wrapper_class_mock')
+def _pdfalto_wrapper_class_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'PdfAltoWrapper') as mock:
         yield mock
 
 
 @pytest.fixture(name='pdfalto_wrapper_mock', autouse=True)
-def _pdfalto_wrapper_mock(pdfalto_wrapper_get_mock: MagicMock) -> MagicMock:
-    return pdfalto_wrapper_get_mock.return_value
+def _pdfalto_wrapper_mock(pdfalto_wrapper_class_mock: MagicMock) -> MagicMock:
+    return pdfalto_wrapper_class_mock.return_value
 
 
 @pytest.fixture(name='test_client')

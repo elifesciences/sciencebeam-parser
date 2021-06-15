@@ -40,7 +40,6 @@ COPY pygrobid ./pygrobid
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
-COPY grobid-home ./grobid-home
 COPY config.yml ./
 
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
