@@ -16,6 +16,10 @@ class LayoutModelData:
     layout_line: Optional[LayoutLine] = None
     layout_token: Optional[LayoutToken] = None
 
+    @property
+    def label_token_text(self):
+        return self.data_line.split(' ')[0]
+
 
 class ModelDataGenerator(ABC):
     def iter_data_lines_for_xml_root(

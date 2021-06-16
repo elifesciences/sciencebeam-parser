@@ -7,7 +7,6 @@ from delft.sequenceLabelling.evaluation import (
     get_entities
 )
 
-from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
 from pygrobid.document.layout_document import (
@@ -95,23 +94,13 @@ class DelftModel(Model):
         layout_document: LayoutDocument
     ) -> Iterable[LabeledLayoutToken]:
         # Note: this should get merged with Model.iter_label_layout_document
-        data_generator = self.get_data_generator()
-        model_data_list = list(data_generator.iter_model_data_for_layout_document(layout_document))
-        data_lines = [model_data.data_line for model_data in model_data_list]
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        LOGGER.debug('texts: %s', texts)
-        tag_result = self.predict_labels(
-            texts=texts, features=features, output_format=None
-        )
-        LOGGER.debug('model_data_list: %s', model_data_list)
-        LOGGER.debug('tag_result: %s', tag_result)
-        for model_data, token_tag in zip(model_data_list, tag_result[0]):
-            token, tag = token_tag
-            assert model_data.layout_token
-            assert token == model_data.layout_token.text, \
-                f'actual: {repr(token)}, expected: {repr(model_data.layout_token.text)}'
-            yield LabeledLayoutToken(label=tag, layout_token=model_data.layout_token)
+        for layout_model_label in self.iter_label_layout_document(layout_document):
+            layout_token = layout_model_label.layout_token
+            assert layout_token is not None
+            yield LabeledLayoutToken(
+                layout_model_label.label,
+                layout_token
+            )
 
     def predict_labels_for_layout_document(
         self,

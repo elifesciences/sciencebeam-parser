@@ -121,6 +121,11 @@ class Model(ABC):
             ))
         for token_tag_result, token_model_data in zip(first_doc_tag_result, model_data_iterable):
             label_token_text, token_label = token_tag_result
+            if label_token_text != token_model_data.label_token_text:
+                raise AssertionError(
+                    f'actual: {repr(label_token_text)}'
+                    f', expected: {repr(token_model_data.label_token_text)}'
+                )
             yield LayoutModelLabel(
                 label=token_label,
                 label_token_text=label_token_text,
