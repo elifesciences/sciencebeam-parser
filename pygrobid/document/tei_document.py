@@ -9,6 +9,7 @@ from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates
 from pygrobid.document.semantic_document import (
     SemanticDocument,
     SemanticHeading,
+    SemanticNote,
     SemanticParagraph,
     SemanticSection,
     SemanticSectionTypes
@@ -360,6 +361,11 @@ def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> 
                 list(semantic_content.iter_tokens())
             ))
             tei_section.add_paragraph(paragraph)
+        if isinstance(semantic_content, SemanticNote):
+            tei_section.add_note(
+                semantic_content.note_type,
+                semantic_content.merged_block
+            )
     return tei_section
 
 
@@ -374,21 +380,27 @@ def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDoc
     abstract_block = semantic_document.meta.abstract.merged_block
     if abstract_block:
         tei_document.set_abstract_layout_block(abstract_block)
-    for semantic_section in semantic_document.body_section.sections:
-        tei_section = _get_tei_section_for_semantic_section(semantic_section)
-        tei_document.add_body_section(tei_section)
 
-    acknowledgment_sections = semantic_document.back_section.get_sections(
-        SemanticSectionTypes.ACKNOWLEDGEMENT
-    )
-    for semantic_section in acknowledgment_sections:
-        tei_section = _get_tei_section_for_semantic_section(semantic_section)
-        tei_document.add_acknowledgement_section(tei_section)
+    for semantic_content in semantic_document.body_section:
+        if isinstance(semantic_content, SemanticSection):
+            tei_section = _get_tei_section_for_semantic_section(semantic_content)
+            tei_document.add_body_section(tei_section)
+        if isinstance(semantic_content, SemanticNote):
+            tei_document.get_body().add_note(
+                semantic_content.note_type,
+                semantic_content.merged_block
+            )
 
-    annex_sections = semantic_document.back_section.get_sections(
-        SemanticSectionTypes.OTHER
-    )
-    for semantic_section in annex_sections:
-        tei_section = _get_tei_section_for_semantic_section(semantic_section)
-        tei_document.add_back_annex_section(tei_section)
+    for semantic_content in semantic_document.back_section:
+        if isinstance(semantic_content, SemanticSection):
+            tei_section = _get_tei_section_for_semantic_section(semantic_content)
+            if semantic_content.section_type == SemanticSectionTypes.ACKNOWLEDGEMENT:
+                tei_document.add_acknowledgement_section(tei_section)
+            else:
+                tei_document.add_back_annex_section(tei_section)
+        if isinstance(semantic_content, SemanticNote):
+            tei_document.get_back_annex().add_note(
+                semantic_content.note_type,
+                semantic_content.merged_block
+            )
     return tei_document

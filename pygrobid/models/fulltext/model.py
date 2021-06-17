@@ -33,6 +33,8 @@ class FullTextModel(DelftModel):
         paragraph: Optional[SemanticParagraph] = None
         _previous_tag: Optional[str] = None
         for name, layout_block in entity_tokens:
+            if LOGGER.isEnabledFor(logging.DEBUG):
+                LOGGER.debug('entity_block: %r, %r', name, layout_block.text)
             previous_tag = _previous_tag
             _previous_tag = name
             if name in {'O', '<figure>', '<table>'}:

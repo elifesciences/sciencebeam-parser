@@ -217,3 +217,31 @@ class TestGetTeiForSemanticDocument:
         assert tei_document.get_xpath_text_content_list(
             '//tei:back/tei:div[@type="acknowledgement"]/tei:p'
         ) == [TOKEN_2]
+
+    def test_should_add_notes_to_section(self):
+        semantic_document = SemanticDocument()
+        section = semantic_document.body_section.add_new_section()
+        section.add_note(LayoutBlock.for_text(TOKEN_1), 'other')
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:note[@type="other"]'
+        ) == [TOKEN_1]
+
+    def test_should_add_notes_to_body(self):
+        semantic_document = SemanticDocument()
+        semantic_document.body_section.add_note(LayoutBlock.for_text(TOKEN_1), 'other')
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:note[@type="other"]'
+        ) == [TOKEN_1]
+
+    def test_should_add_notes_to_back(self):
+        semantic_document = SemanticDocument()
+        semantic_document.back_section.add_note(LayoutBlock.for_text(TOKEN_1), 'other')
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="annex"]/tei:note[@type="other"]'
+        ) == [TOKEN_1]

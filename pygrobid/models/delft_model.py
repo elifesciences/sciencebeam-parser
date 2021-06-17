@@ -3,10 +3,6 @@ from typing import Optional, Iterable, NamedTuple, List, Tuple
 
 import tensorflow as tf
 
-from delft.sequenceLabelling.evaluation import (
-    get_entities
-)
-
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
 from pygrobid.document.layout_document import (
@@ -26,13 +22,38 @@ class LabeledLayoutToken(NamedTuple):
     layout_token: LayoutToken
 
 
+def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
+    """
+    Similar to get_entities, but also other (`O`) tag
+    """
+    prev_tag = 'O'
+    prev_start = 0
+    for index, prefixed_tag in enumerate(seq):
+        if '-' in prefixed_tag:
+            prefix, tag = prefixed_tag.split('-', maxsplit=1)
+        else:
+            prefix = ''
+            tag = prefixed_tag
+        if prefix == 'B' or tag != prev_tag:
+            if prev_start < index:
+                yield prev_tag, prev_start, index - 1
+            prev_tag = tag
+            prev_start = index
+    if prev_start < len(seq):
+        yield prev_tag, prev_start, len(seq) - 1
+
+
+def get_entities_including_other(seq: List[str]) -> List[Tuple[str, int, int]]:
+    return list(iter_entities_including_other(seq))
+
+
 def iter_entity_values_predicted_labels(
     tag_result: List[Tuple[str, str]]
 ) -> Iterable[Tuple[str, str]]:
     tokens, labels = zip(*tag_result)
     LOGGER.debug('tokens: %s', tokens)
     LOGGER.debug('labels: %s', labels)
-    for tag, start, end in get_entities(list(labels)):
+    for tag, start, end in get_entities_including_other(list(labels)):
         yield tag, ' '.join(tokens[start:end + 1])
 
 
@@ -43,7 +64,7 @@ def iter_entity_values_for_labeled_layout_tokens(
     labels = [result.label for result in labeled_layout_tokens]
     LOGGER.debug('layout_tokens: %s', layout_tokens)
     LOGGER.debug('labels: %s', labels)
-    for tag, start, end in get_entities(list(labels)):
+    for tag, start, end in get_entities_including_other(list(labels)):
         yield tag, join_layout_tokens(layout_tokens[start:end + 1])
 
 
@@ -54,7 +75,7 @@ def iter_entity_layout_blocks_for_labeled_layout_tokens(
     labels = [result.label for result in labeled_layout_tokens]
     LOGGER.debug('layout_tokens: %s', layout_tokens)
     LOGGER.debug('labels: %s', labels)
-    for tag, start, end in get_entities(list(labels)):
+    for tag, start, end in get_entities_including_other(list(labels)):
         yield tag, LayoutBlock.for_tokens(layout_tokens[start:end + 1])
 
 
