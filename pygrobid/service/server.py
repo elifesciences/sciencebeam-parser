@@ -2,11 +2,10 @@ import argparse
 import logging
 import os
 from logging.config import dictConfig
-from pathlib import Path
 
-import yaml
 from flask import Flask
 
+from pygrobid.config.config import AppConfig, DEFAULT_CONFIG_PATH
 from pygrobid.service.blueprints.index import IndexBlueprint
 from pygrobid.service.blueprints.api import ApiBlueprint
 
@@ -14,7 +13,7 @@ from pygrobid.service.blueprints.api import ApiBlueprint
 LOGGER = logging.getLogger(__name__)
 
 
-def create_app(config: dict):
+def create_app(config: AppConfig):
     app = Flask(__name__)
 
     index = IndexBlueprint()
@@ -42,7 +41,7 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    config = yaml.safe_load(Path('config.yml').read_text())
+    config = AppConfig.load_yaml(DEFAULT_CONFIG_PATH).apply_environment_variables()
     logging_config = config.get('logging')
     if logging_config:
         for handler_config in logging_config.get('handlers', {}).values():
@@ -57,7 +56,7 @@ def main(argv=None):
         except ValueError:
             LOGGER.info('logging_config: %r', logging_config)
             raise
-    LOGGER.info('config: %s', config)
+    LOGGER.info('app config: %s', config)
     app = create_app(config)
     app.run(port=args.port, host=args.host, threaded=True)
 

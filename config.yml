@@ -11,7 +11,7 @@ logging:
       class: logging.StreamHandler
       stream: 'ext://flask.logging.wsgi_errors_stream'
     log_file:
-      level: DEBUG
+      level: INFO
       formatter: default
       class: logging.handlers.RotatingFileHandler
       filename: 'logs/server.log'

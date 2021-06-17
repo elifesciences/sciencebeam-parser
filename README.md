@@ -17,6 +17,10 @@ There is no implicit "grobid-home" directory. The only configuration file is [co
 
 Paths may point to local or remote files. Remote files are downloaded and cached locally (urls are assumed to be versioned).
 
+You may override config values using environment variables.
+Environment variables should start with `PYGROBID__`. After that `__` is used as a section separator.
+For example `PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL` would override `logging.handlers.log_file.level`.
+
 ### Run tests (linting, pytest, etc.)
 
 ```bash

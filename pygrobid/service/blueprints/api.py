@@ -15,6 +15,7 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     iter_format_tag_result
 )
 
+from pygrobid.config.config import AppConfig
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 from pygrobid.external.pdfalto.parser import parse_alto_root
 from pygrobid.models.model import Model
@@ -239,7 +240,7 @@ class ModelNestedBluePrint:
 
 
 class ApiBlueprint(Blueprint):
-    def __init__(self, config: dict):
+    def __init__(self, config: AppConfig):
         super().__init__('api', __name__)
         self.route('/')(self.api_root)
         self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)

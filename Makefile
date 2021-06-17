@@ -82,6 +82,7 @@ dev-start:
 
 dev-start-debug:
 	FLASK_ENV=development \
+	PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL=DEBUG \
 	$(MAKE) dev-start
 
 

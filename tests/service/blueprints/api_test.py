@@ -12,8 +12,8 @@ from flask.testing import FlaskClient
 from werkzeug.exceptions import BadRequest
 
 import pytest
-import yaml
 
+from pygrobid.config.config import AppConfig, DEFAULT_CONFIG_PATH
 from pygrobid.service.blueprints import api as api_module
 from pygrobid.service.blueprints.api import (
     ApiBlueprint
@@ -47,10 +47,14 @@ def _pdfalto_wrapper_mock(pdfalto_wrapper_class_mock: MagicMock) -> MagicMock:
     return pdfalto_wrapper_class_mock.return_value
 
 
+@pytest.fixture(name='app_config', scope='session')
+def _app_config() -> AppConfig:
+    return AppConfig.load_yaml(DEFAULT_CONFIG_PATH)
+
+
 @pytest.fixture(name='test_client')
-def _test_client() -> Iterator[FlaskClient]:
-    config = yaml.safe_load(Path('config.yml').read_text())
-    blueprint = ApiBlueprint(config)
+def _test_client(app_config: AppConfig) -> Iterator[FlaskClient]:
+    blueprint = ApiBlueprint(app_config)
     app = Flask(__name__)
     app.register_blueprint(blueprint)
     yield app.test_client()
