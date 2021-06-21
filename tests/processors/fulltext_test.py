@@ -5,11 +5,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
-from pygrobid.document.semantic_document import SemanticSectionTypes
+from pygrobid.document.semantic_document import SemanticAuthor, SemanticSectionTypes
 from pygrobid.models.delft_model import DelftModel, LabeledLayoutToken
 from pygrobid.models.model import LayoutModelLabel
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.models.name.model import NameModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.processors.fulltext import (
     FullTextProcessor,
@@ -114,10 +115,12 @@ class MockFullTextModels(FullTextModels):
         super().__init__(
             segmentation_model=SegmentationModel('dummy-segmentation-model'),
             header_model=HeaderModel('dummy-header-model'),
+            name_header_model=NameModel('dummy-name-header-model'),
             fulltext_model=FullTextModel('dummy-fulltext-model')
         )
         self.segmentation_model_mock = MockDelftModelWrapper(self.segmentation_model)
         self.header_model_mock = MockDelftModelWrapper(self.header_model)
+        self.name_header_model_mock = MockDelftModelWrapper(self.name_header_model)
         self.fulltext_model_mock = MockDelftModelWrapper(self.fulltext_model)
 
 
@@ -239,3 +242,94 @@ class TestFullTextProcessor:
         assert semantic_document.back_section.view_by_section_type(
             SemanticSectionTypes.ACKNOWLEDGEMENT
         ).get_text() == acknowledgment_block.text
+
+    def test_should_extract_author_names_from_document(
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        given_name_block = LayoutBlock.for_text('Given name')
+        surname_block = LayoutBlock.for_text('Surname')
+        authors_block = LayoutBlock.merge_blocks([given_name_block, surname_block])
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        header_block = authors_block
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        header_model_mock = fulltext_models_mock.header_model_mock
+        name_header_model_mock = fulltext_models_mock.name_header_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            header_block, '<header>'
+        )
+
+        header_model_mock.update_label_by_layout_block(
+            authors_block, '<author>'
+        )
+
+        name_header_model_mock.update_label_by_layout_block(
+            given_name_block, '<forename>'
+        )
+        name_header_model_mock.update_label_by_layout_block(
+            surname_block, '<surname>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            header_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        assert semantic_document is not None
+        assert semantic_document.front.get_text() == authors_block.text
+        assert (
+            semantic_document.front
+            .view_by_type(SemanticAuthor).get_text()
+        ) == authors_block.text
+        authors = semantic_document.front.authors
+        assert len(authors) == 1
+        assert authors[0].given_name_text == given_name_block.text
+        assert authors[0].surname_text == surname_block.text
+
+    def test_should_extract_author_names_separated_by_another_tag(
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        given_name_block = LayoutBlock.for_text('Given name')
+        surname_block = LayoutBlock.for_text('Surname')
+        other_block = LayoutBlock.for_text('Other')
+        authors_block = LayoutBlock.merge_blocks([
+            given_name_block, other_block, surname_block
+        ])
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        header_block = authors_block
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        header_model_mock = fulltext_models_mock.header_model_mock
+        name_header_model_mock = fulltext_models_mock.name_header_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            header_block, '<header>'
+        )
+
+        header_model_mock.update_label_by_layout_block(
+            given_name_block, '<author>'
+        )
+        header_model_mock.update_label_by_layout_block(
+            surname_block, '<author>'
+        )
+
+        name_header_model_mock.update_label_by_layout_block(
+            given_name_block, '<forename>'
+        )
+        name_header_model_mock.update_label_by_layout_block(
+            surname_block, '<surname>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            header_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        assert semantic_document is not None
+        authors = semantic_document.front.authors
+        assert len(authors) == 1
+        assert authors[0].given_name_text == given_name_block.text
+        assert authors[0].surname_text == surname_block.text

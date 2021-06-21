@@ -11,6 +11,7 @@ from pygrobid.document.layout_document import (
     LayoutToken,
     join_layout_tokens
 )
+from pygrobid.document.semantic_document import SemanticContentWrapper
 from pygrobid.models.model import Model
 
 
@@ -155,3 +156,13 @@ class DelftModel(Model):
         labeled_layout_tokens: Iterable[LabeledLayoutToken]
     ) -> Iterable[Tuple[str, LayoutBlock]]:
         return iter_entity_layout_blocks_for_labeled_layout_tokens(labeled_layout_tokens)
+
+    def iter_semantic_content_for_labeled_layout_tokens(
+        self,
+        labeled_layout_tokens: Iterable[LabeledLayoutToken]
+    ) -> Iterable[SemanticContentWrapper]:
+        return self.iter_semantic_content_for_entity_blocks(
+            self.iter_entity_layout_blocks_for_labeled_layout_tokens(
+                labeled_layout_tokens
+            )
+        )

@@ -2,6 +2,7 @@
 A semantically annotated document.
 It doesn't have a specific structure as that depends on the output format (e.g. TEI).
 """
+import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Iterator, List, Optional, Type, TypeVar, cast
@@ -42,6 +43,12 @@ class SemanticContentWrapper(ABC):
 class SemanticSimpleContentWrapper(SemanticContentWrapper):
     content: LayoutBlock = EMPTY_BLOCK
 
+    layout_block: dataclasses.InitVar[LayoutBlock] = None
+
+    def __post_init__(self, layout_block: Optional[LayoutBlock] = None):
+        if layout_block is not None:
+            self.add_content(layout_block)
+
     def iter_blocks(self) -> Iterable[LayoutBlock]:
         return [self.content]
 
@@ -60,6 +67,11 @@ T_SemanticContentWrapper = TypeVar('T_SemanticContentWrapper', bound=SemanticCon
 @dataclass
 class SemanticMixedContentWrapper(SemanticContentWrapper):
     mixed_content: List[SemanticContentWrapper] = field(default_factory=list)
+    layout_block: dataclasses.InitVar[LayoutBlock] = None
+
+    def __post_init__(self, layout_block: Optional[LayoutBlock] = None):
+        if layout_block is not None:
+            self.add_block_content(layout_block)
 
     def __iter__(self) -> Iterator[SemanticContentWrapper]:
         return iter(self.mixed_content)
@@ -121,6 +133,64 @@ class SemanticParagraph(SemanticMixedContentWrapper):
 class SemanticSectionTypes:
     ACKNOWLEDGEMENT = 'ACKNOWLEDGEMENT'
     OTHER = 'OTHER'
+
+
+class SemanticLabel(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticRawAuthors(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticMarker(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticNameTitle(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticNameSuffix(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticGivenName(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticMiddleName(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticSurname(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticAuthor(SemanticMixedContentWrapper):
+    @property
+    def label_text(self) -> str:
+        return self.view_by_type(SemanticLabel).get_text()
+
+    @property
+    def given_name_text(self) -> str:
+        return self.view_by_type(SemanticGivenName).get_text()
+
+    @property
+    def surname_text(self) -> str:
+        return self.view_by_type(SemanticSurname).get_text()
+
+
+class SemanticFront(SemanticMixedContentWrapper):
+    @property
+    def authors(self) -> List[SemanticAuthor]:
+        return list(self.iter_by_type(SemanticAuthor))
+
+    def get_raw_authors_text(self) -> str:
+        return '\n'.join(self.view_by_type(SemanticRawAuthors).get_text_list())
+
+    def get_authors_text(self) -> str:
+        return '\n'.join(self.view_by_type(SemanticAuthor).get_text_list())
 
 
 @dataclass
@@ -193,5 +263,6 @@ class SemanticSection(SemanticMixedContentWrapper):
 @dataclass
 class SemanticDocument:
     meta: SemanticMeta = field(default_factory=SemanticMeta)
+    front: SemanticFront = field(default_factory=SemanticFront)
     body_section: SemanticSection = field(default_factory=SemanticSection)
     back_section: SemanticSection = field(default_factory=SemanticSection)

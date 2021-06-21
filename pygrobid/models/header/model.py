@@ -6,7 +6,7 @@ from pygrobid.document.layout_document import (
     LayoutBlock,
     LayoutTokensText
 )
-from pygrobid.document.semantic_document import SemanticDocument
+from pygrobid.document.semantic_document import SemanticDocument, SemanticRawAuthors
 from pygrobid.models.header.data import HeaderDataGenerator
 from pygrobid.models.delft_model import DelftModel
 
@@ -64,3 +64,7 @@ class HeaderModel(DelftModel):
                     layout_block
                 )
                 document.meta.abstract.add_block_content(abstract_layout_block)
+            if name == '<author>':
+                author = SemanticRawAuthors()
+                author.add_block_content(layout_block)
+                document.front.add_content(author)

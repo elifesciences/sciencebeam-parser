@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
@@ -14,6 +14,8 @@ from pygrobid.document.layout_document import (
     LayoutDocument
 )
 from pygrobid.models.data import ModelDataGenerator
+from pygrobid.models.extract import ModelSemanticExtractor
+from pygrobid.document.semantic_document import SemanticContentWrapper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -50,7 +52,7 @@ class LayoutDocumentLabelResult:
                 layout_model_label
             )
 
-    def get_filtered_document_by_label(self, label: str):
+    def get_filtered_document_by_label(self, label: str):  # pylint: disable=too-many-branches
         layout_document = LayoutDocument(pages=[])
         layout_document_labels = self.layout_document_labels_by_label.get(label)
         if not layout_document_labels:
@@ -59,28 +61,50 @@ class LayoutDocumentLabelResult:
                 label, self.layout_document_labels_by_label.keys()
             )
             return layout_document
-        layout_lines_to_include = [
-            layout_document_label.layout_line
+        layout_token_ids_to_include = {
+            id(layout_document_label.layout_token)
             for layout_document_label in layout_document_labels
-            if layout_document_label.layout_line
-        ]
-        LOGGER.debug('layout_lines_to_include: %s', layout_lines_to_include)
+            if layout_document_label.layout_token
+        }
+        LOGGER.debug('layout_tokens_to_include: %s', layout_token_ids_to_include)
+        layout_line_ids_to_include: Set[int] = set()
+        if not layout_token_ids_to_include:
+            layout_line_ids_to_include = {
+                id(layout_document_label.layout_line)
+                for layout_document_label in layout_document_labels
+                if layout_document_label.layout_line
+            }
+        LOGGER.debug('layout_line_ids_to_include: %s', layout_line_ids_to_include)
         result_page: Optional[LayoutPage] = None
-        for page in self.layout_document.pages:
+        for page in self.layout_document.pages:  # pylint: disable=too-many-nested-blocks
             result_page = None
             result_block: Optional[LayoutBlock] = None
             for block in page.blocks:
                 result_block = None
                 for line in block.lines:
-                    if line not in layout_lines_to_include:
-                        continue
+                    accepted_line: Optional[LayoutLine] = None
+                    if layout_token_ids_to_include:
+                        accepted_tokens: List[LayoutToken] = []
+                        for token in line.tokens:
+                            if id(token) in layout_token_ids_to_include:
+                                accepted_tokens.append(token)
+                        if not accepted_tokens:
+                            continue
+                        if len(line.tokens) == accepted_tokens:
+                            accepted_line = line
+                        else:
+                            accepted_line = LayoutLine(tokens=accepted_tokens)
+                    else:
+                        if id(line) not in layout_line_ids_to_include:
+                            continue
+                        accepted_line = line
                     if result_page is None:
                         result_page = LayoutPage(blocks=[])
                         layout_document.pages.append(result_page)
                     if result_block is None:
                         result_block = LayoutBlock(lines=[])
                         result_page.blocks.append(result_block)
-                    result_block.lines.append(line)
+                    result_block.lines.append(accepted_line)
         return layout_document
 
 
@@ -88,6 +112,18 @@ class Model(ABC):
     @abstractmethod
     def get_data_generator(self) -> ModelDataGenerator:
         pass
+
+    # @abstractmethod
+    def get_semantic_extractor(self) -> ModelSemanticExtractor:
+        raise NotImplementedError()
+
+    def iter_semantic_content_for_entity_blocks(
+        self,
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+    ) -> Iterable[SemanticContentWrapper]:
+        return self.get_semantic_extractor().iter_semantic_content_for_entity_blocks(
+            entity_tokens
+        )
 
     @abstractmethod
     def predict_labels(

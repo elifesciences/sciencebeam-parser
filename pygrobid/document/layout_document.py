@@ -182,6 +182,10 @@ def get_layout_tokens_for_text(*args, **kwargs) -> List[LayoutToken]:
 class LayoutLine:
     tokens: List[LayoutToken]
 
+    @property
+    def text(self) -> str:
+        return join_layout_tokens(self.tokens)
+
     @staticmethod
     def for_text(text: str, **kwargs) -> 'LayoutLine':
         return LayoutLine(tokens=get_layout_tokens_for_text(text, **kwargs))
@@ -280,6 +284,10 @@ class LayoutPage:
 @dataclass
 class LayoutDocument:
     pages: List[LayoutPage]
+
+    @staticmethod
+    def for_blocks(blocks: List[LayoutBlock]) -> 'LayoutDocument':
+        return LayoutDocument(pages=[LayoutPage(blocks=blocks)])
 
     def iter_all_blocks(self) -> Iterable[LayoutBlock]:
         return (

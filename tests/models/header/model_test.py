@@ -14,6 +14,8 @@ from pygrobid.models.header.model import (
 
 TITLE_1 = 'the title 1'
 ABSTRACT_1 = 'the abstract 1'
+AUTHOR_1 = 'Author 1'
+AUTHOR_2 = 'Author 2'
 
 
 class TestGetCleanedAbstractText:
@@ -102,3 +104,15 @@ class TestHeaderModel:
         LOGGER.debug('document: %s', document)
         assert document.meta.title.get_text() == TITLE_1
         assert document.meta.abstract.get_text() == ABSTRACT_1
+
+    def test_should_add_authors(self):
+        document = SemanticDocument()
+        header_model = HeaderModel('dummy-path')
+        header_model.update_semantic_document_with_entity_blocks(
+            document,
+            [
+                ('<author>', LayoutBlock.for_text(AUTHOR_1))
+            ]
+        )
+        LOGGER.debug('document: %s', document)
+        assert document.front.get_raw_authors_text() == AUTHOR_1

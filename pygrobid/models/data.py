@@ -133,6 +133,16 @@ PUNCTUATION_PROFILE_MAP = {
 IS_PUNCT_PATTERN = r"^[\,\:;\?\.]+$"
 
 
+def get_line_status(token_index: int, token_count: int) -> str:
+    return (
+        'LINEEND' if token_index == token_count - 1
+        else (
+            'LINESTART' if token_index == 0
+            else 'LINEIN'
+        )
+    )
+
+
 class RelativeFontSizeFeature:
     def __init__(self, layout_tokens: Iterable[LayoutToken]):
         font_sizes = [
@@ -186,3 +196,45 @@ def get_punctuation_profile_feature(text: str) -> str:
     if not result:
         return PunctuationProfileValues.NOPUNCT
     return result
+
+
+def get_str_bool_feature_value(value: bool) -> str:
+    return '1' if value else '0'
+
+
+class CommonLayoutTokenFeatures(ABC):
+    def __init__(self, layout_token: LayoutToken) -> None:
+        self.layout_token = layout_token
+        self.token_text = layout_token.text or ''
+
+    def get_str_is_single_char(self) -> str:
+        return get_str_bool_feature_value(len(self.token_text) == 1)
+
+    def get_digit_status(self) -> str:
+        return get_digit_feature(self.token_text)
+
+    def get_capitalisation_status(self) -> str:
+        if self.get_digit_status() == 'ALLDIGIT':
+            return 'NOCAPS'
+        return get_capitalisation_feature(self.token_text)
+
+    def get_punctuation_profile(self) -> str:
+        return get_punctuation_profile_feature(self.token_text)
+
+    def get_dummy_str_is_common_name(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_first_name(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_last_name(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_title(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_suffix(self) -> str:
+        return '0'
+
+    def get_dummy_label(self) -> str:
+        return '0'

@@ -58,6 +58,14 @@ curl --fail --show-error \
     --silent "http://localhost:8080/api/models/header?first_page=1&last_page=1&output_format=xml"
 ```
 
+### Submit a sample document to the name-header api
+
+```bash
+curl --fail --show-error \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/models/name-header?first_page=1&last_page=1&output_format=xml"
+```
+
 ### Submit a sample document to the full text api
 
 ```bash

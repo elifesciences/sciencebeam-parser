@@ -19,13 +19,10 @@ from pygrobid.config.config import AppConfig
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 from pygrobid.external.pdfalto.parser import parse_alto_root
 from pygrobid.models.model import Model
-from pygrobid.models.segmentation.model import SegmentationModel
-from pygrobid.models.header.model import HeaderModel
-from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.utils.text import normalize_text
 from pygrobid.utils.tokenizer import get_tokenized_tokens
-from pygrobid.processors.fulltext import FullTextProcessor, FullTextModels
+from pygrobid.processors.fulltext import FullTextProcessor, load_models
 
 
 LOGGER = logging.getLogger(__name__)
@@ -153,14 +150,12 @@ class ModelNestedBluePrint:
         name: str,
         model: Model,
         pdfalto_wrapper: PdfAltoWrapper,
-        segmentation_model: Optional[Model] = None,
-        segmentation_label: Optional[str] = None
+        model_name: str = 'dummy'
     ):
         self.name = name
         self.model = model
         self.pdfalto_wrapper = pdfalto_wrapper
-        self.segmentation_model = segmentation_model
-        self.segmentation_label = segmentation_label
+        self.model_name = model_name
 
     def add_routes(self, parent_blueprint: Blueprint, url_prefix: str):
         parent_blueprint.route(
@@ -172,6 +167,9 @@ class ModelNestedBluePrint:
 
     def handle_get(self):
         return _get_file_upload_form(f'{self.name} Model: convert PDF to data')
+
+    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+        return layout_document
 
     def handle_post(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
@@ -195,22 +193,9 @@ class ModelNestedBluePrint:
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = normalize_layout_document(
+            layout_document = self.filter_layout_document(normalize_layout_document(
                 parse_alto_root(root)
-            )
-            if (
-                self.segmentation_model
-                and self.segmentation_label
-                and not get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False)
-            ):
-                segmentation_label_result = (
-                    self.segmentation_model.get_label_layout_document_result(
-                        layout_document
-                    )
-                )
-                layout_document = segmentation_label_result.get_filtered_document_by_label(
-                    self.segmentation_label
-                ).remove_empty_blocks()
+            ))
             data_generator = self.model.get_data_generator()
             data_lines = data_generator.iter_data_lines_for_layout_document(layout_document)
             response_type = 'text/plain'
@@ -229,7 +214,7 @@ class ModelNestedBluePrint:
                     expected_tag_result=None,
                     texts=texts,
                     features=features,
-                    model_name='header'
+                    model_name=self.model_name
                 )
                 response_content = ''.join(formatted_tag_result_iterable)
                 if output_format == TagOutputFormats.JSON:
@@ -237,6 +222,52 @@ class ModelNestedBluePrint:
             LOGGER.debug('response_content: %r', response_content)
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)
+
+
+class SegmentedModelNestedBluePrint(ModelNestedBluePrint):
+    def __init__(self, *args, segmentation_model: Model, segmentation_label: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.segmentation_model = segmentation_model
+        self.segmentation_label = segmentation_label
+
+    def filter_layout_document_by_segmentation_label(
+        self,
+        layout_document: LayoutDocument,
+        segmentation_label: str
+    ) -> LayoutDocument:
+        assert self.segmentation_model is not None
+        segmentation_label_result = (
+            self.segmentation_model.get_label_layout_document_result(
+                layout_document
+            )
+        )
+        return segmentation_label_result.get_filtered_document_by_label(
+            segmentation_label
+        ).remove_empty_blocks()
+
+    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+        if not get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False):
+            return layout_document
+        return self.filter_layout_document_by_segmentation_label(
+            layout_document, segmentation_label=self.segmentation_label
+        )
+
+
+class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
+    def __init__(self, *args, header_model: Model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.header_model = header_model
+
+    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+        header_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<header>'
+        )
+        header_label_result = self.header_model.get_label_layout_document_result(
+            header_layout_document
+        )
+        return header_label_result.get_filtered_document_by_label(
+            '<author>'
+        ).remove_empty_blocks()
 
 
 class ApiBlueprint(Blueprint):
@@ -252,25 +283,33 @@ class ApiBlueprint(Blueprint):
             self.download_manager.download_if_url(config['pdfalto']['path'])
         )
         self.pdfalto_wrapper.ensure_excutable()
-        self.segmentation_model = SegmentationModel(config['models']['segmentation']['path'])
-        self.header_model = HeaderModel(config['models']['header']['path'])
-        self.fulltext_model = FullTextModel(config['models']['fulltext']['path'])
-        self.fulltext_processor = FullTextProcessor(FullTextModels(
-            segmentation_model=self.segmentation_model,
-            header_model=self.header_model,
-            fulltext_model=self.fulltext_model
-        ))
+        fulltext_models = load_models(config)
+        self.fulltext_processor = FullTextProcessor(fulltext_models)
         ModelNestedBluePrint(
-            'Segmentation', model=self.segmentation_model, pdfalto_wrapper=self.pdfalto_wrapper
+            'Segmentation',
+            model=fulltext_models.segmentation_model,
+            pdfalto_wrapper=self.pdfalto_wrapper
         ).add_routes(self, '/models/segmentation')
-        ModelNestedBluePrint(
-            'Header', model=self.header_model, pdfalto_wrapper=self.pdfalto_wrapper,
-            segmentation_model=self.segmentation_model,
+        SegmentedModelNestedBluePrint(
+            'Header',
+            model=fulltext_models.header_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
             segmentation_label='<header>'
         ).add_routes(self, '/models/header')
-        ModelNestedBluePrint(
-            'FullText', model=self.fulltext_model, pdfalto_wrapper=self.pdfalto_wrapper,
-            segmentation_model=self.segmentation_model,
+        NameHeaderModelNestedBluePrint(
+            'Name Header',
+            model=fulltext_models.name_header_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_label='<header>',
+            header_model=fulltext_models.header_model
+        ).add_routes(self, '/models/name-header')
+        SegmentedModelNestedBluePrint(
+            'FullText',
+            model=fulltext_models.fulltext_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
             segmentation_label='<body>'
         ).add_routes(self, '/models/fulltext')
 

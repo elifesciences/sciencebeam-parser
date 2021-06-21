@@ -7,12 +7,20 @@ from lxml.builder import ElementMaker
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
 from pygrobid.document.semantic_document import (
+    SemanticAuthor,
+    SemanticContentWrapper,
     SemanticDocument,
+    SemanticGivenName,
     SemanticHeading,
+    SemanticMarker,
+    SemanticMiddleName,
+    SemanticNameSuffix,
+    SemanticNameTitle,
     SemanticNote,
     SemanticParagraph,
     SemanticSection,
-    SemanticSectionTypes
+    SemanticSectionTypes,
+    SemanticSurname
 )
 
 
@@ -36,9 +44,9 @@ class TagExpression:
         self.tag = tag
         self.attrib = attrib
 
-    def create_node(self):
+    def create_node(self, *args):
         try:
-            return TEI_E(self.tag, self.attrib)
+            return TEI_E(self.tag, self.attrib, *args)
         except ValueError as e:
             raise ValueError(
                 'failed to create node with tag=%r, attrib=%r due to %s' % (
@@ -218,6 +226,10 @@ class TeiElementWrapper:
         )
 
 
+class TeiAuthor(TeiElementWrapper):
+    pass
+
+
 class TeiSectionParagraph(TeiElementWrapper):
     def __init__(self, element: etree.ElementBase):
         super().__init__(element)
@@ -347,6 +359,53 @@ class TeiDocument(TeiElementWrapper):
         return TeiSection(TEI_E.div())
 
 
+SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
+    SemanticNameTitle: 'roleName',
+    SemanticGivenName: 'forename[@type="first"]',
+    SemanticMiddleName: 'forename[@type="middle"]',
+    SemanticSurname: 'surname',
+    SemanticNameSuffix: 'genName',
+    SemanticMarker: 'note[@type="marker"]'
+}
+
+
+PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS: Dict[type, TagExpression] = {
+    key: _parse_tag_expression(value)
+    for key, value in SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS.items()
+}
+
+
+def get_tei_child_element_for_semantic_content(
+    semantic_content: SemanticContentWrapper
+) -> etree.ElementBase:
+    parsed_tag_expression = PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS.get(
+        type(semantic_content)
+    )
+    if parsed_tag_expression:
+        return parsed_tag_expression.create_node(
+            *iter_layout_block_tei_children(semantic_content.merged_block)
+        )
+    note_type = 'other'
+    if isinstance(semantic_content, SemanticNote):
+        note_type = semantic_content.note_type
+    return TEI_E.note(
+        {'type': note_type},
+        *iter_layout_block_tei_children(semantic_content.merged_block)
+    )
+
+
+def _get_tei_autor_for_semantic_author(semantic_author: SemanticAuthor) -> TeiAuthor:
+    LOGGER.debug('semantic_author: %s', semantic_author)
+    pers_name_children = []
+    for semantic_content in semantic_author:
+        pers_name_children.append(get_tei_child_element_for_semantic_content(
+            semantic_content
+        ))
+    return TeiAuthor(TEI_E.author(
+        TEI_E.persName(*pers_name_children)
+    ))
+
+
 def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> TeiSection:
     LOGGER.debug('semantic_section: %s', semantic_section)
     tei_section = TeiSection(TEI_E.div())
@@ -380,6 +439,13 @@ def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDoc
     abstract_block = semantic_document.meta.abstract.merged_block
     if abstract_block:
         tei_document.set_abstract_layout_block(abstract_block)
+
+    for semantic_content in semantic_document.front:
+        if isinstance(semantic_content, SemanticAuthor):
+            tei_author = _get_tei_autor_for_semantic_author(semantic_content)
+            tei_document.get_or_create_element_at(
+                ['teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic']
+            ).append(tei_author.element)
 
     for semantic_content in semantic_document.body_section:
         if isinstance(semantic_content, SemanticSection):

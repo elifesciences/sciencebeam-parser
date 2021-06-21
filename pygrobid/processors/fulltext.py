@@ -1,10 +1,14 @@
 import logging
 
 from dataclasses import dataclass
+from typing import List
+from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult
 
 from pygrobid.document.semantic_document import (
+    SemanticContentWrapper,
     SemanticDocument,
+    SemanticRawAuthors,
     SemanticSection,
     SemanticSectionTypes
 )
@@ -12,6 +16,7 @@ from pygrobid.document.tei_document import TeiDocument, get_tei_for_semantic_doc
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.models.name.model import NameModel
 from pygrobid.models.fulltext.model import FullTextModel
 
 
@@ -22,7 +27,22 @@ LOGGER = logging.getLogger(__name__)
 class FullTextModels:
     segmentation_model: SegmentationModel
     header_model: HeaderModel
+    name_header_model: NameModel
     fulltext_model: FullTextModel
+
+
+def load_models(app_config: AppConfig) -> FullTextModels:
+    models_config = app_config['models']
+    segmentation_model = SegmentationModel(models_config['segmentation']['path'])
+    header_model = HeaderModel(models_config['header']['path'])
+    name_header_model = NameModel(models_config['name-header']['path'])
+    fulltext_model = FullTextModel(models_config['fulltext']['path'])
+    return FullTextModels(
+        segmentation_model=segmentation_model,
+        header_model=header_model,
+        name_header_model=name_header_model,
+        fulltext_model=fulltext_model
+    )
 
 
 class FullTextProcessor:
@@ -39,6 +59,10 @@ class FullTextProcessor:
     @property
     def header_model(self) -> HeaderModel:
         return self.fulltext_models.header_model
+
+    @property
+    def name_header_model(self) -> NameModel:
+        return self.fulltext_models.name_header_model
 
     @property
     def fulltext_model(self) -> FullTextModel:
@@ -67,6 +91,7 @@ class FullTextProcessor:
             self.header_model.update_semantic_document_with_entity_blocks(
                 document, entity_blocks
             )
+            self._process_raw_authors(document)
 
         self._update_semantic_section_using_segmentation_result_and_fulltext_model(
             document.body_section,
@@ -87,6 +112,33 @@ class FullTextProcessor:
             SemanticSectionTypes.OTHER
         )
         return document
+
+    def _process_raw_authors(self, semantic_document: SemanticDocument):
+        result_content: List[SemanticContentWrapper] = []
+        raw_authors: List[SemanticRawAuthors] = []
+        for semantic_content in semantic_document.front:
+            if isinstance(semantic_content, SemanticRawAuthors):
+                raw_authors.append(semantic_content)
+                continue
+            result_content.append(semantic_content)
+        if raw_authors:
+            raw_authors_layout_document = LayoutDocument.for_blocks([
+                block
+                for raw_author in raw_authors
+                for block in raw_author.iter_blocks()
+            ])
+            labeled_layout_tokens = self.name_header_model.predict_labels_for_layout_document(
+                raw_authors_layout_document
+            )
+            LOGGER.debug('labeled_layout_tokens (author): %r', labeled_layout_tokens)
+            authors_iterable = (
+                self.name_header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )
+            for author in authors_iterable:
+                result_content.append(author)
+        semantic_document.front.mixed_content = result_content
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,
