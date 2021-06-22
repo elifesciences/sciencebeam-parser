@@ -143,6 +143,22 @@ def get_line_status(token_index: int, token_count: int) -> str:
     )
 
 
+def get_block_status(
+    line_index: int,
+    line_count: int,
+    line_status: str
+) -> str:
+    return (
+        'BLOCKEND'
+        if line_index == line_count - 1 and line_status == 'LINEEND'
+        else (
+            'BLOCKSTART'
+            if line_index == 0 and line_status == 'LINESTART'
+            else 'BLOCKIN'
+        )
+    )
+
+
 class RelativeFontSizeFeature:
     def __init__(self, layout_tokens: Iterable[LayoutToken]):
         font_sizes = [
@@ -223,7 +239,7 @@ def get_word_shape_feature(text: str) -> str:
     return ''.join(prefix + middle_without_consequitive_duplicates + suffix)
 
 
-def get_str_bool_feature_value(value: bool) -> str:
+def get_str_bool_feature_value(value: Optional[bool]) -> str:
     return '1' if value else '0'
 
 
@@ -231,6 +247,12 @@ class CommonLayoutTokenFeatures(ABC):
     def __init__(self, layout_token: LayoutToken) -> None:
         self.layout_token = layout_token
         self.token_text = layout_token.text or ''
+
+    def get_str_is_bold(self) -> str:
+        return get_str_bool_feature_value(self.layout_token.font.is_bold)
+
+    def get_str_is_italic(self) -> str:
+        return get_str_bool_feature_value(self.layout_token.font.is_italics)
 
     def get_str_is_single_char(self) -> str:
         return get_str_bool_feature_value(len(self.token_text) == 1)
@@ -273,5 +295,128 @@ class CommonLayoutTokenFeatures(ABC):
     def get_dummy_str_is_country_name(self) -> str:
         return '0'
 
+    def get_dummy_str_is_year(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_month(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_email(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_http(self) -> str:
+        return '0'
+
     def get_dummy_label(self) -> str:
         return '0'
+
+
+class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
+    def __init__(
+        self,
+        layout_token: LayoutToken,
+        layout_line: LayoutLine,
+        previous_layout_token: Optional[LayoutToken],
+        token_index: int,
+        token_count: int,
+        line_index: int,
+        line_count: int,
+        relative_font_size_feature: RelativeFontSizeFeature,
+        line_indentation_status_feature: LineIndentationStatusFeature
+    ) -> None:
+        super().__init__(layout_token)
+        self.layout_line = layout_line
+        self.previous_layout_token = previous_layout_token
+        self.token_index = token_index
+        self.token_count = token_count
+        self.line_index = line_index
+        self.line_count = line_count
+        self.relative_font_size_feature = relative_font_size_feature
+        self.line_indentation_status_feature = line_indentation_status_feature
+
+    def get_line_status(self) -> str:
+        return get_line_status(token_index=self.token_index, token_count=self.token_count)
+
+    def get_block_status(self) -> str:
+        return get_block_status(
+            line_index=self.line_index,
+            line_count=self.line_count,
+            line_status=self.get_line_status()
+        )
+
+    def get_is_indented_and_update(self) -> bool:
+        return self.line_indentation_status_feature.get_is_indented_and_update(
+            self.layout_token
+        )
+
+    def get_alignment_status(self) -> str:
+        indented = self.get_is_indented_and_update()
+        return 'LINEINDENT' if indented else 'ALIGNEDLEFT'
+
+    def get_token_font_status(self) -> str:
+        return get_token_font_status(self.previous_layout_token, self.layout_token)
+
+    def get_token_font_size_feature(self) -> str:
+        return get_token_font_size_feature(self.previous_layout_token, self.layout_token)
+
+    def get_str_is_largest_font_size(self) -> str:
+        return get_str_bool_feature_value(
+            self.relative_font_size_feature.is_largest_font_size(
+                self.layout_token
+            )
+        )
+
+    def get_str_is_smallest_font_size(self) -> str:
+        return get_str_bool_feature_value(
+            self.relative_font_size_feature.is_smallest_font_size(
+                self.layout_token
+            )
+        )
+
+    def get_str_is_larger_than_average_font_size(self) -> str:
+        return get_str_bool_feature_value(
+            self.relative_font_size_feature.is_larger_than_average_font_size(
+                self.layout_token
+            )
+        )
+
+
+class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
+    @abstractmethod
+    def iter_model_data_for_context_layout_token_features(
+        self,
+        token_features: ContextAwareLayoutTokenFeatures
+    ) -> Iterable[LayoutModelData]:
+        pass
+
+    def iter_model_data_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ) -> Iterable[LayoutModelData]:
+        relative_font_size_feature = RelativeFontSizeFeature(
+            layout_document.iter_all_tokens()
+        )
+        line_indentation_status_feature = LineIndentationStatusFeature()
+        previous_layout_token: Optional[LayoutToken] = None
+        for block in layout_document.iter_all_blocks():
+            block_lines = block.lines
+            line_count = len(block_lines)
+            for line_index, line in enumerate(block_lines):
+                line_indentation_status_feature.on_new_line()
+                line_tokens = line.tokens
+                token_count = len(line_tokens)
+                for token_index, token in enumerate(line_tokens):
+                    yield from self.iter_model_data_for_context_layout_token_features(
+                        ContextAwareLayoutTokenFeatures(
+                            token,
+                            layout_line=line,
+                            previous_layout_token=previous_layout_token,
+                            token_index=token_index,
+                            token_count=token_count,
+                            line_index=line_index,
+                            line_count=line_count,
+                            relative_font_size_feature=relative_font_size_feature,
+                            line_indentation_status_feature=line_indentation_status_feature
+                        )
+                    )
+                    previous_layout_token = token

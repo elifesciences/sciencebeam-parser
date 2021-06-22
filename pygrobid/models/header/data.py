@@ -1,126 +1,54 @@
-from typing import Iterable, Optional
+from typing import Iterable, List
 
-from pygrobid.document.layout_document import LayoutDocument, LayoutToken
 from pygrobid.models.data import (
-    ModelDataGenerator,
-    LayoutModelData,
-    RelativeFontSizeFeature,
-    LineIndentationStatusFeature,
-    get_token_font_status,
-    get_token_font_size_feature,
-    get_digit_feature,
-    get_capitalisation_feature,
-    get_punctuation_profile_feature
+    ContextAwareLayoutTokenFeatures,
+    ContextAwareLayoutTokenModelDataGenerator,
+    LayoutModelData
 )
 
 
-class HeaderDataGenerator(ModelDataGenerator):
-    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
+class HeaderDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
+    def iter_model_data_for_context_layout_token_features(
         self,
-        layout_document: LayoutDocument
+        token_features: ContextAwareLayoutTokenFeatures
     ) -> Iterable[LayoutModelData]:
-        relative_font_size_feature = RelativeFontSizeFeature(
-            layout_document.iter_all_tokens()
+        token_text: str = token_features.token_text
+        features: List[str] = [
+            token_text,
+            token_text.lower(),
+            token_text[:1],
+            token_text[:2],
+            token_text[:3],
+            token_text[:4],
+            token_text[-1:],
+            token_text[-2:],
+            token_text[-3:],
+            token_text[-4:],
+            token_features.get_block_status(),
+            token_features.get_line_status(),
+            token_features.get_alignment_status(),
+            token_features.get_token_font_status(),
+            token_features.get_token_font_size_feature(),
+            token_features.get_str_is_bold(),
+            token_features.get_str_is_italic(),
+            token_features.get_capitalisation_status(),
+            token_features.get_digit_status(),
+            token_features.get_str_is_single_char(),
+            token_features.get_dummy_str_is_proper_name(),
+            token_features.get_dummy_str_is_common_name(),
+            token_features.get_dummy_str_is_year(),
+            token_features.get_dummy_str_is_month(),
+            token_features.get_dummy_str_is_location_name(),
+            token_features.get_dummy_str_is_email(),
+            token_features.get_dummy_str_is_http(),
+            token_features.get_punctuation_profile(),
+            token_features.get_str_is_largest_font_size(),
+            token_features.get_str_is_smallest_font_size(),
+            token_features.get_str_is_larger_than_average_font_size(),
+            token_features.get_dummy_label()
+        ]
+        yield LayoutModelData(
+            layout_line=token_features.layout_line,
+            layout_token=token_features.layout_token,
+            data_line=' '.join(features)
         )
-        line_indentation_status_feature = LineIndentationStatusFeature()
-        previous_token: Optional[LayoutToken] = None
-        for block in layout_document.iter_all_blocks():
-            block_lines = block.lines
-            for line_index, line in enumerate(block_lines):
-                line_indentation_status_feature.on_new_line()
-                line_tokens = line.tokens
-                for token_index, token in enumerate(line_tokens):
-                    token_text: str = token.text or ''
-                    line_status = (
-                        'LINEEND' if token_index == len(line_tokens) - 1
-                        else (
-                            'LINESTART' if token_index == 0
-                            else 'LINEIN'
-                        )
-                    )
-                    block_status = (
-                        'BLOCKEND'
-                        if line_index == len(block_lines) - 1 and line_status == 'LINEEND'
-                        else (
-                            'BLOCKSTART'
-                            if line_index == 0 and line_status == 'LINESTART'
-                            else 'BLOCKIN'
-                        )
-                    )
-                    # if block_status == 'BLOCKSTART':
-                    #     # replicate "bug" in GROBID
-                    #     block_status = 'BLOCKIN'
-                    indented = line_indentation_status_feature.get_is_indented_and_update(
-                        token
-                    )
-                    alignment_status = 'LINEINDENT' if indented else 'ALIGNEDLEFT'
-                    font_status = get_token_font_status(previous_token, token)
-                    font_size = get_token_font_size_feature(previous_token, token)
-                    is_bold = token.font.is_bold
-                    is_italic = token.font.is_italics
-                    digit_status = get_digit_feature(token_text)
-                    capitalisation_status = get_capitalisation_feature(token_text)
-                    if digit_status == 'ALLDIGIT':
-                        capitalisation_status = 'NOCAPS'
-                    is_single_char = len(token_text) == 1
-                    is_proper_name = False
-                    is_common_name = False
-                    is_year = False
-                    is_month = False
-                    is_location_name = False
-                    is_email = False
-                    is_http = False
-                    # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
-                    punct_type = get_punctuation_profile_feature(token_text)
-                    is_largest_font = relative_font_size_feature.is_largest_font_size(
-                        token
-                    )
-                    is_smallest_font = relative_font_size_feature.is_smallest_font_size(
-                        token
-                    )
-                    is_larger_than_average_font = (
-                        relative_font_size_feature.is_larger_than_average_font_size(
-                            token
-                        )
-                    )
-                    label = '0'
-                    features = [
-                        token_text,
-                        token_text.lower(),
-                        token_text[:1],
-                        token_text[:2],
-                        token_text[:3],
-                        token_text[:4],
-                        token_text[-1:],
-                        token_text[-2:],
-                        token_text[-3:],
-                        token_text[-4:],
-                        block_status,
-                        line_status,
-                        alignment_status,
-                        font_status,
-                        font_size,
-                        '1' if is_bold else '0',
-                        '1' if is_italic else '0',
-                        capitalisation_status,
-                        digit_status,
-                        '1' if is_single_char else '0',
-                        '1' if is_proper_name else '0',
-                        '1' if is_common_name else '0',
-                        '1' if is_year else '0',
-                        '1' if is_month else '0',
-                        '1' if is_location_name else '0',
-                        '1' if is_email else '0',
-                        '1' if is_http else '0',
-                        punct_type,
-                        '1' if is_largest_font else '0',
-                        '1' if is_smallest_font else '0',
-                        '1' if is_larger_than_average_font else '0',
-                        label
-                    ]
-                    yield LayoutModelData(
-                        layout_line=line,
-                        layout_token=token,
-                        data_line=' '.join(features)
-                    )
-                    previous_token = token

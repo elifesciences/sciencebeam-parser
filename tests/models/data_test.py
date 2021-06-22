@@ -6,6 +6,8 @@ from pygrobid.document.layout_document import (
 from pygrobid.models.data import (
     RelativeFontSizeFeature,
     LineIndentationStatusFeature,
+    get_line_status,
+    get_block_status,
     get_token_font_size_feature,
     get_digit_feature,
     get_capitalisation_feature,
@@ -69,6 +71,42 @@ class TestLineIndentationStatusFeature:
         assert line_indentation_status_feature.get_is_indented_and_update(
             LayoutToken('x', coordinates=LayoutPageCoordinates(x=50, y=10, width=10, height=10))
         ) is True
+
+
+class TestGetLineStatus:
+    def test_should_return_linestart_for_first_token(self):
+        assert get_line_status(0, 10) == 'LINESTART'
+
+    def test_should_return_lineend_for_last_token(self):
+        assert get_line_status(9, 10) == 'LINEEND'
+
+    def test_should_return_linein_for_token_not_first_or_last(self):
+        assert get_line_status(1, 10) == 'LINEIN'
+        assert get_line_status(8, 10) == 'LINEIN'
+
+    def test_should_return_lineend_for_single_token(self):
+        assert get_line_status(0, 1) == 'LINEEND'
+
+
+class TestGetBlockStatus:
+    def test_should_return_blockstart_for_first_token_on_first_line(self):
+        assert get_block_status(0, 10, 'LINESTART') == 'BLOCKSTART'
+
+    def test_should_return_blockend_for_last_token_on_last_line(self):
+        assert get_block_status(9, 10, 'LINEEND') == 'BLOCKEND'
+
+    def test_should_return_blockin_for_line_not_first_or_last(self):
+        assert get_block_status(1, 10, 'LINESTART') == 'BLOCKIN'
+        assert get_block_status(8, 10, 'LINEEND') == 'BLOCKIN'
+
+    def test_should_return_blockin_for_first_line_but_not_first_token(self):
+        assert get_block_status(0, 10, 'LINEIN') == 'BLOCKIN'
+
+    def test_should_return_blockin_for_last_line_but_not_last_token(self):
+        assert get_block_status(9, 10, 'LINEIN') == 'BLOCKIN'
+
+    def test_should_return_blockend_for_single_token(self):
+        assert get_block_status(0, 1, 'LINEEND') == 'BLOCKEND'
 
 
 class TestGetTokenFontSizeFeature:
