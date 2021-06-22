@@ -270,6 +270,23 @@ class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
         ).remove_empty_blocks()
 
 
+class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
+    def __init__(self, *args, header_model: Model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.header_model = header_model
+
+    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+        header_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<header>'
+        )
+        header_label_result = self.header_model.get_label_layout_document_result(
+            header_layout_document
+        )
+        return header_label_result.get_filtered_document_by_labels(
+            ['<affiliation>', '<address>']
+        ).remove_empty_blocks()
+
+
 class ApiBlueprint(Blueprint):
     def __init__(self, config: AppConfig):
         super().__init__('api', __name__)
@@ -305,6 +322,14 @@ class ApiBlueprint(Blueprint):
             segmentation_label='<header>',
             header_model=fulltext_models.header_model
         ).add_routes(self, '/models/name-header')
+        AffiliationAddressModelNestedBluePrint(
+            'Affiliation Address',
+            model=fulltext_models.affiliation_address_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_label='<header>',
+            header_model=fulltext_models.header_model
+        ).add_routes(self, '/models/affiliation-address')
         SegmentedModelNestedBluePrint(
             'FullText',
             model=fulltext_models.fulltext_model,

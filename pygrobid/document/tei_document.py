@@ -1,26 +1,40 @@
 import logging
 import re
-from typing import Iterable, Dict, List, Optional, Union
+from typing import Iterable, Dict, List, Mapping, Optional, Sequence, Set, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
+from pygrobid.utils.xml import get_text_content
 from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
 from pygrobid.document.semantic_document import (
+    SemanticAbstract,
+    SemanticAddressField,
+    SemanticAddressLine,
+    SemanticAffiliationAddress,
     SemanticAuthor,
     SemanticContentWrapper,
+    SemanticCountry,
+    SemanticDepartment,
     SemanticDocument,
     SemanticGivenName,
     SemanticHeading,
+    SemanticInstitution,
+    SemanticLaboratory,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
     SemanticParagraph,
+    SemanticPostBox,
+    SemanticPostCode,
+    SemanticRegion,
     SemanticSection,
     SemanticSectionTypes,
-    SemanticSurname
+    SemanticSettlement,
+    SemanticSurname,
+    SemanticTitle
 )
 
 
@@ -80,12 +94,6 @@ def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etre
     return get_or_create_element_at(child, path[1:])
 
 
-def get_text_content(node: etree.ElementBase) -> str:
-    if node is None:
-        return ''
-    return ''.join(node.itertext())
-
-
 def tei_xpath(parent: etree.ElementBase, xpath: str) -> List[etree.ElementBase]:
     return parent.xpath(xpath, namespaces=TEI_NS_MAP)
 
@@ -133,6 +141,19 @@ def format_coordinates_list(coordinates_list: List[LayoutPageCoordinates]) -> st
     ))
 
 
+def get_default_attributes_for_layout_block(
+    layout_block: LayoutBlock,
+    enable_coordinates: bool = True
+) -> Dict[str, str]:
+    if enable_coordinates:
+        formatted_coords = format_coordinates_list(
+            layout_block.get_merged_coordinates_list()
+        )
+        if formatted_coords:
+            return {'coords': formatted_coords}
+    return {}
+
+
 def iter_layout_block_tei_children(
     layout_block: LayoutBlock,
     enable_coordinates: bool = True
@@ -141,11 +162,10 @@ def iter_layout_block_tei_children(
     pending_text = ''
     pending_whitespace = ''
     if enable_coordinates:
-        yield {
-            'coords': format_coordinates_list(
-                layout_block.get_merged_coordinates_list()
-            )
-        }
+        yield get_default_attributes_for_layout_block(
+            layout_block=layout_block,
+            enable_coordinates=enable_coordinates
+        )
     for line in layout_block.lines:
         for token in line.tokens:
             required_styles = get_required_styles(token)
@@ -227,6 +247,10 @@ class TeiElementWrapper:
 
 
 class TeiAuthor(TeiElementWrapper):
+    pass
+
+
+class TeiAffiliation(TeiElementWrapper):
     pass
 
 
@@ -365,7 +389,16 @@ SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticMiddleName: 'forename[@type="middle"]',
     SemanticSurname: 'surname',
     SemanticNameSuffix: 'genName',
-    SemanticMarker: 'note[@type="marker"]'
+    SemanticMarker: 'note[@type="marker"]',
+    SemanticInstitution: 'orgName[@type="institution"]',
+    SemanticDepartment: 'orgName[@type="department"]',
+    SemanticLaboratory: 'orgName[@type="laboratory"]',
+    SemanticAddressLine: 'addrLine',
+    SemanticPostCode: 'postCode',
+    SemanticPostBox: 'postBox',
+    SemanticSettlement: 'settlement',
+    SemanticRegion: 'region',
+    SemanticCountry: 'country'
 }
 
 
@@ -394,16 +427,99 @@ def get_tei_child_element_for_semantic_content(
     )
 
 
-def _get_tei_autor_for_semantic_author(semantic_author: SemanticAuthor) -> TeiAuthor:
+def _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
+    semantic_affiliation_address: SemanticAffiliationAddress
+) -> etree.ElementBase:
+    children: List[Union[str, dict, etree.ElementBase]] = []
+    children.append({'type': 'raw_affiliation'})
+    for semantic_content in semantic_affiliation_address:
+        merged_block = semantic_content.merged_block
+        if isinstance(semantic_content, SemanticMarker):
+            children.append(TEI_E.label(
+                *iter_layout_block_tei_children(merged_block, enable_coordinates=False)
+            ))
+            children.append(merged_block.whitespace)
+            continue
+        children.extend(*iter_layout_block_tei_children(merged_block, enable_coordinates=False))
+    return TEI_E.note(*children)
+
+
+def _get_tei_affiliation_for_semantic_affiliation_address(
+    semantic_affiliation_address: SemanticAffiliationAddress
+) -> TeiAffiliation:
+    LOGGER.debug('semantic_affiliation_address: %s', semantic_affiliation_address)
+    raw_affiliation = _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
+        semantic_affiliation_address
+    )
+    children = [
+        get_default_attributes_for_layout_block(
+            semantic_affiliation_address.merged_block
+        ),
+        {'key': semantic_affiliation_address.affiliation_id},
+        raw_affiliation
+    ]
+    address_semantic_content_list = []
+    for semantic_content in semantic_affiliation_address:
+        if isinstance(semantic_content, SemanticAddressField):
+            address_semantic_content_list.append(semantic_content)
+            continue
+        children.append(get_tei_child_element_for_semantic_content(
+            semantic_content
+        ))
+    LOGGER.debug('address_semantic_content_list: %r', address_semantic_content_list)
+    if address_semantic_content_list:
+        children.append(TEI_E.address(*[
+            get_tei_child_element_for_semantic_content(
+                semantic_content
+            )
+            for semantic_content in address_semantic_content_list
+        ]))
+    return TeiAffiliation(TEI_E.affiliation(*children))
+
+
+def _get_tei_author_for_semantic_author(
+    semantic_author: SemanticAuthor,
+    affiliations_by_marker: Mapping[str, Sequence[SemanticAffiliationAddress]]
+) -> TeiAuthor:
     LOGGER.debug('semantic_author: %s', semantic_author)
     pers_name_children = []
     for semantic_content in semantic_author:
         pers_name_children.append(get_tei_child_element_for_semantic_content(
             semantic_content
         ))
-    return TeiAuthor(TEI_E.author(
-        TEI_E.persName(*pers_name_children)
-    ))
+    children = [
+        TEI_E.persName(
+            get_default_attributes_for_layout_block(semantic_author.merged_block),
+            *pers_name_children
+        )
+    ]
+    affiliations = []
+    for marker_text in semantic_author.view_by_type(SemanticMarker).get_text_list():
+        semantic_affiliations = affiliations_by_marker.get(marker_text)
+        if not semantic_affiliations:
+            LOGGER.warning('affiliation not found for marker: %r', marker_text)
+            continue
+        for semantic_affiliation in semantic_affiliations:
+            affiliations.append(_get_tei_affiliation_for_semantic_affiliation_address(
+                semantic_affiliation
+            ).element)
+    children.extend(affiliations)
+    return TeiAuthor(TEI_E.author(*children))
+
+
+def _get_dummy_tei_author_for_semantic_affiliations(
+    semantic_affiliations: Sequence[SemanticAffiliationAddress]
+) -> TeiAuthor:
+    children = [
+        TEI_E.note({'type': 'dummy_author'}, 'Dummy author for orphan affiliations')
+    ]
+    children.extend([
+        _get_tei_affiliation_for_semantic_affiliation_address(
+            semantic_affiliation
+        ).element
+        for semantic_affiliation in semantic_affiliations
+    ])
+    return TeiAuthor(TEI_E.author(*children))
 
 
 def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> TeiSection:
@@ -428,24 +544,68 @@ def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> 
     return tei_section
 
 
-def get_tei_for_semantic_document(semantic_document: SemanticDocument) -> TeiDocument:
+def get_authors_affiliation_markers(authors: List[SemanticAuthor]) -> Set[str]:
+    return {
+        marker
+        for author in authors
+        for marker in author.view_by_type(SemanticMarker).get_text_list()
+    }
+
+
+def get_orphan_affiliations(
+    affiliations_by_marker: Dict[str, List[SemanticAffiliationAddress]],
+    authors: List[SemanticAuthor]
+) -> List[SemanticAffiliationAddress]:
+    used_affiliation_markers = get_authors_affiliation_markers(authors)
+    return [
+        affiliation
+        for marker, affiliations in affiliations_by_marker.items()
+        if marker not in used_affiliation_markers
+        for affiliation in affiliations
+    ]
+
+
+def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
+    semantic_document: SemanticDocument
+) -> TeiDocument:
     LOGGER.debug('semantic_document: %s', semantic_document)
     tei_document = TeiDocument()
 
-    title_block = semantic_document.meta.title.merged_block
+    title_block = semantic_document.front.view_by_type(SemanticTitle).merged_block
     if title_block:
         tei_document.set_title_layout_block(title_block)
 
-    abstract_block = semantic_document.meta.abstract.merged_block
+    abstract_block = semantic_document.front.view_by_type(SemanticAbstract).merged_block
     if abstract_block:
         tei_document.set_abstract_layout_block(abstract_block)
 
+    affiliations_by_marker: Dict[str, List[SemanticAffiliationAddress]] = {}
+    for semantic_content in semantic_document.front:
+        if isinstance(semantic_content, SemanticAffiliationAddress):
+            marker_text = semantic_content.get_text_by_type(SemanticMarker)
+            affiliations_by_marker.setdefault(marker_text, []).append(semantic_content)
+    LOGGER.debug('affiliations_by_marker: %r', affiliations_by_marker)
+
+    semantic_authors: List[SemanticAuthor] = []
     for semantic_content in semantic_document.front:
         if isinstance(semantic_content, SemanticAuthor):
-            tei_author = _get_tei_autor_for_semantic_author(semantic_content)
+            semantic_authors.append(semantic_content)
+            tei_author = _get_tei_author_for_semantic_author(
+                semantic_content,
+                affiliations_by_marker=affiliations_by_marker
+            )
             tei_document.get_or_create_element_at(
                 ['teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic']
             ).append(tei_author.element)
+    orphan_affiliations = get_orphan_affiliations(
+        affiliations_by_marker=affiliations_by_marker,
+        authors=semantic_authors
+    )
+    if orphan_affiliations:
+        dummy_tei_author = _get_dummy_tei_author_for_semantic_affiliations(orphan_affiliations)
+        tei_document.get_or_create_element_at(
+            ['teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic']
+        ).append(dummy_tei_author.element)
 
     for semantic_content in semantic_document.body_section:
         if isinstance(semantic_content, SemanticSection):

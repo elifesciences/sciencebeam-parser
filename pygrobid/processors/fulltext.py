@@ -1,13 +1,15 @@
 import logging
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult
 
 from pygrobid.document.semantic_document import (
     SemanticContentWrapper,
     SemanticDocument,
+    SemanticRawAddress,
+    SemanticRawAffiliation,
     SemanticRawAuthors,
     SemanticSection,
     SemanticSectionTypes
@@ -17,6 +19,7 @@ from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
 from pygrobid.models.name.model import NameModel
+from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.fulltext.model import FullTextModel
 
 
@@ -28,6 +31,7 @@ class FullTextModels:
     segmentation_model: SegmentationModel
     header_model: HeaderModel
     name_header_model: NameModel
+    affiliation_address_model: AffiliationAddressModel
     fulltext_model: FullTextModel
 
 
@@ -36,11 +40,15 @@ def load_models(app_config: AppConfig) -> FullTextModels:
     segmentation_model = SegmentationModel(models_config['segmentation']['path'])
     header_model = HeaderModel(models_config['header']['path'])
     name_header_model = NameModel(models_config['name-header']['path'])
+    affiliation_address_model = AffiliationAddressModel(
+        models_config['affiliation-address']['path']
+    )
     fulltext_model = FullTextModel(models_config['fulltext']['path'])
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,
         name_header_model=name_header_model,
+        affiliation_address_model=affiliation_address_model,
         fulltext_model=fulltext_model
     )
 
@@ -59,6 +67,10 @@ class FullTextProcessor:
     @property
     def header_model(self) -> HeaderModel:
         return self.fulltext_models.header_model
+
+    @property
+    def affiliation_address_model(self) -> AffiliationAddressModel:
+        return self.fulltext_models.affiliation_address_model
 
     @property
     def name_header_model(self) -> NameModel:
@@ -92,6 +104,7 @@ class FullTextProcessor:
                 document, entity_blocks
             )
             self._process_raw_authors(document)
+            self._process_raw_affiliations(document)
 
         self._update_semantic_section_using_segmentation_result_and_fulltext_model(
             document.body_section,
@@ -138,6 +151,39 @@ class FullTextProcessor:
             )
             for author in authors_iterable:
                 result_content.append(author)
+        semantic_document.front.mixed_content = result_content
+
+    def _process_raw_affiliations(self, semantic_document: SemanticDocument):
+        result_content: List[SemanticContentWrapper] = []
+        raw_aff_address_list: List[Union[SemanticRawAffiliation, SemanticRawAddress]] = []
+        for semantic_content in semantic_document.front:
+            if isinstance(semantic_content, SemanticRawAffiliation):
+                raw_aff_address_list.append(semantic_content)
+                continue
+            if isinstance(semantic_content, SemanticRawAddress):
+                raw_aff_address_list.append(semantic_content)
+                continue
+            result_content.append(semantic_content)
+        if raw_aff_address_list:
+            raw_aff_layout_document = LayoutDocument.for_blocks([
+                block
+                for raw_aff_or_address in raw_aff_address_list
+                for block in raw_aff_or_address.iter_blocks()
+            ])
+            labeled_layout_tokens = (
+                self.affiliation_address_model
+                .predict_labels_for_layout_document(
+                    raw_aff_layout_document
+                )
+            )
+            LOGGER.debug('labeled_layout_tokens (author): %r', labeled_layout_tokens)
+            aff_iterable = (
+                self.affiliation_address_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )
+            for aff in aff_iterable:
+                result_content.append(aff)
         semantic_document.front.mixed_content = result_content
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(

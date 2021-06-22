@@ -60,7 +60,7 @@ class NameSemanticExtractor(ModelSemanticExtractor):
                     continue
                 if len(seen_entity_tokens) >= 2 and seen_author_labels and not has_tail_marker:
                     previous_layout_block = seen_entity_tokens[-2][1]
-                    if previous_layout_block.text.strip() == ',':
+                    if previous_layout_block.text.strip().endswith(','):
                         LOGGER.debug(
                             'new author marker after comma, seen_author_labels=%s',
                             seen_author_labels

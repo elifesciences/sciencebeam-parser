@@ -52,13 +52,29 @@ class LayoutDocumentLabelResult:
                 layout_model_label
             )
 
-    def get_filtered_document_by_label(self, label: str):  # pylint: disable=too-many-branches
+    def get_layout_document_labels_by_labels(self, labels: List[str]) -> List[LayoutModelLabel]:
+        if not labels:
+            return []
+        if len(labels) == 1:
+            return self.layout_document_labels_by_label.get(labels[0], [])
+        result: List[LayoutModelLabel] = []
+        for label in labels:
+            result.extend(self.layout_document_labels_by_label.get(label, []))
+        return result
+
+    def get_filtered_document_by_label(self, label: str) -> LayoutDocument:
+        return self.get_filtered_document_by_labels([label])
+
+    def get_filtered_document_by_labels(
+        self,
+        labels: List[str]
+    ):  # pylint: disable=too-many-branches
         layout_document = LayoutDocument(pages=[])
-        layout_document_labels = self.layout_document_labels_by_label.get(label)
+        layout_document_labels = self.get_layout_document_labels_by_labels(labels)
         if not layout_document_labels:
             LOGGER.warning(
                 'no layout_lines_to_include found for: %r, available keys=%r',
-                label, self.layout_document_labels_by_label.keys()
+                labels, self.layout_document_labels_by_label.keys()
             )
             return layout_document
         layout_token_ids_to_include = {

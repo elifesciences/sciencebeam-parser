@@ -110,16 +110,13 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
     def get_text_list(self) -> List[str]:
         return [content.get_text() for content in self.mixed_content]
 
+    def get_text_by_type(self, type_: Type[T_SemanticContentWrapper]) -> str:
+        return self.view_by_type(type_).get_text()
+
 
 @dataclass
 class SemanticNote(SemanticSimpleContentWrapper):
     note_type: str = 'other'
-
-
-@dataclass
-class SemanticMeta:
-    title: SemanticMixedContentWrapper = field(default_factory=SemanticMixedContentWrapper)
-    abstract: SemanticMixedContentWrapper = field(default_factory=SemanticMixedContentWrapper)
 
 
 class SemanticHeading(SemanticSimpleContentWrapper):
@@ -139,7 +136,23 @@ class SemanticLabel(SemanticSimpleContentWrapper):
     pass
 
 
+class SemanticTitle(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticAbstract(SemanticSimpleContentWrapper):
+    pass
+
+
 class SemanticRawAuthors(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawAffiliation(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawAddress(SemanticMixedContentWrapper):
     pass
 
 
@@ -179,6 +192,50 @@ class SemanticAuthor(SemanticMixedContentWrapper):
     @property
     def surname_text(self) -> str:
         return self.view_by_type(SemanticSurname).get_text()
+
+
+class SemanticInstitution(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticDepartment(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticLaboratory(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticAddressField(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticAddressLine(SemanticAddressField):
+    pass
+
+
+class SemanticPostCode(SemanticAddressField):
+    pass
+
+
+class SemanticPostBox(SemanticAddressField):
+    pass
+
+
+class SemanticRegion(SemanticAddressField):
+    pass
+
+
+class SemanticSettlement(SemanticAddressField):
+    pass
+
+
+class SemanticCountry(SemanticAddressField):
+    pass
+
+
+class SemanticAffiliationAddress(SemanticMixedContentWrapper):
+    affiliation_id: str = ''
 
 
 class SemanticFront(SemanticMixedContentWrapper):
@@ -262,7 +319,6 @@ class SemanticSection(SemanticMixedContentWrapper):
 
 @dataclass
 class SemanticDocument:
-    meta: SemanticMeta = field(default_factory=SemanticMeta)
     front: SemanticFront = field(default_factory=SemanticFront)
     body_section: SemanticSection = field(default_factory=SemanticSection)
     back_section: SemanticSection = field(default_factory=SemanticSection)

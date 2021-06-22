@@ -11,6 +11,7 @@ from pygrobid.models.model import LayoutDocumentLabelResult, LayoutModelLabel
 
 TAG_1 = 'tag1'
 TAG_2 = 'tag2'
+TAG_3 = 'tag3'
 
 
 class TestLayoutDocumentLabelResult:
@@ -78,3 +79,40 @@ class TestLayoutDocumentLabelResult:
                     .iter_all_tokens()
                 ) == join_layout_tokens(tokens)
             )
+
+    def test_should_filter_by_token_multiple_labels(self):
+        tagged_tokens = [
+            (TAG_1, get_layout_tokens_for_text('tokens tag 1')),
+            (TAG_2, get_layout_tokens_for_text('tokens tag 2')),
+            (TAG_3, get_layout_tokens_for_text('tokens tag 3'))
+        ]
+        line = LayoutLine([
+            token
+            for _, tokens in tagged_tokens
+            for token in tokens
+        ])
+        layout_model_labels = [
+            LayoutModelLabel(
+                label=tag,
+                label_token_text=token.text,
+                layout_line=line,
+                layout_token=token
+            )
+            for tag, tokens in tagged_tokens
+            for token in tokens
+        ]
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            LayoutBlock(lines=[line])
+        ])])
+        layout_document_label_result = LayoutDocumentLabelResult(
+            layout_document,
+            layout_model_labels
+        )
+        assert join_layout_tokens(
+            layout_document_label_result.get_filtered_document_by_labels(
+                [TAG_1, TAG_3]
+            )
+            .iter_all_tokens()
+        ) == join_layout_tokens(
+            tagged_tokens[0][1] + tagged_tokens[2][1]
+        )

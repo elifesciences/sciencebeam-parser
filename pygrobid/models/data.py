@@ -198,6 +198,31 @@ def get_punctuation_profile_feature(text: str) -> str:
     return result
 
 
+def get_char_shape_feature(ch: str) -> str:
+    if ch.isdigit():
+        return 'd'
+    if ch.isalpha():
+        if ch.isupper():
+            return 'X'
+        return 'x'
+    return ch
+
+
+def get_word_shape_feature(text: str) -> str:
+    shape = [
+        get_char_shape_feature(ch)
+        for ch in text
+    ]
+    prefix = shape[:1]
+    middle = shape[1:-2]
+    suffix = shape[1:][-2:]
+    middle_without_consequitive_duplicates = middle[:1].copy()
+    for ch in middle[1:]:
+        if ch != middle_without_consequitive_duplicates[-1]:
+            middle_without_consequitive_duplicates.append(ch)
+    return ''.join(prefix + middle_without_consequitive_duplicates + suffix)
+
+
 def get_str_bool_feature_value(value: bool) -> str:
     return '1' if value else '0'
 
@@ -221,6 +246,12 @@ class CommonLayoutTokenFeatures(ABC):
     def get_punctuation_profile(self) -> str:
         return get_punctuation_profile_feature(self.token_text)
 
+    def get_word_shape_feature(self) -> str:
+        return get_word_shape_feature(self.token_text)
+
+    def get_dummy_str_is_proper_name(self) -> str:
+        return '0'
+
     def get_dummy_str_is_common_name(self) -> str:
         return '0'
 
@@ -234,6 +265,12 @@ class CommonLayoutTokenFeatures(ABC):
         return '0'
 
     def get_dummy_str_is_known_suffix(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_location_name(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_country_name(self) -> str:
         return '0'
 
     def get_dummy_label(self) -> str:

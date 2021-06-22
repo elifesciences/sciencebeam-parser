@@ -8,19 +8,33 @@ from pygrobid.document.layout_document import (
     LayoutFont
 )
 from pygrobid.document.semantic_document import (
+    SemanticAbstract,
+    SemanticAddressLine,
+    SemanticAffiliationAddress,
+    SemanticCountry,
+    SemanticDepartment,
     SemanticDocument,
     SemanticAuthor,
     SemanticGivenName,
+    SemanticInstitution,
+    SemanticLaboratory,
+    SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
     SemanticNameTitle,
+    SemanticPostBox,
+    SemanticPostCode,
+    SemanticRegion,
     SemanticSectionTypes,
-    SemanticSurname
+    SemanticSettlement,
+    SemanticSurname,
+    SemanticTitle
 )
 from pygrobid.document.tei_document import (
     get_text_content,
     get_tei_xpath_text_content_list,
     iter_layout_block_tei_children,
+    _get_tei_affiliation_for_semantic_affiliation_address,
     get_tei_for_semantic_document,
     TeiDocument,
     TEI_E,
@@ -156,6 +170,52 @@ class TestTeiDocument:
         assert document.get_title() == 'rend italic1 test'
 
 
+class TestGetTeiAffiliationForSemanticAffiliationAddress:
+    def test_should_add_all_fields(self):
+        semantic_affiliation_address = SemanticAffiliationAddress([
+            SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1')),
+            SemanticDepartment(layout_block=LayoutBlock.for_text('Department1')),
+            SemanticLaboratory(layout_block=LayoutBlock.for_text('Lab1')),
+            SemanticAddressLine(layout_block=LayoutBlock.for_text('AddressLine1')),
+            SemanticPostCode(layout_block=LayoutBlock.for_text('PostCode1')),
+            SemanticPostBox(layout_block=LayoutBlock.for_text('PostBox1')),
+            SemanticRegion(layout_block=LayoutBlock.for_text('Region1')),
+            SemanticSettlement(layout_block=LayoutBlock.for_text('Settlement1')),
+            SemanticCountry(layout_block=LayoutBlock.for_text('Country1')),
+        ])
+        tei_aff = _get_tei_affiliation_for_semantic_affiliation_address(
+            semantic_affiliation_address
+        )
+        LOGGER.debug('tei_aff: %r', etree.tostring(tei_aff.element))
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:orgName[@type="institution"]'
+        ) == ['Institution1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:orgName[@type="department"]'
+        ) == ['Department1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:orgName[@type="laboratory"]'
+        ) == ['Lab1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:addrLine'
+        ) == ['AddressLine1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:postCode'
+        ) == ['PostCode1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:postBox'
+        ) == ['PostBox1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:region'
+        ) == ['Region1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:settlement'
+        ) == ['Settlement1']
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:address/tei:country'
+        ) == ['Country1']
+
+
 class TestGetTeiForSemanticDocument:
     def test_should_return_empty_document(self):
         semantic_document = SemanticDocument()
@@ -164,7 +224,9 @@ class TestGetTeiForSemanticDocument:
 
     def test_should_set_manuscript_title(self):
         semantic_document = SemanticDocument()
-        semantic_document.meta.title.add_block_content(LayoutBlock.for_text(TOKEN_1))
+        semantic_document.front.add_content(
+            SemanticTitle(layout_block=LayoutBlock.for_text(TOKEN_1))
+        )
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
         assert tei_document.get_xpath_text_content_list(
@@ -173,7 +235,9 @@ class TestGetTeiForSemanticDocument:
 
     def test_should_set_abstract(self):
         semantic_document = SemanticDocument()
-        semantic_document.meta.abstract.add_block_content(LayoutBlock.for_text(TOKEN_1))
+        semantic_document.front.add_content(
+            SemanticAbstract(LayoutBlock.for_text(TOKEN_1))
+        )
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
         assert tei_document.get_xpath_text_content_list(
@@ -206,6 +270,70 @@ class TestGetTeiForSemanticDocument:
         assert tei_document.get_xpath_text_content_list(
             '//tei:author//tei:genName'
         ) == ['Suffix1']
+
+    def test_should_add_single_author_with_affiliation(self):
+        semantic_document = SemanticDocument()
+        title = SemanticNameTitle(layout_block=LayoutBlock.for_text('Title1'))
+        given_name = SemanticGivenName(layout_block=LayoutBlock.for_text('Given1'))
+        middle_name = SemanticMiddleName(layout_block=LayoutBlock.for_text('Middle1'))
+        surname = SemanticSurname(layout_block=LayoutBlock.for_text('Surname1'))
+        suffix = SemanticNameSuffix(layout_block=LayoutBlock.for_text('Suffix1'))
+        author_marker = SemanticMarker(layout_block=LayoutBlock.for_text('1'))
+        author = SemanticAuthor([title, given_name, middle_name, surname, suffix, author_marker])
+        aff_marker = SemanticMarker(layout_block=LayoutBlock.for_text('1'))
+        institution = SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1'))
+        aff = SemanticAffiliationAddress([aff_marker, institution])
+        aff.affiliation_id = 'aff0'
+        semantic_document.front.add_content(author)
+        semantic_document.front.add_content(aff)
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:roleName'
+        ) == ['Title1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:forename[@type="first"]'
+        ) == ['Given1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:forename[@type="middle"]'
+        ) == ['Middle1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:surname'
+        ) == ['Surname1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:genName'
+        ) == ['Suffix1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/tei:note[@type="raw_affiliation"]'
+        ) == [aff.get_text()]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/tei:note[@type="raw_affiliation"]/tei:label'
+        ) == [aff_marker.get_text()]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/@key'
+        ) == ['aff0']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/tei:orgName[@type="institution"]'
+        ) == [institution.get_text()]
+
+    def test_should_add_orphan_affiliation(self):
+        semantic_document = SemanticDocument()
+        aff_marker = SemanticMarker(layout_block=LayoutBlock.for_text('1'))
+        institution = SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1'))
+        aff = SemanticAffiliationAddress([aff_marker, institution])
+        aff.affiliation_id = 'aff0'
+        semantic_document.front.add_content(aff)
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/tei:note[@type="raw_affiliation"]'
+        ) == [aff.get_text()]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/tei:note[@type="raw_affiliation"]/tei:label'
+        ) == [aff_marker.get_text()]
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author/tei:affiliation/@key'
+        ) == ['aff0']
 
     def test_should_create_body_section(self):
         semantic_document = SemanticDocument()

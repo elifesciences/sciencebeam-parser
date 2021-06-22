@@ -1,12 +1,18 @@
-from pygrobid.document.semantic_document import SemanticDocument
+from pygrobid.document.semantic_document import (
+    SemanticAbstract,
+    SemanticFront,
+    SemanticRawAddress,
+    SemanticRawAffiliation,
+    SemanticTitle
+)
 from pygrobid.document.layout_document import (
     LOGGER,
     LayoutBlock,
     join_layout_tokens
 )
 
-from pygrobid.models.header.model import (
-    HeaderModel,
+from pygrobid.models.header.extract import (
+    HeaderSemanticExtractor,
     get_cleaned_abstract_text,
     get_cleaned_abstract_layout_block
 )
@@ -16,6 +22,8 @@ TITLE_1 = 'the title 1'
 ABSTRACT_1 = 'the abstract 1'
 AUTHOR_1 = 'Author 1'
 AUTHOR_2 = 'Author 2'
+AFFILIATION_1 = 'Affiliation 1'
+ADDRESS_1 = 'Address 1'
 
 
 class TestGetCleanedAbstractText:
@@ -73,46 +81,52 @@ class TestGetCleanedAbstractLayoutBlock:
         assert join_layout_tokens(cleaned_layout_block.lines[0].tokens) == ABSTRACT_1
 
 
-class TestHeaderModel:
+class TestHeaderSemanticExtractor:
     def test_should_set_title_and_abstract(self):
-        document = SemanticDocument()
-        header_model = HeaderModel('dummy-path')
-        header_model.update_semantic_document_with_entity_blocks(
-            document,
-            [
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<title>', LayoutBlock.for_text(TITLE_1)),
                 ('<abstract>', LayoutBlock.for_text(ABSTRACT_1))
-            ]
+            ])
         )
-        LOGGER.debug('document: %s', document)
-        assert document.meta.title.get_text() == TITLE_1
-        assert document.meta.abstract.get_text() == ABSTRACT_1
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        assert front.get_text_by_type(SemanticTitle) == TITLE_1
+        assert front.get_text_by_type(SemanticAbstract) == ABSTRACT_1
 
     def test_should_ignore_additional_title_and_abstract(self):
         # Note: this behaviour should be reviewed
-        document = SemanticDocument()
-        header_model = HeaderModel('dummy-path')
-        header_model.update_semantic_document_with_entity_blocks(
-            document,
-            [
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<title>', LayoutBlock.for_text(TITLE_1)),
                 ('<abstract>', LayoutBlock.for_text(ABSTRACT_1)),
                 ('<title>', LayoutBlock.for_text('other')),
                 ('<abstract>', LayoutBlock.for_text('other'))
-            ]
+            ])
         )
-        LOGGER.debug('document: %s', document)
-        assert document.meta.title.get_text() == TITLE_1
-        assert document.meta.abstract.get_text() == ABSTRACT_1
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        assert front.get_text_by_type(SemanticTitle) == TITLE_1
+        assert front.get_text_by_type(SemanticAbstract) == ABSTRACT_1
 
-    def test_should_add_authors(self):
-        document = SemanticDocument()
-        header_model = HeaderModel('dummy-path')
-        header_model.update_semantic_document_with_entity_blocks(
-            document,
-            [
+    def test_should_add_raw_authors(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<author>', LayoutBlock.for_text(AUTHOR_1))
-            ]
+            ])
         )
-        LOGGER.debug('document: %s', document)
-        assert document.front.get_raw_authors_text() == AUTHOR_1
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        assert front.get_raw_authors_text() == AUTHOR_1
+
+    def test_should_add_raw_affiliation_address(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
+                ('<address>', LayoutBlock.for_text(ADDRESS_1))
+            ])
+        )
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        assert front.get_text_by_type(SemanticRawAffiliation) == AFFILIATION_1
+        assert front.get_text_by_type(SemanticRawAddress) == ADDRESS_1

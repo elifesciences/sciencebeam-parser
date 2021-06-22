@@ -9,7 +9,8 @@ from pygrobid.models.data import (
     get_token_font_size_feature,
     get_digit_feature,
     get_capitalisation_feature,
-    get_punctuation_profile_feature
+    get_punctuation_profile_feature,
+    get_word_shape_feature
 )
 
 
@@ -189,3 +190,29 @@ class TestGetPunctuationProfileFeature:
 
     def test_should_return_nopunct(self):
         assert get_punctuation_profile_feature('abc') == 'NOPUNCT'
+
+
+class TestGetWordShapeFeature:
+    def test_should_return_blank_if_input_is_blank(self):
+        # Note: this shouldn't really happen as we don't use whitespace tokens
+        assert get_word_shape_feature(' ') == ' '
+
+    def test_should_return_capitalisation(self):
+        # copied test cases from:
+        # https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/test/java/org/grobid/core/utilities/TextUtilitiesTest.java#L210-L228
+        assert get_word_shape_feature('This') == 'Xxxx'
+        assert get_word_shape_feature('Equals') == 'Xxxx'
+        assert get_word_shape_feature("O'Conor") == "X'Xxxx"
+        assert get_word_shape_feature('McDonalds') == 'XxXxxx'
+        assert get_word_shape_feature('any-where') == 'xx-xxx'
+        assert get_word_shape_feature('1.First') == 'd.Xxxx'
+        assert get_word_shape_feature('ThisIsCamelCase') == 'XxXxXxXxxx'
+        assert get_word_shape_feature('This:happens') == 'Xx:xxx'
+        assert get_word_shape_feature('ABC') == 'XXX'
+        assert get_word_shape_feature('AC') == 'XX'
+        assert get_word_shape_feature('A') == 'X'
+        assert get_word_shape_feature('AbA') == 'XxX'
+        assert get_word_shape_feature('uü') == 'xx'
+        assert get_word_shape_feature('Üwe') == 'Xxx'
+        assert get_word_shape_feature('Tes9t99') == 'Xxdxdd'
+        assert get_word_shape_feature('T') == 'X'

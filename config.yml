@@ -42,5 +42,7 @@ models:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-header-biorxiv-no-word-embedding.tar.gz'
   name-header:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-21-grobid-0.6.1-name-header-no-word-embedding-no-layout-features-e800.tar.gz'
+  affiliation-address:
+    path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-affiliation-address-biorxiv-no-word-embedding.tar.gz'
   fulltext:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/biorxiv-grobid/2021-05-11-delft-grobid-fulltext-biorxiv-10k-auto-v0.0.21-train-1986-e159.tar.gz'

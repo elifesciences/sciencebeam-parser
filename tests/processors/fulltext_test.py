@@ -5,11 +5,20 @@ from unittest.mock import MagicMock
 import pytest
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
-from pygrobid.document.semantic_document import SemanticAuthor, SemanticSectionTypes
+from pygrobid.document.semantic_document import (
+    SemanticAffiliationAddress,
+    SemanticAuthor,
+    SemanticCountry,
+    SemanticInstitution,
+    SemanticMarker,
+    SemanticSectionTypes,
+    SemanticTitle
+)
 from pygrobid.models.delft_model import DelftModel, LabeledLayoutToken
 from pygrobid.models.model import LayoutModelLabel
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
+from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.name.model import NameModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.processors.fulltext import (
@@ -116,11 +125,15 @@ class MockFullTextModels(FullTextModels):
             segmentation_model=SegmentationModel('dummy-segmentation-model'),
             header_model=HeaderModel('dummy-header-model'),
             name_header_model=NameModel('dummy-name-header-model'),
+            affiliation_address_model=AffiliationAddressModel('dummy-affiliation-address-model'),
             fulltext_model=FullTextModel('dummy-fulltext-model')
         )
         self.segmentation_model_mock = MockDelftModelWrapper(self.segmentation_model)
         self.header_model_mock = MockDelftModelWrapper(self.header_model)
         self.name_header_model_mock = MockDelftModelWrapper(self.name_header_model)
+        self.affiliation_address_model_mock = MockDelftModelWrapper(
+            self.affiliation_address_model
+        )
         self.fulltext_model_mock = MockDelftModelWrapper(self.fulltext_model)
 
 
@@ -206,7 +219,8 @@ class TestFullTextProcessor:
             layout_document=layout_document
         )
         assert semantic_document is not None
-        assert semantic_document.meta.title.get_text() == header_block.text
+        assert semantic_document.front.get_text() == header_block.text
+        assert semantic_document.front.get_text_by_type(SemanticTitle) == header_block.text
         assert semantic_document.body_section.get_text() == body_block.text
         assert semantic_document.back_section.view_by_section_type(
             SemanticSectionTypes.OTHER
@@ -333,3 +347,59 @@ class TestFullTextProcessor:
         assert len(authors) == 1
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
+
+    def test_should_extract_affiliation_address_from_document(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        marker_block = LayoutBlock.for_text('1')
+        institution_block = LayoutBlock.for_text('Institution1')
+        country_block = LayoutBlock.for_text('Country1')
+        aff_block = LayoutBlock.merge_blocks([marker_block, institution_block])
+        address_block = LayoutBlock.merge_blocks([country_block])
+        aff_address_block = LayoutBlock.merge_blocks([aff_block, address_block])
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        header_block = aff_address_block
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        header_model_mock = fulltext_models_mock.header_model_mock
+        affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            header_block, '<header>'
+        )
+
+        header_model_mock.update_label_by_layout_block(
+            aff_block, '<affiliation>'
+        )
+        header_model_mock.update_label_by_layout_block(
+            address_block, '<address>'
+        )
+
+        affiliation_address_model_mock.update_label_by_layout_block(
+            marker_block, '<marker>'
+        )
+        affiliation_address_model_mock.update_label_by_layout_block(
+            institution_block, '<institution>'
+        )
+        affiliation_address_model_mock.update_label_by_layout_block(
+            country_block, '<country>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            header_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        assert semantic_document is not None
+        assert semantic_document.front.get_text() == aff_address_block.text
+        assert (
+            semantic_document.front
+            .view_by_type(SemanticAffiliationAddress).get_text()
+        ) == aff_address_block.text
+        affiliations = list(semantic_document.front.iter_by_type(SemanticAffiliationAddress))
+        assert len(affiliations) == 1
+        assert affiliations[0].get_text_by_type(SemanticMarker) == marker_block.text
+        assert affiliations[0].get_text_by_type(SemanticInstitution) == institution_block.text
+        assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
+        assert affiliations[0].affiliation_id == 'aff0'
