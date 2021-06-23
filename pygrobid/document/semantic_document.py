@@ -238,6 +238,14 @@ class SemanticAffiliationAddress(SemanticMixedContentWrapper):
     affiliation_id: str = ''
 
 
+class SemanticRawReferenceText(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawReference(SemanticMixedContentWrapper):
+    reference_id: str = ''
+
+
 class SemanticFront(SemanticMixedContentWrapper):
     @property
     def authors(self) -> List[SemanticAuthor]:

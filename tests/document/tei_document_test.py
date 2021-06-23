@@ -24,6 +24,8 @@ from pygrobid.document.semantic_document import (
     SemanticNameTitle,
     SemanticPostBox,
     SemanticPostCode,
+    SemanticRawReference,
+    SemanticRawReferenceText,
     SemanticRegion,
     SemanticSectionTypes,
     SemanticSettlement,
@@ -409,3 +411,17 @@ class TestGetTeiForSemanticDocument:
         assert tei_document.get_xpath_text_content_list(
             '//tei:back/tei:div[@type="annex"]/tei:note[@type="other"]'
         ) == [TOKEN_1]
+
+    def test_should_add_raw_references(self):
+        semantic_document = SemanticDocument()
+        semantic_document.back_section.add_content(
+            SemanticRawReference([
+                SemanticRawReferenceText(layout_block=LayoutBlock.for_text('Reference 1'))
+            ])
+        )
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="references"]/tei:listBibl'
+            '/tei:biblStruct/tei:note[@type="raw_reference"]'
+        ) == ['Reference 1']

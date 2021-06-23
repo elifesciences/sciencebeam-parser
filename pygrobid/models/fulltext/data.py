@@ -9,7 +9,7 @@ from pygrobid.models.data import (
     get_token_font_size_feature,
     get_digit_feature,
     get_capitalisation_feature,
-    get_punctuation_profile_feature
+    get_punctuation_type_feature
 )
 
 
@@ -60,7 +60,7 @@ class FullTextDataGenerator(ModelDataGenerator):
                         capitalisation_status = 'NOCAPS'
                     is_single_char = len(token_text) == 1
                     # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
-                    punct_type = get_punctuation_profile_feature(token_text)
+                    punct_type = get_punctuation_type_feature(token_text)
                     relative_document_position = 0
                     relative_page_position = 0
                     is_bitmap_around = False

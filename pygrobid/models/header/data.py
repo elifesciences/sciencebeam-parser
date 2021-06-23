@@ -41,7 +41,7 @@ class HeaderDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
             token_features.get_dummy_str_is_location_name(),
             token_features.get_dummy_str_is_email(),
             token_features.get_dummy_str_is_http(),
-            token_features.get_punctuation_profile(),
+            token_features.get_punctuation_type_feature(),
             token_features.get_str_is_largest_font_size(),
             token_features.get_str_is_smallest_font_size(),
             token_features.get_str_is_larger_than_average_font_size(),

@@ -21,6 +21,7 @@ from pygrobid.models.header.model import HeaderModel
 from pygrobid.models.name.model import NameModel
 from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.fulltext.model import FullTextModel
+from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class FullTextModels:
     name_header_model: NameModel
     affiliation_address_model: AffiliationAddressModel
     fulltext_model: FullTextModel
+    reference_segmenter_model: ReferenceSegmenterModel
 
 
 def load_models(app_config: AppConfig) -> FullTextModels:
@@ -44,12 +46,16 @@ def load_models(app_config: AppConfig) -> FullTextModels:
         models_config['affiliation-address']['path']
     )
     fulltext_model = FullTextModel(models_config['fulltext']['path'])
+    reference_segmenter_model = ReferenceSegmenterModel(
+        models_config['reference-segmenter']['path']
+    )
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,
         name_header_model=name_header_model,
         affiliation_address_model=affiliation_address_model,
-        fulltext_model=fulltext_model
+        fulltext_model=fulltext_model,
+        reference_segmenter_model=reference_segmenter_model
     )
 
 
@@ -79,6 +85,10 @@ class FullTextProcessor:
     @property
     def fulltext_model(self) -> FullTextModel:
         return self.fulltext_models.fulltext_model
+
+    @property
+    def reference_segmenter_model(self) -> ReferenceSegmenterModel:
+        return self.fulltext_models.reference_segmenter_model
 
     def get_semantic_document_for_layout_document(
         self,
@@ -123,6 +133,10 @@ class FullTextProcessor:
             segmentation_label_result,
             '<annex>',
             SemanticSectionTypes.OTHER
+        )
+        self._process_raw_references_segmentation(
+            semantic_document=document,
+            segmentation_label_result=segmentation_label_result
         )
         return document
 
@@ -185,6 +199,28 @@ class FullTextProcessor:
             for aff in aff_iterable:
                 result_content.append(aff)
         semantic_document.front.mixed_content = result_content
+
+    def _process_raw_references_segmentation(
+        self,
+        semantic_document: SemanticDocument,
+        segmentation_label_result: LayoutDocumentLabelResult
+    ):
+        references_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<references>'
+        ).remove_empty_blocks()
+        LOGGER.debug('references_layout_document: %s', references_layout_document)
+        if not references_layout_document:
+            return
+        labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
+            references_layout_document
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_content_iterable = (
+            self.reference_segmenter_model
+            .iter_semantic_content_for_labeled_layout_tokens(labeled_layout_tokens)
+        )
+        for semantic_content in semantic_content_iterable:
+            semantic_document.back_section.add_content(semantic_content)
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,

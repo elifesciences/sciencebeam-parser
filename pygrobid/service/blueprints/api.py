@@ -203,10 +203,13 @@ class ModelNestedBluePrint:
                 response_content = '\n'.join(data_lines) + '\n'
             else:
                 texts, features = load_data_crf_lines(data_lines)
-                texts = texts.tolist()
-                tag_result = self.model.predict_labels(
-                    texts=texts, features=features, output_format=None
-                )
+                if not len(texts):  # pylint: disable=len-as-condition
+                    tag_result = []
+                else:
+                    texts = texts.tolist()
+                    tag_result = self.model.predict_labels(
+                        texts=texts, features=features, output_format=None
+                    )
                 LOGGER.debug('tag_result: %s', tag_result)
                 formatted_tag_result_iterable = iter_format_tag_result(
                     tag_result,
@@ -241,12 +244,19 @@ class SegmentedModelNestedBluePrint(ModelNestedBluePrint):
                 layout_document
             )
         )
-        return segmentation_label_result.get_filtered_document_by_label(
+        layout_document = segmentation_label_result.get_filtered_document_by_label(
             segmentation_label
         ).remove_empty_blocks()
+        if not layout_document:
+            LOGGER.info(
+                'empty document for segmentation label %r, available labels: %r',
+                self.segmentation_label,
+                segmentation_label_result.get_available_labels()
+            )
+        return layout_document
 
     def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
-        if not get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False):
+        if get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False):
             return layout_document
         return self.filter_layout_document_by_segmentation_label(
             layout_document, segmentation_label=self.segmentation_label
@@ -337,6 +347,13 @@ class ApiBlueprint(Blueprint):
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_label='<body>'
         ).add_routes(self, '/models/fulltext')
+        SegmentedModelNestedBluePrint(
+            'Reference Segmenter',
+            model=fulltext_models.reference_segmenter_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_label='<references>'
+        ).add_routes(self, '/models/reference-segmenter')
 
     def api_root(self):
         return jsonify({

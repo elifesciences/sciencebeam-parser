@@ -2,7 +2,7 @@ import math
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from lxml import etree
 
@@ -133,6 +133,11 @@ PUNCTUATION_PROFILE_MAP = {
 IS_PUNCT_PATTERN = r"^[\,\:;\?\.]+$"
 
 
+PUNCTUATION_PROFILE_CHARACTERS = (
+    "(（[ •*,:;?.!/)）-−–‐«»„\"“”‘’'`$#@]*\u2666\u2665\u2663\u2660\u00A0"
+)
+
+
 def get_line_status(token_index: int, token_count: int) -> str:
     return (
         'LINEEND' if token_index == token_count - 1
@@ -205,13 +210,31 @@ class LineIndentationStatusFeature:
         return self._is_indented
 
 
-def get_punctuation_profile_feature(text: str) -> str:
+def get_punctuation_type_feature(text: str) -> str:
     result = PUNCTUATION_PROFILE_MAP.get(text)
     if not result and re.match(IS_PUNCT_PATTERN, text):
         return PunctuationProfileValues.PUNCT
     if not result:
         return PunctuationProfileValues.NOPUNCT
     return result
+
+
+def get_punctuation_profile_feature(text: str) -> str:
+    if not text:
+        return ''
+    return ''.join((
+        c
+        for c in text
+        if not c.isspace() and c in PUNCTUATION_PROFILE_CHARACTERS
+    ))
+
+
+def get_punctuation_profile_length_for_punctuation_profile_feature(
+    punctuation_profile: str
+) -> str:
+    if not punctuation_profile:
+        return 'no'
+    return str(min(10, len(punctuation_profile)))
 
 
 def get_char_shape_feature(ch: str) -> str:
@@ -243,10 +266,19 @@ def get_str_bool_feature_value(value: Optional[bool]) -> str:
     return '1' if value else '0'
 
 
-class CommonLayoutTokenFeatures(ABC):
+class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
     def __init__(self, layout_token: LayoutToken) -> None:
         self.layout_token = layout_token
         self.token_text = layout_token.text or ''
+
+    def get_lower_token_text(self) -> str:
+        return self.token_text.lower()
+
+    def get_prefix(self, n: int) -> str:
+        return self.token_text[:n]
+
+    def get_suffix(self, n: int) -> str:
+        return self.token_text[-n:]
 
     def get_str_is_bold(self) -> str:
         return get_str_bool_feature_value(self.layout_token.font.is_bold)
@@ -265,8 +297,8 @@ class CommonLayoutTokenFeatures(ABC):
             return 'NOCAPS'
         return get_capitalisation_feature(self.token_text)
 
-    def get_punctuation_profile(self) -> str:
-        return get_punctuation_profile_feature(self.token_text)
+    def get_punctuation_type_feature(self) -> str:
+        return get_punctuation_type_feature(self.token_text)
 
     def get_word_shape_feature(self) -> str:
         return get_word_shape_feature(self.token_text)
@@ -311,6 +343,9 @@ class CommonLayoutTokenFeatures(ABC):
         return '0'
 
 
+_LINESCALE = 10
+
+
 class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
     def __init__(
         self,
@@ -321,6 +356,9 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
         token_count: int,
         line_index: int,
         line_count: int,
+        concatenated_line_tokens_text: str,
+        max_concatenated_line_tokens_length: int,
+        line_token_position: int,
         relative_font_size_feature: RelativeFontSizeFeature,
         line_indentation_status_feature: LineIndentationStatusFeature
     ) -> None:
@@ -331,8 +369,18 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
         self.token_count = token_count
         self.line_index = line_index
         self.line_count = line_count
+        self.concatenated_line_tokens_text = concatenated_line_tokens_text
+        self.max_concatenated_line_tokens_length = max_concatenated_line_tokens_length
+        self.line_token_position = line_token_position
         self.relative_font_size_feature = relative_font_size_feature
         self.line_indentation_status_feature = line_indentation_status_feature
+
+    def get_layout_model_data(self, features: List[str]) -> LayoutModelData:
+        return LayoutModelData(
+            layout_line=self.layout_line,
+            layout_token=self.layout_token,
+            data_line=' '.join(features)
+        )
 
     def get_line_status(self) -> str:
         return get_line_status(token_index=self.token_index, token_count=self.token_count)
@@ -380,6 +428,28 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
             )
         )
 
+    def get_line_punctuation_profile(self) -> str:
+        return get_punctuation_profile_feature(self.concatenated_line_tokens_text)
+
+    def get_line_punctuation_profile_length_feature(self) -> str:
+        return get_punctuation_profile_length_for_punctuation_profile_feature(
+            self.get_line_punctuation_profile()
+        )
+
+    def get_str_line_token_relative_position(self) -> str:
+        return str(feature_linear_scaling_int(
+            self.line_token_position,
+            len(self.concatenated_line_tokens_text),
+            _LINESCALE
+        ))
+
+    def get_str_line_relative_length(self) -> str:
+        return str(feature_linear_scaling_int(
+            len(self.concatenated_line_tokens_text),
+            self.max_concatenated_line_tokens_length,
+            _LINESCALE
+        ))
+
 
 class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
     @abstractmethod
@@ -389,7 +459,7 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
     ) -> Iterable[LayoutModelData]:
         pass
 
-    def iter_model_data_for_layout_document(
+    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelData]:
@@ -398,6 +468,14 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
         )
         line_indentation_status_feature = LineIndentationStatusFeature()
         previous_layout_token: Optional[LayoutToken] = None
+        concatenated_line_tokens_length_by_line_id = {
+            id(line): sum((len(token.text) for token in line.tokens))
+            for block in layout_document.iter_all_blocks()
+            for line in block.lines
+        }
+        max_concatenated_line_tokens_length = max(
+            concatenated_line_tokens_length_by_line_id.values()
+        )
         for block in layout_document.iter_all_blocks():
             block_lines = block.lines
             line_count = len(block_lines)
@@ -405,6 +483,10 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
                 line_indentation_status_feature.on_new_line()
                 line_tokens = line.tokens
                 token_count = len(line_tokens)
+                concatenated_line_tokens_text = ''.join([
+                    token.text for token in line_tokens
+                ])
+                line_token_position = 0
                 for token_index, token in enumerate(line_tokens):
                     yield from self.iter_model_data_for_context_layout_token_features(
                         ContextAwareLayoutTokenFeatures(
@@ -415,8 +497,12 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
                             token_count=token_count,
                             line_index=line_index,
                             line_count=line_count,
+                            concatenated_line_tokens_text=concatenated_line_tokens_text,
+                            max_concatenated_line_tokens_length=max_concatenated_line_tokens_length,
+                            line_token_position=line_token_position,
                             relative_font_size_feature=relative_font_size_feature,
                             line_indentation_status_feature=line_indentation_status_feature
                         )
                     )
                     previous_layout_token = token
+                    line_token_position += len(token.text)

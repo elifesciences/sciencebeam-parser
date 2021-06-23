@@ -46,7 +46,7 @@ class NameDataGenerator(ModelDataGenerator):
                         common_features.get_dummy_str_is_last_name(),
                         common_features.get_dummy_str_is_known_title(),
                         common_features.get_dummy_str_is_known_suffix(),
-                        common_features.get_punctuation_profile(),
+                        common_features.get_punctuation_type_feature(),
                         common_features.get_dummy_label()
                     ]
                     yield LayoutModelData(

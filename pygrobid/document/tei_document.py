@@ -29,6 +29,8 @@ from pygrobid.document.semantic_document import (
     SemanticParagraph,
     SemanticPostBox,
     SemanticPostCode,
+    SemanticRawReference,
+    SemanticRawReferenceText,
     SemanticRegion,
     SemanticSection,
     SemanticSectionTypes,
@@ -363,6 +365,14 @@ class TeiDocument(TeiElementWrapper):
     def get_back_annex(self) -> TeiElementWrapper:
         return TeiElementWrapper(self.get_back_annex_element())
 
+    def get_references_element(self) -> etree.ElementBase:
+        return self.get_or_create_element_at(
+            ['text', 'back', 'div[@type="references"]', 'listBibl']
+        )
+
+    def get_references(self) -> TeiElementWrapper:
+        return TeiElementWrapper(self.get_references_element())
+
     def get_body_sections(self) -> List[TeiSection]:
         return [
             TeiSection(element)
@@ -565,6 +575,16 @@ def get_orphan_affiliations(
     ]
 
 
+def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElementWrapper:
+    LOGGER.debug('semantic_raw_ref: %s', semantic_raw_ref)
+    tei_ref = TeiElementWrapper(TEI_E.biblStruct())
+    for semantic_content in semantic_raw_ref:
+        if isinstance(semantic_content, SemanticRawReferenceText):
+            tei_ref.add_note('raw_reference', semantic_content.merged_block)
+            continue
+    return tei_ref
+
+
 def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
     semantic_document: SemanticDocument
 ) -> TeiDocument:
@@ -628,5 +648,9 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
             tei_document.get_back_annex().add_note(
                 semantic_content.note_type,
                 semantic_content.merged_block
+            )
+        if isinstance(semantic_content, SemanticRawReference):
+            tei_document.get_references().element.append(
+                _get_tei_raw_reference(semantic_content).element
             )
     return tei_document

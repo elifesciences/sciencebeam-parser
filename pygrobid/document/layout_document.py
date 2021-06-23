@@ -285,6 +285,9 @@ class LayoutPage:
 class LayoutDocument:
     pages: List[LayoutPage]
 
+    def __len__(self):
+        return len(self.pages)
+
     @staticmethod
     def for_blocks(blocks: List[LayoutBlock]) -> 'LayoutDocument':
         return LayoutDocument(pages=[LayoutPage(blocks=blocks)])

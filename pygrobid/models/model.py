@@ -52,6 +52,9 @@ class LayoutDocumentLabelResult:
                 layout_model_label
             )
 
+    def get_available_labels(self) -> Set[str]:
+        return set(self.layout_document_labels_by_label.keys())
+
     def get_layout_document_labels_by_labels(self, labels: List[str]) -> List[LayoutModelLabel]:
         if not labels:
             return []

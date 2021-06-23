@@ -11,6 +11,8 @@ from pygrobid.document.semantic_document import (
     SemanticCountry,
     SemanticInstitution,
     SemanticMarker,
+    SemanticRawReference,
+    SemanticRawReferenceText,
     SemanticSectionTypes,
     SemanticTitle
 )
@@ -21,6 +23,7 @@ from pygrobid.models.header.model import HeaderModel
 from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.name.model import NameModel
 from pygrobid.models.fulltext.model import FullTextModel
+from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 from pygrobid.processors.fulltext import (
     FullTextProcessor,
     FullTextModels
@@ -126,7 +129,8 @@ class MockFullTextModels(FullTextModels):
             header_model=HeaderModel('dummy-header-model'),
             name_header_model=NameModel('dummy-name-header-model'),
             affiliation_address_model=AffiliationAddressModel('dummy-affiliation-address-model'),
-            fulltext_model=FullTextModel('dummy-fulltext-model')
+            fulltext_model=FullTextModel('dummy-fulltext-model'),
+            reference_segmenter_model=ReferenceSegmenterModel('dummy-reference-segmenter-model')
         )
         self.segmentation_model_mock = MockDelftModelWrapper(self.segmentation_model)
         self.header_model_mock = MockDelftModelWrapper(self.header_model)
@@ -135,6 +139,7 @@ class MockFullTextModels(FullTextModels):
             self.affiliation_address_model
         )
         self.fulltext_model_mock = MockDelftModelWrapper(self.fulltext_model)
+        self.reference_segmenter_model_mock = MockDelftModelWrapper(self.reference_segmenter_model)
 
 
 @pytest.fixture(name='fulltext_models_mock')
@@ -403,3 +408,45 @@ class TestFullTextProcessor:
         assert affiliations[0].get_text_by_type(SemanticInstitution) == institution_block.text
         assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
         assert affiliations[0].affiliation_id == 'aff0'
+
+    def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        marker_block = LayoutBlock.for_text('1')
+        ref_text_block = LayoutBlock.for_text('Reference 1')
+        ref_block = LayoutBlock.merge_blocks([marker_block, ref_text_block])
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            ref_block, '<references>'
+        )
+
+        reference_segmenter_model_mock.update_label_by_layout_block(
+            marker_block, '<label>'
+        )
+        reference_segmenter_model_mock.update_label_by_layout_block(
+            ref_text_block, '<reference>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            ref_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        assert semantic_document.back_section.get_text() == ref_block.text
+        assert (
+            semantic_document.back_section
+            .view_by_type(SemanticRawReference).get_text()
+        ) == ref_block.text
+        references = list(semantic_document.back_section.iter_by_type(SemanticRawReference))
+        assert len(references) == 1
+        ref = references[0]
+        assert ref.get_text_by_type(SemanticMarker) == marker_block.text
+        assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
+        assert ref.reference_id == 'b0'

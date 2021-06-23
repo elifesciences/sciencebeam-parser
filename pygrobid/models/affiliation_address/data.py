@@ -46,7 +46,7 @@ class AffiliationAddressDataGenerator(ModelDataGenerator):
                         common_features.get_dummy_str_is_first_name(),
                         common_features.get_dummy_str_is_location_name(),
                         common_features.get_dummy_str_is_country_name(),
-                        common_features.get_punctuation_profile(),
+                        common_features.get_punctuation_type_feature(),
                         common_features.get_word_shape_feature(),
                         common_features.get_dummy_label()
                     ]
