@@ -5,13 +5,13 @@ from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import SemanticDocument
 from pygrobid.models.header.data import HeaderDataGenerator
 from pygrobid.models.header.extract import HeaderSemanticExtractor
-from pygrobid.models.delft_model import DelftModel
+from pygrobid.models.model import Model
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class HeaderModel(DelftModel):
+class HeaderModel(Model):
     def get_data_generator(self) -> HeaderDataGenerator:
         return HeaderDataGenerator()
 

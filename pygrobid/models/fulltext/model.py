@@ -9,7 +9,7 @@ from pygrobid.document.semantic_document import (
     SemanticParagraph,
     SemanticSectionTypes
 )
-from pygrobid.models.delft_model import DelftModel
+from pygrobid.models.model import Model
 
 from pygrobid.models.fulltext.data import FullTextDataGenerator
 
@@ -17,7 +17,7 @@ from pygrobid.models.fulltext.data import FullTextDataGenerator
 LOGGER = logging.getLogger(__name__)
 
 
-class FullTextModel(DelftModel):
+class FullTextModel(Model):
     def get_data_generator(self) -> FullTextDataGenerator:
         return FullTextDataGenerator()
 

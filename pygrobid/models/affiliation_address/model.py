@@ -1,6 +1,6 @@
 import logging
 
-from pygrobid.models.delft_model import DelftModel
+from pygrobid.models.model import Model
 from pygrobid.models.affiliation_address.data import AffiliationAddressDataGenerator
 from pygrobid.models.affiliation_address.extract import AffiliationAddressSemanticExtractor
 
@@ -8,7 +8,7 @@ from pygrobid.models.affiliation_address.extract import AffiliationAddressSemant
 LOGGER = logging.getLogger(__name__)
 
 
-class AffiliationAddressModel(DelftModel):
+class AffiliationAddressModel(Model):
     def get_data_generator(self) -> AffiliationAddressDataGenerator:
         return AffiliationAddressDataGenerator()
 

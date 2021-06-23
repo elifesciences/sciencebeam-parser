@@ -16,8 +16,8 @@ from pygrobid.document.semantic_document import (
     SemanticSectionTypes,
     SemanticTitle
 )
-from pygrobid.models.delft_model import DelftModel, LabeledLayoutToken
-from pygrobid.models.model import LayoutModelLabel
+from pygrobid.models.model import LabeledLayoutToken
+from pygrobid.models.model import LayoutModelLabel, Model
 from pygrobid.models.segmentation.model import SegmentationModel
 from pygrobid.models.header.model import HeaderModel
 from pygrobid.models.affiliation_address.model import AffiliationAddressModel
@@ -47,15 +47,15 @@ def get_label_by_layout_token_for_block(
 
 
 class MockDelftModelWrapper:
-    def __init__(self, model_impl: DelftModel):
-        self._model_impl = model_impl
+    def __init__(self, model_wrapper: Model):
+        self._model_wrapper = model_wrapper
         self._label_by_layout_token: Dict[LayoutTokenId, str] = {}
         self._default_label = 'O'
-        model_impl._model = MagicMock(name='delft_model')
-        model_impl.iter_label_layout_document = (  # type: ignore
+        model_wrapper._model_impl = MagicMock(name='model_impl')
+        model_wrapper.iter_label_layout_document = (  # type: ignore
             self._iter_label_layout_document
         )
-        model_impl.iter_predict_labels_for_layout_document = (  # type: ignore
+        model_wrapper.iter_predict_labels_for_layout_document = (  # type: ignore
             self._iter_predict_labels_for_layout_document
         )
 
@@ -78,7 +78,7 @@ class MockDelftModelWrapper:
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelLabel]:
-        data_generator = self._model_impl.get_data_generator()
+        data_generator = self._model_wrapper.get_data_generator()
         LOGGER.debug('_label_by_layout_token.keys: %s', self._label_by_layout_token.keys())
         for model_data in data_generator.iter_model_data_for_layout_document(layout_document):
             if model_data.layout_token:
@@ -107,7 +107,7 @@ class MockDelftModelWrapper:
         layout_document: LayoutDocument
     ) -> Iterable[LabeledLayoutToken]:
         LOGGER.debug('iter_predict_labels_for_layout_document: %s', layout_document)
-        data_generator = self._model_impl.get_data_generator()
+        data_generator = self._model_wrapper.get_data_generator()
         LOGGER.debug('_label_by_layout_token.keys: %s', self._label_by_layout_token.keys())
         for model_data in data_generator.iter_model_data_for_layout_document(layout_document):
             assert model_data.layout_token
@@ -124,13 +124,14 @@ class MockDelftModelWrapper:
 
 class MockFullTextModels(FullTextModels):
     def __init__(self):
+        model_impl_mock = MagicMock('model_impl')
         super().__init__(
-            segmentation_model=SegmentationModel('dummy-segmentation-model'),
-            header_model=HeaderModel('dummy-header-model'),
-            name_header_model=NameModel('dummy-name-header-model'),
-            affiliation_address_model=AffiliationAddressModel('dummy-affiliation-address-model'),
-            fulltext_model=FullTextModel('dummy-fulltext-model'),
-            reference_segmenter_model=ReferenceSegmenterModel('dummy-reference-segmenter-model')
+            segmentation_model=SegmentationModel(model_impl_mock),
+            header_model=HeaderModel(model_impl_mock),
+            name_header_model=NameModel(model_impl_mock),
+            affiliation_address_model=AffiliationAddressModel(model_impl_mock),
+            fulltext_model=FullTextModel(model_impl_mock),
+            reference_segmenter_model=ReferenceSegmenterModel(model_impl_mock)
         )
         self.segmentation_model_mock = MockDelftModelWrapper(self.segmentation_model)
         self.header_model_mock = MockDelftModelWrapper(self.header_model)

@@ -1,9 +1,10 @@
 import logging
-
 from dataclasses import dataclass
 from typing import List, Union
+
 from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult
+from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_config
 
 from pygrobid.document.semantic_document import (
     SemanticContentWrapper,
@@ -39,16 +40,24 @@ class FullTextModels:
 
 def load_models(app_config: AppConfig) -> FullTextModels:
     models_config = app_config['models']
-    segmentation_model = SegmentationModel(models_config['segmentation']['path'])
-    header_model = HeaderModel(models_config['header']['path'])
-    name_header_model = NameModel(models_config['name-header']['path'])
-    affiliation_address_model = AffiliationAddressModel(
-        models_config['affiliation-address']['path']
-    )
-    fulltext_model = FullTextModel(models_config['fulltext']['path'])
-    reference_segmenter_model = ReferenceSegmenterModel(
-        models_config['reference-segmenter']['path']
-    )
+    segmentation_model = SegmentationModel(get_delft_model_impl_factory_for_config(
+        models_config['segmentation']
+    ))
+    header_model = HeaderModel(get_delft_model_impl_factory_for_config(
+        models_config['header']
+    ))
+    name_header_model = NameModel(get_delft_model_impl_factory_for_config(
+        models_config['name-header']
+    ))
+    affiliation_address_model = AffiliationAddressModel(get_delft_model_impl_factory_for_config(
+        models_config['affiliation-address']
+    ))
+    fulltext_model = FullTextModel(get_delft_model_impl_factory_for_config(
+        models_config['fulltext']
+    ))
+    reference_segmenter_model = ReferenceSegmenterModel(get_delft_model_impl_factory_for_config(
+        models_config['reference-segmenter']
+    ))
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,

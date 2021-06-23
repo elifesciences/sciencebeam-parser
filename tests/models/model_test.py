@@ -6,7 +6,11 @@ from pygrobid.document.layout_document import (
     LayoutBlock,
     LayoutLine
 )
-from pygrobid.models.model import LayoutDocumentLabelResult, LayoutModelLabel
+from pygrobid.models.model import (
+    LayoutDocumentLabelResult,
+    LayoutModelLabel,
+    iter_entity_values_predicted_labels
+)
 
 
 TAG_1 = 'tag1'
@@ -116,3 +120,32 @@ class TestLayoutDocumentLabelResult:
         ) == join_layout_tokens(
             tagged_tokens[0][1] + tagged_tokens[2][1]
         )
+
+
+class TestIterEntityValuesPredictedLabels:
+    def test_should_extract_multiple_entity_values(self):
+        tag_result = [
+            ('The', 'B-<title>'),
+            ('Title', 'I-<title>'),
+            ('Some', 'B-<abstract>'),
+            ('Abstract', 'I-<abstract>')
+        ]
+        assert list(iter_entity_values_predicted_labels(tag_result)) == [
+            ('<title>', 'The Title'),
+            ('<abstract>', 'Some Abstract')
+        ]
+
+    def test_should_extract_multiple_entity_values_including_none(self):
+        tag_result = [
+            ('The', 'B-<title>'),
+            ('Title', 'I-<title>'),
+            ('Other1', 'O'),
+            ('Other2', 'O'),
+            ('Some', 'B-<abstract>'),
+            ('Abstract', 'I-<abstract>')
+        ]
+        assert list(iter_entity_values_predicted_labels(tag_result)) == [
+            ('<title>', 'The Title'),
+            ('O', 'Other1 Other2'),
+            ('<abstract>', 'Some Abstract')
+        ]

@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
@@ -16,6 +16,7 @@ from pygrobid.document.layout_document import (
 from pygrobid.models.data import ModelDataGenerator
 from pygrobid.models.extract import ModelSemanticExtractor
 from pygrobid.document.semantic_document import SemanticContentWrapper
+from pygrobid.models.model_impl import ModelImpl, T_ModelImplFactory
 
 
 LOGGER = logging.getLogger(__name__)
@@ -27,6 +28,36 @@ class LayoutModelLabel:
     label_token_text: str
     layout_line: Optional[LayoutLine] = None
     layout_token: Optional[LayoutToken] = None
+
+
+class LabeledLayoutToken(NamedTuple):
+    label: str
+    layout_token: LayoutToken
+
+
+def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
+    """
+    Similar to get_entities, but also other (`O`) tag
+    """
+    prev_tag = 'O'
+    prev_start = 0
+    for index, prefixed_tag in enumerate(seq):
+        if '-' in prefixed_tag:
+            prefix, tag = prefixed_tag.split('-', maxsplit=1)
+        else:
+            prefix = ''
+            tag = prefixed_tag
+        if prefix == 'B' or tag != prev_tag:
+            if prev_start < index:
+                yield prev_tag, prev_start, index - 1
+            prev_tag = tag
+            prev_start = index
+    if prev_start < len(seq):
+        yield prev_tag, prev_start, len(seq) - 1
+
+
+def get_entities_including_other(seq: List[str]) -> List[Tuple[str, int, int]]:
+    return list(iter_entities_including_other(seq))
 
 
 def strip_tag_prefix(tag: str) -> str:
@@ -127,7 +158,32 @@ class LayoutDocumentLabelResult:
         return layout_document
 
 
+def iter_entity_layout_blocks_for_labeled_layout_tokens(
+    labeled_layout_tokens: Iterable[LabeledLayoutToken]
+) -> Iterable[Tuple[str, LayoutBlock]]:
+    layout_tokens = [result.layout_token for result in labeled_layout_tokens]
+    labels = [result.label for result in labeled_layout_tokens]
+    LOGGER.debug('layout_tokens: %s', layout_tokens)
+    LOGGER.debug('labels: %s', labels)
+    for tag, start, end in get_entities_including_other(list(labels)):
+        yield tag, LayoutBlock.for_tokens(layout_tokens[start:end + 1])
+
+
+def iter_entity_values_predicted_labels(
+    tag_result: List[Tuple[str, str]]
+) -> Iterable[Tuple[str, str]]:
+    tokens, labels = zip(*tag_result)
+    LOGGER.debug('tokens: %s', tokens)
+    LOGGER.debug('labels: %s', labels)
+    for tag, start, end in get_entities_including_other(list(labels)):
+        yield tag, ' '.join(tokens[start:end + 1])
+
+
 class Model(ABC):
+    def __init__(self, model_impl_factory: Optional[T_ModelImplFactory]) -> None:
+        self._model_impl_factory = model_impl_factory
+        self._model_impl: Optional[ModelImpl] = None
+
     @abstractmethod
     def get_data_generator(self) -> ModelDataGenerator:
         pass
@@ -135,6 +191,20 @@ class Model(ABC):
     # @abstractmethod
     def get_semantic_extractor(self) -> ModelSemanticExtractor:
         raise NotImplementedError()
+
+    @property
+    def model_impl(self) -> ModelImpl:
+        model_impl = self._model_impl
+        if model_impl is None:
+            assert self._model_impl_factory, 'model impl factory required'
+            LOGGER.info('creating model impl: %r', self._model_impl_factory)
+            model_impl = self._model_impl_factory()
+            if not isinstance(model_impl, ModelImpl):
+                raise TypeError('invalid model impl type: %r' % model_impl)
+            self._model_impl = model_impl
+        else:
+            LOGGER.info('model impl already loaded: %r', model_impl)
+        return model_impl
 
     def iter_semantic_content_for_entity_blocks(
         self,
@@ -144,14 +214,13 @@ class Model(ABC):
             entity_tokens
         )
 
-    @abstractmethod
     def predict_labels(
         self,
         texts: List[List[str]],
         features: List[List[List[str]]],
         output_format: Optional[str] = None
     ) -> List[List[Tuple[str, str]]]:
-        pass
+        return self.model_impl.predict_labels(texts, features, output_format)
 
     def iter_label_layout_document(
         self,
@@ -195,4 +264,39 @@ class Model(ABC):
         return LayoutDocumentLabelResult(
             layout_document=layout_document,
             layout_model_label_iterable=self.iter_label_layout_document(layout_document)
+        )
+
+    def iter_predict_labels_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ) -> Iterable[LabeledLayoutToken]:
+        # Note: this should get merged with Model.iter_label_layout_document
+        for layout_model_label in self.iter_label_layout_document(layout_document):
+            layout_token = layout_model_label.layout_token
+            assert layout_token is not None
+            yield LabeledLayoutToken(
+                layout_model_label.label,
+                layout_token
+            )
+
+    def predict_labels_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ) -> List[LabeledLayoutToken]:
+        return list(self.iter_predict_labels_for_layout_document(layout_document))
+
+    def iter_entity_layout_blocks_for_labeled_layout_tokens(
+        self,
+        labeled_layout_tokens: Iterable[LabeledLayoutToken]
+    ) -> Iterable[Tuple[str, LayoutBlock]]:
+        return iter_entity_layout_blocks_for_labeled_layout_tokens(labeled_layout_tokens)
+
+    def iter_semantic_content_for_labeled_layout_tokens(
+        self,
+        labeled_layout_tokens: Iterable[LabeledLayoutToken]
+    ) -> Iterable[SemanticContentWrapper]:
+        return self.iter_semantic_content_for_entity_blocks(
+            self.iter_entity_layout_blocks_for_labeled_layout_tokens(
+                labeled_layout_tokens
+            )
         )
