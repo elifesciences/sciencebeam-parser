@@ -43,6 +43,10 @@ from pygrobid.document.semantic_document import (
 LOGGER = logging.getLogger(__name__)
 
 
+XML_NS = 'http://www.w3.org/XML/1998/namespace'
+XML_NS_PREFIX = '{%s}' % XML_NS
+XML_ID = XML_NS_PREFIX + 'id'
+
 TEI_NS = 'http://www.tei-c.org/ns/1.0'
 TEI_NS_PREFIX = '{%s}' % TEI_NS
 
@@ -220,6 +224,16 @@ def extend_element(
         element.append(item)
 
 
+def _create_tei_note_element(
+    note_type: str,
+    layout_block: LayoutBlock
+) -> etree.EntityBase:
+    return TEI_E.note(
+        {'type': note_type},
+        *iter_layout_block_tei_children(layout_block)
+    )
+
+
 class TeiElementWrapper:
     def __init__(self, element: etree.ElementBase):
         self.element = element
@@ -240,12 +254,7 @@ class TeiElementWrapper:
         )
 
     def add_note(self, note_type: str, layout_block: LayoutBlock):
-        self.element.append(
-            TEI_E.note(
-                {'type': note_type},
-                *iter_layout_block_tei_children(layout_block)
-            )
-        )
+        self.element.append(_create_tei_note_element(note_type, layout_block))
 
 
 class TeiAuthor(TeiElementWrapper):
@@ -577,11 +586,18 @@ def get_orphan_affiliations(
 
 def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElementWrapper:
     LOGGER.debug('semantic_raw_ref: %s', semantic_raw_ref)
-    tei_ref = TeiElementWrapper(TEI_E.biblStruct())
+    children = []
     for semantic_content in semantic_raw_ref:
         if isinstance(semantic_content, SemanticRawReferenceText):
-            tei_ref.add_note('raw_reference', semantic_content.merged_block)
+            children.append(_create_tei_note_element(
+                'raw_reference', semantic_content.merged_block
+            ))
             continue
+        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+    tei_ref = TeiElementWrapper(TEI_E.biblStruct(
+        {XML_ID: semantic_raw_ref.reference_id},
+        *children
+    ))
     return tei_ref
 
 

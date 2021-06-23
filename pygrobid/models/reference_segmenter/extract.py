@@ -29,12 +29,13 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
             if name == '<label>':
                 if not ref:
                     ref = SemanticRawReference()
-                ref.reference_id = next(ids_iterator, '?')
+                    ref.reference_id = next(ids_iterator, '?')
                 ref.add_content(SemanticMarker(layout_block=layout_block))
                 continue
             if name == '<reference>':
                 if not ref:
                     ref = SemanticRawReference()
+                    ref.reference_id = next(ids_iterator, '?')
                 ref.add_content(SemanticRawReferenceText(layout_block=layout_block))
                 yield ref
                 ref = None
