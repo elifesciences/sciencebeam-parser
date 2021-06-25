@@ -31,6 +31,7 @@ from pygrobid.document.semantic_document import (
     SemanticPostCode,
     SemanticRawReference,
     SemanticRawReferenceText,
+    SemanticReference,
     SemanticRegion,
     SemanticSection,
     SemanticSectionTypes,
@@ -440,6 +441,8 @@ def get_tei_child_element_for_semantic_content(
     note_type = 'other'
     if isinstance(semantic_content, SemanticNote):
         note_type = semantic_content.note_type
+    else:
+        note_type = 'other:' + type(semantic_content).__name__
     return TEI_E.note(
         {'type': note_type},
         *iter_layout_block_tei_children(semantic_content.merged_block)
@@ -498,8 +501,10 @@ def _get_tei_affiliation_for_semantic_affiliation_address(
 
 def _get_tei_author_for_semantic_author(
     semantic_author: SemanticAuthor,
-    affiliations_by_marker: Mapping[str, Sequence[SemanticAffiliationAddress]]
+    affiliations_by_marker: Optional[Mapping[str, Sequence[SemanticAffiliationAddress]]] = None
 ) -> TeiAuthor:
+    if affiliations_by_marker is None:
+        affiliations_by_marker = {}
     LOGGER.debug('semantic_author: %s', semantic_author)
     pers_name_children = []
     for semantic_content in semantic_author:
@@ -601,6 +606,43 @@ def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElement
     return tei_ref
 
 
+def _get_tei_reference(semantic_ref: SemanticReference) -> TeiElementWrapper:
+    LOGGER.debug('semantic_ref: %s', semantic_ref)
+    analytic_element: Optional[etree.ElementBase] = None
+    children = []
+    for semantic_content in semantic_ref:
+        if isinstance(semantic_content, SemanticRawReferenceText):
+            children.append(_create_tei_note_element(
+                'raw_reference', semantic_content.merged_block
+            ))
+            continue
+        if isinstance(semantic_content, SemanticTitle):
+            if analytic_element is None:
+                analytic_element = TEI_E.analytic()
+                children.append(analytic_element)
+            analytic_element.append(TEI_E.title(
+                {'level': 'a', 'type': 'main'},
+                *iter_layout_block_tei_children(
+                    semantic_content.merged_block
+                )
+            ))
+            continue
+        if isinstance(semantic_content, SemanticAuthor):
+            if analytic_element is None:
+                analytic_element = TEI_E.analytic()
+                children.append(analytic_element)
+            analytic_element.append(_get_tei_author_for_semantic_author(
+                semantic_content
+            ).element)
+            continue
+        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+    tei_ref = TeiElementWrapper(TEI_E.biblStruct(
+        {XML_ID: semantic_ref.reference_id},
+        *children
+    ))
+    return tei_ref
+
+
 def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
     semantic_document: SemanticDocument
 ) -> TeiDocument:
@@ -668,5 +710,9 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
         if isinstance(semantic_content, SemanticRawReference):
             tei_document.get_references().element.append(
                 _get_tei_raw_reference(semantic_content).element
+            )
+        if isinstance(semantic_content, SemanticReference):
+            tei_document.get_references().element.append(
+                _get_tei_reference(semantic_content).element
             )
     return tei_document

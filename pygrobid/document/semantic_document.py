@@ -5,7 +5,7 @@ It doesn't have a specific structure as that depends on the output format (e.g. 
 import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Iterable, Iterator, List, Optional, Type, TypeVar, cast
+from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Type, TypeVar, cast
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutToken
 
@@ -106,6 +106,28 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
 
     def view_by_type(self, type_: Type[T_SemanticContentWrapper]) -> 'SemanticMixedContentWrapper':
         return SemanticMixedContentWrapper(list(self.iter_by_type(type_)))
+
+    def flat_map_inplace(
+        self,
+        fn: Callable[[SemanticContentWrapper], Sequence[SemanticContentWrapper]]
+    ):
+        self.mixed_content = [
+            replaced_content
+            for content in self.mixed_content
+            for replaced_content in fn(content)
+        ]
+
+    def flat_map_inplace_by_type(
+        self,
+        type_: Type[T_SemanticContentWrapper],
+        fn: Callable[[SemanticContentWrapper], Sequence[SemanticContentWrapper]]
+    ):
+        self.flat_map_inplace(
+            lambda content: (
+                fn(content) if isinstance(content, type_)
+                else [content]
+            )
+        )
 
     def get_text_list(self) -> List[str]:
         return [content.get_text() for content in self.mixed_content]
@@ -243,6 +265,10 @@ class SemanticRawReferenceText(SemanticMixedContentWrapper):
 
 
 class SemanticRawReference(SemanticMixedContentWrapper):
+    reference_id: str = ''
+
+
+class SemanticReference(SemanticMixedContentWrapper):
     reference_id: str = ''
 
 

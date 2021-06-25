@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List, Union
+from typing import Iterable, List, NamedTuple, Optional, Tuple, Union
 
 from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult
@@ -9,9 +9,12 @@ from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_
 from pygrobid.document.semantic_document import (
     SemanticContentWrapper,
     SemanticDocument,
+    SemanticMixedContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
     SemanticRawAuthors,
+    SemanticRawReference,
+    SemanticReference,
     SemanticSection,
     SemanticSectionTypes
 )
@@ -23,6 +26,7 @@ from pygrobid.models.name.model import NameModel
 from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
+from pygrobid.models.citation.model import CitationModel
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,9 +37,11 @@ class FullTextModels:
     segmentation_model: SegmentationModel
     header_model: HeaderModel
     name_header_model: NameModel
+    name_citation_model: NameModel
     affiliation_address_model: AffiliationAddressModel
     fulltext_model: FullTextModel
     reference_segmenter_model: ReferenceSegmenterModel
+    citation_model: CitationModel
 
 
 def load_models(app_config: AppConfig) -> FullTextModels:
@@ -49,6 +55,9 @@ def load_models(app_config: AppConfig) -> FullTextModels:
     name_header_model = NameModel(get_delft_model_impl_factory_for_config(
         models_config['name-header']
     ))
+    name_citation_model = NameModel(get_delft_model_impl_factory_for_config(
+        models_config['name-citation']
+    ))
     affiliation_address_model = AffiliationAddressModel(get_delft_model_impl_factory_for_config(
         models_config['affiliation-address']
     ))
@@ -58,22 +67,36 @@ def load_models(app_config: AppConfig) -> FullTextModels:
     reference_segmenter_model = ReferenceSegmenterModel(get_delft_model_impl_factory_for_config(
         models_config['reference-segmenter']
     ))
+    citation_model = CitationModel(get_delft_model_impl_factory_for_config(
+        models_config['citation']
+    ))
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,
         name_header_model=name_header_model,
+        name_citation_model=name_citation_model,
         affiliation_address_model=affiliation_address_model,
         fulltext_model=fulltext_model,
-        reference_segmenter_model=reference_segmenter_model
+        reference_segmenter_model=reference_segmenter_model,
+        citation_model=citation_model
     )
+
+
+class FullTextProcessorConfig(NamedTuple):
+    extract_citation_fields: bool = True
+    extract_citation_authors: bool = True
 
 
 class FullTextProcessor:
     def __init__(
         self,
-        fulltext_models: FullTextModels
+        fulltext_models: FullTextModels,
+        config: Optional[FullTextProcessorConfig] = None
     ) -> None:
         self.fulltext_models = fulltext_models
+        if not config:
+            config = FullTextProcessorConfig()
+        self.config = config
 
     @property
     def segmentation_model(self) -> SegmentationModel:
@@ -92,12 +115,20 @@ class FullTextProcessor:
         return self.fulltext_models.name_header_model
 
     @property
+    def name_citation_model(self) -> NameModel:
+        return self.fulltext_models.name_citation_model
+
+    @property
     def fulltext_model(self) -> FullTextModel:
         return self.fulltext_models.fulltext_model
 
     @property
     def reference_segmenter_model(self) -> ReferenceSegmenterModel:
         return self.fulltext_models.reference_segmenter_model
+
+    @property
+    def citation_model(self) -> CitationModel:
+        return self.fulltext_models.citation_model
 
     def get_semantic_document_for_layout_document(
         self,
@@ -122,7 +153,7 @@ class FullTextProcessor:
             self.header_model.update_semantic_document_with_entity_blocks(
                 document, entity_blocks
             )
-            self._process_raw_authors(document)
+            self._process_raw_authors(document.front)
             self._process_raw_affiliations(document)
 
         self._update_semantic_section_using_segmentation_result_and_fulltext_model(
@@ -143,16 +174,24 @@ class FullTextProcessor:
             '<annex>',
             SemanticSectionTypes.OTHER
         )
-        self._process_raw_references_segmentation(
+        self._extract_raw_references_from_segmentation(
             semantic_document=document,
             segmentation_label_result=segmentation_label_result
         )
+        if self.config.extract_citation_fields:
+            self._extract_reference_fields_from_raw_references(
+                semantic_document=document
+            )
+            if self.config.extract_citation_authors:
+                self._extract_reference_authors_from_raw_references(
+                    semantic_document=document
+                )
         return document
 
-    def _process_raw_authors(self, semantic_document: SemanticDocument):
+    def _process_raw_authors(self, semantic_parent: SemanticMixedContentWrapper):
         result_content: List[SemanticContentWrapper] = []
         raw_authors: List[SemanticRawAuthors] = []
-        for semantic_content in semantic_document.front:
+        for semantic_content in semantic_parent:
             if isinstance(semantic_content, SemanticRawAuthors):
                 raw_authors.append(semantic_content)
                 continue
@@ -174,7 +213,7 @@ class FullTextProcessor:
             )
             for author in authors_iterable:
                 result_content.append(author)
-        semantic_document.front.mixed_content = result_content
+        semantic_parent.mixed_content = result_content
 
     def _process_raw_affiliations(self, semantic_document: SemanticDocument):
         result_content: List[SemanticContentWrapper] = []
@@ -209,7 +248,7 @@ class FullTextProcessor:
                 result_content.append(aff)
         semantic_document.front.mixed_content = result_content
 
-    def _process_raw_references_segmentation(
+    def _extract_raw_references_from_segmentation(
         self,
         semantic_document: SemanticDocument,
         segmentation_label_result: LayoutDocumentLabelResult
@@ -230,6 +269,125 @@ class FullTextProcessor:
         )
         for semantic_content in semantic_content_iterable:
             semantic_document.back_section.add_content(semantic_content)
+
+    def _iter_parse_semantic_references(
+        self,
+        semantic_raw_references: List[SemanticRawReference]
+    ) -> Iterable[SemanticReference]:
+        layout_documents = [
+            LayoutDocument.for_blocks([semantic_raw_reference.merged_block])
+            for semantic_raw_reference in semantic_raw_references
+        ]
+        labeled_layout_tokens_list = (
+            self.citation_model
+            .predict_labels_for_layout_documents(layout_documents)
+        )
+        LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
+        for labeled_layout_tokens, semantic_raw_reference in zip(
+            labeled_layout_tokens_list, semantic_raw_references
+        ):
+            semantic_content_iterable = (
+                self.citation_model
+                .iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens,
+                    semantic_raw_reference=semantic_raw_reference
+                )
+            )
+            ref: Optional[SemanticReference] = None
+            for semantic_content in semantic_content_iterable:
+                if isinstance(semantic_content, SemanticReference):
+                    ref = semantic_content
+            if not ref:
+                raise AssertionError('no semantic reference extracted')
+            yield ref
+
+    def _extract_reference_fields_from_raw_references(
+        self,
+        semantic_document: SemanticDocument
+    ):
+        semantic_raw_references = list(semantic_document.back_section.iter_by_type(
+            SemanticRawReference
+        ))
+        semantic_references = list(self._iter_parse_semantic_references(
+            semantic_raw_references
+        ))
+        LOGGER.debug('semantic_references: %r', semantic_references)
+        semantic_reference_by_semantic_raw_reference_id = {
+            id(semantic_raw_reference): semantic_reference
+            for semantic_raw_reference, semantic_reference in zip(
+                semantic_raw_references, semantic_references
+            )
+        }
+        LOGGER.debug(
+            'semantic_reference_by_semantic_raw_reference_id keys: %s',
+            semantic_reference_by_semantic_raw_reference_id.keys()
+        )
+        back_content: List[SemanticContentWrapper] = []
+        for semantic_content in semantic_document.back_section:
+            if isinstance(semantic_content, SemanticRawReference):
+                semantic_reference = semantic_reference_by_semantic_raw_reference_id[
+                    id(semantic_content)
+                ]
+                back_content.append(semantic_reference)
+                continue
+            back_content.append(semantic_content)
+        semantic_document.back_section.mixed_content = back_content
+
+    def _iter_parse_semantic_authors(
+        self,
+        semantic_raw_authors: List[SemanticRawAuthors]
+    ) -> Iterable[Tuple[SemanticRawAuthors, List[SemanticContentWrapper]]]:
+        layout_documents = [
+            LayoutDocument.for_blocks([semantic_raw_author.merged_block])
+            for semantic_raw_author in semantic_raw_authors
+        ]
+        labeled_layout_tokens_list = (
+            self.name_citation_model
+            .predict_labels_for_layout_documents(layout_documents)
+        )
+        LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
+        for labeled_layout_tokens, semantic_raw_author in zip(
+            labeled_layout_tokens_list, semantic_raw_authors
+        ):
+            semantic_content_iterable = (
+                self.name_citation_model
+                .iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )
+            yield semantic_raw_author, list(semantic_content_iterable)
+
+    def _extract_reference_authors_from_raw_references(
+        self,
+        semantic_document: SemanticDocument
+    ):
+        raw_authors = [
+            raw_author
+            for ref in semantic_document.back_section.iter_by_type(
+                SemanticReference
+            )
+            for raw_author in ref.iter_by_type(
+                SemanticRawAuthors
+            )
+        ]
+        content_list_by_raw_author_id = {
+            id(raw_author): content_list
+            for raw_author, content_list in (
+                self._iter_parse_semantic_authors(raw_authors)
+            )
+        }
+        LOGGER.debug(
+            'content_list_by_raw_author_id keys: %s',
+            content_list_by_raw_author_id.keys()
+        )
+        for semantic_content in semantic_document.back_section:
+            if isinstance(semantic_content, SemanticReference):
+                semantic_content.flat_map_inplace_by_type(
+                    SemanticRawAuthors,
+                    lambda raw_author: content_list_by_raw_author_id[
+                        id(raw_author)
+                    ]
+                )
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,

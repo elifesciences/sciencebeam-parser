@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
@@ -33,6 +33,13 @@ class LayoutModelLabel:
 class LabeledLayoutToken(NamedTuple):
     label: str
     layout_token: LayoutToken
+
+
+class NewDocumentMarker:
+    pass
+
+
+NEW_DOCUMENT_MARKER = NewDocumentMarker()
 
 
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
@@ -179,6 +186,18 @@ def iter_entity_values_predicted_labels(
         yield tag, ' '.join(tokens[start:end + 1])
 
 
+def iter_labeled_layout_token_for_layout_model_label(
+    layout_model_label_iterable: Iterable[LayoutModelLabel]
+) -> Iterable[LabeledLayoutToken]:
+    for layout_model_label in layout_model_label_iterable:
+        layout_token = layout_model_label.layout_token
+        assert layout_token is not None
+        yield LabeledLayoutToken(
+            layout_model_label.label,
+            layout_token
+        )
+
+
 class Model(ABC):
     def __init__(self, model_impl_factory: Optional[T_ModelImplFactory]) -> None:
         self._model_impl_factory = model_impl_factory
@@ -208,10 +227,12 @@ class Model(ABC):
 
     def iter_semantic_content_for_entity_blocks(
         self,
-        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        **kwargs
     ) -> Iterable[SemanticContentWrapper]:
         return self.get_semantic_extractor().iter_semantic_content_for_entity_blocks(
-            entity_tokens
+            entity_tokens,
+            **kwargs
         )
 
     def predict_labels(
@@ -222,15 +243,52 @@ class Model(ABC):
     ) -> List[List[Tuple[str, str]]]:
         return self.model_impl.predict_labels(texts, features, output_format)
 
+    def iter_label_layout_documents(
+        self,
+        layout_documents: List[LayoutDocument]
+    ) -> Iterable[List[LayoutModelLabel]]:
+        doc_layout_model_labels: List[LayoutModelLabel] = []
+        result_doc_count = 0
+        for layout_model_label in self._iter_label_layout_documents(
+            layout_documents
+        ):
+            if isinstance(layout_model_label, NewDocumentMarker):
+                yield doc_layout_model_labels
+                doc_layout_model_labels = []
+                result_doc_count += 1
+                continue
+            doc_layout_model_labels.append(layout_model_label)
+        if result_doc_count < len(layout_documents):
+            yield doc_layout_model_labels
+
     def iter_label_layout_document(
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelLabel]:
+        for layout_model_label in self._iter_label_layout_documents(
+            [layout_document]
+        ):
+            assert isinstance(layout_model_label, LayoutModelLabel)
+            yield layout_model_label
+
+    def _iter_label_layout_documents(
+        self,
+        layout_documents: Iterable[LayoutDocument]
+    ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
         data_generator = self.get_data_generator()
-        model_data_iterable = list(data_generator.iter_model_data_for_layout_document(
-            layout_document
-        ))
-        data_lines = (model_data.data_line for model_data in model_data_iterable)
+        model_data_lists = [
+            list(data_generator.iter_model_data_for_layout_document(
+                layout_document
+            ))
+            for layout_document in layout_documents
+        ]
+        data_lines = []
+        for index, model_data_list in enumerate(model_data_lists):
+            if index > 0:
+                data_lines.append('')
+            data_lines.extend(
+                (model_data.data_line for model_data in model_data_list)
+            )
         texts, features = load_data_crf_lines(data_lines)
         texts = texts.tolist()
         tag_result = self.predict_labels(
@@ -238,24 +296,32 @@ class Model(ABC):
         )
         if not tag_result:
             return
-        first_doc_tag_result = tag_result[0]
-        if len(first_doc_tag_result) != len(model_data_iterable):
-            raise AssertionError('tag result does not match data: %d != %d' % (
-                len(first_doc_tag_result), len(model_data_iterable)
+        if len(tag_result) != len(model_data_lists):
+            raise AssertionError('tag result does not match number of docs: %d != %d' % (
+                len(tag_result), len(model_data_lists)
             ))
-        for token_tag_result, token_model_data in zip(first_doc_tag_result, model_data_iterable):
-            label_token_text, token_label = token_tag_result
-            if label_token_text != token_model_data.label_token_text:
-                raise AssertionError(
-                    f'actual: {repr(label_token_text)}'
-                    f', expected: {repr(token_model_data.label_token_text)}'
+        for index, (doc_tag_result, model_data_list) in enumerate(
+            zip(tag_result, model_data_lists)
+        ):
+            if index > 0:
+                yield NEW_DOCUMENT_MARKER
+            if len(doc_tag_result) != len(model_data_list):
+                raise AssertionError('doc tag result does not match data: %d != %d' % (
+                    len(doc_tag_result), len(model_data_list)
+                ))
+            for token_tag_result, token_model_data in zip(doc_tag_result, model_data_list):
+                label_token_text, token_label = token_tag_result
+                if label_token_text != token_model_data.label_token_text:
+                    raise AssertionError(
+                        f'actual: {repr(label_token_text)}'
+                        f', expected: {repr(token_model_data.label_token_text)}'
+                    )
+                yield LayoutModelLabel(
+                    label=token_label,
+                    label_token_text=label_token_text,
+                    layout_line=token_model_data.layout_line,
+                    layout_token=token_model_data.layout_token
                 )
-            yield LayoutModelLabel(
-                label=token_label,
-                label_token_text=label_token_text,
-                layout_line=token_model_data.layout_line,
-                layout_token=token_model_data.layout_token
-            )
 
     def get_label_layout_document_result(
         self,
@@ -271,19 +337,26 @@ class Model(ABC):
         layout_document: LayoutDocument
     ) -> Iterable[LabeledLayoutToken]:
         # Note: this should get merged with Model.iter_label_layout_document
-        for layout_model_label in self.iter_label_layout_document(layout_document):
-            layout_token = layout_model_label.layout_token
-            assert layout_token is not None
-            yield LabeledLayoutToken(
-                layout_model_label.label,
-                layout_token
-            )
+        yield from iter_labeled_layout_token_for_layout_model_label(
+            self.iter_label_layout_document(layout_document)
+        )
 
     def predict_labels_for_layout_document(
         self,
         layout_document: LayoutDocument
     ) -> List[LabeledLayoutToken]:
         return list(self.iter_predict_labels_for_layout_document(layout_document))
+
+    def predict_labels_for_layout_documents(
+        self,
+        layout_documents: List[LayoutDocument]
+    ) -> List[List[LabeledLayoutToken]]:
+        return [
+            list(iter_labeled_layout_token_for_layout_model_label(
+                layout_model_labels
+            ))
+            for layout_model_labels in self.iter_label_layout_documents(layout_documents)
+        ]
 
     def iter_entity_layout_blocks_for_labeled_layout_tokens(
         self,
@@ -293,10 +366,12 @@ class Model(ABC):
 
     def iter_semantic_content_for_labeled_layout_tokens(
         self,
-        labeled_layout_tokens: Iterable[LabeledLayoutToken]
+        labeled_layout_tokens: Iterable[LabeledLayoutToken],
+        **kwargs
     ) -> Iterable[SemanticContentWrapper]:
         return self.iter_semantic_content_for_entity_blocks(
             self.iter_entity_layout_blocks_for_labeled_layout_tokens(
                 labeled_layout_tokens
-            )
+            ),
+            **kwargs
         )

@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 from abc import ABC, abstractmethod
@@ -8,6 +9,9 @@ from lxml import etree
 
 from pygrobid.document.layout_document import LayoutDocument, LayoutToken,  LayoutLine
 from pygrobid.external.pdfalto.parser import parse_alto_root
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,6 +49,20 @@ class ModelDataGenerator(ABC):
             model_data.data_line
             for model_data in self.iter_model_data_for_layout_document(layout_document)
         )
+
+    def iter_data_lines_for_layout_documents(  # pylint: disable=too-many-locals
+        self,
+        layout_documents: Iterable[LayoutDocument]
+    ) -> Iterable[str]:
+        for index, layout_document in enumerate(layout_documents):
+            LOGGER.debug('generating data lines for document: index=%d', index)
+            if index > 0:
+                LOGGER.debug('adding document separator')
+                yield from ['\n']
+            yield from (
+                model_data.data_line
+                for model_data in self.iter_model_data_for_layout_document(layout_document)
+            )
 
 
 def feature_linear_scaling_int(pos: int, total: int, bin_count: int) -> int:
@@ -339,6 +357,21 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
     def get_dummy_str_is_http(self) -> str:
         return '0'
 
+    def get_dummy_str_is_known_collaboration(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_journal_title(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_conference_title(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_publisher(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_known_identifier(self) -> str:
+        return '0'
+
     def get_dummy_label(self) -> str:
         return '0'
 
@@ -354,6 +387,8 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
         previous_layout_token: Optional[LayoutToken],
         token_index: int,
         token_count: int,
+        document_token_index: int,
+        document_token_count: int,
         line_index: int,
         line_count: int,
         concatenated_line_tokens_text: str,
@@ -367,6 +402,8 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
         self.previous_layout_token = previous_layout_token
         self.token_index = token_index
         self.token_count = token_count
+        self.document_token_index = document_token_index
+        self.document_token_count = document_token_count
         self.line_index = line_index
         self.line_count = line_count
         self.concatenated_line_tokens_text = concatenated_line_tokens_text
@@ -450,6 +487,14 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
             _LINESCALE
         ))
 
+    def get_str_sentence_token_relative_position(self) -> str:
+        return str(feature_linear_scaling_int(
+            # the document is currently the sentence view
+            self.document_token_index,
+            self.document_token_count,
+            12
+        ))
+
 
 class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
     @abstractmethod
@@ -476,6 +521,11 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
         max_concatenated_line_tokens_length = max(
             concatenated_line_tokens_length_by_line_id.values()
         )
+        document_token_count = sum((
+            1
+            for _ in layout_document.iter_all_tokens()
+        ))
+        document_token_index = 0
         for block in layout_document.iter_all_blocks():
             block_lines = block.lines
             line_count = len(block_lines)
@@ -495,6 +545,8 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
                             previous_layout_token=previous_layout_token,
                             token_index=token_index,
                             token_count=token_count,
+                            document_token_index=document_token_index,
+                            document_token_count=document_token_count,
                             line_index=line_index,
                             line_count=line_count,
                             concatenated_line_tokens_text=concatenated_line_tokens_text,
@@ -506,3 +558,4 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
                     )
                     previous_layout_token = token
                     line_token_position += len(token.text)
+                    document_token_index += 1

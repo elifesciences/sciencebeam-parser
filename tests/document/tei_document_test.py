@@ -26,6 +26,7 @@ from pygrobid.document.semantic_document import (
     SemanticPostCode,
     SemanticRawReference,
     SemanticRawReferenceText,
+    SemanticReference,
     SemanticRegion,
     SemanticSectionTypes,
     SemanticSettlement,
@@ -37,6 +38,7 @@ from pygrobid.document.tei_document import (
     get_tei_xpath_text_content_list,
     iter_layout_block_tei_children,
     _get_tei_affiliation_for_semantic_affiliation_address,
+    _get_tei_reference,
     get_tei_for_semantic_document,
     TeiDocument,
     TEI_E,
@@ -216,6 +218,28 @@ class TestGetTeiAffiliationForSemanticAffiliationAddress:
         assert tei_aff.get_xpath_text_content_list(
             'tei:address/tei:country'
         ) == ['Country1']
+
+
+class TestGetTeiReference:
+    def test_should_add_all_fields(self):
+        semantic_ref = SemanticReference([
+            SemanticTitle(layout_block=LayoutBlock.for_text('Title 1')),
+            SemanticAuthor([
+                SemanticGivenName(layout_block=LayoutBlock.for_text('Given Name 1')),
+                SemanticSurname(layout_block=LayoutBlock.for_text('Surname 1'))
+            ]),
+        ])
+        tei_ref = _get_tei_reference(semantic_ref)
+        LOGGER.debug('tei_ref: %r', etree.tostring(tei_ref.element))
+        assert tei_ref.get_xpath_text_content_list(
+            'tei:analytic/tei:title[@type="main"]'
+        ) == ['Title 1']
+        assert tei_ref.get_xpath_text_content_list(
+            'tei:analytic/tei:author/tei:persName/tei:forename'
+        ) == ['Given Name 1']
+        assert tei_ref.get_xpath_text_content_list(
+            'tei:analytic/tei:author/tei:persName/tei:surname'
+        ) == ['Surname 1']
 
 
 class TestGetTeiForSemanticDocument:
@@ -421,6 +445,29 @@ class TestGetTeiForSemanticDocument:
         semantic_document.back_section.add_content(semantic_raw_ref)
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="references"]/tei:listBibl'
+            '/tei:biblStruct/tei:note[@type="raw_reference"]'
+        ) == ['Reference 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="references"]/tei:listBibl'
+            '/tei:biblStruct/@xml:id'
+        ) == ['b0']
+
+    def test_should_add_parsed_references(self):
+        semantic_document = SemanticDocument()
+        semantic_ref = SemanticReference([
+            SemanticTitle(layout_block=LayoutBlock.for_text('Reference Title 1')),
+            SemanticRawReferenceText(layout_block=LayoutBlock.for_text('Reference 1'))
+        ])
+        semantic_ref.reference_id = 'b0'
+        semantic_document.back_section.add_content(semantic_ref)
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="references"]/tei:listBibl'
+            '/tei:biblStruct/tei:analytic/tei:title[@type="main"]'
+        ) == ['Reference Title 1']
         assert tei_document.get_xpath_text_content_list(
             '//tei:back/tei:div[@type="references"]/tei:listBibl'
             '/tei:biblStruct/tei:note[@type="raw_reference"]'

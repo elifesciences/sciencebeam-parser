@@ -55,7 +55,8 @@ class AffiliationAddressSemanticExtractor(ModelSemanticExtractor):
 
     def iter_semantic_content_for_entity_blocks(
         self,
-        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        **kwargs
     ) -> Iterable[SemanticContentWrapper]:
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)

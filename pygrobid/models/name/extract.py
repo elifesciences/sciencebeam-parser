@@ -19,6 +19,9 @@ from pygrobid.models.extract import ModelSemanticExtractor
 LOGGER = logging.getLogger(__name__)
 
 
+SPLIT_ON_SECOND_ENTIY_NAME = {'<title>', '<forename>', '<surname>'}
+
+
 class NameSemanticExtractor(ModelSemanticExtractor):
     def get_semantic_content_for_entity_name(
         self,
@@ -42,7 +45,8 @@ class NameSemanticExtractor(ModelSemanticExtractor):
 
     def iter_semantic_content_for_entity_blocks(
         self,
-        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        **kwargs
     ) -> Iterable[SemanticAuthor]:
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)
@@ -76,6 +80,15 @@ class NameSemanticExtractor(ModelSemanticExtractor):
             semantic_content = self.get_semantic_content_for_entity_name(
                 name, layout_block
             )
+            if author and name in SPLIT_ON_SECOND_ENTIY_NAME and name in seen_author_labels:
+                LOGGER.debug(
+                    'starting new author after having seen name part again, name=%r',
+                    name
+                )
+                yield author
+                seen_author_labels = []
+                has_tail_marker = False
+                author = None
             if not isinstance(semantic_content, SemanticNote):
                 if has_tail_marker and author:
                     LOGGER.debug('starting new author after tail markers, name=%r', name)

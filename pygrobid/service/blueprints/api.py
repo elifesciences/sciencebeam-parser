@@ -1,7 +1,7 @@
 import logging
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import Callable, List, Optional, TypeVar
+from typing import Callable, Iterable, List, Optional, TypeVar
 
 from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
@@ -20,6 +20,13 @@ from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 from pygrobid.external.pdfalto.parser import parse_alto_root
 from pygrobid.models.model import Model
 from pygrobid.document.layout_document import LayoutDocument
+from pygrobid.document.semantic_document import (
+    SemanticMixedContentWrapper,
+    SemanticRawAuthors,
+    SemanticRawReference,
+    SemanticRawReferenceText,
+    SemanticReference
+)
 from pygrobid.utils.text import normalize_text
 from pygrobid.utils.tokenizer import get_tokenized_tokens
 from pygrobid.processors.fulltext import FullTextProcessor, load_models
@@ -168,8 +175,10 @@ class ModelNestedBluePrint:
     def handle_get(self):
         return _get_file_upload_form(f'{self.name} Model: convert PDF to data')
 
-    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
-        return layout_document
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
+        return [layout_document]
 
     def handle_post(self):  # pylint: disable=too-many-locals
         data = get_required_post_data()
@@ -193,16 +202,21 @@ class ModelNestedBluePrint:
             )
             xml_content = output_path.read_bytes()
             root = etree.fromstring(xml_content)
-            layout_document = self.filter_layout_document(normalize_layout_document(
-                parse_alto_root(root)
-            ))
+            layout_document_iterable = self.iter_filter_layout_document(
+                normalize_layout_document(
+                    parse_alto_root(root)
+                )
+            )
             data_generator = self.model.get_data_generator()
-            data_lines = data_generator.iter_data_lines_for_layout_document(layout_document)
+            data_lines = data_generator.iter_data_lines_for_layout_documents(
+                layout_document_iterable
+            )
             response_type = 'text/plain'
             if output_format == ModelOutputFormats.RAW_DATA:
                 response_content = '\n'.join(data_lines) + '\n'
             else:
                 texts, features = load_data_crf_lines(data_lines)
+                LOGGER.info('texts length: %d', len(texts))
                 if not len(texts):  # pylint: disable=len-as-condition
                     tag_result = []
                 else:
@@ -228,38 +242,60 @@ class ModelNestedBluePrint:
 
 
 class SegmentedModelNestedBluePrint(ModelNestedBluePrint):
-    def __init__(self, *args, segmentation_model: Model, segmentation_label: str, **kwargs):
+    def __init__(
+        self,
+        *args,
+        segmentation_model: Model,
+        segmentation_labels: List[str],
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.segmentation_model = segmentation_model
-        self.segmentation_label = segmentation_label
+        self.segmentation_labels = segmentation_labels
 
-    def filter_layout_document_by_segmentation_label(
+    def iter_filter_layout_document_by_segmentation_labels(
         self,
         layout_document: LayoutDocument,
-        segmentation_label: str
-    ) -> LayoutDocument:
+        segmentation_labels: List[str]
+    ) -> Iterable[LayoutDocument]:
         assert self.segmentation_model is not None
         segmentation_label_result = (
             self.segmentation_model.get_label_layout_document_result(
                 layout_document
             )
         )
-        layout_document = segmentation_label_result.get_filtered_document_by_label(
-            segmentation_label
-        ).remove_empty_blocks()
-        if not layout_document:
-            LOGGER.info(
-                'empty document for segmentation label %r, available labels: %r',
-                self.segmentation_label,
-                segmentation_label_result.get_available_labels()
-            )
-        return layout_document
+        for segmentation_label in segmentation_labels:
+            layout_document = segmentation_label_result.get_filtered_document_by_label(
+                segmentation_label
+            ).remove_empty_blocks()
+            if not layout_document:
+                LOGGER.info(
+                    'empty document for segmentation label %r, available labels: %r',
+                    segmentation_label,
+                    segmentation_label_result.get_available_labels()
+                )
+                continue
+            yield layout_document
 
-    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+    def filter_layout_document_by_segmentation_label(
+        self,
+        layout_document: LayoutDocument,
+        segmentation_label: str
+    ) -> LayoutDocument:
+        for filtered_layout_document in self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document,
+            segmentation_labels=[segmentation_label]
+        ):
+            return filtered_layout_document
+        return LayoutDocument(pages=[])
+
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
         if get_bool_request_arg(RequestArgs.NO_USE_SEGMENTATION, default_value=False):
-            return layout_document
-        return self.filter_layout_document_by_segmentation_label(
-            layout_document, segmentation_label=self.segmentation_label
+            return [layout_document]
+        return self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document, segmentation_labels=self.segmentation_labels
         )
 
 
@@ -268,16 +304,18 @@ class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
         super().__init__(*args, **kwargs)
         self.header_model = header_model
 
-    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
         header_layout_document = self.filter_layout_document_by_segmentation_label(
             layout_document, '<header>'
         )
         header_label_result = self.header_model.get_label_layout_document_result(
             header_layout_document
         )
-        return header_label_result.get_filtered_document_by_label(
+        return [header_label_result.get_filtered_document_by_label(
             '<author>'
-        ).remove_empty_blocks()
+        ).remove_empty_blocks()]
 
 
 class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
@@ -285,16 +323,107 @@ class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
         super().__init__(*args, **kwargs)
         self.header_model = header_model
 
-    def filter_layout_document(self, layout_document: LayoutDocument) -> LayoutDocument:
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
         header_layout_document = self.filter_layout_document_by_segmentation_label(
             layout_document, '<header>'
         )
         header_label_result = self.header_model.get_label_layout_document_result(
             header_layout_document
         )
-        return header_label_result.get_filtered_document_by_labels(
+        return [header_label_result.get_filtered_document_by_labels(
             ['<affiliation>', '<address>']
-        ).remove_empty_blocks()
+        ).remove_empty_blocks()]
+
+
+class CitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
+    def __init__(self, *args, reference_segmenter_model: Model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reference_segmenter_model = reference_segmenter_model
+
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
+        references_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<references>'
+        )
+        labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
+            references_layout_document
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_references = list(
+            SemanticMixedContentWrapper(list(
+                self.reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawReference)
+        )
+        LOGGER.info('semantic_raw_references count: %d', len(semantic_raw_references))
+        return [
+            LayoutDocument.for_blocks(
+                [semantic_raw_reference.view_by_type(SemanticRawReferenceText).merged_block]
+            ).remove_empty_blocks()
+            for semantic_raw_reference in semantic_raw_references
+        ]
+
+
+class NameCitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
+    def __init__(
+        self,
+        *args,
+        reference_segmenter_model: Model,
+        citation_model: Model,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.reference_segmenter_model = reference_segmenter_model
+        self.citation_model = citation_model
+
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
+        references_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<references>'
+        )
+        labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
+            references_layout_document
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_references = list(
+            SemanticMixedContentWrapper(list(
+                self.reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawReference)
+        )
+        LOGGER.info('semantic_raw_references count: %d', len(semantic_raw_references))
+        raw_reference_documents = [
+            LayoutDocument.for_blocks(
+                [semantic_raw_reference.view_by_type(SemanticRawReferenceText).merged_block]
+            ).remove_empty_blocks()
+            for semantic_raw_reference in semantic_raw_references
+        ]
+        citation_labeled_layout_tokens_list = (
+            self.citation_model.predict_labels_for_layout_documents(
+                raw_reference_documents
+            )
+        )
+        raw_authors = [
+            raw_author
+            for citation_labeled_layout_tokens in citation_labeled_layout_tokens_list
+            for ref in (
+                self.citation_model.iter_semantic_content_for_labeled_layout_tokens(
+                    citation_labeled_layout_tokens
+                )
+            )
+            if isinstance(ref, SemanticReference)
+            for raw_author in ref.iter_by_type(SemanticRawAuthors)
+        ]
+        return [
+            LayoutDocument.for_blocks([raw_author.merged_block]).remove_empty_blocks()
+            for raw_author in raw_authors
+        ]
 
 
 class ApiBlueprint(Blueprint):
@@ -322,14 +451,14 @@ class ApiBlueprint(Blueprint):
             model=fulltext_models.header_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_label='<header>'
+            segmentation_labels=['<header>']
         ).add_routes(self, '/models/header')
         NameHeaderModelNestedBluePrint(
             'Name Header',
             model=fulltext_models.name_header_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_label='<header>',
+            segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model
         ).add_routes(self, '/models/name-header')
         AffiliationAddressModelNestedBluePrint(
@@ -337,7 +466,7 @@ class ApiBlueprint(Blueprint):
             model=fulltext_models.affiliation_address_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_label='<header>',
+            segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model
         ).add_routes(self, '/models/affiliation-address')
         SegmentedModelNestedBluePrint(
@@ -345,15 +474,32 @@ class ApiBlueprint(Blueprint):
             model=fulltext_models.fulltext_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_label='<body>'
+            segmentation_labels=['<body>', '<acknowledgement>', '<annex>']
         ).add_routes(self, '/models/fulltext')
         SegmentedModelNestedBluePrint(
             'Reference Segmenter',
             model=fulltext_models.reference_segmenter_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_label='<references>'
+            segmentation_labels=['<references>']
         ).add_routes(self, '/models/reference-segmenter')
+        CitationModelNestedBluePrint(
+            'Citation (Reference)',
+            model=fulltext_models.citation_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<references>'],
+            reference_segmenter_model=fulltext_models.reference_segmenter_model
+        ).add_routes(self, '/models/citation')
+        NameCitationModelNestedBluePrint(
+            'Name Citaton',
+            model=fulltext_models.name_citation_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<references>'],
+            reference_segmenter_model=fulltext_models.reference_segmenter_model,
+            citation_model=fulltext_models.citation_model
+        ).add_routes(self, '/models/name-citation')
 
     def api_root(self):
         return jsonify({

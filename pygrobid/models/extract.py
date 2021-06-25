@@ -9,6 +9,7 @@ class ModelSemanticExtractor(ABC):
     @abstractmethod
     def iter_semantic_content_for_entity_blocks(
         self,
-        entity_tokens: Iterable[Tuple[str, LayoutBlock]]
+        entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        **kwargs
     ) -> Iterable[SemanticContentWrapper]:
         pass

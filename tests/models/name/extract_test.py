@@ -114,6 +114,121 @@ class TestNameSemanticExtractor:
         assert author_2.surname_text == 'Madison'
         assert author_2.view_by_type(SemanticMarker).get_text() == '2'
 
+    def test_should_split_on_second_title(self):
+        # This matches the current rules in GROBID
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<title>', LayoutBlock.for_text('Mr')),
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<surname>', LayoutBlock.for_text('Smith')),
+                ('<title>', LayoutBlock.for_text('Ms')),
+                ('<forename>', LayoutBlock.for_text('Maria')),
+                ('<surname>', LayoutBlock.for_text('Madison')),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 2
+        author_1 = semantic_content_list[0]
+        assert isinstance(author_1, SemanticAuthor)
+        assert author_1.get_text_by_type(SemanticNameTitle) == 'Mr'
+        assert author_1.given_name_text == 'John'
+        assert author_1.surname_text == 'Smith'
+        author_2 = semantic_content_list[1]
+        assert isinstance(author_2, SemanticAuthor)
+        assert author_2.get_text_by_type(SemanticNameTitle) == 'Ms'
+        assert author_2.given_name_text == 'Maria'
+        assert author_2.surname_text == 'Madison'
+
+    def test_should_split_on_second_firstname(self):
+        # This matches the current rules in GROBID
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<surname>', LayoutBlock.for_text('Smith')),
+                ('<forename>', LayoutBlock.for_text('Maria')),
+                ('<surname>', LayoutBlock.for_text('Madison')),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 2
+        author_1 = semantic_content_list[0]
+        assert isinstance(author_1, SemanticAuthor)
+        assert author_1.given_name_text == 'John'
+        assert author_1.surname_text == 'Smith'
+        author_2 = semantic_content_list[1]
+        assert isinstance(author_2, SemanticAuthor)
+        assert author_2.given_name_text == 'Maria'
+        assert author_2.surname_text == 'Madison'
+
+    def test_should_split_on_second_surname(self):
+        # This matches the current rules in GROBID
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<surname>', LayoutBlock.for_text('Smith')),
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<surname>', LayoutBlock.for_text('Madison')),
+                ('<forename>', LayoutBlock.for_text('Maria')),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 2
+        author_1 = semantic_content_list[0]
+        assert isinstance(author_1, SemanticAuthor)
+        assert author_1.given_name_text == 'John'
+        assert author_1.surname_text == 'Smith'
+        author_2 = semantic_content_list[1]
+        assert isinstance(author_2, SemanticAuthor)
+        assert author_2.given_name_text == 'Maria'
+        assert author_2.surname_text == 'Madison'
+
+    def test_should_split_not_split_on_second_middlename(self):
+        # This matches the current rules in GROBID
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<middlename>', LayoutBlock.for_text('M')),
+                ('<middlename>', LayoutBlock.for_text('J')),
+                ('<surname>', LayoutBlock.for_text('Smith')),
+                ('<forename>', LayoutBlock.for_text('Maria')),
+                ('<surname>', LayoutBlock.for_text('Madison')),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 2
+        author_1 = semantic_content_list[0]
+        assert isinstance(author_1, SemanticAuthor)
+        assert author_1.given_name_text == 'John'
+        assert author_1.surname_text == 'Smith'
+        assert author_1.get_text_by_type(SemanticMiddleName) == 'M J'
+        author_2 = semantic_content_list[1]
+        assert isinstance(author_2, SemanticAuthor)
+        assert author_2.given_name_text == 'Maria'
+        assert author_2.surname_text == 'Madison'
+
+    def test_should_split_not_split_on_second_suffix(self):
+        # This matches the current rules in GROBID
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<surname>', LayoutBlock.for_text('Smith')),
+                ('<suffix>', LayoutBlock.for_text('X')),
+                ('<suffix>', LayoutBlock.for_text('Y')),
+                ('<forename>', LayoutBlock.for_text('Maria')),
+                ('<surname>', LayoutBlock.for_text('Madison')),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 2
+        author_1 = semantic_content_list[0]
+        assert isinstance(author_1, SemanticAuthor)
+        assert author_1.given_name_text == 'John'
+        assert author_1.surname_text == 'Smith'
+        assert author_1.get_text_by_type(SemanticNameSuffix) == 'X Y'
+        author_2 = semantic_content_list[1]
+        assert isinstance(author_2, SemanticAuthor)
+        assert author_2.given_name_text == 'Maria'
+        assert author_2.surname_text == 'Madison'
+
     def test_should_parse_multiple_markers(self):
         semantic_content_list = list(
             NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
