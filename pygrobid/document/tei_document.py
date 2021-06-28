@@ -5,6 +5,7 @@ from typing import Iterable, Dict, List, Mapping, Optional, Sequence, Set, Union
 from lxml import etree
 from lxml.builder import ElementMaker
 
+from pygrobid.utils.stop_watch import StopWatchRecorder
 from pygrobid.utils.xml import get_text_content
 from pygrobid.document.layout_document import LayoutBlock, LayoutPageCoordinates, LayoutToken
 from pygrobid.document.semantic_document import (
@@ -312,6 +313,7 @@ class TeiDocument(TeiElementWrapper):
             self.root = TEI_E.TEI()
         else:
             self.root = root
+        self._reference_element: Optional[etree.ElementBase] = None
         super().__init__(self.root)
 
     def get_or_create_element_at(self, path: List[str]) -> etree.ElementBase:
@@ -376,9 +378,12 @@ class TeiDocument(TeiElementWrapper):
         return TeiElementWrapper(self.get_back_annex_element())
 
     def get_references_element(self) -> etree.ElementBase:
-        return self.get_or_create_element_at(
+        if self._reference_element is not None:
+            return self._reference_element
+        self._reference_element = self.get_or_create_element_at(
             ['text', 'back', 'div[@type="references"]', 'listBibl']
         )
+        return self._reference_element
 
     def get_references(self) -> TeiElementWrapper:
         return TeiElementWrapper(self.get_references_element())
@@ -646,9 +651,13 @@ def _get_tei_reference(semantic_ref: SemanticReference) -> TeiElementWrapper:
 def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
     semantic_document: SemanticDocument
 ) -> TeiDocument:
+    stop_watch_recorder = StopWatchRecorder()
+    LOGGER.info('generating tei document')
     LOGGER.debug('semantic_document: %s', semantic_document)
     tei_document = TeiDocument()
 
+    stop_watch_recorder.start('front')
+    LOGGER.info('generating tei document: front')
     title_block = semantic_document.front.view_by_type(SemanticTitle).merged_block
     if title_block:
         tei_document.set_title_layout_block(title_block)
@@ -685,6 +694,8 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
             ['teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic']
         ).append(dummy_tei_author.element)
 
+    LOGGER.info('generating tei document: body')
+    stop_watch_recorder.start('body')
     for semantic_content in semantic_document.body_section:
         if isinstance(semantic_content, SemanticSection):
             tei_section = _get_tei_section_for_semantic_section(semantic_content)
@@ -695,6 +706,8 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
                 semantic_content.merged_block
             )
 
+    LOGGER.info('generating tei document: back section')
+    stop_watch_recorder.start('back')
     for semantic_content in semantic_document.back_section:
         if isinstance(semantic_content, SemanticSection):
             tei_section = _get_tei_section_for_semantic_section(semantic_content)
@@ -715,4 +728,6 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
             tei_document.get_references().element.append(
                 _get_tei_reference(semantic_content).element
             )
+    stop_watch_recorder.stop()
+    LOGGER.info('generating tei document done, took: %s', stop_watch_recorder)
     return tei_document
