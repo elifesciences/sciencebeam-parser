@@ -15,6 +15,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
+    SemanticReferenceList,
     SemanticSectionTypes,
     SemanticTitle
 )
@@ -439,11 +440,9 @@ class TestFullTextProcessor:
         LOGGER.debug('semantic_document: %s', semantic_document)
         assert semantic_document is not None
         assert semantic_document.back_section.get_text() == ref_block.text
-        assert (
-            semantic_document.back_section
-            .view_by_type(SemanticRawReference).get_text()
-        ) == ref_block.text
-        references = list(semantic_document.back_section.iter_by_type(SemanticRawReference))
+        reference_list = list(semantic_document.back_section.iter_by_type(SemanticReferenceList))
+        assert len(reference_list) == 1
+        references = list(reference_list[0].iter_by_type(SemanticRawReference))
         assert len(references) == 1
         ref = references[0]
         assert ref.get_text_by_type(SemanticLabel) == label_block.text
@@ -491,7 +490,9 @@ class TestFullTextProcessor:
         )
         LOGGER.debug('semantic_document: %s', semantic_document)
         assert semantic_document is not None
-        references = list(semantic_document.back_section.iter_by_type(SemanticReference))
+        reference_list = list(semantic_document.back_section.iter_by_type(SemanticReferenceList))
+        assert len(reference_list) == 1
+        references = list(reference_list[0].iter_by_type(SemanticReference))
         assert len(references) == 1
         ref = references[0]
         assert ref.get_text_by_type(SemanticTitle) == ref_title_block.text
@@ -549,7 +550,9 @@ class TestFullTextProcessor:
         )
         LOGGER.debug('semantic_document: %s', semantic_document)
         assert semantic_document is not None
-        references = list(semantic_document.back_section.iter_by_type(SemanticReference))
+        reference_list = list(semantic_document.back_section.iter_by_type(SemanticReferenceList))
+        assert len(reference_list) == 1
+        references = list(reference_list[0].iter_by_type(SemanticReference))
         assert len(references) == 1
         ref = references[0]
         authors = list(ref.iter_by_type(SemanticAuthor))

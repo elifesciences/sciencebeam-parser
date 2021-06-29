@@ -15,6 +15,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawAuthors,
     SemanticRawReference,
     SemanticReference,
+    SemanticReferenceList,
     SemanticSection,
     SemanticSectionTypes
 )
@@ -267,8 +268,8 @@ class FullTextProcessor:
             self.reference_segmenter_model
             .iter_semantic_content_for_labeled_layout_tokens(labeled_layout_tokens)
         )
-        for semantic_content in semantic_content_iterable:
-            semantic_document.back_section.add_content(semantic_content)
+        reference_list = SemanticReferenceList(list(semantic_content_iterable))
+        semantic_document.back_section.add_content(reference_list)
 
     def _iter_parse_semantic_references(
         self,
@@ -305,9 +306,14 @@ class FullTextProcessor:
         self,
         semantic_document: SemanticDocument
     ):
-        semantic_raw_references = list(semantic_document.back_section.iter_by_type(
-            SemanticRawReference
+        reference_lists = list(semantic_document.back_section.iter_by_type(
+            SemanticReferenceList
         ))
+        semantic_raw_references = [
+            raw_reference
+            for reference_list in reference_lists
+            for raw_reference in reference_list.iter_by_type(SemanticRawReference)
+        ]
         semantic_references = list(self._iter_parse_semantic_references(
             semantic_raw_references
         ))
@@ -322,16 +328,17 @@ class FullTextProcessor:
             'semantic_reference_by_semantic_raw_reference_id keys: %s',
             semantic_reference_by_semantic_raw_reference_id.keys()
         )
-        back_content: List[SemanticContentWrapper] = []
-        for semantic_content in semantic_document.back_section:
-            if isinstance(semantic_content, SemanticRawReference):
-                semantic_reference = semantic_reference_by_semantic_raw_reference_id[
-                    id(semantic_content)
-                ]
-                back_content.append(semantic_reference)
-                continue
-            back_content.append(semantic_content)
-        semantic_document.back_section.mixed_content = back_content
+        for reference_list in reference_lists:
+            updated_content: List[SemanticContentWrapper] = []
+            for semantic_content in reference_list:
+                if isinstance(semantic_content, SemanticRawReference):
+                    semantic_reference = semantic_reference_by_semantic_raw_reference_id[
+                        id(semantic_content)
+                    ]
+                    updated_content.append(semantic_reference)
+                    continue
+                updated_content.append(semantic_content)
+            reference_list.mixed_content = updated_content
 
     def _iter_parse_semantic_authors(
         self,
@@ -361,9 +368,13 @@ class FullTextProcessor:
         self,
         semantic_document: SemanticDocument
     ):
+        reference_lists = list(semantic_document.back_section.iter_by_type(
+            SemanticReferenceList
+        ))
         raw_authors = [
             raw_author
-            for ref in semantic_document.back_section.iter_by_type(
+            for reference_list in reference_lists
+            for ref in reference_list.iter_by_type(
                 SemanticReference
             )
             for raw_author in ref.iter_by_type(
@@ -380,14 +391,15 @@ class FullTextProcessor:
             'content_list_by_raw_author_id keys: %s',
             content_list_by_raw_author_id.keys()
         )
-        for semantic_content in semantic_document.back_section:
-            if isinstance(semantic_content, SemanticReference):
-                semantic_content.flat_map_inplace_by_type(
-                    SemanticRawAuthors,
-                    lambda raw_author: content_list_by_raw_author_id[
-                        id(raw_author)
-                    ]
-                )
+        for reference_list in reference_lists:
+            for semantic_content in reference_list:
+                if isinstance(semantic_content, SemanticReference):
+                    semantic_content.flat_map_inplace_by_type(
+                        SemanticRawAuthors,
+                        lambda raw_author: content_list_by_raw_author_id[
+                            id(raw_author)
+                        ]
+                    )
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,

@@ -54,6 +54,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
+    SemanticReferenceList,
     SemanticRegion,
     SemanticSection,
     SemanticSectionTypes,
@@ -440,7 +441,7 @@ class TeiDocument(TeiElementWrapper):
         if self._reference_element is not None:
             return self._reference_element
         self._reference_element = self.get_or_create_element_at(
-            ['text', 'back', 'div[@type="references"]', 'listBibl']
+            ['text', 'back', 'div[@type="references"]']
         )
         return self._reference_element
 
@@ -493,6 +494,7 @@ def get_tei_element_for_external_reference(
 
 
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
+    SemanticHeading: 'head',
     SemanticNameTitle: 'roleName',
     SemanticGivenName: 'forename[@type="first"]',
     SemanticMiddleName: 'forename[@type="middle"]',
@@ -545,6 +547,21 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
 }
 
 
+def get_tei_note_for_semantic_content(
+    semantic_content: SemanticContentWrapper
+) -> etree.ElementBase:
+    note_type = 'other'
+    if isinstance(semantic_content, SemanticNote):
+        note_type = semantic_content.note_type
+    else:
+        note_type = 'other:' + type(semantic_content).__name__
+    return TEI_E(
+        'note',
+        {'type': note_type},
+        *iter_layout_block_tei_children(semantic_content.merged_block)
+    )
+
+
 def get_tei_child_element_for_semantic_content(
     semantic_content: SemanticContentWrapper
 ) -> etree.ElementBase:
@@ -560,15 +577,7 @@ def get_tei_child_element_for_semantic_content(
         return parsed_tag_expression.create_node(
             *iter_layout_block_tei_children(semantic_content.merged_block)
         )
-    note_type = 'other'
-    if isinstance(semantic_content, SemanticNote):
-        note_type = semantic_content.note_type
-    else:
-        note_type = 'other:' + type(semantic_content).__name__
-    return TEI_E.note(
-        {'type': note_type},
-        *iter_layout_block_tei_children(semantic_content.merged_block)
-    )
+    return get_tei_note_for_semantic_content(semantic_content)
 
 
 def _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
@@ -782,7 +791,26 @@ def _get_tei_reference(  # pylint: disable=too-many-branches
     return TeiElementWrapper(tei_ref.element)
 
 
-def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
+def _get_tei_raw_reference_list(
+    semantic_reference_list: SemanticReferenceList
+) -> TeiElementWrapper:
+    tei_reference_list = TeiElementBuilder(TEI_E('listBibl'))
+    for semantic_content in semantic_reference_list:
+        if isinstance(semantic_content, SemanticRawReference):
+            tei_reference_list.append(
+                _get_tei_raw_reference(semantic_content).element
+            )
+        if isinstance(semantic_content, SemanticReference):
+            tei_reference_list.append(
+                _get_tei_reference(semantic_content).element
+            )
+        tei_reference_list.append(get_tei_child_element_for_semantic_content(
+            semantic_content
+        ))
+    return TeiElementWrapper(tei_reference_list.element)
+
+
+def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-many-statements
     semantic_document: SemanticDocument
 ) -> TeiDocument:
     stop_watch_recorder = StopWatchRecorder()
@@ -818,6 +846,18 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
             tei_document.get_or_create_element_at(
                 ['teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic']
             ).append(tei_author.element)
+            continue
+        if isinstance(semantic_content, SemanticTitle):
+            continue
+        if isinstance(semantic_content, SemanticAbstract):
+            continue
+        if isinstance(semantic_content, SemanticAffiliationAddress):
+            continue
+        tei_document.get_or_create_element_at(
+            ['teiHeader']
+        ).append(get_tei_note_for_semantic_content(
+            semantic_content
+        ))
     orphan_affiliations = get_orphan_affiliations(
         affiliations_by_marker=affiliations_by_marker,
         authors=semantic_authors
@@ -834,11 +874,16 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
         if isinstance(semantic_content, SemanticSection):
             tei_section = _get_tei_section_for_semantic_section(semantic_content)
             tei_document.add_body_section(tei_section)
+            continue
         if isinstance(semantic_content, SemanticNote):
             tei_document.get_body().add_note(
                 semantic_content.note_type,
                 semantic_content.merged_block
             )
+            continue
+        tei_document.get_body().element.append(get_tei_note_for_semantic_content(
+            semantic_content
+        ))
 
     LOGGER.info('generating tei document: back section')
     stop_watch_recorder.start('back')
@@ -849,19 +894,21 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches
                 tei_document.add_acknowledgement_section(tei_section)
             else:
                 tei_document.add_back_annex_section(tei_section)
+            continue
         if isinstance(semantic_content, SemanticNote):
             tei_document.get_back_annex().add_note(
                 semantic_content.note_type,
                 semantic_content.merged_block
             )
-        if isinstance(semantic_content, SemanticRawReference):
+            continue
+        if isinstance(semantic_content, SemanticReferenceList):
             tei_document.get_references().element.append(
-                _get_tei_raw_reference(semantic_content).element
+                _get_tei_raw_reference_list(semantic_content).element
             )
-        if isinstance(semantic_content, SemanticReference):
-            tei_document.get_references().element.append(
-                _get_tei_reference(semantic_content).element
-            )
+            continue
+        tei_document.get_back_annex().element.append(get_tei_note_for_semantic_content(
+            semantic_content
+        ))
     stop_watch_recorder.stop()
     LOGGER.info('generating tei document done, took: %s', stop_watch_recorder)
     return tei_document

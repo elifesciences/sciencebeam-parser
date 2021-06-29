@@ -4,6 +4,7 @@ from typing import Iterable, Optional, Tuple
 from pygrobid.utils.misc import iter_ids
 from pygrobid.document.semantic_document import (
     SemanticContentWrapper,
+    SemanticHeading,
     SemanticLabel,
     SemanticNote,
     SemanticRawReference,
@@ -16,6 +17,11 @@ from pygrobid.models.extract import ModelSemanticExtractor
 LOGGER = logging.getLogger(__name__)
 
 
+def is_looks_like_reference(layout_block: LayoutBlock) -> bool:
+    # a quick and dirty check whether this remotely looks like a reference
+    return len(list(layout_block.iter_all_tokens())) > 3
+
+
 class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
     def iter_semantic_content_for_entity_blocks(
         self,
@@ -26,6 +32,7 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
         LOGGER.debug('entity_tokens: %s', entity_tokens)
         ids_iterator = iter(iter_ids('b'))
         ref: Optional[SemanticRawReference] = None
+        is_first_ref = True
         for name, layout_block in entity_tokens:
             if name == '<label>':
                 if not ref:
@@ -34,12 +41,17 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
                 ref.add_content(SemanticLabel(layout_block=layout_block))
                 continue
             if name == '<reference>':
+                if not ref and is_first_ref and not is_looks_like_reference(layout_block):
+                    yield SemanticHeading(layout_block=layout_block)
+                    is_first_ref = False
+                    continue
                 if not ref:
                     ref = SemanticRawReference()
                     ref.reference_id = next(ids_iterator, '?')
                 ref.add_content(SemanticRawReferenceText(layout_block=layout_block))
                 yield ref
                 ref = None
+                is_first_ref = False
                 continue
             yield SemanticNote(layout_block=layout_block, note_type=name)
         if ref:

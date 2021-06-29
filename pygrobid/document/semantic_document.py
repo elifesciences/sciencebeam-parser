@@ -328,6 +328,10 @@ class SemanticReference(SemanticMixedContentWrapper):
     reference_id: str = ''
 
 
+class SemanticReferenceList(SemanticMixedContentWrapper):
+    pass
+
+
 class SemanticFront(SemanticMixedContentWrapper):
     @property
     def authors(self) -> List[SemanticAuthor]:
