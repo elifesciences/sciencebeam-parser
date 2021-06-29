@@ -1,14 +1,26 @@
 import logging
-from typing import Iterable, Optional, Tuple
+import re
+from typing import Iterable, Mapping, Optional, Tuple, Union
 
 from pygrobid.utils.misc import iter_ids
 from pygrobid.document.semantic_document import (
+    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
+    SemanticDate,
+    SemanticExternalIdentifier,
+    SemanticExternalIdentifierTypes,
+    SemanticExternalUrl,
+    SemanticIssue,
+    SemanticJournal,
+    SemanticLocation,
     SemanticNote,
+    SemanticPageRange,
+    SemanticPublisher,
     SemanticRawAuthors,
     SemanticRawReference,
     SemanticReference,
-    SemanticTitle
+    SemanticTitle,
+    SemanticVolume
 )
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.models.extract import ModelSemanticExtractor
@@ -17,16 +29,132 @@ from pygrobid.models.extract import ModelSemanticExtractor
 LOGGER = logging.getLogger(__name__)
 
 
+# https://en.wikipedia.org/wiki/Digital_Object_Identifier
+# https://www.doi.org/doi_handbook/2_Numbering.html
+DOI_PATTERN = r'\b(10\.\d{4,}(?:\.\d{1,})*/.+)'
+
+# copied and adapted from:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L66
+PMID_PATTERN = r"(?:(?:PMID)|(?:Pub(?:\s)?Med(?:\s)?(?:ID)?))(?:\s)?(?:\:)?(?:\s)*(\d{1,8})"
+
+PMCID_PATTERN = r"(?:PMC)(\d{1,})"
+
+# copied and adapted from:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L62-L63
+ARXIV_PATTERN = (
+    r"(?:arXiv\s?(?:\.org)?\s?\:\s?(\d{4}\s?\.\s?\d{4,5}(?:v\d+)?))"
+    r"|(?:arXiv\s?(?:\.org)?\s?\:\s?([ a-zA-Z\-\.]*\s?/\s?\d{7}(?:v\d+)?))"
+)
+
+# https://en.wikipedia.org/wiki/Publisher_Item_Identifier
+PII_PATTERN = r'\b([S,B]\W*(?:[0-9xX]\W*){15,}[0-9xX])'
+
+
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+    '<author>': SemanticRawAuthors,
+    '<title>': SemanticTitle,
+    '<journal>': SemanticJournal,
+    '<volume>': SemanticVolume,
+    '<issue>': SemanticIssue,
+    '<publisher>': SemanticPublisher,
+    '<location>': SemanticLocation
+}
+
+
+def parse_page_range(layout_block: LayoutBlock) -> SemanticPageRange:
+    page_range_text = layout_block.text
+    page_parts = page_range_text.split('-')
+    if len(page_parts) == 2:
+        from_page = page_parts[0].strip()
+        to_page = page_parts[1].strip()
+        if to_page and len(to_page) < len(from_page):
+            to_page = from_page[:-(len(to_page))] + to_page
+        return SemanticPageRange(
+            layout_block=layout_block,
+            from_page=from_page,
+            to_page=to_page
+        )
+    return SemanticPageRange(layout_block=layout_block)
+
+
+def parse_web(layout_block: LayoutBlock) -> Union[SemanticExternalUrl, SemanticExternalIdentifier]:
+    value = re.sub(r'\s', '', layout_block.text)
+    m = re.search(DOI_PATTERN, value)
+    if m:
+        return SemanticExternalIdentifier(
+            layout_block=layout_block,
+            value=m.group(1),
+            external_identifier_type=SemanticExternalIdentifierTypes.DOI
+        )
+    return SemanticExternalUrl(
+        layout_block=layout_block,
+        value=value
+    )
+
+
+def parse_pubnum(layout_block: LayoutBlock) -> SemanticExternalIdentifier:
+    value = re.sub(r'\s', '', layout_block.text)
+    external_identifier_type: Optional[str] = None
+    m = re.search(DOI_PATTERN, value)
+    if m:
+        value = m.group(1)
+        external_identifier_type = SemanticExternalIdentifierTypes.DOI
+    if not external_identifier_type:
+        m = re.search(PMCID_PATTERN, value)
+        if m:
+            value = 'PMC' + m.group(1)
+            external_identifier_type = SemanticExternalIdentifierTypes.PMCID
+    if not external_identifier_type:
+        m = re.search(ARXIV_PATTERN, value)
+        if m:
+            value = m.group(1) or m.group(2)
+            external_identifier_type = SemanticExternalIdentifierTypes.ARXIV
+    if not external_identifier_type:
+        m = re.match(PMID_PATTERN, value)
+        if m:
+            value = m.group(1)
+            external_identifier_type = SemanticExternalIdentifierTypes.PMID
+    if not external_identifier_type:
+        m = re.search(PII_PATTERN, value)
+        if m:
+            value = m.group(1)
+            external_identifier_type = SemanticExternalIdentifierTypes.PII
+    return SemanticExternalIdentifier(
+        layout_block=layout_block,
+        value=value,
+        external_identifier_type=external_identifier_type
+    )
+
+
+def parse_date(layout_block: LayoutBlock) -> SemanticDate:
+    value = re.sub(r'\s', '', layout_block.text)
+    year: Optional[int] = None
+    m = re.search(r'(\d{4})', value)
+    if m:
+        year = int(m.group(1))
+    return SemanticDate(
+        layout_block=layout_block,
+        year=year
+    )
+
+
 class CitationSemanticExtractor(ModelSemanticExtractor):
     def get_semantic_content_for_entity_name(  # pylint: disable=too-many-return-statements
         self,
         name: str,
         layout_block: LayoutBlock
     ) -> SemanticContentWrapper:
-        if name == '<author>':
-            return SemanticRawAuthors(layout_block=layout_block)
-        if name == '<title>':
-            return SemanticTitle(layout_block=layout_block)
+        if name == '<pages>':
+            return parse_page_range(layout_block)
+        if name == '<web>':
+            return parse_web(layout_block)
+        if name == '<pubnum>':
+            return parse_pubnum(layout_block)
+        if name == '<date>':
+            return parse_date(layout_block)
+        semantic_content_class = SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG.get(name)
+        if semantic_content_class:
+            return semantic_content_class(layout_block=layout_block)
         return SemanticNote(
             layout_block=layout_block,
             note_type=name

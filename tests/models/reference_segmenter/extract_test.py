@@ -2,7 +2,7 @@ import logging
 
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
-    SemanticMarker,
+    SemanticLabel,
     SemanticRawReference,
     SemanticRawReferenceText
 )
@@ -23,7 +23,7 @@ class TestReferenceSegmenterSemanticExtractor:
         assert len(semantic_content_list) == 1
         ref = semantic_content_list[0]
         assert isinstance(ref, SemanticRawReference)
-        assert ref.view_by_type(SemanticMarker).get_text() == '1'
+        assert ref.view_by_type(SemanticLabel).get_text() == '1'
         assert ref.view_by_type(SemanticRawReferenceText).get_text() == 'Reference 1'
 
     def test_should_extract_multiple_raw_references(self):
@@ -38,11 +38,11 @@ class TestReferenceSegmenterSemanticExtractor:
         assert len(semantic_content_list) == 2
         ref1 = semantic_content_list[0]
         assert isinstance(ref1, SemanticRawReference)
-        assert ref1.view_by_type(SemanticMarker).get_text() == '1'
+        assert ref1.view_by_type(SemanticLabel).get_text() == '1'
         assert ref1.view_by_type(SemanticRawReferenceText).get_text() == 'Reference 1'
         ref2 = semantic_content_list[1]
         assert isinstance(ref2, SemanticRawReference)
-        assert ref2.view_by_type(SemanticMarker).get_text() == '2'
+        assert ref2.view_by_type(SemanticLabel).get_text() == '2'
         assert ref2.view_by_type(SemanticRawReferenceText).get_text() == 'Reference 2'
 
     def test_should_extract_note_around_multiple_raw_references(self):
@@ -61,11 +61,11 @@ class TestReferenceSegmenterSemanticExtractor:
         assert semantic_content_list[0].get_text() == 'Other 1'
         ref1 = semantic_content_list[1]
         assert isinstance(ref1, SemanticRawReference)
-        assert ref1.view_by_type(SemanticMarker).get_text() == '1'
+        assert ref1.view_by_type(SemanticLabel).get_text() == '1'
         assert ref1.view_by_type(SemanticRawReferenceText).get_text() == 'Reference 1'
         assert semantic_content_list[2].get_text() == 'Other 2'
         ref2 = semantic_content_list[3]
         assert isinstance(ref2, SemanticRawReference)
-        assert ref2.view_by_type(SemanticMarker).get_text() == '2'
+        assert ref2.view_by_type(SemanticLabel).get_text() == '2'
         assert ref2.view_by_type(SemanticRawReferenceText).get_text() == 'Reference 2'
         assert semantic_content_list[4].get_text() == 'Other 3'

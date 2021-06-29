@@ -6,6 +6,7 @@ import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Type, TypeVar, cast
+from typing_extensions import Protocol
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutToken
 
@@ -56,6 +57,11 @@ class SemanticSimpleContentWrapper(SemanticContentWrapper):
         self.content = LayoutBlock(
             lines=self.content.lines + block.lines
         )
+
+
+class SemanticContentFactoryProtocol(Protocol):
+    def __call__(self, layout_block: LayoutBlock) -> SemanticContentWrapper:
+        pass
 
 
 EMPTY_CONTENT = SemanticSimpleContentWrapper()
@@ -160,6 +166,56 @@ class SemanticLabel(SemanticSimpleContentWrapper):
 
 class SemanticTitle(SemanticSimpleContentWrapper):
     pass
+
+
+class SemanticJournal(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticVolume(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticIssue(SemanticSimpleContentWrapper):
+    pass
+
+
+@dataclass
+class SemanticPageRange(SemanticSimpleContentWrapper):
+    from_page: Optional[str] = None
+    to_page: Optional[str] = None
+
+
+class SemanticPublisher(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticLocation(SemanticSimpleContentWrapper):
+    pass
+
+
+@dataclass
+class SemanticDate(SemanticSimpleContentWrapper):
+    year: Optional[int] = None
+
+
+class SemanticExternalIdentifierTypes:
+    ARXIV = 'ARXIV'
+    DOI = 'DOI'
+    PII = 'PII'
+    PMCID = 'PMCID'
+    PMID = 'PMID'
+
+
+@dataclass
+class SemanticExternalIdentifier(SemanticSimpleContentWrapper):
+    value: Optional[str] = None
+    external_identifier_type: Optional[str] = None
+
+
+@dataclass
+class SemanticExternalUrl(SemanticSimpleContentWrapper):
+    value: Optional[str] = None
 
 
 class SemanticAbstract(SemanticSimpleContentWrapper):

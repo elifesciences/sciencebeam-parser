@@ -1,6 +1,18 @@
 import logging
 import re
-from typing import Iterable, Dict, List, Mapping, Optional, Sequence, Set, Union
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Type,
+    Union
+)
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -16,20 +28,29 @@ from pygrobid.document.semantic_document import (
     SemanticAuthor,
     SemanticContentWrapper,
     SemanticCountry,
+    SemanticDate,
     SemanticDepartment,
     SemanticDocument,
+    SemanticExternalIdentifier,
+    SemanticExternalUrl,
     SemanticGivenName,
     SemanticHeading,
     SemanticInstitution,
+    SemanticIssue,
+    SemanticJournal,
+    SemanticLabel,
     SemanticLaboratory,
+    SemanticLocation,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
+    SemanticPageRange,
     SemanticParagraph,
     SemanticPostBox,
     SemanticPostCode,
+    SemanticPublisher,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -38,7 +59,8 @@ from pygrobid.document.semantic_document import (
     SemanticSectionTypes,
     SemanticSettlement,
     SemanticSurname,
-    SemanticTitle
+    SemanticTitle,
+    SemanticVolume
 )
 
 
@@ -259,6 +281,43 @@ class TeiElementWrapper:
         self.element.append(_create_tei_note_element(note_type, layout_block))
 
 
+class TeiElementBuilder:
+    def __init__(
+        self,
+        element: etree.ElementBase,
+    ):
+        self.element = element
+        self.builder_by_path_fragment: Dict[str, 'TeiElementBuilder'] = {}
+
+    def get_or_create(
+        self,
+        path: Optional[List[str]]
+    ) -> 'TeiElementBuilder':
+        if not path:
+            return self
+        key = path[0]
+        builder = self.builder_by_path_fragment.get(key)
+        if not builder:
+            builder = TeiElementBuilder(TEI_E(key))
+            self.element.append(builder.element)
+            self.builder_by_path_fragment[key] = builder
+        return builder.get_or_create(path[1:])
+
+    def add_dict(self, attrib: dict):
+        _attrib = self.element.attrib
+        for k, v in attrib.items():
+            _attrib[k] = v
+
+    def append(
+        self,
+        child: Union[dict, etree.ElementBase]
+    ):
+        if isinstance(child, dict):
+            self.add_dict(child)
+            return
+        self.element.append(child)
+
+
 class TeiAuthor(TeiElementWrapper):
     pass
 
@@ -408,6 +467,31 @@ class TeiDocument(TeiElementWrapper):
         return TeiSection(TEI_E.div())
 
 
+def get_tei_biblscope_for_page_range(
+    page_range: SemanticContentWrapper
+) -> etree.ElementBase:
+    assert isinstance(page_range, SemanticPageRange)
+    if not page_range.from_page or not page_range.to_page:
+        return TEI_E.biblScope({
+            'unit': 'page'
+        }, page_range.get_text())
+    return TEI_E.biblScope({
+        'unit': 'page',
+        'from': page_range.from_page,
+        'to': page_range.to_page
+    })
+
+
+def get_tei_element_for_external_reference(
+    external_identifier: SemanticContentWrapper
+) -> etree.ElementBase:
+    assert isinstance(external_identifier, SemanticExternalIdentifier)
+    return TEI_E.idno(
+        {'type': external_identifier.external_identifier_type},
+        external_identifier.value
+    )
+
+
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticNameTitle: 'roleName',
     SemanticGivenName: 'forename[@type="first"]',
@@ -423,7 +507,13 @@ SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticPostBox: 'postBox',
     SemanticSettlement: 'settlement',
     SemanticRegion: 'region',
-    SemanticCountry: 'country'
+    SemanticCountry: 'country',
+    SemanticJournal: 'title[@level="j"]',
+    SemanticVolume: 'biblScope[@unit="volume"]',
+    SemanticIssue: 'biblScope[@unit="issue"]',
+    SemanticPublisher: 'publisher',
+    SemanticLocation: 'addrLine',
+    SemanticExternalUrl: 'ref[@type="url"]'
 }
 
 
@@ -433,9 +523,36 @@ PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS: Dict[type, TagExpression] = {
 }
 
 
+PARENT_PATH_BY_SEMANTIC_CONTENT_CLASS = {
+    SemanticTitle: ['analytic'],
+    SemanticAuthor: ['analytic'],
+    SemanticExternalIdentifier: ['analytic'],
+    SemanticJournal: ['monogr'],
+    SemanticVolume: ['monogr', 'imprint'],
+    SemanticIssue: ['monogr', 'imprint'],
+    SemanticPageRange: ['monogr', 'imprint'],
+    SemanticPublisher: ['monogr', 'imprint'],
+    SemanticLocation: ['monogr', 'meeting', 'address']
+}
+
+
+ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
+    Type[Any],
+    Callable[[SemanticContentWrapper], etree.ElementBase]
+] = {
+    SemanticPageRange: get_tei_biblscope_for_page_range,
+    SemanticExternalIdentifier: get_tei_element_for_external_reference
+}
+
+
 def get_tei_child_element_for_semantic_content(
     semantic_content: SemanticContentWrapper
 ) -> etree.ElementBase:
+    element_factory = ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS.get(
+        type(semantic_content)
+    )
+    if element_factory:
+        return element_factory(semantic_content)
     parsed_tag_expression = PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS.get(
         type(semantic_content)
     )
@@ -611,21 +728,31 @@ def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElement
     return tei_ref
 
 
-def _get_tei_reference(semantic_ref: SemanticReference) -> TeiElementWrapper:
+def _get_tei_reference(  # pylint: disable=too-many-branches
+    semantic_ref: SemanticReference
+) -> TeiElementWrapper:
     LOGGER.debug('semantic_ref: %s', semantic_ref)
-    analytic_element: Optional[etree.ElementBase] = None
-    children = []
+    tei_ref = TeiElementBuilder(TEI_E.biblStruct(
+        {XML_ID: semantic_ref.reference_id}
+    ))
+    is_first_date = True
     for semantic_content in semantic_ref:
+        parent_path = PARENT_PATH_BY_SEMANTIC_CONTENT_CLASS.get(
+            type(semantic_content)
+        )
+        tei_child_parent = tei_ref.get_or_create(parent_path)
+        if isinstance(semantic_content, SemanticLabel):
+            tei_child_parent.append(_create_tei_note_element(
+                'label', semantic_content.merged_block
+            ))
+            continue
         if isinstance(semantic_content, SemanticRawReferenceText):
-            children.append(_create_tei_note_element(
+            tei_child_parent.append(_create_tei_note_element(
                 'raw_reference', semantic_content.merged_block
             ))
             continue
         if isinstance(semantic_content, SemanticTitle):
-            if analytic_element is None:
-                analytic_element = TEI_E.analytic()
-                children.append(analytic_element)
-            analytic_element.append(TEI_E.title(
+            tei_child_parent.append(TEI_E.title(
                 {'level': 'a', 'type': 'main'},
                 *iter_layout_block_tei_children(
                     semantic_content.merged_block
@@ -633,19 +760,26 @@ def _get_tei_reference(semantic_ref: SemanticReference) -> TeiElementWrapper:
             ))
             continue
         if isinstance(semantic_content, SemanticAuthor):
-            if analytic_element is None:
-                analytic_element = TEI_E.analytic()
-                children.append(analytic_element)
-            analytic_element.append(_get_tei_author_for_semantic_author(
+            tei_child_parent.append(_get_tei_author_for_semantic_author(
                 semantic_content
             ).element)
             continue
-        children.append(get_tei_child_element_for_semantic_content(semantic_content))
-    tei_ref = TeiElementWrapper(TEI_E.biblStruct(
-        {XML_ID: semantic_ref.reference_id},
-        *children
-    ))
-    return tei_ref
+        if isinstance(semantic_content, SemanticDate):
+            tei_child_parent = tei_ref.get_or_create(['monogr', 'imprint'])
+            attrib = {}
+            if is_first_date:
+                # assume first date is published date (more or less matches GROBID)
+                attrib['type'] = 'published'
+            if semantic_content.year:
+                attrib['when'] = str(semantic_content.year)
+            tei_child_parent.append(TEI_E(
+                'date', attrib,
+                *iter_layout_block_tei_children(layout_block=semantic_content.merged_block)
+            ))
+            is_first_date = False
+            continue
+        tei_child_parent.append(get_tei_child_element_for_semantic_content(semantic_content))
+    return TeiElementWrapper(tei_ref.element)
 
 
 def get_tei_for_semantic_document(  # pylint: disable=too-many-branches

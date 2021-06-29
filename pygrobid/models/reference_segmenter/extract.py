@@ -4,7 +4,7 @@ from typing import Iterable, Optional, Tuple
 from pygrobid.utils.misc import iter_ids
 from pygrobid.document.semantic_document import (
     SemanticContentWrapper,
-    SemanticMarker,
+    SemanticLabel,
     SemanticNote,
     SemanticRawReference,
     SemanticRawReferenceText
@@ -31,7 +31,7 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
                 if not ref:
                     ref = SemanticRawReference()
                     ref.reference_id = next(ids_iterator, '?')
-                ref.add_content(SemanticMarker(layout_block=layout_block))
+                ref.add_content(SemanticLabel(layout_block=layout_block))
                 continue
             if name == '<reference>':
                 if not ref:

@@ -10,6 +10,7 @@ from pygrobid.document.semantic_document import (
     SemanticAuthor,
     SemanticCountry,
     SemanticInstitution,
+    SemanticLabel,
     SemanticMarker,
     SemanticRawReference,
     SemanticRawReferenceText,
@@ -407,9 +408,9 @@ class TestFullTextProcessor:
     def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
     ):
-        marker_block = LayoutBlock.for_text('1')
+        label_block = LayoutBlock.for_text('1')
         ref_text_block = LayoutBlock.for_text('Reference 1')
-        ref_block = LayoutBlock.merge_blocks([marker_block, ref_text_block])
+        ref_block = LayoutBlock.merge_blocks([label_block, ref_text_block])
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
             FullTextProcessorConfig(extract_citation_fields=False)
@@ -423,7 +424,7 @@ class TestFullTextProcessor:
         )
 
         reference_segmenter_model_mock.update_label_by_layout_block(
-            marker_block, '<label>'
+            label_block, '<label>'
         )
         reference_segmenter_model_mock.update_label_by_layout_block(
             ref_text_block, '<reference>'
@@ -445,19 +446,19 @@ class TestFullTextProcessor:
         references = list(semantic_document.back_section.iter_by_type(SemanticRawReference))
         assert len(references) == 1
         ref = references[0]
-        assert ref.get_text_by_type(SemanticMarker) == marker_block.text
+        assert ref.get_text_by_type(SemanticLabel) == label_block.text
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
         assert ref.reference_id == 'b0'
 
     def test_should_extract_references_fields_from_document(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
     ):
-        marker_block = LayoutBlock.for_text('1')
+        label_block = LayoutBlock.for_text('1')
         ref_title_block = LayoutBlock.for_text('Reference Title 1')
         ref_text_block = LayoutBlock.merge_blocks([
             ref_title_block
         ])
-        ref_block = LayoutBlock.merge_blocks([marker_block, ref_text_block])
+        ref_block = LayoutBlock.merge_blocks([label_block, ref_text_block])
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
             FullTextProcessorConfig(extract_citation_fields=True)
@@ -472,7 +473,7 @@ class TestFullTextProcessor:
         )
 
         reference_segmenter_model_mock.update_label_by_layout_block(
-            marker_block, '<label>'
+            label_block, '<label>'
         )
         reference_segmenter_model_mock.update_label_by_layout_block(
             ref_text_block, '<reference>'
@@ -494,7 +495,7 @@ class TestFullTextProcessor:
         assert len(references) == 1
         ref = references[0]
         assert ref.get_text_by_type(SemanticTitle) == ref_title_block.text
-        assert ref.get_text_by_type(SemanticMarker) == marker_block.text
+        assert ref.get_text_by_type(SemanticLabel) == label_block.text
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
         assert ref.reference_id == 'b0'
 
