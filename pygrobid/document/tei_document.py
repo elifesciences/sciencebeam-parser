@@ -149,9 +149,9 @@ def get_element_for_styles(styles: List[str], text: str) -> etree.ElementBase:
     for style in reversed(styles):
         LOGGER.debug('style: %r, child: %r, text: %r', style, child, text)
         if child is not None:
-            child = TEI_E.hi({'rend': style}, child)
+            child = TEI_E('hi', {'rend': style}, child)
         else:
-            child = TEI_E.hi({'rend': style}, text)
+            child = TEI_E('hi', {'rend': style}, text)
     return child
 
 
@@ -233,8 +233,10 @@ def extend_element(
             element.attrib.update(item)
             continue
         if isinstance(item, str):
-            children = list(element)
-            previous_element = children[-1] if children else None
+            try:
+                previous_element = element[-1]
+            except IndexError:
+                previous_element = None
             if previous_element is not None:
                 previous_element.tail = (
                     (previous_element.tail or '')
@@ -253,7 +255,8 @@ def _create_tei_note_element(
     note_type: str,
     layout_block: LayoutBlock
 ) -> etree.EntityBase:
-    return TEI_E.note(
+    return TEI_E(
+        'note',
         {'type': note_type},
         *iter_layout_block_tei_children(layout_block)
     )
@@ -357,20 +360,20 @@ class TeiSection(TeiElementWrapper):
 
     def add_title(self, layout_block: LayoutBlock):
         self.element.append(
-            TEI_E.head(*iter_layout_block_tei_children(layout_block))
+            TEI_E('head', *iter_layout_block_tei_children(layout_block))
         )
 
     def add_paragraph(self, paragraph: TeiSectionParagraph):
         self.element.append(paragraph.element)
 
     def create_paragraph(self) -> TeiSectionParagraph:
-        return TeiSectionParagraph(TEI_E.p())
+        return TeiSectionParagraph(TEI_E('p'))
 
 
 class TeiDocument(TeiElementWrapper):
     def __init__(self, root: Optional[etree.ElementBase] = None):
         if root is None:
-            self.root = TEI_E.TEI()
+            self.root = TEI_E('TEI')
         else:
             self.root = root
         self._reference_element: Optional[etree.ElementBase] = None
@@ -392,13 +395,14 @@ class TeiDocument(TeiElementWrapper):
     def set_title(self, title: str):
         self.set_child_element_at(
             ['teiHeader', 'fileDesc', 'titleStmt'],
-            TEI_E.title(title, level="a", type="main")
+            TEI_E('title', title, level="a", type="main")
         )
 
     def set_title_layout_block(self, title_block: LayoutBlock):
         self.set_child_element_at(
             ['teiHeader', 'fileDesc', 'titleStmt'],
-            TEI_E.title(
+            TEI_E(
+                'title',
                 {'level': 'a', 'type': 'main'},
                 *iter_layout_block_tei_children(title_block)
             )
@@ -413,13 +417,13 @@ class TeiDocument(TeiElementWrapper):
     def set_abstract(self, abstract: str):
         self.set_child_element_at(
             ['teiHeader', 'profileDesc', 'abstract'],
-            TEI_E.p(abstract)
+            TEI_E('p', abstract)
         )
 
     def set_abstract_layout_block(self, abstract_block: LayoutBlock):
         self.set_child_element_at(
             ['teiHeader', 'profileDesc', 'abstract'],
-            TEI_E.p(*iter_layout_block_tei_children(abstract_block))
+            TEI_E('p', *iter_layout_block_tei_children(abstract_block))
         )
 
     def get_body_element(self) -> etree.ElementBase:
@@ -465,7 +469,7 @@ class TeiDocument(TeiElementWrapper):
         self.get_back_element().append(section.element)
 
     def create_section(self) -> TeiSection:
-        return TeiSection(TEI_E.div())
+        return TeiSection(TEI_E('div'))
 
 
 def get_tei_biblscope_for_page_range(
@@ -473,21 +477,27 @@ def get_tei_biblscope_for_page_range(
 ) -> etree.ElementBase:
     assert isinstance(page_range, SemanticPageRange)
     if not page_range.from_page or not page_range.to_page:
-        return TEI_E.biblScope({
-            'unit': 'page'
-        }, page_range.get_text())
-    return TEI_E.biblScope({
-        'unit': 'page',
-        'from': page_range.from_page,
-        'to': page_range.to_page
-    })
+        return TEI_E(
+            'biblScope',
+            {'unit': 'page'},
+            page_range.get_text()
+        )
+    return TEI_E(
+        'biblScope',
+        {
+            'unit': 'page',
+            'from': page_range.from_page,
+            'to': page_range.to_page
+        }
+    )
 
 
 def get_tei_element_for_external_reference(
     external_identifier: SemanticContentWrapper
 ) -> etree.ElementBase:
     assert isinstance(external_identifier, SemanticExternalIdentifier)
-    return TEI_E.idno(
+    return TEI_E(
+        'idno',
         {'type': external_identifier.external_identifier_type},
         external_identifier.value
     )
@@ -555,11 +565,7 @@ def get_tei_note_for_semantic_content(
         note_type = semantic_content.note_type
     else:
         note_type = 'other:' + type(semantic_content).__name__
-    return TEI_E(
-        'note',
-        {'type': note_type},
-        *iter_layout_block_tei_children(semantic_content.merged_block)
-    )
+    return _create_tei_note_element(note_type, semantic_content.merged_block)
 
 
 def get_tei_child_element_for_semantic_content(
@@ -588,13 +594,14 @@ def _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
     for semantic_content in semantic_affiliation_address:
         merged_block = semantic_content.merged_block
         if isinstance(semantic_content, SemanticMarker):
-            children.append(TEI_E.label(
+            children.append(TEI_E(
+                'label',
                 *iter_layout_block_tei_children(merged_block, enable_coordinates=False)
             ))
             children.append(merged_block.whitespace)
             continue
         children.extend(*iter_layout_block_tei_children(merged_block, enable_coordinates=False))
-    return TEI_E.note(*children)
+    return TEI_E('note', *children)
 
 
 def _get_tei_affiliation_for_semantic_affiliation_address(
@@ -621,13 +628,13 @@ def _get_tei_affiliation_for_semantic_affiliation_address(
         ))
     LOGGER.debug('address_semantic_content_list: %r', address_semantic_content_list)
     if address_semantic_content_list:
-        children.append(TEI_E.address(*[
+        children.append(TEI_E('address', *[
             get_tei_child_element_for_semantic_content(
                 semantic_content
             )
             for semantic_content in address_semantic_content_list
         ]))
-    return TeiAffiliation(TEI_E.affiliation(*children))
+    return TeiAffiliation(TEI_E('affiliation', *children))
 
 
 def _get_tei_author_for_semantic_author(
@@ -643,7 +650,8 @@ def _get_tei_author_for_semantic_author(
             semantic_content
         ))
     children = [
-        TEI_E.persName(
+        TEI_E(
+            'persName',
             get_default_attributes_for_layout_block(semantic_author.merged_block),
             *pers_name_children
         )
@@ -659,14 +667,14 @@ def _get_tei_author_for_semantic_author(
                 semantic_affiliation
             ).element)
     children.extend(affiliations)
-    return TeiAuthor(TEI_E.author(*children))
+    return TeiAuthor(TEI_E('author', *children))
 
 
 def _get_dummy_tei_author_for_semantic_affiliations(
     semantic_affiliations: Sequence[SemanticAffiliationAddress]
 ) -> TeiAuthor:
     children = [
-        TEI_E.note({'type': 'dummy_author'}, 'Dummy author for orphan affiliations')
+        TEI_E('note', {'type': 'dummy_author'}, 'Dummy author for orphan affiliations')
     ]
     children.extend([
         _get_tei_affiliation_for_semantic_affiliation_address(
@@ -674,12 +682,12 @@ def _get_dummy_tei_author_for_semantic_affiliations(
         ).element
         for semantic_affiliation in semantic_affiliations
     ])
-    return TeiAuthor(TEI_E.author(*children))
+    return TeiAuthor(TEI_E('author', *children))
 
 
 def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> TeiSection:
     LOGGER.debug('semantic_section: %s', semantic_section)
-    tei_section = TeiSection(TEI_E.div())
+    tei_section = TeiSection(TEI_E('div'))
     for semantic_content in semantic_section:
         if isinstance(semantic_content, SemanticHeading):
             tei_section.add_title(LayoutBlock.for_tokens(
@@ -730,7 +738,8 @@ def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElement
             ))
             continue
         children.append(get_tei_child_element_for_semantic_content(semantic_content))
-    tei_ref = TeiElementWrapper(TEI_E.biblStruct(
+    tei_ref = TeiElementWrapper(TEI_E(
+        'biblStruct',
         {XML_ID: semantic_raw_ref.reference_id},
         *children
     ))
@@ -741,7 +750,8 @@ def _get_tei_reference(  # pylint: disable=too-many-branches
     semantic_ref: SemanticReference
 ) -> TeiElementWrapper:
     LOGGER.debug('semantic_ref: %s', semantic_ref)
-    tei_ref = TeiElementBuilder(TEI_E.biblStruct(
+    tei_ref = TeiElementBuilder(TEI_E(
+        'biblStruct',
         {XML_ID: semantic_ref.reference_id}
     ))
     is_first_date = True
@@ -761,7 +771,8 @@ def _get_tei_reference(  # pylint: disable=too-many-branches
             ))
             continue
         if isinstance(semantic_content, SemanticTitle):
-            tei_child_parent.append(TEI_E.title(
+            tei_child_parent.append(TEI_E(
+                'title',
                 {'level': 'a', 'type': 'main'},
                 *iter_layout_block_tei_children(
                     semantic_content.merged_block
@@ -800,10 +811,12 @@ def _get_tei_raw_reference_list(
             tei_reference_list.append(
                 _get_tei_raw_reference(semantic_content).element
             )
+            continue
         if isinstance(semantic_content, SemanticReference):
             tei_reference_list.append(
                 _get_tei_reference(semantic_content).element
             )
+            continue
         tei_reference_list.append(get_tei_child_element_for_semantic_content(
             semantic_content
         ))
