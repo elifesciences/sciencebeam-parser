@@ -35,6 +35,7 @@ from pygrobid.document.semantic_document import (
     SemanticPostBox,
     SemanticPostCode,
     SemanticPublisher,
+    SemanticRawEditors,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -278,6 +279,7 @@ class TestGetTeiReference:
                 SemanticGivenName(layout_block=LayoutBlock.for_text('Given Name 1')),
                 SemanticSurname(layout_block=LayoutBlock.for_text('Surname 1'))
             ]),
+            SemanticRawEditors(layout_block=LayoutBlock.for_text('Editor 1')),
             SemanticJournal(layout_block=LayoutBlock.for_text('Journal 1')),
             SemanticVolume(layout_block=LayoutBlock.for_text('Volume 1')),
             SemanticIssue(layout_block=LayoutBlock.for_text('Issue 1')),
@@ -320,6 +322,9 @@ class TestGetTeiReference:
         assert tei_ref.get_xpath_text_content_list(
             'tei:analytic/tei:author/tei:persName/tei:surname'
         ) == ['Surname 1']
+        assert tei_ref.get_xpath_text_content_list(
+            'tei:monogr/tei:editor'
+        ) == ['Editor 1']
         assert tei_ref.get_xpath_text_content_list(
             'tei:monogr/tei:title[@level="j"]'
         ) == ['Journal 1']

@@ -222,7 +222,18 @@ class SemanticAbstract(SemanticSimpleContentWrapper):
     pass
 
 
-class SemanticRawAuthors(SemanticMixedContentWrapper):
+class SemanticRawNameList(SemanticMixedContentWrapper):
+    pass
+
+
+T_SemanticRawNameList = TypeVar('T_SemanticRawNameList', bound=SemanticRawNameList)
+
+
+class SemanticRawAuthors(SemanticRawNameList):
+    pass
+
+
+class SemanticRawEditors(SemanticRawNameList):
     pass
 
 
@@ -258,7 +269,7 @@ class SemanticSurname(SemanticMixedContentWrapper):
     pass
 
 
-class SemanticAuthor(SemanticMixedContentWrapper):
+class SemanticName(SemanticMixedContentWrapper):
     @property
     def label_text(self) -> str:
         return self.view_by_type(SemanticLabel).get_text()
@@ -270,6 +281,17 @@ class SemanticAuthor(SemanticMixedContentWrapper):
     @property
     def surname_text(self) -> str:
         return self.view_by_type(SemanticSurname).get_text()
+
+
+T_SemanticName = TypeVar('T_SemanticName', bound=SemanticName)
+
+
+class SemanticAuthor(SemanticName):
+    pass
+
+
+class SemanticEditor(SemanticName):
+    pass
 
 
 class SemanticInstitution(SemanticMixedContentWrapper):

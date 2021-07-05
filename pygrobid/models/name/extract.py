@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Type, cast
 
 from pygrobid.document.semantic_document import (
     SemanticAuthor,
@@ -10,7 +10,8 @@ from pygrobid.document.semantic_document import (
     SemanticNameTitle,
     SemanticNote,
     SemanticGivenName,
-    SemanticSurname
+    SemanticSurname,
+    T_SemanticName
 )
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.models.extract import ModelSemanticExtractor
@@ -43,62 +44,67 @@ class NameSemanticExtractor(ModelSemanticExtractor):
             note_type=name
         )
 
-    def iter_semantic_content_for_entity_blocks(
+    def iter_semantic_content_for_entity_blocks(  # type: ignore  # pylint: disable=arguments-differ
         self,
         entity_tokens: Iterable[Tuple[str, LayoutBlock]],
+        name_type: Optional[Type[T_SemanticName]] = None,
         **kwargs
-    ) -> Iterable[SemanticAuthor]:
+    ) -> Iterable[T_SemanticName]:
+        _name_type: Type[T_SemanticName] = cast(
+            Type[T_SemanticName],
+            name_type if name_type is not None else SemanticAuthor
+        )
         entity_tokens = list(entity_tokens)
         LOGGER.debug('entity_tokens: %s', entity_tokens)
-        author: Optional[SemanticAuthor] = None
+        semantic_name: Optional[T_SemanticName] = None
         seen_entity_tokens: List[Tuple[str, LayoutBlock]] = []
-        seen_author_labels: List[str] = []
+        seen_name_labels: List[str] = []
         has_tail_marker: bool = False
         for name, layout_block in entity_tokens:
             seen_entity_tokens.append((name, layout_block,))
             if name == '<marker>':
-                if not author:
-                    LOGGER.debug('new author with marker in the beginning')
-                    author = SemanticAuthor()
-                    author.add_content(SemanticMarker(layout_block=layout_block))
+                if not semantic_name:
+                    LOGGER.debug('new semantic_name with marker in the beginning')
+                    semantic_name = _name_type()
+                    semantic_name.add_content(SemanticMarker(layout_block=layout_block))
                     continue
-                if len(seen_entity_tokens) >= 2 and seen_author_labels and not has_tail_marker:
+                if len(seen_entity_tokens) >= 2 and seen_name_labels and not has_tail_marker:
                     previous_layout_block = seen_entity_tokens[-2][1]
                     if previous_layout_block.text.strip().endswith(','):
                         LOGGER.debug(
-                            'new author marker after comma, seen_author_labels=%s',
-                            seen_author_labels
+                            'new semantic_name marker after comma, seen_name_labels=%s',
+                            seen_name_labels
                         )
-                        yield author
-                        seen_author_labels = []
-                        author = SemanticAuthor()
-                        author.add_content(SemanticMarker(layout_block=layout_block))
+                        yield semantic_name
+                        seen_name_labels = []
+                        semantic_name = _name_type()
+                        semantic_name.add_content(SemanticMarker(layout_block=layout_block))
                         continue
-                author.add_content(SemanticMarker(layout_block=layout_block))
+                semantic_name.add_content(SemanticMarker(layout_block=layout_block))
                 has_tail_marker = True
                 continue
             semantic_content = self.get_semantic_content_for_entity_name(
                 name, layout_block
             )
-            if author and name in SPLIT_ON_SECOND_ENTIY_NAME and name in seen_author_labels:
+            if semantic_name and name in SPLIT_ON_SECOND_ENTIY_NAME and name in seen_name_labels:
                 LOGGER.debug(
-                    'starting new author after having seen name part again, name=%r',
+                    'starting new semantic_name after having seen name part again, name=%r',
                     name
                 )
-                yield author
-                seen_author_labels = []
+                yield semantic_name
+                seen_name_labels = []
                 has_tail_marker = False
-                author = None
+                semantic_name = None
             if not isinstance(semantic_content, SemanticNote):
-                if has_tail_marker and author:
-                    LOGGER.debug('starting new author after tail markers, name=%r', name)
-                    yield author
-                    seen_author_labels = []
+                if has_tail_marker and semantic_name:
+                    LOGGER.debug('starting new semantic_name after tail markers, name=%r', name)
+                    yield semantic_name
+                    seen_name_labels = []
                     has_tail_marker = False
-                    author = None
-                seen_author_labels.append(name)
-            if not author:
-                author = SemanticAuthor()
-            author.add_content(semantic_content)
-        if author:
-            yield author
+                    semantic_name = None
+                seen_name_labels.append(name)
+            if not semantic_name:
+                semantic_name = _name_type()
+            semantic_name.add_content(semantic_content)
+        if semantic_name:
+            yield semantic_name

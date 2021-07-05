@@ -3,6 +3,7 @@ import logging
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
     SemanticAuthor,
+    SemanticEditor,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
@@ -24,7 +25,7 @@ class TestNameSemanticExtractor:
                 ('<surname>', LayoutBlock.for_text('Smith')),
                 ('<suffix>', LayoutBlock.for_text('Suffix1')),
                 ('<marker>', LayoutBlock.for_text('1'))
-            ])
+            ], name_type=SemanticAuthor)
         )
         assert len(semantic_content_list) == 1
         author = semantic_content_list[0]
@@ -35,6 +36,19 @@ class TestNameSemanticExtractor:
         assert author.surname_text == 'Smith'
         assert author.view_by_type(SemanticNameSuffix).get_text() == 'Suffix1'
         assert author.view_by_type(SemanticMarker).get_text() == '1'
+
+    def test_should_be_able_to_extract_single_editor(self):
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('John')),
+                ('<surname>', LayoutBlock.for_text('Smith'))
+            ], name_type=SemanticEditor)
+        )
+        assert len(semantic_content_list) == 1
+        author = semantic_content_list[0]
+        assert isinstance(author, SemanticEditor)
+        assert author.given_name_text == 'John'
+        assert author.surname_text == 'Smith'
 
     def test_should_extract_multiple_authors(self):
         semantic_content_list = list(

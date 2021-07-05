@@ -51,6 +51,7 @@ from pygrobid.document.semantic_document import (
     SemanticPostBox,
     SemanticPostCode,
     SemanticPublisher,
+    SemanticRawEditors,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -510,6 +511,7 @@ SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticMiddleName: 'forename[@type="middle"]',
     SemanticSurname: 'surname',
     SemanticNameSuffix: 'genName',
+    SemanticRawEditors: 'editor',
     SemanticMarker: 'note[@type="marker"]',
     SemanticInstitution: 'orgName[@type="institution"]',
     SemanticDepartment: 'orgName[@type="department"]',
@@ -538,6 +540,7 @@ PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS: Dict[type, TagExpression] = {
 PARENT_PATH_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticTitle: ['analytic'],
     SemanticAuthor: ['analytic'],
+    SemanticRawEditors: ['monogr'],
     SemanticExternalIdentifier: ['analytic'],
     SemanticJournal: ['monogr'],
     SemanticVolume: ['monogr', 'imprint'],

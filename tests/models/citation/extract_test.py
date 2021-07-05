@@ -13,6 +13,7 @@ from pygrobid.document.semantic_document import (
     SemanticPageRange,
     SemanticPublisher,
     SemanticRawAuthors,
+    SemanticRawEditors,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -171,6 +172,7 @@ class TestReferenceSegmenterSemanticExtractor:
         semantic_content_list = list(
             CitationSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<author>', LayoutBlock.for_text('Author 1')),
+                ('<editor>', LayoutBlock.for_text('Editor 1')),
                 ('<title>', LayoutBlock.for_text('Title 1')),
                 ('<journal>', LayoutBlock.for_text('Journal 1')),
                 ('<volume>', LayoutBlock.for_text('Volume 1')),
@@ -187,6 +189,7 @@ class TestReferenceSegmenterSemanticExtractor:
         ref = semantic_content_list[0]
         assert isinstance(ref, SemanticReference)
         assert ref.view_by_type(SemanticRawAuthors).get_text() == 'Author 1'
+        assert ref.view_by_type(SemanticRawEditors).get_text() == 'Editor 1'
         assert ref.view_by_type(SemanticTitle).get_text() == 'Title 1'
         assert ref.view_by_type(SemanticJournal).get_text() == 'Journal 1'
         assert ref.view_by_type(SemanticVolume).get_text() == 'Volume 1'

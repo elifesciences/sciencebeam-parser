@@ -1,23 +1,28 @@
 import logging
 from dataclasses import dataclass
-from typing import Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import Iterable, List, NamedTuple, Optional, Sequence, Tuple, Type, Union
 
 from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult
 from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_config
 
 from pygrobid.document.semantic_document import (
+    SemanticAuthor,
     SemanticContentWrapper,
     SemanticDocument,
+    SemanticEditor,
     SemanticMixedContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
     SemanticRawAuthors,
+    SemanticRawEditors,
     SemanticRawReference,
     SemanticReference,
     SemanticReferenceList,
     SemanticSection,
-    SemanticSectionTypes
+    SemanticSectionTypes,
+    T_SemanticName,
+    T_SemanticRawNameList
 )
 from pygrobid.document.tei_document import TeiDocument, get_tei_for_semantic_document
 from pygrobid.document.layout_document import LayoutDocument
@@ -86,6 +91,7 @@ def load_models(app_config: AppConfig) -> FullTextModels:
 class FullTextProcessorConfig(NamedTuple):
     extract_citation_fields: bool = True
     extract_citation_authors: bool = True
+    extract_citation_editors: bool = False
 
 
 class FullTextProcessor:
@@ -183,8 +189,8 @@ class FullTextProcessor:
             self._extract_reference_fields_from_raw_references(
                 semantic_document=document
             )
-            if self.config.extract_citation_authors:
-                self._extract_reference_authors_from_raw_references(
+            if self.config.extract_citation_authors or self.config.extract_citation_editors:
+                self._extract_reference_name_lists_from_raw_references(
                     semantic_document=document
                 )
         return document
@@ -340,66 +346,97 @@ class FullTextProcessor:
                 updated_content.append(semantic_content)
             reference_list.mixed_content = updated_content
 
-    def _iter_parse_semantic_authors(
+    def _iter_parse_semantic_name_lists(
         self,
-        semantic_raw_authors: List[SemanticRawAuthors]
-    ) -> Iterable[Tuple[SemanticRawAuthors, List[SemanticContentWrapper]]]:
+        semantic_raw_name_lists: Sequence[T_SemanticRawNameList],
+        name_type: Type[T_SemanticName]
+    ) -> Iterable[Tuple[T_SemanticRawNameList, List[SemanticContentWrapper]]]:
         layout_documents = [
-            LayoutDocument.for_blocks([semantic_raw_author.merged_block])
-            for semantic_raw_author in semantic_raw_authors
+            LayoutDocument.for_blocks([semantic_raw_name_list.merged_block])
+            for semantic_raw_name_list in semantic_raw_name_lists
         ]
         labeled_layout_tokens_list = (
             self.name_citation_model
             .predict_labels_for_layout_documents(layout_documents)
         )
         LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
-        for labeled_layout_tokens, semantic_raw_author in zip(
-            labeled_layout_tokens_list, semantic_raw_authors
+        for labeled_layout_tokens, semantic_raw_name_list in zip(
+            labeled_layout_tokens_list, semantic_raw_name_lists
         ):
             semantic_content_iterable = (
                 self.name_citation_model
                 .iter_semantic_content_for_labeled_layout_tokens(
-                    labeled_layout_tokens
+                    labeled_layout_tokens,
+                    name_type=name_type
                 )
             )
-            yield semantic_raw_author, list(semantic_content_iterable)
+            yield semantic_raw_name_list, list(semantic_content_iterable)
 
-    def _extract_reference_authors_from_raw_references(
+    def _extract_reference_name_lists_from_raw_references(
         self,
         semantic_document: SemanticDocument
     ):
         reference_lists = list(semantic_document.back_section.iter_by_type(
             SemanticReferenceList
         ))
-        raw_authors = [
-            raw_author
+        ref_list = [
+            ref
             for reference_list in reference_lists
-            for ref in reference_list.iter_by_type(
-                SemanticReference
-            )
-            for raw_author in ref.iter_by_type(
-                SemanticRawAuthors
-            )
+            for ref in reference_list.iter_by_type(SemanticReference)
         ]
+        if self.config.extract_citation_authors:
+            raw_authors = [
+                raw_author
+                for ref in ref_list
+                for raw_author in ref.iter_by_type(SemanticRawAuthors)
+            ]
+        else:
+            raw_authors = []
+        if self.config.extract_citation_editors:
+            raw_editors = [
+                raw_author
+                for ref in ref_list
+                for raw_author in ref.iter_by_type(SemanticRawEditors)
+            ]
+        else:
+            raw_editors = []
         content_list_by_raw_author_id = {
             id(raw_author): content_list
             for raw_author, content_list in (
-                self._iter_parse_semantic_authors(raw_authors)
+                self._iter_parse_semantic_name_lists(raw_authors, name_type=SemanticAuthor)
+            )
+        }
+        content_list_by_raw_editor_id = {
+            id(raw_author): content_list
+            for raw_author, content_list in (
+                self._iter_parse_semantic_name_lists(raw_editors, name_type=SemanticEditor)
             )
         }
         LOGGER.debug(
             'content_list_by_raw_author_id keys: %s',
             content_list_by_raw_author_id.keys()
         )
+        LOGGER.debug(
+            'content_list_by_raw_editor_id keys: %s',
+            content_list_by_raw_editor_id.keys()
+        )
         for reference_list in reference_lists:
             for semantic_content in reference_list:
                 if isinstance(semantic_content, SemanticReference):
-                    semantic_content.flat_map_inplace_by_type(
-                        SemanticRawAuthors,
-                        lambda raw_author: content_list_by_raw_author_id[
-                            id(raw_author)
-                        ]
-                    )
+                    if self.config.extract_citation_authors:
+                        semantic_content.flat_map_inplace_by_type(
+                            SemanticRawAuthors,
+                            lambda raw_author: content_list_by_raw_author_id[
+                                id(raw_author)
+                            ]
+                        )
+                    if self.config.extract_citation_editors:
+                        semantic_content.flat_map_inplace_by_type(
+                            SemanticRawEditors,
+                            lambda raw_editor: content_list_by_raw_editor_id[
+                                id(raw_editor)
+                            ]
+                        )
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,

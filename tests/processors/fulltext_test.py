@@ -9,6 +9,7 @@ from pygrobid.document.semantic_document import (
     SemanticAffiliationAddress,
     SemanticAuthor,
     SemanticCountry,
+    SemanticEditor,
     SemanticInstitution,
     SemanticLabel,
     SemanticMarker,
@@ -559,3 +560,67 @@ class TestFullTextProcessor:
         assert len(authors) == 1
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
+
+    def test_should_extract_editor_names_from_references_fields(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        given_name_block = LayoutBlock.for_text('Given name')
+        surname_block = LayoutBlock.for_text('Surname')
+        other_block = LayoutBlock.for_text('Other')
+        editors_block = LayoutBlock.merge_blocks([
+            given_name_block, other_block, surname_block
+        ])
+        ref_text_block = LayoutBlock.merge_blocks([
+            editors_block
+        ])
+        ref_block = LayoutBlock.merge_blocks([ref_text_block])
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(
+                extract_citation_fields=True,
+                extract_citation_authors=False,
+                extract_citation_editors=True
+            )
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
+        citation_model_mock = fulltext_models_mock.citation_model_mock
+        name_citation_model_mock = fulltext_models_mock.name_citation_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            ref_block, '<references>'
+        )
+
+        reference_segmenter_model_mock.update_label_by_layout_block(
+            ref_text_block, '<reference>'
+        )
+
+        citation_model_mock.update_label_by_layout_block(
+            editors_block, '<editor>'
+        )
+
+        name_citation_model_mock.update_label_by_layout_block(
+            given_name_block, '<forename>'
+        )
+        name_citation_model_mock.update_label_by_layout_block(
+            surname_block, '<surname>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            ref_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        reference_list = list(semantic_document.back_section.iter_by_type(SemanticReferenceList))
+        assert len(reference_list) == 1
+        references = list(reference_list[0].iter_by_type(SemanticReference))
+        assert len(references) == 1
+        ref = references[0]
+        editors = list(ref.iter_by_type(SemanticEditor))
+        assert len(editors) == 1
+        assert editors[0].given_name_text == given_name_block.text
+        assert editors[0].surname_text == surname_block.text

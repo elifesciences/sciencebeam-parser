@@ -17,6 +17,7 @@ from pygrobid.document.semantic_document import (
     SemanticPageRange,
     SemanticPublisher,
     SemanticRawAuthors,
+    SemanticRawEditors,
     SemanticRawReference,
     SemanticReference,
     SemanticTitle,
@@ -52,6 +53,7 @@ PII_PATTERN = r'\b([S,B]\W*(?:[0-9xX]\W*){15,}[0-9xX])'
 
 SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
     '<author>': SemanticRawAuthors,
+    '<editor>': SemanticRawEditors,
     '<title>': SemanticTitle,
     '<journal>': SemanticJournal,
     '<volume>': SemanticVolume,
