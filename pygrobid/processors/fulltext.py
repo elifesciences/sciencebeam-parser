@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, NamedTuple, Optional, Sequence, Tuple, Type, Union
 
 from pygrobid.config.config import AppConfig
-from pygrobid.models.model import LayoutDocumentLabelResult
+from pygrobid.models.model import LayoutDocumentLabelResult, Model
 from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_config
 
 from pygrobid.document.semantic_document import (
@@ -18,10 +18,12 @@ from pygrobid.document.semantic_document import (
     SemanticRawEditors,
     SemanticRawFigure,
     SemanticRawReference,
+    SemanticRawTable,
     SemanticReference,
     SemanticReferenceList,
     SemanticSection,
     SemanticSectionTypes,
+    T_SemanticContentWrapper,
     T_SemanticName,
     T_SemanticRawNameList
 )
@@ -33,6 +35,7 @@ from pygrobid.models.name.model import NameModel
 from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.models.figure.model import FigureModel
+from pygrobid.models.table.model import TableModel
 from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 from pygrobid.models.citation.model import CitationModel
 
@@ -49,6 +52,7 @@ class FullTextModels:
     affiliation_address_model: AffiliationAddressModel
     fulltext_model: FullTextModel
     figure_model: FigureModel
+    table_model: TableModel
     reference_segmenter_model: ReferenceSegmenterModel
     citation_model: CitationModel
 
@@ -76,6 +80,9 @@ def load_models(app_config: AppConfig) -> FullTextModels:
     figure_model = FigureModel(get_delft_model_impl_factory_for_config(
         models_config['figure']
     ))
+    table_model = TableModel(get_delft_model_impl_factory_for_config(
+        models_config['table']
+    ))
     reference_segmenter_model = ReferenceSegmenterModel(get_delft_model_impl_factory_for_config(
         models_config['reference-segmenter']
     ))
@@ -90,6 +97,7 @@ def load_models(app_config: AppConfig) -> FullTextModels:
         affiliation_address_model=affiliation_address_model,
         fulltext_model=fulltext_model,
         figure_model=figure_model,
+        table_model=table_model,
         reference_segmenter_model=reference_segmenter_model,
         citation_model=citation_model
     )
@@ -100,6 +108,7 @@ class FullTextProcessorConfig(NamedTuple):
     extract_citation_authors: bool = True
     extract_citation_editors: bool = False
     extract_figure_fields: bool = True
+    extract_table_fields: bool = True
 
 
 class FullTextProcessor:
@@ -140,6 +149,10 @@ class FullTextProcessor:
     @property
     def figure_model(self) -> FigureModel:
         return self.fulltext_models.figure_model
+
+    @property
+    def table_model(self) -> TableModel:
+        return self.fulltext_models.table_model
 
     @property
     def reference_segmenter_model(self) -> ReferenceSegmenterModel:
@@ -207,6 +220,10 @@ class FullTextProcessor:
                 )
         if self.config.extract_figure_fields:
             self._extract_figure_fields_from_raw_figures(
+                semantic_document=document
+            )
+        if self.config.extract_table_fields:
+            self._extract_table_fields_from_raw_tables(
                 semantic_document=document
             )
         return document
@@ -454,66 +471,92 @@ class FullTextProcessor:
                             ]
                         )
 
-    def _iter_parse_semantic_figure_lists(
+    def _iter_parse_semantic_content_lists(
         self,
-        semantic_raw_figure_lists: Sequence[SemanticRawFigure]
-    ) -> Iterable[Tuple[SemanticRawFigure, List[SemanticContentWrapper]]]:
+        semantic_raw_content_lists: Sequence[T_SemanticContentWrapper],
+        model: Model
+    ) -> Iterable[Tuple[T_SemanticContentWrapper, List[SemanticContentWrapper]]]:
         layout_documents = [
             LayoutDocument.for_blocks([semantic_raw_name_list.merged_block])
-            for semantic_raw_name_list in semantic_raw_figure_lists
+            for semantic_raw_name_list in semantic_raw_content_lists
         ]
         labeled_layout_tokens_list = (
-            self.figure_model
+            model
             .predict_labels_for_layout_documents(layout_documents)
         )
         LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
         for labeled_layout_tokens, semantic_raw_name_list in zip(
-            labeled_layout_tokens_list, semantic_raw_figure_lists
+            labeled_layout_tokens_list, semantic_raw_content_lists
         ):
             semantic_content_iterable = (
-                self.figure_model
+                model
                 .iter_semantic_content_for_labeled_layout_tokens(
                     labeled_layout_tokens
                 )
             )
             yield semantic_raw_name_list, list(semantic_content_iterable)
 
+    def _extract_semantic_content_from_raw_content(
+        self,
+        semantic_document: SemanticDocument,
+        semantic_type: Type[T_SemanticContentWrapper],
+        model: Model
+    ):
+        parents = [
+            parent
+            for root in [
+                semantic_document.body_section,
+                semantic_document.back_section
+            ]
+            for parent in root.iter_parent_by_semantic_type_recursively(
+                semantic_type
+            )
+        ]
+        raw_content_lists = [
+            raw_content
+            for parent in parents
+            for raw_content in parent.iter_by_type(semantic_type)
+        ]
+        content_list_by_raw_content_id = {
+            id(raw_content): content_list
+            for raw_content, content_list in (
+                self._iter_parse_semantic_content_lists(
+                    raw_content_lists,
+                    model
+                )
+            )
+        }
+        LOGGER.debug(
+            'content_list_by_raw_content_id keys: %s',
+            content_list_by_raw_content_id.keys()
+        )
+        for parent in parents:
+            parent.flat_map_inplace_by_type(
+                semantic_type,
+                lambda raw_content: content_list_by_raw_content_id[
+                    id(raw_content)
+                ]
+            )
+
     def _extract_figure_fields_from_raw_figures(
         self,
         semantic_document: SemanticDocument
     ):
-        figure_parents = [
-            figure_parent
-            for parent in [
-                semantic_document.body_section,
-                semantic_document.back_section
-            ]
-            for figure_parent in parent.iter_parent_by_semantic_type_recursively(
-                SemanticRawFigure
-            )
-        ]
-        raw_figure_lists = [
-            raw_figure
-            for figure_parent in figure_parents
-            for raw_figure in figure_parent.iter_by_type(SemanticRawFigure)
-        ]
-        content_list_by_raw_figure_id = {
-            id(raw_figure): content_list
-            for raw_figure, content_list in (
-                self._iter_parse_semantic_figure_lists(raw_figure_lists)
-            )
-        }
-        LOGGER.debug(
-            'content_list_by_raw_figure_id keys: %s',
-            content_list_by_raw_figure_id.keys()
+        self._extract_semantic_content_from_raw_content(
+            semantic_document,
+            SemanticRawFigure,
+            self.figure_model
         )
-        for figure_parent in figure_parents:
-            figure_parent.flat_map_inplace_by_type(
-                SemanticRawFigure,
-                lambda raw_figure: content_list_by_raw_figure_id[
-                    id(raw_figure)
-                ]
-            )
+
+    def _extract_table_fields_from_raw_tables(
+        self,
+        semantic_document: SemanticDocument
+    ):
+        self._extract_semantic_content_from_raw_content(
+            semantic_document,
+            SemanticRawTable,
+            self.table_model
+        )
 
     def _update_semantic_section_using_segmentation_result_and_fulltext_model(
         self,

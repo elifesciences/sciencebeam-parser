@@ -63,6 +63,7 @@ from pygrobid.document.semantic_document import (
     SemanticSectionTypes,
     SemanticSettlement,
     SemanticSurname,
+    SemanticTable,
     SemanticTitle,
     SemanticVolume
 )
@@ -525,6 +526,25 @@ def get_tei_element_for_figure(semantic_figure: SemanticContentWrapper) -> etree
     return TEI_E('figure', *children)
 
 
+def get_tei_element_for_table(semantic_table: SemanticContentWrapper) -> etree.ElementBase:
+    LOGGER.debug('semantic_table: %s', semantic_table)
+    assert isinstance(semantic_table, SemanticTable)
+    children = []
+    for semantic_content in semantic_table:
+        if isinstance(semantic_content, SemanticLabel):
+            layout_block = semantic_content.merged_block
+            children.append(TEI_E('head', *iter_layout_block_tei_children(layout_block)))
+            children.append(TEI_E('label', *iter_layout_block_tei_children(layout_block)))
+            continue
+        if isinstance(semantic_content, SemanticCaption):
+            children.append(TEI_E(
+                'figDesc', *iter_layout_block_tei_children(semantic_content.merged_block)
+            ))
+            continue
+        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+    return TEI_E('figure', {'type': 'table'}, *children)
+
+
 def get_tei_element_for_semantic_section(
     semantic_section: SemanticContentWrapper
 ) -> etree.ElementBase:
@@ -544,7 +564,7 @@ def get_tei_element_for_semantic_section(
             ))
             tei_section.add_paragraph(paragraph)
             continue
-        if isinstance(semantic_content, SemanticFigure):
+        if isinstance(semantic_content, (SemanticFigure, SemanticTable,)):
             # rendered at parent level
             continue
         tei_section.element.append(get_tei_child_element_for_semantic_content(
@@ -607,6 +627,7 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticPageRange: get_tei_biblscope_for_page_range,
     SemanticExternalIdentifier: get_tei_element_for_external_reference,
     SemanticFigure: get_tei_element_for_figure,
+    SemanticTable: get_tei_element_for_table,
     SemanticSection: get_tei_element_for_semantic_section
 }
 
@@ -932,11 +953,11 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
         tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
             semantic_content
         ))
-    for semantic_figure in semantic_document.body_section.iter_by_type_recursively(
-        SemanticFigure
+    for semantic_content in semantic_document.body_section.iter_by_types_recursively(
+        (SemanticFigure, SemanticTable,)
     ):
         tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
-            semantic_figure
+            semantic_content
         ))
 
     LOGGER.info('generating tei document: back section')
@@ -965,8 +986,8 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
         tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
             semantic_content
         ))
-    for semantic_figure in semantic_document.back_section.iter_by_type_recursively(
-        SemanticFigure
+    for semantic_figure in semantic_document.back_section.iter_by_types_recursively(
+        (SemanticFigure, SemanticTable,)
     ):
         tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
             semantic_figure

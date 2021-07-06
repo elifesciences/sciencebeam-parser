@@ -5,7 +5,19 @@ It doesn't have a specific structure as that depends on the output format (e.g. 
 import dataclasses
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Type, TypeVar, cast
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast
+)
 from typing_extensions import Protocol
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutToken
@@ -115,6 +127,11 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
     ) -> Iterable[T_SemanticContentWrapper]:
         return iter_by_semantic_type_recursively(self.mixed_content, type_)
 
+    def iter_by_types_recursively(
+        self, types_: Tuple[Type[T_SemanticContentWrapper], ...]
+    ) -> Iterable[SemanticContentWrapper]:
+        return iter_by_semantic_types_recursively(self.mixed_content, types_)
+
     def iter_parent_by_semantic_type_recursively(
         self, type_: Type[T_SemanticContentWrapper]
     ):
@@ -171,19 +188,32 @@ def iter_parent_by_semantic_type_recursively(
             )
 
 
+def iter_by_semantic_types_recursively(
+    semantic_content_iterable: Iterable[SemanticContentWrapper],
+    types_: Union[Type[T_SemanticContentWrapper], Tuple[Type[T_SemanticContentWrapper], ...]]
+) -> Iterable[SemanticContentWrapper]:
+    for semantic_content in semantic_content_iterable:
+        if isinstance(semantic_content, types_):
+            yield semantic_content
+            continue
+        if isinstance(semantic_content, SemanticMixedContentWrapper):
+            yield from iter_by_semantic_types_recursively(
+                semantic_content.mixed_content,
+                types_=types_
+            )
+
+
 def iter_by_semantic_type_recursively(
     semantic_content_iterable: Iterable[SemanticContentWrapper],
     type_: Type[T_SemanticContentWrapper]
 ) -> Iterable[T_SemanticContentWrapper]:
-    for semantic_content in semantic_content_iterable:
-        if isinstance(semantic_content, type_):
-            yield semantic_content
-            continue
-        if isinstance(semantic_content, SemanticMixedContentWrapper):
-            yield from iter_by_semantic_type_recursively(
-                semantic_content.mixed_content,
-                type_=type_
-            )
+    return cast(
+        Iterable[T_SemanticContentWrapper],
+        iter_by_semantic_types_recursively(
+            semantic_content_iterable,
+            type_
+        )
+    )
 
 
 @dataclass
@@ -411,6 +441,10 @@ class SemanticFigure(SemanticMixedContentWrapper):
 
 
 class SemanticRawTable(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticTable(SemanticMixedContentWrapper):
     pass
 
 

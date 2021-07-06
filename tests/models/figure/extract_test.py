@@ -23,7 +23,7 @@ class TestFigureSemanticExtractor:
             ])
         )
         assert len(semantic_content_list) == 1
-        ref = semantic_content_list[0]
-        assert isinstance(ref, SemanticFigure)
-        assert ref.view_by_type(SemanticLabel).get_text() == 'Figure 1'
-        assert ref.view_by_type(SemanticCaption).get_text() == 'Caption 1'
+        figure = semantic_content_list[0]
+        assert isinstance(figure, SemanticFigure)
+        assert figure.view_by_type(SemanticLabel).get_text() == 'Figure 1'
+        assert figure.view_by_type(SemanticCaption).get_text() == 'Caption 1'

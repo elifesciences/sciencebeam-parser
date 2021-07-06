@@ -20,6 +20,7 @@ from pygrobid.document.semantic_document import (
     SemanticReference,
     SemanticReferenceList,
     SemanticSectionTypes,
+    SemanticTable,
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
@@ -31,6 +32,7 @@ from pygrobid.models.affiliation_address.model import AffiliationAddressModel
 from pygrobid.models.name.model import NameModel
 from pygrobid.models.fulltext.model import FullTextModel
 from pygrobid.models.figure.model import FigureModel
+from pygrobid.models.table.model import TableModel
 from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 from pygrobid.models.citation.model import CitationModel
 from pygrobid.processors.fulltext import (
@@ -130,6 +132,7 @@ class MockFullTextModels(FullTextModels):
             affiliation_address_model=AffiliationAddressModel(model_impl_mock),
             fulltext_model=FullTextModel(model_impl_mock),
             figure_model=FigureModel(model_impl_mock),
+            table_model=TableModel(model_impl_mock),
             reference_segmenter_model=ReferenceSegmenterModel(model_impl_mock),
             citation_model=CitationModel(model_impl_mock)
         )
@@ -142,6 +145,7 @@ class MockFullTextModels(FullTextModels):
         )
         self.fulltext_model_mock = MockDelftModelWrapper(self.fulltext_model)
         self.figure_model_mock = MockDelftModelWrapper(self.figure_model)
+        self.table_model_mock = MockDelftModelWrapper(self.table_model)
         self.reference_segmenter_model_mock = MockDelftModelWrapper(self.reference_segmenter_model)
         self.citation_model_mock = MockDelftModelWrapper(self.citation_model)
 
@@ -686,3 +690,59 @@ class TestFullTextProcessor:
         figure = figure_list[0]
         assert figure.get_text_by_type(SemanticLabel) == label_block.text
         assert figure.get_text_by_type(SemanticCaption) == caption_block.text
+
+    @pytest.mark.parametrize(
+        'segmentation_label',
+        ['<body>', '<annex>']
+    )
+    def test_should_extract_table_label_caption_from_body(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels,
+        segmentation_label: str
+    ):
+        label_block = LayoutBlock.for_text('Table 1')
+        caption_block = LayoutBlock.for_text('Caption 1')
+        other_block = LayoutBlock.for_text('Other')
+        figure_block = LayoutBlock.merge_blocks([
+            label_block, other_block, caption_block
+        ])
+        fulltext_block = LayoutBlock.merge_blocks([figure_block])
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(extract_table_fields=True)
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+        table_model_mock = fulltext_models_mock.table_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            fulltext_block, segmentation_label
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            figure_block, '<table>'
+        )
+
+        table_model_mock.update_label_by_layout_block(
+            label_block, '<label>'
+        )
+        table_model_mock.update_label_by_layout_block(
+            caption_block, '<figDesc>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            fulltext_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        table_list = list(iter_by_semantic_type_recursively(
+            [semantic_document.body_section, semantic_document.back_section],
+            SemanticTable
+        ))
+        assert len(table_list) == 1
+        table = table_list[0]
+        assert table.get_text_by_type(SemanticLabel) == label_block.text
+        assert table.get_text_by_type(SemanticCaption) == caption_block.text

@@ -47,6 +47,7 @@ from pygrobid.document.semantic_document import (
     SemanticSectionTypes,
     SemanticSettlement,
     SemanticSurname,
+    SemanticTable,
     SemanticTitle,
     SemanticVolume
 )
@@ -567,17 +568,20 @@ class TestGetTeiForSemanticDocument:
         ]))
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        figure_xpath = (
+            '//tei:body/tei:figure[not(contains(@type, "table"))]'
+        )
         assert tei_document.get_xpath_text_content_list(
-            '//tei:body/tei:figure/tei:head'
+            f'{figure_xpath}/tei:head'
         ) == ['Label 1']
         assert tei_document.get_xpath_text_content_list(
-            '//tei:body/tei:figure/tei:label'
+            f'{figure_xpath}/tei:label'
         ) == ['Label 1']
         assert tei_document.get_xpath_text_content_list(
-            '//tei:body/tei:figure/tei:figDesc'
+            f'{figure_xpath}/tei:figDesc'
         ) == ['Caption 1']
         assert not tei_document.xpath(
-            '//tei:body/tei:div'
+            '//tei:back/tei:div[@type="annex"]/tei:div'
         )
 
     def test_should_add_section_figures_to_back(self):
@@ -590,17 +594,68 @@ class TestGetTeiForSemanticDocument:
         ]))
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        figure_xpath = (
+            '//tei:back/tei:div[@type="annex"]/tei:figure[not(contains(@type, "table"))]'
+        )
         assert tei_document.get_xpath_text_content_list(
-            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:head'
+            f'{figure_xpath}/tei:head'
         ) == ['Label 1']
         assert tei_document.get_xpath_text_content_list(
-            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:label'
+            f'{figure_xpath}/tei:label'
         ) == ['Label 1']
         assert tei_document.get_xpath_text_content_list(
-            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:figDesc'
+            f'{figure_xpath}/tei:figDesc'
         ) == ['Caption 1']
         assert not tei_document.xpath(
             '//tei:back/tei:div[@type="annex"]/tei:div'
+        )
+
+    def test_should_add_section_tables_to_body(self):
+        semantic_document = SemanticDocument()
+        semantic_document.body_section.add_content(SemanticSection([
+            SemanticTable([
+                SemanticLabel(layout_block=LayoutBlock.for_text('Label 1')),
+                SemanticCaption(layout_block=LayoutBlock.for_text('Caption 1'))
+            ])
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        table_xpath = '//tei:body/tei:figure[@type="table"]'
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:head'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:label'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:figDesc'
+        ) == ['Caption 1']
+        assert not tei_document.xpath(
+            '//tei:body/tei:div'
+        )
+
+    def test_should_add_section_tables_to_back(self):
+        semantic_document = SemanticDocument()
+        semantic_document.back_section.add_content(SemanticSection([
+            SemanticTable([
+                SemanticLabel(layout_block=LayoutBlock.for_text('Label 1')),
+                SemanticCaption(layout_block=LayoutBlock.for_text('Caption 1'))
+            ])
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        table_xpath = '//tei:back/tei:div[@type="annex"]/tei:figure[@type="table"]'
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:head'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:label'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            f'{table_xpath}/tei:figDesc'
+        ) == ['Caption 1']
+        assert not tei_document.xpath(
+            '//tei:body/tei:div'
         )
 
     def test_should_add_raw_references(self):

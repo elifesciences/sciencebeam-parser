@@ -1,7 +1,7 @@
 import logging
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, TypeVar
+from typing import Callable, Iterable, List, Optional, Type, TypeVar
 
 from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
@@ -26,7 +26,9 @@ from pygrobid.document.semantic_document import (
     SemanticRawFigure,
     SemanticRawReference,
     SemanticRawReferenceText,
+    SemanticRawTable,
     SemanticReference,
+    T_SemanticContentWrapper,
     iter_by_semantic_type_recursively
 )
 from pygrobid.utils.text import normalize_text
@@ -428,15 +430,17 @@ class NameCitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
         ]
 
 
-class FigureModelNestedBluePrint(SegmentedModelNestedBluePrint):
+class FullTextChildModelNestedBluePrint(SegmentedModelNestedBluePrint):
     def __init__(
         self,
         *args,
         fulltext_model: Model,
+        semantic_type: Type[T_SemanticContentWrapper],
         **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.fulltext_model = fulltext_model
+        self.semantic_type = semantic_type
 
     def iter_filter_layout_document(
         self, layout_document: LayoutDocument
@@ -450,21 +454,31 @@ class FigureModelNestedBluePrint(SegmentedModelNestedBluePrint):
             )
         )
         LOGGER.debug('fulltext_labeled_layout_tokens_list: %r', fulltext_labeled_layout_tokens_list)
-        raw_figures = [
+        semanti_content_list = [
             semantic_content
             for fulltext_labeled_layout_tokens in fulltext_labeled_layout_tokens_list
             for semantic_content in iter_by_semantic_type_recursively(
                 self.fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
                     fulltext_labeled_layout_tokens
                 ),
-                SemanticRawFigure
+                self.semantic_type
             )
         ]
-        LOGGER.debug('raw_figures: %s', raw_figures)
+        LOGGER.debug('semanti_content_list: %s', semanti_content_list)
         return [
-            LayoutDocument.for_blocks([raw_figure.merged_block]).remove_empty_blocks()
-            for raw_figure in raw_figures
+            LayoutDocument.for_blocks([semanti_content.merged_block]).remove_empty_blocks()
+            for semanti_content in semanti_content_list
         ]
+
+
+class FigureModelNestedBluePrint(FullTextChildModelNestedBluePrint):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, semantic_type=SemanticRawFigure, **kwargs)
+
+
+class TableModelNestedBluePrint(FullTextChildModelNestedBluePrint):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, semantic_type=SemanticRawTable, **kwargs)
 
 
 class ApiBlueprint(Blueprint):
@@ -526,6 +540,14 @@ class ApiBlueprint(Blueprint):
             segmentation_labels=fulltext_segmentation_labels,
             fulltext_model=fulltext_models.fulltext_model
         ).add_routes(self, '/models/figure')
+        TableModelNestedBluePrint(
+            'Table',
+            model=fulltext_models.table_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=fulltext_segmentation_labels,
+            fulltext_model=fulltext_models.fulltext_model
+        ).add_routes(self, '/models/table')
         SegmentedModelNestedBluePrint(
             'Reference Segmenter',
             model=fulltext_models.reference_segmenter_model,
