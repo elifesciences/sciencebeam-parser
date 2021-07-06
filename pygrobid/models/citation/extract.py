@@ -13,7 +13,6 @@ from pygrobid.document.semantic_document import (
     SemanticIssue,
     SemanticJournal,
     SemanticLocation,
-    SemanticNote,
     SemanticPageRange,
     SemanticPublisher,
     SemanticRawAuthors,
@@ -24,7 +23,7 @@ from pygrobid.document.semantic_document import (
     SemanticVolume
 )
 from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.models.extract import ModelSemanticExtractor
+from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
 LOGGER = logging.getLogger(__name__)
@@ -140,7 +139,10 @@ def parse_date(layout_block: LayoutBlock) -> SemanticDate:
     )
 
 
-class CitationSemanticExtractor(ModelSemanticExtractor):
+class CitationSemanticExtractor(SimpleModelSemanticExtractor):
+    def __init__(self):
+        super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
+
     def get_semantic_content_for_entity_name(  # pylint: disable=too-many-return-statements
         self,
         name: str,
@@ -154,13 +156,7 @@ class CitationSemanticExtractor(ModelSemanticExtractor):
             return parse_pubnum(layout_block)
         if name == '<date>':
             return parse_date(layout_block)
-        semantic_content_class = SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG.get(name)
-        if semantic_content_class:
-            return semantic_content_class(layout_block=layout_block)
-        return SemanticNote(
-            layout_block=layout_block,
-            note_type=name
-        )
+        return super().get_semantic_content_for_entity_name(name, layout_block)
 
     def iter_semantic_content_for_entity_blocks(  # pylint: disable=arguments-differ
         self,

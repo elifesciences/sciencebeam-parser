@@ -1,9 +1,9 @@
 import logging
-from typing import Iterable, List, Optional, Tuple, Type, cast
+from typing import Iterable, List, Mapping, Optional, Tuple, Type, cast
 
 from pygrobid.document.semantic_document import (
     SemanticAuthor,
-    SemanticContentWrapper,
+    SemanticContentFactoryProtocol,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
@@ -14,7 +14,7 @@ from pygrobid.document.semantic_document import (
     T_SemanticName
 )
 from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.models.extract import ModelSemanticExtractor
+from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
 LOGGER = logging.getLogger(__name__)
@@ -23,26 +23,18 @@ LOGGER = logging.getLogger(__name__)
 SPLIT_ON_SECOND_ENTIY_NAME = {'<title>', '<forename>', '<surname>'}
 
 
-class NameSemanticExtractor(ModelSemanticExtractor):
-    def get_semantic_content_for_entity_name(
-        self,
-        name: str,
-        layout_block: LayoutBlock
-    ) -> SemanticContentWrapper:
-        if name == '<title>':
-            return SemanticNameTitle(layout_block=layout_block)
-        if name == '<forename>':
-            return SemanticGivenName(layout_block=layout_block)
-        if name == '<middlename>':
-            return SemanticMiddleName(layout_block=layout_block)
-        if name == '<surname>':
-            return SemanticSurname(layout_block=layout_block)
-        if name == '<suffix>':
-            return SemanticNameSuffix(layout_block=layout_block)
-        return SemanticNote(
-            layout_block=layout_block,
-            note_type=name
-        )
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+    '<title>': SemanticNameTitle,
+    '<forename>': SemanticGivenName,
+    '<middlename>': SemanticMiddleName,
+    '<surname>': SemanticSurname,
+    '<suffix>': SemanticNameSuffix
+}
+
+
+class NameSemanticExtractor(SimpleModelSemanticExtractor):
+    def __init__(self):
+        super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
 
     def iter_semantic_content_for_entity_blocks(  # type: ignore  # pylint: disable=arguments-differ
         self,

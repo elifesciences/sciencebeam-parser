@@ -1,18 +1,18 @@
 import logging
 import re
-from typing import Iterable, Tuple
+from typing import Iterable, Mapping, Tuple
 
 from pygrobid.document.semantic_document import (
+    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
     SemanticTitle,
     SemanticAbstract,
-    SemanticRawAuthors,
-    SemanticNote
+    SemanticRawAuthors
 )
 from pygrobid.document.layout_document import LayoutBlock, LayoutTokensText
-from pygrobid.models.extract import ModelSemanticExtractor
+from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
 LOGGER = logging.getLogger(__name__)
@@ -21,6 +21,13 @@ LOGGER = logging.getLogger(__name__)
 # based on:
 #   grobid-core/src/main/java/org/grobid/core/data/BiblioItem.java
 ABSTRACT_REGEX = r'^(?:(?:abstract|summary|résumé|abrégé|a b s t r a c t)(?:[.:])?)?\s*(.*)'
+
+
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+    '<author>': SemanticRawAuthors,
+    '<affiliation>': SemanticRawAffiliation,
+    '<address>': SemanticRawAddress
+}
 
 
 def get_cleaned_abstract_text(text: str) -> str:
@@ -49,22 +56,9 @@ def get_cleaned_abstract_layout_block(layout_block: LayoutBlock) -> LayoutBlock:
     ))
 
 
-class HeaderSemanticExtractor(ModelSemanticExtractor):
-    def get_semantic_content_for_entity_name(
-        self,
-        name: str,
-        layout_block: LayoutBlock
-    ) -> SemanticContentWrapper:
-        if name == '<author>':
-            return SemanticRawAuthors(layout_block=layout_block)
-        if name == '<affiliation>':
-            return SemanticRawAffiliation(layout_block=layout_block)
-        if name == '<address>':
-            return SemanticRawAddress(layout_block=layout_block)
-        return SemanticNote(
-            layout_block=layout_block,
-            note_type=name
-        )
+class HeaderSemanticExtractor(SimpleModelSemanticExtractor):
+    def __init__(self):
+        super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
 
     def iter_semantic_content_for_entity_blocks(
         self,

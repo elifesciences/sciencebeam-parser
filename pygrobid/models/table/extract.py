@@ -6,11 +6,10 @@ from pygrobid.document.semantic_document import (
     SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticLabel,
-    SemanticNote,
     SemanticTable
 )
 from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.models.extract import ModelSemanticExtractor
+from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
 LOGGER = logging.getLogger(__name__)
@@ -22,19 +21,9 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
 }
 
 
-class TableSemanticExtractor(ModelSemanticExtractor):
-    def get_semantic_content_for_entity_name(  # pylint: disable=too-many-return-statements
-        self,
-        name: str,
-        layout_block: LayoutBlock
-    ) -> SemanticContentWrapper:
-        semantic_content_class = SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG.get(name)
-        if semantic_content_class:
-            return semantic_content_class(layout_block=layout_block)
-        return SemanticNote(
-            layout_block=layout_block,
-            note_type=name
-        )
+class TableSemanticExtractor(SimpleModelSemanticExtractor):
+    def __init__(self):
+        super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
 
     def iter_semantic_content_for_entity_blocks(  # pylint: disable=arguments-differ
         self,
