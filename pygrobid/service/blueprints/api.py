@@ -23,9 +23,11 @@ from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.semantic_document import (
     SemanticMixedContentWrapper,
     SemanticRawAuthors,
+    SemanticRawFigure,
     SemanticRawReference,
     SemanticRawReferenceText,
-    SemanticReference
+    SemanticReference,
+    iter_by_semantic_type_recursively
 )
 from pygrobid.utils.text import normalize_text
 from pygrobid.utils.tokenizer import get_tokenized_tokens
@@ -426,6 +428,45 @@ class NameCitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
         ]
 
 
+class FigureModelNestedBluePrint(SegmentedModelNestedBluePrint):
+    def __init__(
+        self,
+        *args,
+        fulltext_model: Model,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.fulltext_model = fulltext_model
+
+    def iter_filter_layout_document(
+        self, layout_document: LayoutDocument
+    ) -> Iterable[LayoutDocument]:
+        fulltext_layout_documents = list(self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document, self.segmentation_labels
+        ))
+        fulltext_labeled_layout_tokens_list = (
+            self.fulltext_model.predict_labels_for_layout_documents(
+                fulltext_layout_documents
+            )
+        )
+        LOGGER.debug('fulltext_labeled_layout_tokens_list: %r', fulltext_labeled_layout_tokens_list)
+        raw_figures = [
+            semantic_content
+            for fulltext_labeled_layout_tokens in fulltext_labeled_layout_tokens_list
+            for semantic_content in iter_by_semantic_type_recursively(
+                self.fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
+                    fulltext_labeled_layout_tokens
+                ),
+                SemanticRawFigure
+            )
+        ]
+        LOGGER.debug('raw_figures: %s', raw_figures)
+        return [
+            LayoutDocument.for_blocks([raw_figure.merged_block]).remove_empty_blocks()
+            for raw_figure in raw_figures
+        ]
+
+
 class ApiBlueprint(Blueprint):
     def __init__(self, config: AppConfig):
         super().__init__('api', __name__)
@@ -469,13 +510,22 @@ class ApiBlueprint(Blueprint):
             segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model
         ).add_routes(self, '/models/affiliation-address')
+        fulltext_segmentation_labels = ['<body>', '<acknowledgement>', '<annex>']
         SegmentedModelNestedBluePrint(
             'FullText',
             model=fulltext_models.fulltext_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
             segmentation_model=fulltext_models.segmentation_model,
-            segmentation_labels=['<body>', '<acknowledgement>', '<annex>']
+            segmentation_labels=fulltext_segmentation_labels
         ).add_routes(self, '/models/fulltext')
+        FigureModelNestedBluePrint(
+            'Figure',
+            model=fulltext_models.figure_model,
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=fulltext_segmentation_labels,
+            fulltext_model=fulltext_models.fulltext_model
+        ).add_routes(self, '/models/figure')
         SegmentedModelNestedBluePrint(
             'Reference Segmenter',
             model=fulltext_models.reference_segmenter_model,

@@ -429,6 +429,9 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
             line_status=self.get_line_status()
         )
 
+    def get_dummy_page_status(self) -> str:
+        return 'PAGEIN'
+
     def get_is_indented_and_update(self) -> bool:
         return self.line_indentation_status_feature.get_is_indented_and_update(
             self.layout_token
@@ -494,6 +497,19 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
             self.document_token_count,
             12
         ))
+
+    def get_dummy_str_relative_document_position(self):
+        # position within whole document
+        return '0'
+
+    def get_dummy_str_relative_page_position(self):
+        return '0'
+
+    def get_dummy_str_is_bitmap_around(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_vector_around(self) -> str:
+        return '0'
 
 
 class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):

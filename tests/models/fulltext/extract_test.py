@@ -2,6 +2,8 @@ import logging
 
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
+    SemanticRawFigure,
+    SemanticRawTable,
     SemanticSection
 )
 from pygrobid.models.fulltext.extract import (
@@ -90,7 +92,7 @@ class TestFullTextSemanticExtractor:
         assert len(sections) == 1
         assert sections[0].get_paragraph_text_list() == [SECTION_PARAGRAPH_2]
 
-    def test_should_add_note_for_figure_text_to_section(self):
+    def test_should_add_raw_figure_for_figure_text_to_section(self):
         semantic_content_list = list(
             FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
@@ -101,9 +103,9 @@ class TestFullTextSemanticExtractor:
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
         assert section.get_paragraph_text_list() == [SECTION_PARAGRAPH_1]
-        assert section.get_notes_text_list('<figure>') == [SECTION_PARAGRAPH_2]
+        assert section.get_text_by_type(SemanticRawFigure) == SECTION_PARAGRAPH_2
 
-    def test_should_add_note_for_table_text_to_section(self):
+    def test_should_raw_table_for_table_text_to_section(self):
         semantic_content_list = list(
             FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
@@ -114,4 +116,4 @@ class TestFullTextSemanticExtractor:
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
         assert section.get_paragraph_text_list() == [SECTION_PARAGRAPH_1]
-        assert section.get_notes_text_list('<table>') == [SECTION_PARAGRAPH_2]
+        assert section.get_text_by_type(SemanticRawTable) == SECTION_PARAGRAPH_2

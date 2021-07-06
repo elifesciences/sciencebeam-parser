@@ -26,6 +26,7 @@ from pygrobid.document.semantic_document import (
     SemanticAddressLine,
     SemanticAffiliationAddress,
     SemanticAuthor,
+    SemanticCaption,
     SemanticContentWrapper,
     SemanticCountry,
     SemanticDate,
@@ -33,6 +34,7 @@ from pygrobid.document.semantic_document import (
     SemanticDocument,
     SemanticExternalIdentifier,
     SemanticExternalUrl,
+    SemanticFigure,
     SemanticGivenName,
     SemanticHeading,
     SemanticInstitution,
@@ -504,6 +506,53 @@ def get_tei_element_for_external_reference(
     )
 
 
+def get_tei_element_for_figure(semantic_figure: SemanticContentWrapper) -> etree.ElementBase:
+    LOGGER.debug('semantic_figure: %s', semantic_figure)
+    assert isinstance(semantic_figure, SemanticFigure)
+    children = []
+    for semantic_content in semantic_figure:
+        if isinstance(semantic_content, SemanticLabel):
+            layout_block = semantic_content.merged_block
+            children.append(TEI_E('head', *iter_layout_block_tei_children(layout_block)))
+            children.append(TEI_E('label', *iter_layout_block_tei_children(layout_block)))
+            continue
+        if isinstance(semantic_content, SemanticCaption):
+            children.append(TEI_E(
+                'figDesc', *iter_layout_block_tei_children(semantic_content.merged_block)
+            ))
+            continue
+        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+    return TEI_E('figure', *children)
+
+
+def get_tei_element_for_semantic_section(
+    semantic_section: SemanticContentWrapper
+) -> etree.ElementBase:
+    LOGGER.debug('semantic_section: %s', semantic_section)
+    assert isinstance(semantic_section, SemanticSection)
+    tei_section = TeiSection(TEI_E('div'))
+    for semantic_content in semantic_section:
+        if isinstance(semantic_content, SemanticHeading):
+            tei_section.add_title(LayoutBlock.for_tokens(
+                list(semantic_content.iter_tokens())
+            ))
+            continue
+        if isinstance(semantic_content, SemanticParagraph):
+            paragraph = tei_section.create_paragraph()
+            paragraph.add_content(LayoutBlock.for_tokens(
+                list(semantic_content.iter_tokens())
+            ))
+            tei_section.add_paragraph(paragraph)
+            continue
+        if isinstance(semantic_content, SemanticFigure):
+            # rendered at parent level
+            continue
+        tei_section.element.append(get_tei_child_element_for_semantic_content(
+            semantic_content
+        ))
+    return tei_section.element
+
+
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticHeading: 'head',
     SemanticNameTitle: 'roleName',
@@ -556,7 +605,9 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     Callable[[SemanticContentWrapper], etree.ElementBase]
 ] = {
     SemanticPageRange: get_tei_biblscope_for_page_range,
-    SemanticExternalIdentifier: get_tei_element_for_external_reference
+    SemanticExternalIdentifier: get_tei_element_for_external_reference,
+    SemanticFigure: get_tei_element_for_figure,
+    SemanticSection: get_tei_element_for_semantic_section
 }
 
 
@@ -574,13 +625,14 @@ def get_tei_note_for_semantic_content(
 def get_tei_child_element_for_semantic_content(
     semantic_content: SemanticContentWrapper
 ) -> etree.ElementBase:
+    semantic_type = type(semantic_content)
     element_factory = ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS.get(
-        type(semantic_content)
+        semantic_type
     )
     if element_factory:
         return element_factory(semantic_content)
     parsed_tag_expression = PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS.get(
-        type(semantic_content)
+        semantic_type
     )
     if parsed_tag_expression:
         return parsed_tag_expression.create_node(
@@ -686,28 +738,6 @@ def _get_dummy_tei_author_for_semantic_affiliations(
         for semantic_affiliation in semantic_affiliations
     ])
     return TeiAuthor(TEI_E('author', *children))
-
-
-def _get_tei_section_for_semantic_section(semantic_section: SemanticSection) -> TeiSection:
-    LOGGER.debug('semantic_section: %s', semantic_section)
-    tei_section = TeiSection(TEI_E('div'))
-    for semantic_content in semantic_section:
-        if isinstance(semantic_content, SemanticHeading):
-            tei_section.add_title(LayoutBlock.for_tokens(
-                list(semantic_content.iter_tokens())
-            ))
-        if isinstance(semantic_content, SemanticParagraph):
-            paragraph = tei_section.create_paragraph()
-            paragraph.add_content(LayoutBlock.for_tokens(
-                list(semantic_content.iter_tokens())
-            ))
-            tei_section.add_paragraph(paragraph)
-        if isinstance(semantic_content, SemanticNote):
-            tei_section.add_note(
-                semantic_content.note_type,
-                semantic_content.merged_block
-            )
-    return tei_section
 
 
 def get_authors_affiliation_markers(authors: List[SemanticAuthor]) -> Set[str]:
@@ -888,7 +918,9 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
     stop_watch_recorder.start('body')
     for semantic_content in semantic_document.body_section:
         if isinstance(semantic_content, SemanticSection):
-            tei_section = _get_tei_section_for_semantic_section(semantic_content)
+            tei_section = TeiSection(get_tei_element_for_semantic_section(semantic_content))
+            if not list(tei_section.element):
+                continue
             tei_document.add_body_section(tei_section)
             continue
         if isinstance(semantic_content, SemanticNote):
@@ -897,15 +929,23 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
                 semantic_content.merged_block
             )
             continue
-        tei_document.get_body().element.append(get_tei_note_for_semantic_content(
+        tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
             semantic_content
+        ))
+    for semantic_figure in semantic_document.body_section.iter_by_type_recursively(
+        SemanticFigure
+    ):
+        tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
+            semantic_figure
         ))
 
     LOGGER.info('generating tei document: back section')
     stop_watch_recorder.start('back')
     for semantic_content in semantic_document.back_section:
         if isinstance(semantic_content, SemanticSection):
-            tei_section = _get_tei_section_for_semantic_section(semantic_content)
+            tei_section = TeiSection(get_tei_element_for_semantic_section(semantic_content))
+            if not list(tei_section.element):
+                continue
             if semantic_content.section_type == SemanticSectionTypes.ACKNOWLEDGEMENT:
                 tei_document.add_acknowledgement_section(tei_section)
             else:
@@ -922,8 +962,14 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
                 _get_tei_raw_reference_list(semantic_content).element
             )
             continue
-        tei_document.get_back_annex().element.append(get_tei_note_for_semantic_content(
+        tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
             semantic_content
+        ))
+    for semantic_figure in semantic_document.back_section.iter_by_type_recursively(
+        SemanticFigure
+    ):
+        tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
+            semantic_figure
         ))
     stop_watch_recorder.stop()
     LOGGER.info('generating tei document done, took: %s', stop_watch_recorder)

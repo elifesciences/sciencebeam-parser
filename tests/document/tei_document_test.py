@@ -11,6 +11,7 @@ from pygrobid.document.semantic_document import (
     SemanticAbstract,
     SemanticAddressLine,
     SemanticAffiliationAddress,
+    SemanticCaption,
     SemanticCountry,
     SemanticDate,
     SemanticDepartment,
@@ -19,6 +20,7 @@ from pygrobid.document.semantic_document import (
     SemanticExternalIdentifier,
     SemanticExternalIdentifierTypes,
     SemanticExternalUrl,
+    SemanticFigure,
     SemanticGivenName,
     SemanticHeading,
     SemanticInstitution,
@@ -41,6 +43,7 @@ from pygrobid.document.semantic_document import (
     SemanticReference,
     SemanticReferenceList,
     SemanticRegion,
+    SemanticSection,
     SemanticSectionTypes,
     SemanticSettlement,
     SemanticSurname,
@@ -553,6 +556,52 @@ class TestGetTeiForSemanticDocument:
         assert tei_document.get_xpath_text_content_list(
             '//tei:back/tei:div[@type="annex"]/tei:note[@type="other"]'
         ) == [TOKEN_1]
+
+    def test_should_add_section_figures_to_body(self):
+        semantic_document = SemanticDocument()
+        semantic_document.body_section.add_content(SemanticSection([
+            SemanticFigure([
+                SemanticLabel(layout_block=LayoutBlock.for_text('Label 1')),
+                SemanticCaption(layout_block=LayoutBlock.for_text('Caption 1'))
+            ])
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:figure/tei:head'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:figure/tei:label'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:figure/tei:figDesc'
+        ) == ['Caption 1']
+        assert not tei_document.xpath(
+            '//tei:body/tei:div'
+        )
+
+    def test_should_add_section_figures_to_back(self):
+        semantic_document = SemanticDocument()
+        semantic_document.back_section.add_content(SemanticSection([
+            SemanticFigure([
+                SemanticLabel(layout_block=LayoutBlock.for_text('Label 1')),
+                SemanticCaption(layout_block=LayoutBlock.for_text('Caption 1'))
+            ])
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:head'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:label'
+        ) == ['Label 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:back/tei:div[@type="annex"]/tei:figure/tei:figDesc'
+        ) == ['Caption 1']
+        assert not tei_document.xpath(
+            '//tei:back/tei:div[@type="annex"]/tei:div'
+        )
 
     def test_should_add_raw_references(self):
         semantic_document = SemanticDocument()

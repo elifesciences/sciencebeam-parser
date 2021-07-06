@@ -110,6 +110,18 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
             if isinstance(content, type_)
         )
 
+    def iter_by_type_recursively(
+        self, type_: Type[T_SemanticContentWrapper]
+    ) -> Iterable[T_SemanticContentWrapper]:
+        return iter_by_semantic_type_recursively(self.mixed_content, type_)
+
+    def iter_parent_by_semantic_type_recursively(
+        self, type_: Type[T_SemanticContentWrapper]
+    ):
+        return iter_parent_by_semantic_type_recursively(
+            self.mixed_content, type_, self
+        )
+
     def view_by_type(self, type_: Type[T_SemanticContentWrapper]) -> 'SemanticMixedContentWrapper':
         return SemanticMixedContentWrapper(list(self.iter_by_type(type_)))
 
@@ -142,6 +154,38 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
         return self.view_by_type(type_).get_text()
 
 
+def iter_parent_by_semantic_type_recursively(
+    semantic_content_iterable: Iterable[SemanticContentWrapper],
+    type_: Type[T_SemanticContentWrapper],
+    parent_content: SemanticContentWrapper
+) -> Iterable[SemanticContentWrapper]:
+    for semantic_content in semantic_content_iterable:
+        if isinstance(semantic_content, type_):
+            yield parent_content
+            return
+        if isinstance(semantic_content, SemanticMixedContentWrapper):
+            yield from iter_parent_by_semantic_type_recursively(
+                semantic_content.mixed_content,
+                type_=type_,
+                parent_content=semantic_content
+            )
+
+
+def iter_by_semantic_type_recursively(
+    semantic_content_iterable: Iterable[SemanticContentWrapper],
+    type_: Type[T_SemanticContentWrapper]
+) -> Iterable[T_SemanticContentWrapper]:
+    for semantic_content in semantic_content_iterable:
+        if isinstance(semantic_content, type_):
+            yield semantic_content
+            continue
+        if isinstance(semantic_content, SemanticMixedContentWrapper):
+            yield from iter_by_semantic_type_recursively(
+                semantic_content.mixed_content,
+                type_=type_
+            )
+
+
 @dataclass
 class SemanticNote(SemanticSimpleContentWrapper):
     note_type: str = 'other'
@@ -161,6 +205,10 @@ class SemanticSectionTypes:
 
 
 class SemanticLabel(SemanticSimpleContentWrapper):
+    pass
+
+
+class SemanticCaption(SemanticSimpleContentWrapper):
     pass
 
 
@@ -351,6 +399,18 @@ class SemanticReference(SemanticMixedContentWrapper):
 
 
 class SemanticReferenceList(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawFigure(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticFigure(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawTable(SemanticMixedContentWrapper):
     pass
 
 
