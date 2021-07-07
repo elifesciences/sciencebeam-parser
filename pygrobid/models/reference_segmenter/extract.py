@@ -36,8 +36,7 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
         for name, layout_block in entity_tokens:
             if name == '<label>':
                 if not ref:
-                    ref = SemanticRawReference()
-                    ref.reference_id = next(ids_iterator, '?')
+                    ref = SemanticRawReference(content_id=next(ids_iterator, '?'))
                 ref.add_content(SemanticLabel(layout_block=layout_block))
                 continue
             if name == '<reference>':
@@ -46,8 +45,7 @@ class ReferenceSegmenterSemanticExtractor(ModelSemanticExtractor):
                     is_first_ref = False
                     continue
                 if not ref:
-                    ref = SemanticRawReference()
-                    ref.reference_id = next(ids_iterator, '?')
+                    ref = SemanticRawReference(content_id=next(ids_iterator, '?'))
                 ref.add_content(SemanticRawReferenceText(layout_block=layout_block))
                 yield ref
                 ref = None

@@ -172,11 +172,11 @@ class CitationSemanticExtractor(SimpleModelSemanticExtractor):
             if not ref:
                 ref = SemanticReference()
                 if semantic_raw_reference:
-                    ref.reference_id = semantic_raw_reference.reference_id
+                    ref.content_id = semantic_raw_reference.content_id
                     for semantic_content in semantic_raw_reference:
                         ref.add_content(semantic_content)
-                if not ref.reference_id:
-                    ref.reference_id = next(ids_iterator, '?')
+                if not ref.content_id:
+                    ref.content_id = next(ids_iterator, '?')
             semantic_content = self.get_semantic_content_for_entity_name(
                 name, layout_block=layout_block
             )

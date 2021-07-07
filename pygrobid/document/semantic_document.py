@@ -235,6 +235,8 @@ class SemanticParagraph(SemanticMixedContentWrapper):
 
 
 class SemanticSectionTypes:
+    BODY = 'BODY'
+    BACK = 'BACK'
     ACKNOWLEDGEMENT = 'ACKNOWLEDGEMENT'
     OTHER = 'OTHER'
 
@@ -418,7 +420,7 @@ class SemanticCountry(SemanticAddressField):
 
 
 class SemanticAffiliationAddress(SemanticMixedContentWrapper):
-    affiliation_id: str = ''
+    pass
 
 
 class SemanticRawReferenceText(SemanticMixedContentWrapper):
@@ -426,11 +428,11 @@ class SemanticRawReferenceText(SemanticMixedContentWrapper):
 
 
 class SemanticRawReference(SemanticMixedContentWrapper):
-    reference_id: str = ''
+    pass
 
 
 class SemanticReference(SemanticMixedContentWrapper):
-    reference_id: str = ''
+    pass
 
 
 class SemanticReferenceList(SemanticMixedContentWrapper):
@@ -463,6 +465,10 @@ class SemanticFigureCitation(SemanticCitation):
 
 
 class SemanticTableCitation(SemanticCitation):
+    pass
+
+
+class SemanticReferenceCitation(SemanticCitation):
     pass
 
 
@@ -548,6 +554,6 @@ class SemanticSection(SemanticMixedContentWrapper):
 class SemanticDocument(SemanticMixedContentWrapper):
     def __init__(self):
         self.front = SemanticFront()
-        self.body_section = SemanticSection()
-        self.back_section = SemanticSection()
+        self.body_section = SemanticSection(section_type=SemanticSectionTypes.BODY)
+        self.back_section = SemanticSection(section_type=SemanticSectionTypes.BACK)
         super().__init__([self.front, self.body_section, self.back_section])

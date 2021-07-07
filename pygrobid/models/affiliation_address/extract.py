@@ -55,8 +55,7 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
             if name == '<marker>':
                 if aff:
                     yield aff
-                aff = SemanticAffiliationAddress()
-                aff.affiliation_id = next(ids_iterator, '?')
+                aff = SemanticAffiliationAddress(content_id=next(ids_iterator, '?'))
                 aff.add_content(SemanticMarker(layout_block=layout_block))
                 continue
             semantic_content = self.get_semantic_content_for_entity_name(
@@ -66,8 +65,7 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
                 if isinstance(semantic_content, SemanticNote):
                     yield semantic_content
                     continue
-                aff = SemanticAffiliationAddress()
-                aff.affiliation_id = next(ids_iterator,  '?')
+                aff = SemanticAffiliationAddress(content_id=next(ids_iterator, '?'))
             aff.add_content(semantic_content)
         if aff:
             yield aff

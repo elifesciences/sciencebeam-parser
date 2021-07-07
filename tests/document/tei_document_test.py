@@ -43,6 +43,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
+    SemanticReferenceCitation,
     SemanticReferenceList,
     SemanticRegion,
     SemanticSection,
@@ -368,7 +369,7 @@ class TestGetTeiReference:
         ) == ['1992']
 
 
-class TestGetTeiForSemanticDocument:
+class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
     def test_should_return_empty_document(self):
         semantic_document = SemanticDocument()
         tei_document = get_tei_for_semantic_document(semantic_document)
@@ -434,8 +435,7 @@ class TestGetTeiForSemanticDocument:
         author = SemanticAuthor([title, given_name, middle_name, surname, suffix, author_marker])
         aff_marker = SemanticMarker(layout_block=LayoutBlock.for_text('1'))
         institution = SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1'))
-        aff = SemanticAffiliationAddress([aff_marker, institution])
-        aff.affiliation_id = 'aff0'
+        aff = SemanticAffiliationAddress([aff_marker, institution], content_id='aff0')
         semantic_document.front.add_content(author)
         semantic_document.front.add_content(aff)
         tei_document = get_tei_for_semantic_document(semantic_document)
@@ -472,8 +472,7 @@ class TestGetTeiForSemanticDocument:
         semantic_document = SemanticDocument()
         aff_marker = SemanticMarker(layout_block=LayoutBlock.for_text('1'))
         institution = SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1'))
-        aff = SemanticAffiliationAddress([aff_marker, institution])
-        aff.affiliation_id = 'aff0'
+        aff = SemanticAffiliationAddress([aff_marker, institution], content_id='aff0')
         semantic_document.front.add_content(aff)
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
@@ -718,12 +717,39 @@ class TestGetTeiForSemanticDocument:
             '//tei:body/tei:div/tei:p/tei:ref[@type="table"]/@target'
         ) == ['#tab_0']
 
+    def test_should_add_asset_citation_for_resolved_reference(self):
+        semantic_document = SemanticDocument()
+        semantic_document.body_section.add_content(SemanticSection([
+            SemanticParagraph([
+                SemanticTextContentWrapper(layout_block=LayoutBlock.for_text('See')),
+                SemanticReferenceCitation(
+                    layout_block=LayoutBlock.for_text('Ref 1'),
+                    target_content_id='b0'
+                )
+            ]),
+            SemanticReferenceList([
+                SemanticReference([
+                    SemanticLabel(layout_block=LayoutBlock.for_text('1'))
+                ], content_id='b0')
+            ])
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p'
+        ) == ['See Ref 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p/tei:ref[@type="bibr"]'
+        ) == ['Ref 1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p/tei:ref[@type="bibr"]/@target'
+        ) == ['#b0']
+
     def test_should_add_raw_references(self):
         semantic_document = SemanticDocument()
         semantic_raw_ref = SemanticRawReference([
             SemanticRawReferenceText(layout_block=LayoutBlock.for_text('Reference 1'))
-        ])
-        semantic_raw_ref.reference_id = 'b0'
+        ], content_id='b0')
         semantic_document.back_section.add_content(SemanticReferenceList([
             semantic_raw_ref
         ]))
@@ -744,7 +770,7 @@ class TestGetTeiForSemanticDocument:
             SemanticTitle(layout_block=LayoutBlock.for_text('Reference Title 1')),
             SemanticRawReferenceText(layout_block=LayoutBlock.for_text('Reference 1'))
         ])
-        semantic_ref.reference_id = 'b0'
+        semantic_ref.content_id = 'b0'
         semantic_document.back_section.add_content(
             SemanticReferenceList([
                 SemanticHeading(layout_block=LayoutBlock.for_text('References')),

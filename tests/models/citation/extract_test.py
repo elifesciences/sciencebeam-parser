@@ -209,7 +209,7 @@ class TestReferenceSegmenterSemanticExtractor:
         assert ref.view_by_type(SemanticDate).get_text() == '1991'
         semantic_date = list(ref.iter_by_type(SemanticDate))[0]
         assert semantic_date.year == 1991
-        assert ref.reference_id == 'b0'
+        assert ref.content_id == 'b0'
 
     def test_should_add_raw_reference_semantic_content(self):
         semantic_marker = SemanticLabel(layout_block=LayoutBlock.for_text('1'))
@@ -218,8 +218,7 @@ class TestReferenceSegmenterSemanticExtractor:
         )
         semantic_raw_ref = SemanticRawReference([
             semantic_marker, semantic_raw_ref_text
-        ])
-        semantic_raw_ref.reference_id = 'raw1'
+        ], content_id='raw1')
         semantic_content_list = list(
             CitationSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<author>', LayoutBlock.for_text('Author 1')),
@@ -236,4 +235,4 @@ class TestReferenceSegmenterSemanticExtractor:
         )
         assert ref.view_by_type(SemanticRawAuthors).get_text() == 'Author 1'
         assert ref.view_by_type(SemanticTitle).get_text() == 'Title 1'
-        assert ref.reference_id == semantic_raw_ref.reference_id
+        assert ref.content_id == semantic_raw_ref.content_id

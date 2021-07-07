@@ -6,6 +6,7 @@ from pygrobid.document.semantic_document import (
     SemanticParagraph,
     SemanticRawFigure,
     SemanticRawTable,
+    SemanticReferenceCitation,
     SemanticSection,
     SemanticTableCitation
 )
@@ -110,6 +111,27 @@ class TestFullTextSemanticExtractor:
         ]
         assert len(table_citations) == 1
         assert table_citations[0].get_text() == 'Table 1'
+
+    def test_should_include_reference_citation_in_paragraph(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<citation_marker>', LayoutBlock.for_text('Ref 1')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        paragraphs = list(section.iter_by_type(SemanticParagraph))
+        reference_citations = [
+            citation
+            for paragraph in paragraphs
+            for citation in section.iter_by_type_recursively(SemanticReferenceCitation)
+        ]
+        assert len(reference_citations) == 1
+        assert reference_citations[0].get_text() == 'Ref 1'
 
     def test_should_add_note_for_other_text_to_section(self):
         semantic_content_list = list(

@@ -19,6 +19,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
+    SemanticReferenceCitation,
     SemanticReferenceList,
     SemanticSectionTypes,
     SemanticTable,
@@ -417,7 +418,7 @@ class TestFullTextProcessor:
         assert affiliations[0].get_text_by_type(SemanticMarker) == marker_block.text
         assert affiliations[0].get_text_by_type(SemanticInstitution) == institution_block.text
         assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
-        assert affiliations[0].affiliation_id == 'aff0'
+        assert affiliations[0].content_id == 'aff0'
 
     def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
@@ -460,11 +461,14 @@ class TestFullTextProcessor:
         ref = references[0]
         assert ref.get_text_by_type(SemanticLabel) == label_block.text
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
-        assert ref.reference_id == 'b0'
+        assert ref.content_id == 'b0'
 
     def test_should_extract_references_fields_from_document(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
     ):
+        other_body = LayoutBlock.for_text('the body')
+        citation_block = LayoutBlock.for_text('1')
+        body_block = LayoutBlock.merge_blocks([other_body, citation_block])
         label_block = LayoutBlock.for_text('1')
         ref_title_block = LayoutBlock.for_text('Reference Title 1')
         ref_text_block = LayoutBlock.merge_blocks([
@@ -477,11 +481,22 @@ class TestFullTextProcessor:
         )
 
         segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
         reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
         citation_model_mock = fulltext_models_mock.citation_model_mock
 
         segmentation_model_mock.update_label_by_layout_block(
+            body_block, '<body>'
+        )
+        segmentation_model_mock.update_label_by_layout_block(
             ref_block, '<references>'
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            other_body, '<section>'
+        )
+        fulltext_model_mock.update_label_by_layout_block(
+            citation_block, '<citation_marker>'
         )
 
         reference_segmenter_model_mock.update_label_by_layout_block(
@@ -496,6 +511,7 @@ class TestFullTextProcessor:
         )
 
         layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            body_block,
             ref_block
         ])])
         semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
@@ -511,7 +527,12 @@ class TestFullTextProcessor:
         assert ref.get_text_by_type(SemanticTitle) == ref_title_block.text
         assert ref.get_text_by_type(SemanticLabel) == label_block.text
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
-        assert ref.reference_id == 'b0'
+        assert ref.content_id == 'b0'
+        ref_citations = list(
+            semantic_document.iter_by_type_recursively(SemanticReferenceCitation)
+        )
+        assert len(ref_citations) == 1
+        assert ref_citations[0].target_content_id == 'b0'
 
     def test_should_extract_author_names_from_references_fields(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels

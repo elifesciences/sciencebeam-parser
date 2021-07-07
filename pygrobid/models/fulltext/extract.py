@@ -9,6 +9,7 @@ from pygrobid.document.semantic_document import (
     SemanticParagraph,
     SemanticRawFigure,
     SemanticRawTable,
+    SemanticReferenceCitation,
     SemanticSection,
     SemanticSectionTypes,
     SemanticTableCitation
@@ -26,6 +27,13 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
 }
 
 
+PARAGRAPH_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+    '<figure_marker>': SemanticFigureCitation,
+    '<table_marker>': SemanticTableCitation,
+    '<citation_marker>': SemanticReferenceCitation
+}
+
+
 class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
@@ -36,15 +44,9 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
         name: str,
         layout_block: LayoutBlock
     ):
-        if name == '<figure_marker>':
-            paragraph.add_content(
-                SemanticFigureCitation(layout_block=layout_block)
-            )
-            return
-        if name == '<table_marker>':
-            paragraph.add_content(
-                SemanticTableCitation(layout_block=layout_block)
-            )
+        semantic_content_class = PARAGRAPH_SEMANTIC_CONTENT_CLASS_BY_TAG.get(name)
+        if semantic_content_class:
+            paragraph.add_content(semantic_content_class(layout_block=layout_block))
             return
         paragraph.add_block_content(layout_block)
 

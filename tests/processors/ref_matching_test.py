@@ -1,7 +1,8 @@
 from pygrobid.processors.ref_matching import (
     get_normalized_key_text,
     get_token_prefix_normalized_key_text,
-    SimpleContentIdMatcher
+    SimpleContentIdMatcher,
+    PartialContentIdMatcher
 )
 
 
@@ -71,3 +72,47 @@ class TestSimpleContentIdMatcher:
             CONTENT_ID_2: OTHER_TEXT_1
         })
         assert matcher.get_id_by_text('Fig 1') == CONTENT_ID_1
+
+
+class TestPartialContentIdMatcher:
+    def test_should_match_on_exact_match(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: '1',
+            CONTENT_ID_2: '2'
+        })
+        assert matcher.get_id_by_text('1') == CONTENT_ID_1
+
+    def test_should_match_case_insensitive(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: 'TeXt 1',
+            CONTENT_ID_2: OTHER_TEXT_1
+        })
+        assert matcher.get_id_by_text('tExt 1') == CONTENT_ID_1
+
+    def test_should_ignore_punctuation(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: 'Text 1.',
+            CONTENT_ID_2: OTHER_TEXT_1
+        })
+        assert matcher.get_id_by_text('Text 1:') == CONTENT_ID_1
+
+    def test_should_normalize_whitespace(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: ' Text\n1 ',
+            CONTENT_ID_2: OTHER_TEXT_1
+        })
+        assert matcher.get_id_by_text('\nText 1\n') == CONTENT_ID_1
+
+    def test_should_match_on_partial_text_match(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: 'The title, Smith, 1999',
+            CONTENT_ID_2: 'Other title, 1999'
+        })
+        assert matcher.get_id_by_text('Smith 1999') == CONTENT_ID_1
+
+    def test_should_reject_equal_match(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: 'The title, Smith, 1999',
+            CONTENT_ID_2: 'Other title, Smith, 1999'
+        })
+        assert matcher.get_id_by_text('Smith 1999') is None

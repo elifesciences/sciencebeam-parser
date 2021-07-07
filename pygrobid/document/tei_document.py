@@ -62,6 +62,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
+    SemanticReferenceCitation,
     SemanticReferenceList,
     SemanticRegion,
     SemanticSection,
@@ -529,7 +530,8 @@ def get_tei_element_for_external_reference(
 
 CITATION_TYPE_BY_SEMANTIC_CLASS: Mapping[Type[Any], str] = {
     SemanticFigureCitation: 'figure',
-    SemanticTableCitation: 'table'
+    SemanticTableCitation: 'table',
+    SemanticReferenceCitation: 'bibr'
 }
 
 
@@ -684,6 +686,7 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticTable: get_tei_element_for_table,
     SemanticFigureCitation: get_tei_element_for_citation,
     SemanticTableCitation: get_tei_element_for_citation,
+    SemanticReferenceCitation: get_tei_element_for_citation,
     SemanticParagraph: get_tei_element_for_paragraph,
     SemanticSection: get_tei_element_for_semantic_section
 }
@@ -790,11 +793,15 @@ def _get_tei_affiliation_for_semantic_affiliation_address(
     raw_affiliation = _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
         semantic_affiliation_address
     )
+    attributes = get_default_attributes_for_layout_block(
+        semantic_affiliation_address.merged_block
+    )
+    if semantic_affiliation_address.content_id:
+        attributes = {**attributes, 'key': semantic_affiliation_address.content_id}
+        if XML_ID in attributes:
+            del attributes[XML_ID]
     children = [
-        get_default_attributes_for_layout_block(
-            semantic_affiliation_address.merged_block
-        ),
-        {'key': semantic_affiliation_address.affiliation_id},
+        attributes,
         raw_affiliation
     ]
     address_semantic_content_list = []
@@ -897,7 +904,7 @@ def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElement
         children.append(get_tei_child_element_for_semantic_content(semantic_content))
     tei_ref = TeiElementWrapper(TEI_E(
         'biblStruct',
-        {XML_ID: semantic_raw_ref.reference_id},
+        get_default_attributes_for_semantic_content(semantic_raw_ref),
         *children
     ))
     return tei_ref
@@ -909,7 +916,7 @@ def _get_tei_reference(  # pylint: disable=too-many-branches
     LOGGER.debug('semantic_ref: %s', semantic_ref)
     tei_ref = TeiElementBuilder(TEI_E(
         'biblStruct',
-        {XML_ID: semantic_ref.reference_id}
+        get_default_attributes_for_semantic_content(semantic_ref)
     ))
     is_first_date = True
     for semantic_content in semantic_ref:

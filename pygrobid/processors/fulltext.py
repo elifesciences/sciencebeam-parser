@@ -36,6 +36,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawReference,
     SemanticRawTable,
     SemanticReference,
+    SemanticReferenceCitation,
     SemanticReferenceList,
     SemanticSection,
     SemanticSectionTypes,
@@ -56,7 +57,11 @@ from pygrobid.models.figure.model import FigureModel
 from pygrobid.models.table.model import TableModel
 from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 from pygrobid.models.citation.model import CitationModel
-from pygrobid.processors.ref_matching import ContentIdMatcher, SimpleContentIdMatcher
+from pygrobid.processors.ref_matching import (
+    ContentIdMatcher,
+    PartialContentIdMatcher,
+    SimpleContentIdMatcher
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -237,6 +242,12 @@ class FullTextProcessor:
                 self._extract_reference_name_lists_from_raw_references(
                     semantic_document=document
                 )
+            references = list(document.iter_by_type_recursively(SemanticReference))
+            ref_citations = list(document.iter_by_type_recursively(SemanticReferenceCitation))
+            self._assign_content_ids(references, iter(iter_ids('b')))
+            self._assign_target_content_ids(ref_citations, PartialContentIdMatcher(
+                self._get_semantic_content_text_by_content_id(references, SemanticLabel)
+            ))
         if self.config.extract_figure_fields:
             self._extract_figure_fields_from_raw_figures(semantic_document=document)
             figures = list(document.iter_by_type_recursively(SemanticFigure))
