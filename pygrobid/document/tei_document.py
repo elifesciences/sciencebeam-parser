@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import logging
 import re
 from typing import (
@@ -10,6 +11,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Tuple,
     Type,
     Union
 )
@@ -27,6 +29,7 @@ from pygrobid.document.semantic_document import (
     SemanticAffiliationAddress,
     SemanticAuthor,
     SemanticCaption,
+    SemanticCitation,
     SemanticContentWrapper,
     SemanticCountry,
     SemanticDate,
@@ -35,6 +38,7 @@ from pygrobid.document.semantic_document import (
     SemanticExternalIdentifier,
     SemanticExternalUrl,
     SemanticFigure,
+    SemanticFigureCitation,
     SemanticGivenName,
     SemanticHeading,
     SemanticInstitution,
@@ -45,6 +49,7 @@ from pygrobid.document.semantic_document import (
     SemanticLocation,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticMixedContentWrapper,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
@@ -64,6 +69,8 @@ from pygrobid.document.semantic_document import (
     SemanticSettlement,
     SemanticSurname,
     SemanticTable,
+    SemanticTableCitation,
+    SemanticTextContentWrapper,
     SemanticTitle,
     SemanticVolume
 )
@@ -476,6 +483,19 @@ class TeiDocument(TeiElementWrapper):
         return TeiSection(TEI_E('div'))
 
 
+def get_default_attributes_for_semantic_content(
+    semantic_content: SemanticContentWrapper
+) -> Dict[str, str]:
+    attrib = get_default_attributes_for_layout_block(semantic_content.merged_block)
+    if isinstance(semantic_content, SemanticMixedContentWrapper):
+        if semantic_content.content_id:
+            attrib = {
+                **attrib,
+                XML_ID: semantic_content.content_id
+            }
+    return attrib
+
+
 def get_tei_biblscope_for_page_range(
     page_range: SemanticContentWrapper
 ) -> etree.ElementBase:
@@ -507,10 +527,33 @@ def get_tei_element_for_external_reference(
     )
 
 
+CITATION_TYPE_BY_SEMANTIC_CLASS: Mapping[Type[Any], str] = {
+    SemanticFigureCitation: 'figure',
+    SemanticTableCitation: 'table'
+}
+
+
+def get_tei_element_for_citation(
+    citation: SemanticContentWrapper
+) -> etree.ElementBase:
+    assert isinstance(citation, SemanticCitation)
+    citation_type = CITATION_TYPE_BY_SEMANTIC_CLASS.get(type(citation))
+    attributes = {}
+    if citation_type:
+        attributes['type'] = citation_type
+    if citation.target_content_id:
+        attributes['target'] = '#' + citation.target_content_id
+    return TEI_E(
+        'ref',
+        attributes,
+        *iter_layout_block_tei_children(citation.merged_block)
+    )
+
+
 def get_tei_element_for_figure(semantic_figure: SemanticContentWrapper) -> etree.ElementBase:
     LOGGER.debug('semantic_figure: %s', semantic_figure)
     assert isinstance(semantic_figure, SemanticFigure)
-    children = []
+    children = [get_default_attributes_for_semantic_content(semantic_figure)]
     for semantic_content in semantic_figure:
         if isinstance(semantic_content, SemanticLabel):
             layout_block = semantic_content.merged_block
@@ -529,7 +572,7 @@ def get_tei_element_for_figure(semantic_figure: SemanticContentWrapper) -> etree
 def get_tei_element_for_table(semantic_table: SemanticContentWrapper) -> etree.ElementBase:
     LOGGER.debug('semantic_table: %s', semantic_table)
     assert isinstance(semantic_table, SemanticTable)
-    children = []
+    children = [get_default_attributes_for_semantic_content(semantic_table)]
     for semantic_content in semantic_table:
         if isinstance(semantic_content, SemanticLabel):
             layout_block = semantic_content.merged_block
@@ -545,6 +588,24 @@ def get_tei_element_for_table(semantic_table: SemanticContentWrapper) -> etree.E
     return TEI_E('figure', {'type': 'table'}, *children)
 
 
+def get_tei_element_for_paragraph(
+    semantic_paragraph: SemanticContentWrapper
+) -> etree.ElementBase:
+    LOGGER.debug('semantic_paragraph: %s', semantic_paragraph)
+    assert isinstance(semantic_paragraph, SemanticParagraph)
+    children: T_ElementChildrenList = [
+        get_default_attributes_for_semantic_content(semantic_paragraph)
+    ]
+    pending_whitespace = ''
+    for semantic_content in semantic_paragraph:
+        pending_whitespace = append_tei_children_list_and_get_whitespace(
+            children,
+            semantic_content,
+            pending_whitespace=pending_whitespace
+        )
+    return TEI_E('p', *children)
+
+
 def get_tei_element_for_semantic_section(
     semantic_section: SemanticContentWrapper
 ) -> etree.ElementBase:
@@ -556,13 +617,6 @@ def get_tei_element_for_semantic_section(
             tei_section.add_title(LayoutBlock.for_tokens(
                 list(semantic_content.iter_tokens())
             ))
-            continue
-        if isinstance(semantic_content, SemanticParagraph):
-            paragraph = tei_section.create_paragraph()
-            paragraph.add_content(LayoutBlock.for_tokens(
-                list(semantic_content.iter_tokens())
-            ))
-            tei_section.add_paragraph(paragraph)
             continue
         if isinstance(semantic_content, (SemanticFigure, SemanticTable,)):
             # rendered at parent level
@@ -628,6 +682,9 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticExternalIdentifier: get_tei_element_for_external_reference,
     SemanticFigure: get_tei_element_for_figure,
     SemanticTable: get_tei_element_for_table,
+    SemanticFigureCitation: get_tei_element_for_citation,
+    SemanticTableCitation: get_tei_element_for_citation,
+    SemanticParagraph: get_tei_element_for_paragraph,
     SemanticSection: get_tei_element_for_semantic_section
 }
 
@@ -660,6 +717,52 @@ def get_tei_child_element_for_semantic_content(
             *iter_layout_block_tei_children(semantic_content.merged_block)
         )
     return get_tei_note_for_semantic_content(semantic_content)
+
+
+def get_tei_children_and_whitespace_for_semantic_content(
+    semantic_content: SemanticContentWrapper
+) -> Tuple[List[Union[dict, str, etree.ElementBase]], str]:
+    layout_block = semantic_content.merged_block
+    if isinstance(semantic_content, SemanticTextContentWrapper):
+        return (
+            list(iter_layout_block_tei_children(layout_block)),
+            layout_block.whitespace
+        )
+    return (
+        [get_tei_child_element_for_semantic_content(semantic_content)],
+        layout_block.whitespace
+    )
+
+
+def append_tei_children_and_get_whitespace(
+    parent: etree.ElementBase,
+    semantic_content: SemanticContentWrapper
+) -> str:
+    children, whitespace = get_tei_children_and_whitespace_for_semantic_content(
+        semantic_content
+    )
+    extend_element(parent, children)
+    return whitespace
+
+
+T_ElementChildrenListItem = Union[dict, str, etree.ElementBase]
+T_ElementChildrenList = List[T_ElementChildrenListItem]
+
+
+def append_tei_children_list_and_get_whitespace(
+    children: T_ElementChildrenList,
+    semantic_content: SemanticContentWrapper,
+    pending_whitespace: str
+) -> str:
+    tail_children, tail_whitespace = get_tei_children_and_whitespace_for_semantic_content(
+        semantic_content
+    )
+    if not tail_children:
+        return pending_whitespace
+    if pending_whitespace:
+        children.append(pending_whitespace)
+    children.extend(tail_children)
+    return tail_whitespace
 
 
 def _get_tei_raw_affiliation_element_for_semantic_affiliation_address(

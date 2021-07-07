@@ -1,16 +1,32 @@
 import logging
 from dataclasses import dataclass
-from typing import Iterable, List, NamedTuple, Optional, Sequence, Tuple, Type, Union
+from typing import (
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union
+)
 
 from pygrobid.config.config import AppConfig
 from pygrobid.models.model import LayoutDocumentLabelResult, Model
 from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_config
+from pygrobid.utils.misc import iter_ids
 
 from pygrobid.document.semantic_document import (
     SemanticAuthor,
+    SemanticCitation,
     SemanticContentWrapper,
     SemanticDocument,
     SemanticEditor,
+    SemanticFigure,
+    SemanticFigureCitation,
+    SemanticLabel,
     SemanticMixedContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
@@ -23,6 +39,8 @@ from pygrobid.document.semantic_document import (
     SemanticReferenceList,
     SemanticSection,
     SemanticSectionTypes,
+    SemanticTable,
+    SemanticTableCitation,
     T_SemanticContentWrapper,
     T_SemanticName,
     T_SemanticRawNameList
@@ -38,6 +56,7 @@ from pygrobid.models.figure.model import FigureModel
 from pygrobid.models.table.model import TableModel
 from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
 from pygrobid.models.citation.model import CitationModel
+from pygrobid.processors.ref_matching import ContentIdMatcher, SimpleContentIdMatcher
 
 
 LOGGER = logging.getLogger(__name__)
@@ -219,14 +238,55 @@ class FullTextProcessor:
                     semantic_document=document
                 )
         if self.config.extract_figure_fields:
-            self._extract_figure_fields_from_raw_figures(
-                semantic_document=document
-            )
+            self._extract_figure_fields_from_raw_figures(semantic_document=document)
+            figures = list(document.iter_by_type_recursively(SemanticFigure))
+            figure_citations = list(document.iter_by_type_recursively(SemanticFigureCitation))
+            self._assign_content_ids(figures, iter(iter_ids('fig_')))
+            self._assign_target_content_ids(figure_citations, SimpleContentIdMatcher(
+                self._get_semantic_content_text_by_content_id(figures, SemanticLabel)
+            ))
         if self.config.extract_table_fields:
-            self._extract_table_fields_from_raw_tables(
-                semantic_document=document
-            )
+            self._extract_table_fields_from_raw_tables(semantic_document=document)
+            tables = list(document.iter_by_type_recursively(SemanticTable))
+            table_citations = list(document.iter_by_type_recursively(SemanticTableCitation))
+            self._assign_content_ids(tables, iter(iter_ids('tab_')))
+            self._assign_target_content_ids(table_citations, SimpleContentIdMatcher(
+                self._get_semantic_content_text_by_content_id(tables, SemanticLabel)
+            ))
         return document
+
+    def _assign_content_ids(
+        self,
+        semantic_content_iterable: Iterable[SemanticMixedContentWrapper],
+        content_id_iterator: Iterator[str]
+    ):
+        for semantic_content in semantic_content_iterable:
+            semantic_content.content_id = next(content_id_iterator)
+
+    def _get_semantic_content_text_by_content_id(
+        self,
+        semantic_content_iterable: Iterable[SemanticMixedContentWrapper],
+        type_: Type[SemanticContentWrapper]
+    ) -> Mapping[str, str]:
+        d = {}
+        for semantic_content in semantic_content_iterable:
+            if not semantic_content.content_id:
+                continue
+            text = semantic_content.get_text_by_type(type_)
+            if not text:
+                continue
+            d[semantic_content.content_id] = text
+        return d
+
+    def _assign_target_content_ids(
+        self,
+        semantic_content_iterable: Iterable[SemanticCitation],
+        content_id_matcher: ContentIdMatcher
+    ):
+        for citation in semantic_content_iterable:
+            content_id = content_id_matcher.get_id_by_text(citation.get_text())
+            if content_id:
+                citation.target_content_id = content_id
 
     def _process_raw_authors(self, semantic_parent: SemanticMixedContentWrapper):
         result_content: List[SemanticContentWrapper] = []

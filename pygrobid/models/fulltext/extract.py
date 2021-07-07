@@ -4,12 +4,14 @@ from typing import Iterable, Mapping, Optional, Tuple
 from pygrobid.document.semantic_document import (
     SemanticContentFactoryProtocol,
     SemanticContentWrapper,
+    SemanticFigureCitation,
     SemanticNote,
     SemanticParagraph,
     SemanticRawFigure,
     SemanticRawTable,
     SemanticSection,
-    SemanticSectionTypes
+    SemanticSectionTypes,
+    SemanticTableCitation
 )
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.models.extract import SimpleModelSemanticExtractor
@@ -27,6 +29,24 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
 class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
+
+    def add_paragraph_content(
+        self,
+        paragraph: SemanticParagraph,
+        name: str,
+        layout_block: LayoutBlock
+    ):
+        if name == '<figure_marker>':
+            paragraph.add_content(
+                SemanticFigureCitation(layout_block=layout_block)
+            )
+            return
+        if name == '<table_marker>':
+            paragraph.add_content(
+                SemanticTableCitation(layout_block=layout_block)
+            )
+            return
+        paragraph.add_block_content(layout_block)
 
     def iter_semantic_content_for_entity_blocks(  # pylint: disable=arguments-differ
         self,
@@ -69,7 +89,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                     name, layout_block=layout_block
                 ))
                 continue
-            # treat everything else as paragraph text
+            # treat everything else as paragraph content
             if (
                 not paragraph
                 or (
@@ -78,6 +98,8 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                 )
             ):
                 paragraph = section.add_new_paragraph()
-            paragraph.add_block_content(layout_block)
+            self.add_paragraph_content(
+                paragraph, name, layout_block
+            )
         if section:
             yield section

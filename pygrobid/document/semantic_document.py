@@ -71,6 +71,10 @@ class SemanticSimpleContentWrapper(SemanticContentWrapper):
         )
 
 
+class SemanticTextContentWrapper(SemanticSimpleContentWrapper):
+    pass
+
+
 class SemanticContentFactoryProtocol(Protocol):
     def __call__(self, layout_block: LayoutBlock) -> SemanticContentWrapper:
         pass
@@ -85,6 +89,7 @@ T_SemanticContentWrapper = TypeVar('T_SemanticContentWrapper', bound=SemanticCon
 @dataclass
 class SemanticMixedContentWrapper(SemanticContentWrapper):
     mixed_content: List[SemanticContentWrapper] = field(default_factory=list)
+    content_id: Optional[str] = None
     layout_block: dataclasses.InitVar[LayoutBlock] = None
 
     def __post_init__(self, layout_block: Optional[LayoutBlock] = None):
@@ -102,7 +107,7 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
         )
 
     def add_block_content(self, block: LayoutBlock):
-        self.add_content(SemanticSimpleContentWrapper(block))
+        self.add_content(SemanticTextContentWrapper(block))
 
     def add_content(self, content: SemanticContentWrapper):
         assert not isinstance(content, LayoutBlock)
@@ -448,6 +453,19 @@ class SemanticTable(SemanticMixedContentWrapper):
     pass
 
 
+@dataclass
+class SemanticCitation(SemanticSimpleContentWrapper):
+    target_content_id: Optional[str] = None
+
+
+class SemanticFigureCitation(SemanticCitation):
+    pass
+
+
+class SemanticTableCitation(SemanticCitation):
+    pass
+
+
 class SemanticFront(SemanticMixedContentWrapper):
     @property
     def authors(self) -> List[SemanticAuthor]:
@@ -527,8 +545,9 @@ class SemanticSection(SemanticMixedContentWrapper):
         )
 
 
-@dataclass
-class SemanticDocument:
-    front: SemanticFront = field(default_factory=SemanticFront)
-    body_section: SemanticSection = field(default_factory=SemanticSection)
-    back_section: SemanticSection = field(default_factory=SemanticSection)
+class SemanticDocument(SemanticMixedContentWrapper):
+    def __init__(self):
+        self.front = SemanticFront()
+        self.body_section = SemanticSection()
+        self.back_section = SemanticSection()
+        super().__init__([self.front, self.body_section, self.back_section])

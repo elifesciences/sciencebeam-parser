@@ -12,6 +12,7 @@ from pygrobid.document.semantic_document import (
     SemanticCountry,
     SemanticEditor,
     SemanticFigure,
+    SemanticFigureCitation,
     SemanticInstitution,
     SemanticLabel,
     SemanticMarker,
@@ -21,6 +22,7 @@ from pygrobid.document.semantic_document import (
     SemanticReferenceList,
     SemanticSectionTypes,
     SemanticTable,
+    SemanticTableCitation,
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
@@ -643,13 +645,14 @@ class TestFullTextProcessor:
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
+        citation_block = LayoutBlock.for_text('Figure 1')
         label_block = LayoutBlock.for_text('Figure 1')
         caption_block = LayoutBlock.for_text('Caption 1')
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
         ])
-        fulltext_block = LayoutBlock.merge_blocks([figure_block])
+        fulltext_block = LayoutBlock.merge_blocks([citation_block, figure_block])
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
             FullTextProcessorConfig(extract_figure_fields=True)
@@ -663,6 +666,9 @@ class TestFullTextProcessor:
             fulltext_block, segmentation_label
         )
 
+        fulltext_model_mock.update_label_by_layout_block(
+            citation_block, '<figure_marker>'
+        )
         fulltext_model_mock.update_label_by_layout_block(
             figure_block, '<figure>'
         )
@@ -690,6 +696,13 @@ class TestFullTextProcessor:
         figure = figure_list[0]
         assert figure.get_text_by_type(SemanticLabel) == label_block.text
         assert figure.get_text_by_type(SemanticCaption) == caption_block.text
+        assert figure.content_id == 'fig_0'
+        figure_citation_list = list(
+            semantic_document.iter_by_type_recursively(SemanticFigureCitation)
+        )
+        assert len(figure_citation_list) == 1
+        assert figure_citation_list[0].get_text() == citation_block.text
+        assert figure_citation_list[0].target_content_id == 'fig_0'
 
     @pytest.mark.parametrize(
         'segmentation_label',
@@ -699,13 +712,14 @@ class TestFullTextProcessor:
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
+        citation_block = LayoutBlock.for_text('Table 1')
         label_block = LayoutBlock.for_text('Table 1')
         caption_block = LayoutBlock.for_text('Caption 1')
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
         ])
-        fulltext_block = LayoutBlock.merge_blocks([figure_block])
+        fulltext_block = LayoutBlock.merge_blocks([citation_block, figure_block])
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
             FullTextProcessorConfig(extract_table_fields=True)
@@ -719,6 +733,9 @@ class TestFullTextProcessor:
             fulltext_block, segmentation_label
         )
 
+        fulltext_model_mock.update_label_by_layout_block(
+            citation_block, '<table_marker>'
+        )
         fulltext_model_mock.update_label_by_layout_block(
             figure_block, '<table>'
         )
@@ -746,3 +763,10 @@ class TestFullTextProcessor:
         table = table_list[0]
         assert table.get_text_by_type(SemanticLabel) == label_block.text
         assert table.get_text_by_type(SemanticCaption) == caption_block.text
+        assert table.content_id == 'tab_0'
+        table_citation_list = list(
+            semantic_document.iter_by_type_recursively(SemanticTableCitation)
+        )
+        assert len(table_citation_list) == 1
+        assert table_citation_list[0].get_text() == citation_block.text
+        assert table_citation_list[0].target_content_id == 'tab_0'

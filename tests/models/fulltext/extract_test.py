@@ -2,9 +2,12 @@ import logging
 
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
+    SemanticFigureCitation,
+    SemanticParagraph,
     SemanticRawFigure,
     SemanticRawTable,
-    SemanticSection
+    SemanticSection,
+    SemanticTableCitation
 )
 from pygrobid.models.fulltext.extract import (
     FullTextSemanticExtractor
@@ -65,6 +68,48 @@ class TestFullTextSemanticExtractor:
         assert section.get_paragraph_text_list() == [
             ' '.join([SECTION_PARAGRAPH_1, SECTION_PARAGRAPH_2, SECTION_PARAGRAPH_3])
         ]
+
+    def test_should_include_figure_citation_in_paragraph(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<figure_marker>', LayoutBlock.for_text('Figure 1')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        paragraphs = list(section.iter_by_type(SemanticParagraph))
+        figure_citations = [
+            citation
+            for paragraph in paragraphs
+            for citation in section.iter_by_type_recursively(SemanticFigureCitation)
+        ]
+        assert len(figure_citations) == 1
+        assert figure_citations[0].get_text() == 'Figure 1'
+
+    def test_should_include_table_citation_in_paragraph(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<table_marker>', LayoutBlock.for_text('Table 1')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        paragraphs = list(section.iter_by_type(SemanticParagraph))
+        table_citations = [
+            citation
+            for paragraph in paragraphs
+            for citation in section.iter_by_type_recursively(SemanticTableCitation)
+        ]
+        assert len(table_citations) == 1
+        assert table_citations[0].get_text() == 'Table 1'
 
     def test_should_add_note_for_other_text_to_section(self):
         semantic_content_list = list(
