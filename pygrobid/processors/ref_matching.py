@@ -2,7 +2,7 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, List, Mapping, Optional, Sequence
 
 from pygrobid.utils.tokenizer import iter_tokenized_tokens
 
@@ -35,9 +35,7 @@ def get_token_prefix_normalized_key_text(text: str):
 
 def get_normalized_key_tokens(text: str):
     return [
-        get_normalized_key_text(
-            token if re.search(r'\d', token) else token[:1]
-        )
+        get_normalized_key_text(token)
         for token in iter_tokenized_tokens(text)
         if token.strip()
     ]
@@ -65,20 +63,16 @@ class SimpleContentIdMatcher(ContentIdMatcher):
         return content_id
 
 
-class PartialContentIdMatcher(SimpleContentIdMatcher):
+class PartialContentIdMatcher(ContentIdMatcher):
     def __init__(self, text_by_content_id: Mapping[str, str]):
-        super().__init__(text_by_content_id=text_by_content_id)
         self.content_ids_by_token_text: Dict[str, List[str]] = defaultdict(list)
         for content_id, text in text_by_content_id.items():
             for token in get_normalized_key_tokens(text):
                 self.content_ids_by_token_text[token].append(content_id)
 
     def get_id_by_text(self, text: str) -> Optional[str]:
-        content_id = super().get_id_by_text(text)
-        if content_id:
-            return content_id
         tokens = get_normalized_key_tokens(text)
-        LOGGER.debug('tokens: %r', tokens)
+        LOGGER.debug('tokens: %r (text: %r)', tokens, text)
         if not tokens:
             return None
         content_id_counts = Counter((
@@ -96,3 +90,15 @@ class PartialContentIdMatcher(SimpleContentIdMatcher):
         ):
             return None
         return keys[0]
+
+
+class ChainedContentIdMatcher(ContentIdMatcher):
+    def __init__(self, content_id_matchers: Sequence[ContentIdMatcher]):
+        self.content_id_matchers = content_id_matchers
+
+    def get_id_by_text(self, text: str) -> Optional[str]:
+        for content_id_matcher in self.content_id_matchers:
+            content_id = content_id_matcher.get_id_by_text(text)
+            if content_id:
+                return content_id
+        return None

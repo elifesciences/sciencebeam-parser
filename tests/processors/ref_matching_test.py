@@ -2,13 +2,15 @@ from pygrobid.processors.ref_matching import (
     get_normalized_key_text,
     get_token_prefix_normalized_key_text,
     SimpleContentIdMatcher,
-    PartialContentIdMatcher
+    PartialContentIdMatcher,
+    ChainedContentIdMatcher
 )
 
 
 CONTENT_ID_1 = 'id1'
 CONTENT_ID_2 = 'id2'
 
+TEXT_1 = 'Text 1'
 OTHER_TEXT_1 = 'Other 1'
 
 
@@ -116,3 +118,45 @@ class TestPartialContentIdMatcher:
             CONTENT_ID_2: 'Other title, Smith, 1999'
         })
         assert matcher.get_id_by_text('Smith 1999') is None
+
+    def test_should_not_match_on_initial_characters_only(self):
+        matcher = PartialContentIdMatcher({
+            CONTENT_ID_1: 'The title, Smooth',
+            CONTENT_ID_2: 'Other title, X'
+        })
+        assert matcher.get_id_by_text('Smith') is None
+
+
+class TestChainedContentIdMatcher:
+    def test_should_prefer_first_content_id_matcher(self):
+        matcher = ChainedContentIdMatcher([
+            SimpleContentIdMatcher({
+                CONTENT_ID_1: TEXT_1
+            }),
+            SimpleContentIdMatcher({
+                CONTENT_ID_2: TEXT_1
+            })
+        ])
+        assert matcher.get_id_by_text(TEXT_1) == CONTENT_ID_1
+
+    def test_should_fallback_to_second_content_id_matcher(self):
+        matcher = ChainedContentIdMatcher([
+            SimpleContentIdMatcher({
+                CONTENT_ID_1: OTHER_TEXT_1
+            }),
+            SimpleContentIdMatcher({
+                CONTENT_ID_2: TEXT_1
+            })
+        ])
+        assert matcher.get_id_by_text(TEXT_1) == CONTENT_ID_2
+
+    def test_should_return_none_if_no_matcher_provides_content_id(self):
+        matcher = ChainedContentIdMatcher([
+            SimpleContentIdMatcher({
+                CONTENT_ID_1: OTHER_TEXT_1
+            }),
+            SimpleContentIdMatcher({
+                CONTENT_ID_2: OTHER_TEXT_1
+            })
+        ])
+        assert matcher.get_id_by_text(TEXT_1) is None
