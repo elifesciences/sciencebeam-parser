@@ -59,6 +59,7 @@ class SemanticSimpleContentWrapper(SemanticContentWrapper):
     layout_block: dataclasses.InitVar[LayoutBlock] = None
 
     def __post_init__(self, layout_block: Optional[LayoutBlock] = None):
+        assert isinstance(self.content, LayoutBlock)
         if layout_block is not None:
             self.add_content(layout_block)
 

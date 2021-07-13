@@ -157,7 +157,8 @@ def retokenize_layout_token(
 
 def iter_layout_tokens_for_text(
     text: str,
-    tail_whitespace: str = ' '
+    tail_whitespace: str = ' ',
+    **kwargs
 ) -> Iterable[LayoutToken]:
     pending_text = ''
     pending_whitespace = ' '
@@ -166,12 +167,12 @@ def iter_layout_tokens_for_text(
             pending_whitespace += token_text
             continue
         if pending_text:
-            yield LayoutToken(pending_text, whitespace=pending_whitespace)
+            yield LayoutToken(pending_text, whitespace=pending_whitespace, **kwargs)
         pending_text = token_text
         pending_whitespace = ''
     if pending_text:
         pending_whitespace += tail_whitespace
-        yield LayoutToken(pending_text, whitespace=pending_whitespace)
+        yield LayoutToken(pending_text, whitespace=pending_whitespace, **kwargs)
 
 
 def get_layout_tokens_for_text(*args, **kwargs) -> List[LayoutToken]:

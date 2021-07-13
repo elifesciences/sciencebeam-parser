@@ -794,16 +794,20 @@ def _get_tei_raw_affiliation_element_for_semantic_affiliation_address(
 ) -> etree.ElementBase:
     children: List[Union[str, dict, etree.ElementBase]] = []
     children.append({'type': 'raw_affiliation'})
+    pending_whitespace: str = ''
     for semantic_content in semantic_affiliation_address:
         merged_block = semantic_content.merged_block
+        if pending_whitespace:
+            children.append(pending_whitespace)
         if isinstance(semantic_content, SemanticMarker):
             children.append(TEI_E(
                 'label',
                 *iter_layout_block_tei_children(merged_block, enable_coordinates=False)
             ))
-            children.append(merged_block.whitespace)
+            pending_whitespace = merged_block.whitespace
             continue
-        children.extend(*iter_layout_block_tei_children(merged_block, enable_coordinates=False))
+        children.extend(iter_layout_block_tei_children(merged_block, enable_coordinates=False))
+        pending_whitespace = merged_block.whitespace
     return TEI_E('note', *children)
 
 

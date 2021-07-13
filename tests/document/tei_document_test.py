@@ -236,6 +236,7 @@ class TestTeiDocument:
 class TestGetTeiAffiliationForSemanticAffiliationAddress:
     def test_should_add_all_fields(self):
         semantic_affiliation_address = SemanticAffiliationAddress([
+            SemanticMarker(layout_block=LayoutBlock.for_text('1')),
             SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1')),
             SemanticDepartment(layout_block=LayoutBlock.for_text('Department1')),
             SemanticLaboratory(layout_block=LayoutBlock.for_text('Lab1')),
@@ -250,6 +251,12 @@ class TestGetTeiAffiliationForSemanticAffiliationAddress:
             semantic_affiliation_address
         )
         LOGGER.debug('tei_aff: %r', etree.tostring(tei_aff.element))
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]'
+        ) == [semantic_affiliation_address.get_text()]
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]/tei:label'
+        ) == ['1']
         assert tei_aff.get_xpath_text_content_list(
             'tei:orgName[@type="institution"]'
         ) == ['Institution1']
@@ -277,6 +284,40 @@ class TestGetTeiAffiliationForSemanticAffiliationAddress:
         assert tei_aff.get_xpath_text_content_list(
             'tei:address/tei:country'
         ) == ['Country1']
+
+    def test_should_add_raw_affiliation_without_marker(self):
+        semantic_affiliation_address = SemanticAffiliationAddress([
+            SemanticInstitution(layout_block=LayoutBlock.for_text('Institution1'))
+        ])
+        tei_aff = _get_tei_affiliation_for_semantic_affiliation_address(
+            semantic_affiliation_address
+        )
+        LOGGER.debug('tei_aff: %r', etree.tostring(tei_aff.element))
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]'
+        ) == [semantic_affiliation_address.get_text()]
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]/tei:label'
+        ) == []
+
+    def test_should_add_raw_affiliation_with_formatting(self):
+        semantic_affiliation_address = SemanticAffiliationAddress([
+            SemanticMarker(layout_block=LayoutBlock.for_text('1')),
+            SemanticInstitution(layout_block=LayoutBlock.merge_blocks([
+                LayoutBlock.for_text('bold', font=BOLD_FONT_1),
+                LayoutBlock.for_text('italic', font=ITALICS_FONT_1)
+            ]))
+        ])
+        tei_aff = _get_tei_affiliation_for_semantic_affiliation_address(
+            semantic_affiliation_address
+        )
+        LOGGER.debug('tei_aff: %r', etree.tostring(tei_aff.element))
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]'
+        ) == [semantic_affiliation_address.get_text()]
+        assert tei_aff.get_xpath_text_content_list(
+            'tei:note[@type="raw_affiliation"]/tei:label'
+        ) == ['1']
 
 
 class TestGetTeiReference:
