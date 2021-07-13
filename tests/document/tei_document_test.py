@@ -369,6 +369,46 @@ class TestGetTeiReference:
         ) == ['1992']
 
 
+class TestGetTeiHeading:
+    def test_should_create_head_for_simple_title(self):
+        semantic_heading = SemanticHeading(layout_block=LayoutBlock.for_text('Section Title 1'))
+        tei_head = get_tei_child_element_for_semantic_content(semantic_heading)
+        LOGGER.debug('tei_head: %r', etree.tostring(tei_head))
+        assert get_text_content(tei_head) == 'Section Title 1'
+        assert list(tei_head) == []
+
+    def test_should_create_head_for_child_section_title(self):
+        semantic_heading = SemanticHeading([
+            SemanticTitle(layout_block=LayoutBlock.for_text('Section Title 1'))
+        ])
+        tei_head = get_tei_child_element_for_semantic_content(semantic_heading)
+        LOGGER.debug('tei_head: %r', etree.tostring(tei_head))
+        assert get_text_content(tei_head) == 'Section Title 1'
+        assert list(tei_head) == []
+
+    def test_should_create_head_for_label_and_section_title(self):
+        semantic_heading = SemanticHeading([
+            SemanticLabel(layout_block=LayoutBlock.for_text('1')),
+            SemanticTitle(layout_block=LayoutBlock.for_text('Section Title 1'))
+        ])
+        tei_head = get_tei_child_element_for_semantic_content(semantic_heading)
+        LOGGER.debug('tei_head: %r', etree.tostring(tei_head))
+        assert tei_head.attrib.get('n') == '1'
+        assert get_text_content(tei_head) == 'Section Title 1'
+        assert list(tei_head) == []
+
+    def test_should_strip_dot_from_label(self):
+        semantic_heading = SemanticHeading([
+            SemanticLabel(layout_block=LayoutBlock.for_text('1.')),
+            SemanticTitle(layout_block=LayoutBlock.for_text('Section Title 1'))
+        ])
+        tei_head = get_tei_child_element_for_semantic_content(semantic_heading)
+        LOGGER.debug('tei_head: %r', etree.tostring(tei_head))
+        assert tei_head.attrib.get('n') == '1'
+        assert get_text_content(tei_head) == 'Section Title 1'
+        assert list(tei_head) == []
+
+
 class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
     def test_should_return_empty_document(self):
         semantic_document = SemanticDocument()

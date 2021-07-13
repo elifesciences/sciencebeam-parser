@@ -1,10 +1,13 @@
 import logging
+import re
 from typing import Iterable, Mapping, Optional, Tuple
 
 from pygrobid.document.semantic_document import (
     SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticFigureCitation,
+    SemanticHeading,
+    SemanticLabel,
     SemanticNote,
     SemanticParagraph,
     SemanticRawFigure,
@@ -12,9 +15,10 @@ from pygrobid.document.semantic_document import (
     SemanticReferenceCitation,
     SemanticSection,
     SemanticSectionTypes,
-    SemanticTableCitation
+    SemanticTableCitation,
+    SemanticTitle
 )
-from pygrobid.document.layout_document import LayoutBlock
+from pygrobid.document.layout_document import LayoutBlock, LayoutTokensText
 from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
@@ -34,6 +38,31 @@ PARAGRAPH_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProt
 }
 
 
+HEADER_LABEL_REGEX = r'(\d+\.?(?:\d+\.?)*)\s*(\D.*)'
+
+
+def get_section_label_and_title_from_layout_block(
+    layout_block: LayoutBlock
+) -> Tuple[Optional[LayoutBlock], LayoutBlock]:
+    if not layout_block:
+        return None, layout_block
+    layout_tokens_text = LayoutTokensText(layout_block)
+    text = str(layout_tokens_text)
+    m = re.match(HEADER_LABEL_REGEX, text, re.IGNORECASE)
+    if not m:
+        return None, layout_block
+    label_end = m.end(1)
+    title_start = m.start(2)
+    LOGGER.debug('label_end: %d, title_start: %d (text: %r)', label_end, title_start, text)
+    section_label_layout_block = LayoutBlock.for_tokens(list(
+        layout_tokens_text.iter_layout_tokens_between(0, label_end)
+    ))
+    section_title_layout_block = LayoutBlock.for_tokens(list(
+        layout_tokens_text.iter_layout_tokens_between(title_start, len(text))
+    ))
+    return section_label_layout_block, section_title_layout_block
+
+
 class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
@@ -49,6 +78,19 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
             paragraph.add_content(semantic_content_class(layout_block=layout_block))
             return
         paragraph.add_block_content(layout_block)
+
+    def get_semantic_heading(self, layout_block: LayoutBlock):
+        section_label_layout_block, section_title_layout_block = (
+            get_section_label_and_title_from_layout_block(layout_block)
+        )
+        if section_label_layout_block:
+            return SemanticHeading([
+                SemanticLabel(layout_block=section_label_layout_block),
+                SemanticTitle(layout_block=section_title_layout_block)
+            ])
+        return SemanticHeading([
+            SemanticTitle(layout_block=section_title_layout_block)
+        ])
 
     def iter_semantic_content_for_entity_blocks(  # pylint: disable=arguments-differ
         self,
@@ -82,7 +124,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                 if section:
                     yield section
                 section = SemanticSection(section_type=section_type)
-                section.add_heading_block(layout_block)
+                section.add_content(self.get_semantic_heading(layout_block))
                 continue
             if not section:
                 section = SemanticSection(section_type=section_type)

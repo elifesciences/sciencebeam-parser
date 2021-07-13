@@ -226,7 +226,7 @@ class SemanticNote(SemanticSimpleContentWrapper):
     note_type: str = 'other'
 
 
-class SemanticHeading(SemanticSimpleContentWrapper):
+class SemanticHeading(SemanticMixedContentWrapper):
     pass
 
 
@@ -503,7 +503,7 @@ class SemanticSection(SemanticMixedContentWrapper):
         return self.view_by_type(SemanticParagraph).get_text_list()
 
     def add_heading_block(self, block: LayoutBlock) -> SemanticHeading:
-        return self.add_content_and_return_content(SemanticHeading(block))
+        return self.add_content_and_return_content(SemanticHeading(layout_block=block))
 
     def add_new_paragraph(self) -> SemanticParagraph:
         return self.add_content_and_return_content(SemanticParagraph())

@@ -370,11 +370,6 @@ class TeiSection(TeiElementWrapper):
             '//tei:p',
         )
 
-    def add_title(self, layout_block: LayoutBlock):
-        self.element.append(
-            TEI_E('head', *iter_layout_block_tei_children(layout_block))
-        )
-
     def add_paragraph(self, paragraph: TeiSectionParagraph):
         self.element.append(paragraph.element)
 
@@ -590,6 +585,30 @@ def get_tei_element_for_table(semantic_table: SemanticContentWrapper) -> etree.E
     return TEI_E('figure', {'type': 'table'}, *children)
 
 
+def get_tei_element_for_heading(
+    semantic_heading: SemanticContentWrapper
+) -> etree.ElementBase:
+    LOGGER.debug('semantic_heading: %s', semantic_heading)
+    assert isinstance(semantic_heading, SemanticHeading)
+    children: T_ElementChildrenList = [
+        get_default_attributes_for_semantic_content(semantic_heading)
+    ]
+    pending_whitespace = ''
+    for semantic_content in semantic_heading:
+        if isinstance(semantic_content, SemanticLabel):
+            children.append({'n': semantic_content.get_text().rstrip('.')})
+            continue
+        layout_block = semantic_content.merged_block
+        if pending_whitespace:
+            children.append(pending_whitespace)
+        children.extend(iter_layout_block_tei_children(
+            layout_block=layout_block,
+            enable_coordinates=False
+        ))
+        pending_whitespace = layout_block.whitespace
+    return TEI_E('head', *children)
+
+
 def get_tei_element_for_paragraph(
     semantic_paragraph: SemanticContentWrapper
 ) -> etree.ElementBase:
@@ -615,11 +634,6 @@ def get_tei_element_for_semantic_section(
     assert isinstance(semantic_section, SemanticSection)
     tei_section = TeiSection(TEI_E('div'))
     for semantic_content in semantic_section:
-        if isinstance(semantic_content, SemanticHeading):
-            tei_section.add_title(LayoutBlock.for_tokens(
-                list(semantic_content.iter_tokens())
-            ))
-            continue
         if isinstance(semantic_content, (SemanticFigure, SemanticTable,)):
             # rendered at parent level
             continue
@@ -630,7 +644,6 @@ def get_tei_element_for_semantic_section(
 
 
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
-    SemanticHeading: 'head',
     SemanticNameTitle: 'roleName',
     SemanticGivenName: 'forename[@type="first"]',
     SemanticMiddleName: 'forename[@type="middle"]',
@@ -687,6 +700,7 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticFigureCitation: get_tei_element_for_citation,
     SemanticTableCitation: get_tei_element_for_citation,
     SemanticReferenceCitation: get_tei_element_for_citation,
+    SemanticHeading: get_tei_element_for_heading,
     SemanticParagraph: get_tei_element_for_paragraph,
     SemanticSection: get_tei_element_for_semantic_section
 }

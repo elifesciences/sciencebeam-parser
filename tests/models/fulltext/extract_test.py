@@ -1,16 +1,21 @@
 import logging
+from typing import Optional, Tuple
 
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
     SemanticFigureCitation,
+    SemanticHeading,
+    SemanticLabel,
     SemanticParagraph,
     SemanticRawFigure,
     SemanticRawTable,
     SemanticReferenceCitation,
     SemanticSection,
-    SemanticTableCitation
+    SemanticTableCitation,
+    SemanticTitle
 )
 from pygrobid.models.fulltext.extract import (
+    get_section_label_and_title_from_layout_block,
     FullTextSemanticExtractor
 )
 
@@ -25,6 +30,71 @@ SECTION_PARAGRAPH_2 = 'the paragraph 2'
 SECTION_PARAGRAPH_3 = 'the paragraph 3'
 
 
+def _get_layout_block_text(layout_block: Optional[LayoutBlock]) -> Optional[str]:
+    if layout_block is None:
+        return None
+    return layout_block.text
+
+
+def _get_section_label_and_title_text_from_layout_block(
+    layout_block: LayoutBlock
+) -> Tuple[Optional[str], str]:
+    (
+        section_label_layout_block, section_title_layout_block
+    ) = get_section_label_and_title_from_layout_block(layout_block)
+    return _get_layout_block_text(section_label_layout_block), section_title_layout_block.text
+
+
+class TestGetSectionLabelAndTitleFromLayoutBlock:
+    def test_should_not_return_section_label_if_block_is_empty(self):
+        section_heading_layout_block = LayoutBlock(lines=[])
+        (
+            section_label_layout_block, section_title_layout_block
+        ) = get_section_label_and_title_from_layout_block(section_heading_layout_block)
+        assert section_label_layout_block is None
+        assert section_title_layout_block == section_heading_layout_block
+
+    def test_should_not_return_section_label_if_section_title_does_not_contain_any(self):
+        section_heading_layout_block = LayoutBlock.for_text(SECTION_TITLE_1)
+        (
+            section_label_layout_block, section_title_layout_block
+        ) = get_section_label_and_title_from_layout_block(section_heading_layout_block)
+        assert section_label_layout_block is None
+        assert section_title_layout_block == section_heading_layout_block
+
+    def test_should_parse_single_number_without_dot_section_label(self):
+        section_heading_layout_block = LayoutBlock.for_text('1 ' + SECTION_TITLE_1)
+        (
+            section_label_text, section_title_text
+        ) = _get_section_label_and_title_text_from_layout_block(section_heading_layout_block)
+        assert section_label_text == '1'
+        assert section_title_text == SECTION_TITLE_1
+
+    def test_should_parse_single_number_with_dot_section_label(self):
+        section_heading_layout_block = LayoutBlock.for_text('1. ' + SECTION_TITLE_1)
+        (
+            section_label_text, section_title_text
+        ) = _get_section_label_and_title_text_from_layout_block(section_heading_layout_block)
+        assert section_label_text == '1.'
+        assert section_title_text == SECTION_TITLE_1
+
+    def test_should_parse_sub_section_number_with_dot_section_label(self):
+        section_heading_layout_block = LayoutBlock.for_text('1.2. ' + SECTION_TITLE_1)
+        (
+            section_label_text, section_title_text
+        ) = _get_section_label_and_title_text_from_layout_block(section_heading_layout_block)
+        assert section_label_text == '1.2.'
+        assert section_title_text == SECTION_TITLE_1
+
+    def test_should_parse_sub_sub_section_number_with_dot_section_label(self):
+        section_heading_layout_block = LayoutBlock.for_text('1.2.3. ' + SECTION_TITLE_1)
+        (
+            section_label_text, section_title_text
+        ) = _get_section_label_and_title_text_from_layout_block(section_heading_layout_block)
+        assert section_label_text == '1.2.3.'
+        assert section_title_text == SECTION_TITLE_1
+
+
 class TestFullTextSemanticExtractor:
     def test_should_add_section_title_and_paragraph(self):
         semantic_content_list = list(
@@ -36,8 +106,26 @@ class TestFullTextSemanticExtractor:
         assert len(semantic_content_list) == 1
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
-        assert section.get_heading_text() == SECTION_TITLE_1
+        semantic_headings = list(section.iter_by_type(SemanticHeading))
+        assert len(semantic_headings) == 1
+        assert semantic_headings[0].get_text_by_type(SemanticLabel) == ''
+        assert semantic_headings[0].get_text_by_type(SemanticTitle) == SECTION_TITLE_1
         assert section.get_paragraph_text_list() == [SECTION_PARAGRAPH_1]
+
+    def test_should_add_separate_section_label(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<section>', LayoutBlock.for_text('1 ' + SECTION_TITLE_1)),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1))
+            ])
+        )
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        semantic_headings = list(section.iter_by_type(SemanticHeading))
+        assert len(semantic_headings) == 1
+        assert semantic_headings[0].get_text_by_type(SemanticLabel) == '1'
+        assert semantic_headings[0].get_text_by_type(SemanticTitle) == SECTION_TITLE_1
 
     def test_should_add_paragraphs_without_title(self):
         semantic_content_list = list(
