@@ -321,6 +321,9 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
     def get_word_shape_feature(self) -> str:
         return get_word_shape_feature(self.token_text)
 
+    def get_dummy_str_is_superscript(self) -> str:
+        return '0'
+
     def get_dummy_str_is_proper_name(self) -> str:
         return '0'
 
@@ -379,7 +382,9 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
 _LINESCALE = 10
 
 
-class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
+class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-methods
+    CommonLayoutTokenFeatures
+):
     def __init__(
         self,
         layout_token: LayoutToken,
@@ -509,6 +514,12 @@ class ContextAwareLayoutTokenFeatures(CommonLayoutTokenFeatures):
         return '0'
 
     def get_dummy_str_is_vector_around(self) -> str:
+        return '0'
+
+    def get_dummy_callout_type(self) -> str:
+        return 'UNKNOWN'  # one of UNKNOWN, NUMBER, AUTHOR
+
+    def get_dummy_str_is_callout_known(self) -> str:
         return '0'
 
 
