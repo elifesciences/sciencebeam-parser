@@ -512,15 +512,22 @@ def get_tei_biblscope_for_page_range(
     )
 
 
-def get_tei_element_for_external_reference(
+def get_tei_element_for_external_identifier(
     external_identifier: SemanticContentWrapper
 ) -> etree.ElementBase:
     assert isinstance(external_identifier, SemanticExternalIdentifier)
-    return TEI_E(
-        'idno',
-        {'type': external_identifier.external_identifier_type},
-        external_identifier.value
-    )
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        LOGGER.debug(
+            'external_identifier: type=%r, value=%r, text=%r, content=%r',
+            external_identifier.external_identifier_type,
+            external_identifier.value,
+            external_identifier.get_text(),
+            external_identifier
+        )
+    attributes = get_default_attributes_for_semantic_content(external_identifier)
+    if external_identifier.external_identifier_type:
+        attributes = {**attributes, 'type': external_identifier.external_identifier_type}
+    return TEI_E('idno', attributes, external_identifier.value)
 
 
 CITATION_TYPE_BY_SEMANTIC_CLASS: Mapping[Type[Any], str] = {
@@ -694,7 +701,7 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     Callable[[SemanticContentWrapper], etree.ElementBase]
 ] = {
     SemanticPageRange: get_tei_biblscope_for_page_range,
-    SemanticExternalIdentifier: get_tei_element_for_external_reference,
+    SemanticExternalIdentifier: get_tei_element_for_external_identifier,
     SemanticFigure: get_tei_element_for_figure,
     SemanticTable: get_tei_element_for_table,
     SemanticFigureCitation: get_tei_element_for_citation,

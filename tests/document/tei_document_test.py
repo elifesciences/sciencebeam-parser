@@ -369,6 +369,30 @@ class TestGetTeiReference:
         ) == ['1992']
 
 
+class TestGetTeiExternalIdentifier:
+    def test_should_create_idno_for_doi(self):
+        semantic_external_identifier = SemanticExternalIdentifier(
+            layout_block=LayoutBlock.for_text('Section Title 1'),
+            value=DOI_1,
+            external_identifier_type=SemanticExternalIdentifierTypes.DOI
+        )
+        tei_idno = get_tei_child_element_for_semantic_content(semantic_external_identifier)
+        LOGGER.debug('tei_idno: %r', etree.tostring(tei_idno))
+        assert get_text_content(tei_idno) == DOI_1
+        assert tei_idno.attrib['type'] == semantic_external_identifier.external_identifier_type
+
+    def test_should_create_idno_for_unknown_type(self):
+        semantic_external_identifier = SemanticExternalIdentifier(
+            layout_block=LayoutBlock.for_text('Section Title 1'),
+            value='Other1',
+            external_identifier_type=None
+        )
+        tei_idno = get_tei_child_element_for_semantic_content(semantic_external_identifier)
+        LOGGER.debug('tei_idno: %r', etree.tostring(tei_idno))
+        assert get_text_content(tei_idno) == semantic_external_identifier.value
+        assert tei_idno.attrib.get('type') is None
+
+
 class TestGetTeiHeading:
     def test_should_create_head_for_simple_title(self):
         semantic_heading = SemanticHeading(layout_block=LayoutBlock.for_text('Section Title 1'))
