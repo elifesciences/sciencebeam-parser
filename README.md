@@ -33,6 +33,18 @@ make dev-test
 make dev-start
 ```
 
+Run the server in debug mode (including auto-reload and debug logging):
+
+```bash
+make dev-debug
+```
+
+Run the server with auto reload but not in debug mode:
+
+```bash
+make dev-start-no-debug-auto-reload
+```
+
 ### Submit a sample document to the server
 
 ```bash

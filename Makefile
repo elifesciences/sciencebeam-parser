@@ -86,6 +86,13 @@ dev-start-debug:
 	$(MAKE) dev-start
 
 
+dev-start-no-debug-auto-reload:
+	FLASK_ENV=development \
+	FLASK_DEBUG=0 \
+	PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL=INFO \
+	$(MAKE) dev-start
+
+
 dev-end-to-end:
 	curl --fail --show-error \
 		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
