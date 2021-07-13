@@ -23,7 +23,7 @@ class CitationDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
             token_features.get_suffix(2),
             token_features.get_suffix(3),
             token_features.get_suffix(4),
-            token_features.get_line_status(),
+            token_features.get_line_status_with_lineend_for_single_token(),
             token_features.get_capitalisation_status(),
             token_features.get_digit_status(),
             token_features.get_str_is_single_char(),

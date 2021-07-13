@@ -86,9 +86,9 @@ dev-start-debug:
 	$(MAKE) dev-start
 
 
-dev-start-no-debug-auto-reload:
+dev-start-no-debug-logging-auto-reload:
 	FLASK_ENV=development \
-	FLASK_DEBUG=0 \
+	FLASK_DEBUG=1 \
 	PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL=INFO \
 	$(MAKE) dev-start
 

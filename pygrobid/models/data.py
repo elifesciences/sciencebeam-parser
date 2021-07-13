@@ -156,7 +156,7 @@ PUNCTUATION_PROFILE_CHARACTERS = (
 )
 
 
-def get_line_status(token_index: int, token_count: int) -> str:
+def get_line_status_with_lineend_for_single_token(token_index: int, token_count: int) -> str:
     return (
         'LINEEND' if token_index == token_count - 1
         else (
@@ -166,7 +166,19 @@ def get_line_status(token_index: int, token_count: int) -> str:
     )
 
 
-def get_block_status(
+def get_line_status_with_linestart_for_single_token(
+    token_index: int, token_count: int
+) -> str:
+    return (
+        'LINESTART' if token_index == 0
+        else (
+            'LINEEND' if token_index == token_count - 1
+            else 'LINEIN'
+        )
+    )
+
+
+def get_block_status_with_blockend_for_single_token(
     line_index: int,
     line_count: int,
     line_status: str
@@ -177,6 +189,22 @@ def get_block_status(
         else (
             'BLOCKSTART'
             if line_index == 0 and line_status == 'LINESTART'
+            else 'BLOCKIN'
+        )
+    )
+
+
+def get_block_status_with_blockstart_for_single_token(
+    line_index: int,
+    line_count: int,
+    line_status: str
+) -> str:
+    return (
+        'BLOCKSTART'
+        if line_index == 0 and line_status == 'LINESTART'
+        else (
+            'BLOCKEND'
+            if line_index == line_count - 1 and line_status == 'LINEEND'
             else 'BLOCKIN'
         )
     )
@@ -424,14 +452,28 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
             data_line=' '.join(features)
         )
 
-    def get_line_status(self) -> str:
-        return get_line_status(token_index=self.token_index, token_count=self.token_count)
+    def get_line_status_with_lineend_for_single_token(self) -> str:
+        return get_line_status_with_lineend_for_single_token(
+            token_index=self.token_index, token_count=self.token_count
+        )
 
-    def get_block_status(self) -> str:
-        return get_block_status(
+    def get_line_status_with_linestart_for_single_token(self) -> str:
+        return get_line_status_with_linestart_for_single_token(
+            token_index=self.token_index, token_count=self.token_count
+        )
+
+    def get_block_status_with_blockend_for_single_token(self) -> str:
+        return get_block_status_with_blockend_for_single_token(
             line_index=self.line_index,
             line_count=self.line_count,
-            line_status=self.get_line_status()
+            line_status=self.get_line_status_with_lineend_for_single_token()
+        )
+
+    def get_block_status_with_blockstart_for_single_token(self) -> str:
+        return get_block_status_with_blockstart_for_single_token(
+            line_index=self.line_index,
+            line_count=self.line_count,
+            line_status=self.get_line_status_with_linestart_for_single_token()
         )
 
     def get_dummy_page_status(self) -> str:

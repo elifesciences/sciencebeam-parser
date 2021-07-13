@@ -4,7 +4,7 @@ from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
-    get_line_status,
+    get_line_status_with_lineend_for_single_token,
     CommonLayoutTokenFeatures
 )
 
@@ -22,7 +22,7 @@ class NameDataGenerator(ModelDataGenerator):
                 for token_index, token in enumerate(line_tokens):
                     common_features = CommonLayoutTokenFeatures(token)
                     token_text: str = common_features.token_text
-                    line_status = get_line_status(
+                    line_status = get_line_status_with_lineend_for_single_token(
                         token_index=token_index,
                         token_count=token_count
                     )

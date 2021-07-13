@@ -23,7 +23,7 @@ class ReferenceSegmenterDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
             token_features.get_suffix(2),
             token_features.get_suffix(3),
             token_features.get_suffix(4),
-            token_features.get_line_status(),
+            token_features.get_line_status_with_lineend_for_single_token(),
             token_features.get_alignment_status(),
             token_features.get_capitalisation_status(),
             token_features.get_digit_status(),
@@ -38,7 +38,7 @@ class ReferenceSegmenterDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
             token_features.get_line_punctuation_profile(),
             token_features.get_str_line_token_relative_position(),
             token_features.get_str_line_relative_length(),
-            token_features.get_block_status(),
+            token_features.get_block_status_with_blockend_for_single_token(),
             token_features.get_line_punctuation_profile_length_feature(),
             token_features.get_dummy_label()
         ])

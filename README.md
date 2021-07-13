@@ -39,10 +39,10 @@ Run the server in debug mode (including auto-reload and debug logging):
 make dev-debug
 ```
 
-Run the server with auto reload but not in debug mode:
+Run the server with auto reload but no debug logging:
 
 ```bash
-make dev-start-no-debug-auto-reload
+make dev-start-no-debug-logging-auto-reload
 ```
 
 ### Submit a sample document to the server
