@@ -1,57 +1,38 @@
 from typing import Iterable
 
-from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.models.data import (
-    ModelDataGenerator,
-    LayoutModelData,
-    get_line_status_with_lineend_for_single_token,
-    CommonLayoutTokenFeatures
+    ContextAwareLayoutTokenFeatures,
+    ContextAwareLayoutTokenModelDataGenerator,
+    LayoutModelData
 )
 
 
-class AffiliationAddressDataGenerator(ModelDataGenerator):
-    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
+class AffiliationAddressDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
+    def iter_model_data_for_context_layout_token_features(
         self,
-        layout_document: LayoutDocument
+        token_features: ContextAwareLayoutTokenFeatures
     ) -> Iterable[LayoutModelData]:
-        for block in layout_document.iter_all_blocks():
-            block_lines = block.lines
-            for line in block_lines:
-                line_tokens = line.tokens
-                token_count = len(line_tokens)
-                for token_index, token in enumerate(line_tokens):
-                    common_features = CommonLayoutTokenFeatures(token)
-                    token_text: str = common_features.token_text
-                    line_status = get_line_status_with_lineend_for_single_token(
-                        token_index=token_index,
-                        token_count=token_count
-                    )
-                    features = [
-                        token_text,
-                        token_text.lower(),
-                        token_text[:1],
-                        token_text[:2],
-                        token_text[:3],
-                        token_text[:4],
-                        token_text[-1:],
-                        token_text[-2:],
-                        token_text[-3:],
-                        token_text[-4:],
-                        line_status,
-                        common_features.get_capitalisation_status(),
-                        common_features.get_digit_status(),
-                        common_features.get_str_is_single_char(),
-                        common_features.get_dummy_str_is_proper_name(),
-                        common_features.get_dummy_str_is_common_name(),
-                        common_features.get_dummy_str_is_first_name(),
-                        common_features.get_dummy_str_is_location_name(),
-                        common_features.get_dummy_str_is_country_name(),
-                        common_features.get_punctuation_type_feature(),
-                        common_features.get_word_shape_feature(),
-                        common_features.get_dummy_label()
-                    ]
-                    yield LayoutModelData(
-                        layout_line=line,
-                        layout_token=token,
-                        data_line=' '.join(features)
-                    )
+        yield token_features.get_layout_model_data([
+            token_features.token_text,
+            token_features.get_lower_token_text(),
+            token_features.get_prefix(1),
+            token_features.get_prefix(2),
+            token_features.get_prefix(3),
+            token_features.get_prefix(4),
+            token_features.get_suffix(1),
+            token_features.get_suffix(2),
+            token_features.get_suffix(3),
+            token_features.get_suffix(4),
+            token_features.get_line_status_with_lineend_for_single_token(),
+            token_features.get_capitalisation_status(),
+            token_features.get_digit_status(),
+            token_features.get_str_is_single_char(),
+            token_features.get_dummy_str_is_proper_name(),
+            token_features.get_dummy_str_is_common_name(),
+            token_features.get_dummy_str_is_first_name(),
+            token_features.get_dummy_str_is_location_name(),
+            token_features.get_dummy_str_is_country_name(),
+            token_features.get_punctuation_type_feature(),
+            token_features.get_word_shape_feature(),
+            token_features.get_dummy_label()
+        ])
