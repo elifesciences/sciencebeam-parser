@@ -603,7 +603,7 @@ def get_tei_element_for_heading(
     pending_whitespace = ''
     for semantic_content in semantic_heading:
         if isinstance(semantic_content, SemanticLabel):
-            children.append({'n': semantic_content.get_text().rstrip('.')})
+            children.append({'n': semantic_content.get_text()})
             continue
         layout_block = semantic_content.merged_block
         if pending_whitespace:

@@ -462,14 +462,14 @@ class TestGetTeiHeading:
         assert get_text_content(tei_head) == 'Section Title 1'
         assert list(tei_head) == []
 
-    def test_should_strip_dot_from_label(self):
+    def test_should_not_strip_dot_from_label(self):
         semantic_heading = SemanticHeading([
             SemanticLabel(layout_block=LayoutBlock.for_text('1.')),
             SemanticTitle(layout_block=LayoutBlock.for_text('Section Title 1'))
         ])
         tei_head = get_tei_child_element_for_semantic_content(semantic_heading)
         LOGGER.debug('tei_head: %r', etree.tostring(tei_head))
-        assert tei_head.attrib.get('n') == '1'
+        assert tei_head.attrib.get('n') == '1.'
         assert get_text_content(tei_head) == 'Section Title 1'
         assert list(tei_head) == []
 
