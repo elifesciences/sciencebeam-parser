@@ -2,7 +2,7 @@ dicttoxml==1.7.4
 Flask==2.0.1
 Flask-Cors==3.0.10
 lxml==4.6.3
-requests==2.25.1
+requests==2.26.0
 sciencebeam-utils==0.1.4
 tqdm==4.61.2
 typing-extensions==3.10.0.0
