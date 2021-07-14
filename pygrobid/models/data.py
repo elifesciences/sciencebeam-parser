@@ -417,18 +417,18 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         self,
         layout_token: LayoutToken,
         layout_line: LayoutLine,
-        previous_layout_token: Optional[LayoutToken],
-        token_index: int,
-        token_count: int,
-        document_token_index: int,
-        document_token_count: int,
-        line_index: int,
-        line_count: int,
-        concatenated_line_tokens_text: str,
-        max_concatenated_line_tokens_length: int,
-        line_token_position: int,
-        relative_font_size_feature: RelativeFontSizeFeature,
-        line_indentation_status_feature: LineIndentationStatusFeature
+        previous_layout_token: Optional[LayoutToken] = None,
+        token_index: int = 0,
+        token_count: int = 0,
+        document_token_index: int = 0,
+        document_token_count: int = 0,
+        line_index: int = 0,
+        line_count: int = 0,
+        concatenated_line_tokens_text: str = '',
+        max_concatenated_line_tokens_length: int = 0,
+        line_token_position: int = 0,
+        relative_font_size_feature: Optional[RelativeFontSizeFeature] = None,
+        line_indentation_status_feature: Optional[LineIndentationStatusFeature] = None
     ) -> None:
         super().__init__(layout_token)
         self.layout_line = layout_line
@@ -480,6 +480,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         return 'PAGEIN'
 
     def get_is_indented_and_update(self) -> bool:
+        assert self.line_indentation_status_feature
         return self.line_indentation_status_feature.get_is_indented_and_update(
             self.layout_token
         )
@@ -495,6 +496,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         return get_token_font_size_feature(self.previous_layout_token, self.layout_token)
 
     def get_str_is_largest_font_size(self) -> str:
+        assert self.relative_font_size_feature
         return get_str_bool_feature_value(
             self.relative_font_size_feature.is_largest_font_size(
                 self.layout_token
@@ -502,6 +504,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         )
 
     def get_str_is_smallest_font_size(self) -> str:
+        assert self.relative_font_size_feature
         return get_str_bool_feature_value(
             self.relative_font_size_feature.is_smallest_font_size(
                 self.layout_token
@@ -509,6 +512,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         )
 
     def get_str_is_larger_than_average_font_size(self) -> str:
+        assert self.relative_font_size_feature
         return get_str_bool_feature_value(
             self.relative_font_size_feature.is_larger_than_average_font_size(
                 self.layout_token

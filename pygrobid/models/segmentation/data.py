@@ -3,17 +3,17 @@ import re
 from typing import Iterable, List, Optional
 
 from pygrobid.document.layout_document import (
+    LayoutBlock,
     LayoutDocument,
-    LayoutToken,
-    join_layout_tokens
+    LayoutLine,
+    LayoutToken
 )
 from pygrobid.models.data import (
+    ContextAwareLayoutTokenFeatures,
     ModelDataGenerator,
     LayoutModelData,
-    get_token_font_status,
-    get_token_font_size_feature,
-    get_digit_feature,
-    get_capitalisation_feature
+    feature_linear_scaling_int,
+    _LINESCALE
 )
 
 
@@ -27,119 +27,183 @@ def format_feature_text(text: str) -> str:
     return re.sub(" |\t", NBSP, text.strip())
 
 
-class SegmentationDataGenerator(ModelDataGenerator):
-    def iter_model_data_for_layout_document(  # pylint: disable=too-many-locals
+NBBINS_POSITION = 12
+
+EMPTY_LAYOUT_TOKEN = LayoutToken('')
+EMPTY_LAYOUT_LINE = LayoutLine([])
+
+
+def get_block_status(line_index: int, line_count: int) -> str:
+    return (
+        'BLOCKSTART' if line_index == 0
+        else (
+            'BLOCKEND'
+            if line_index == line_count - 1
+            else 'BLOCKIN'
+        )
+    )
+
+
+def get_page_status(block_index: int, block_count: int, block_status: str) -> str:
+    return (
+        'PAGESTART' if block_index == 0 and block_status == 'BLOCKSTART'
+        else (
+            'PAGEEND'
+            if block_index == block_count - 1 and block_status == 'BLOCKEND'
+            else 'PAGEIN'
+        )
+    )
+
+
+class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
+    def __init__(self, layout_token: LayoutToken = EMPTY_LAYOUT_TOKEN):
+        super().__init__(layout_token, layout_line=EMPTY_LAYOUT_LINE)
+        self.line_text = ''
+        self.second_token_text = ''
+        self.page_blocks: List[LayoutBlock] = []
+        self.page_block_index: int = 0
+        self.block_lines: List[LayoutLine] = []
+        self.block_line_index: int = 0
+        self.previous_layout_token: Optional[LayoutToken] = None
+        self.max_block_line_text_length = 0
+        self.document_token_count = 0
+        self.document_token_index = 0
+
+    def get_block_status(self) -> str:
+        return get_block_status(self.block_line_index, len(self.block_lines))
+
+    def get_page_status(self) -> str:
+        return get_page_status(
+            self.page_block_index, len(self.page_blocks), self.get_block_status()
+        )
+
+    def get_formatted_whole_line_feature(self) -> str:
+        return format_feature_text(self.line_text)
+
+    def get_dummy_str_is_repetitive_pattern(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_first_repetitive_pattern(self) -> str:
+        return '0'
+
+    def get_dummy_str_is_main_area(self) -> str:
+        # whether the block's bounding box intersects with the page bounding box
+        return '1'
+
+    def get_str_block_relative_line_length_feature(self) -> str:
+        return str(feature_linear_scaling_int(
+            len(self.line_text),
+            self.max_block_line_text_length,
+            _LINESCALE
+        ))
+
+    def get_str_relative_document_position(self) -> str:
+        return str(feature_linear_scaling_int(
+            self.document_token_index,
+            self.document_token_count,
+            NBBINS_POSITION
+        ))
+
+
+class SegmentationLineFeaturesProvider:
+    def iter_line_features(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
-    ) -> Iterable[LayoutModelData]:
+    ) -> Iterable[SegmentationLineFeatures]:
+        segmentation_line_features = SegmentationLineFeatures()
         previous_token: Optional[LayoutToken] = None
+        segmentation_line_features.document_token_count = sum(
+            len(line.tokens)
+            for block in layout_document.iter_all_blocks()
+            for line in block.lines
+        )
+        document_token_index = 0
         for page in layout_document.pages:
             blocks = page.blocks
+            segmentation_line_features.page_blocks = blocks
             for block_index, block in enumerate(blocks):
+                segmentation_line_features.page_block_index = block_index
                 block_lines = block.lines
+                segmentation_line_features.block_lines = block_lines
+                block_line_texts = [line.text for line in block_lines]
+                max_block_line_text_length = max(len(text) for text in block_line_texts)
                 for line_index, line in enumerate(block_lines):
+                    segmentation_line_features.document_token_index = document_token_index
+                    document_token_index += len(line.tokens)
+                    segmentation_line_features.layout_line = line
+                    segmentation_line_features.block_line_index = line_index
+                    segmentation_line_features.max_block_line_text_length = (
+                        max_block_line_text_length
+                    )
                     line_tokens = line.tokens
-                    line_text = join_layout_tokens(line_tokens)
+                    line_text = block_line_texts[line_index]
                     retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line_text)
                     if not retokenized_token_texts:
                         continue
                     token = line_tokens[0]
-                    token_text = retokenized_token_texts[0].strip()
-                    second_token_text = (
+                    segmentation_line_features.layout_token = token
+                    segmentation_line_features.line_text = line_text
+                    segmentation_line_features.concatenated_line_tokens_text = line_text
+                    segmentation_line_features.token_text = retokenized_token_texts[0].strip()
+                    segmentation_line_features.second_token_text = (
                         retokenized_token_texts[1] if len(retokenized_token_texts) >= 2 else ''
                     )
-                    block_status = (
-                        'BLOCKSTART' if line_index == 0
-                        else (
-                            'BLOCKEND'
-                            if line_index == len(block_lines) - 1
-                            else 'BLOCKIN'
-                        )
-                    )
-                    page_status = (
-                        'PAGESTART' if block_index == 0
-                        else (
-                            'PAGEEND'
-                            if block_index == len(blocks) - 1
-                            else 'PAGEIN'
-                        )
-                    )
-                    relative_document_position = 0  # position within whole document
-                    relative_page_position_char = 0
-                    line_length = 0
-                    punctuation_profile: Optional[str] = None
-                    font_status = get_token_font_status(previous_token, token)
-                    font_size = get_token_font_size_feature(previous_token, token)
-                    is_bold = token.font.is_bold
-                    is_italic = token.font.is_italics
-                    digit_status = get_digit_feature(token_text)
-                    capitalisation_status = get_capitalisation_feature(token_text)
-                    if digit_status == 'ALLDIGIT':
-                        capitalisation_status = 'NOCAPS'
-                    is_single_char = len(token_text) == 1
-                    is_first_name = False
-                    relative_document_position = 0
-                    is_proper_name = False
-                    is_common_name = False
-                    is_year = False
-                    is_month = False
-                    is_bitmap_around = False
-                    is_vector_around = False
-                    is_repetitive_pattern = False
-                    is_first_repetitive_pattern = False
-                    is_main_area = False
-                    is_email = False
-                    is_http = False
-                    # one of NOPUNCT, OPENBRACKET, ENDBRACKET, DOT, COMMA, HYPHEN, QUOTE, PUNCT
-                    # punct_type = None
-                    formatted_whole_line = format_feature_text(line_text)
-                    line_features: List[str] = [
-                        token_text,
-                        second_token_text or token_text,
-                        token_text.lower(),
-                        token_text[:1],
-                        token_text[:2],
-                        token_text[:3],
-                        token_text[:4],
-                        block_status,
-                        # line_status,
-                        page_status,
-                        font_status,
-                        font_size,
-                        '1' if is_bold else '0',
-                        '1' if is_italic else '0',
-                        capitalisation_status,
-                        digit_status,
-                        '1' if is_single_char else '0',
-                        '1' if is_proper_name else '0',
-                        '1' if is_common_name else '0',
-                        '1' if is_first_name else '0',
-                        '1' if is_year else '0',
-                        '1' if is_month else '0',
-                        '1' if is_email else '0',
-                        '1' if is_http else '0',
-                        # punct_type,
-                        str(relative_document_position),
-                        str(relative_page_position_char),
-                        punctuation_profile if punctuation_profile else 'no',
-                        str(len(punctuation_profile)) if punctuation_profile else '0',
-                        str(line_length),
-                        '1' if is_bitmap_around else '0',
-                        '1' if is_vector_around else '0',
-                        '1' if is_repetitive_pattern else '0',
-                        '1' if is_first_repetitive_pattern else '0',
-                        '1' if is_main_area else '0',
-                        formatted_whole_line
-                    ]
-
-                    if len(line_features) != 34:
-                        raise AssertionError(
-                            'expected features to have 34 features, but was=%d (features=%s)' % (
-                                len(line_features), line_features
-                            )
-                        )
-                    yield LayoutModelData(
-                        layout_line=line,
-                        data_line=' '.join(line_features)
-                    )
+                    segmentation_line_features.previous_layout_token = previous_token
+                    yield segmentation_line_features
                     previous_token = token
+
+
+class SegmentationDataGenerator(ModelDataGenerator):
+    def iter_model_data_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ) -> Iterable[LayoutModelData]:
+        features_provider = SegmentationLineFeaturesProvider()
+        for features in features_provider.iter_line_features(layout_document):
+            line_features: List[str] = [
+                features.token_text,
+                features.second_token_text or features.token_text,
+                features.get_lower_token_text(),
+                features.get_prefix(1),
+                features.get_prefix(2),
+                features.get_prefix(3),
+                features.get_prefix(4),
+                features.get_block_status(),
+                features.get_page_status(),
+                features.get_token_font_status(),
+                features.get_token_font_size_feature(),
+                features.get_str_is_bold(),
+                features.get_str_is_italic(),
+                features.get_capitalisation_status(),
+                features.get_digit_status(),
+                features.get_str_is_single_char(),
+                features.get_dummy_str_is_proper_name(),
+                features.get_dummy_str_is_common_name(),
+                features.get_dummy_str_is_first_name(),
+                features.get_dummy_str_is_year(),
+                features.get_dummy_str_is_month(),
+                features.get_dummy_str_is_email(),
+                features.get_dummy_str_is_http(),
+                features.get_str_relative_document_position(),
+                features.get_dummy_str_relative_page_position(),
+                features.get_line_punctuation_profile(),
+                features.get_line_punctuation_profile_length_feature(),
+                features.get_str_block_relative_line_length_feature(),
+                features.get_dummy_str_is_bitmap_around(),
+                features.get_dummy_str_is_vector_around(),
+                features.get_dummy_str_is_repetitive_pattern(),
+                features.get_dummy_str_is_first_repetitive_pattern(),
+                features.get_dummy_str_is_main_area(),
+                features.get_formatted_whole_line_feature()
+            ]
+
+            if len(line_features) != 34:
+                raise AssertionError(
+                    'expected features to have 34 features, but was=%d (features=%s)' % (
+                        len(line_features), line_features
+                    )
+                )
+            yield LayoutModelData(
+                layout_line=features.layout_line,
+                data_line=' '.join(line_features)
+            )
