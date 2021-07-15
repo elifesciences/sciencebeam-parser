@@ -9,8 +9,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Type,
-    Union
+    Type
 )
 
 from pygrobid.config.config import AppConfig
@@ -19,6 +18,7 @@ from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_
 from pygrobid.utils.misc import iter_ids
 
 from pygrobid.document.semantic_document import (
+    SemanticAffiliationAddress,
     SemanticAuthor,
     SemanticCitation,
     SemanticContentWrapper,
@@ -28,8 +28,7 @@ from pygrobid.document.semantic_document import (
     SemanticFigureCitation,
     SemanticLabel,
     SemanticMixedContentWrapper,
-    SemanticRawAddress,
-    SemanticRawAffiliation,
+    SemanticRawAffiliationAddress,
     SemanticRawAuthors,
     SemanticRawEditors,
     SemanticRawFigure,
@@ -337,36 +336,39 @@ class FullTextProcessor:
 
     def _process_raw_affiliations(self, semantic_document: SemanticDocument):
         result_content: List[SemanticContentWrapper] = []
-        raw_aff_address_list: List[Union[SemanticRawAffiliation, SemanticRawAddress]] = []
+        raw_aff_address_list: List[SemanticRawAffiliationAddress] = []
         for semantic_content in semantic_document.front:
-            if isinstance(semantic_content, SemanticRawAffiliation):
-                raw_aff_address_list.append(semantic_content)
-                continue
-            if isinstance(semantic_content, SemanticRawAddress):
+            if isinstance(semantic_content, SemanticRawAffiliationAddress):
                 raw_aff_address_list.append(semantic_content)
                 continue
             result_content.append(semantic_content)
         if raw_aff_address_list:
-            raw_aff_layout_document = LayoutDocument.for_blocks([
-                block
+            raw_aff_layout_documents = [
+                LayoutDocument.for_blocks(list(raw_aff_or_address.iter_blocks()))
                 for raw_aff_or_address in raw_aff_address_list
-                for block in raw_aff_or_address.iter_blocks()
-            ])
-            labeled_layout_tokens = (
+            ]
+            labeled_layout_tokens_list = (
                 self.affiliation_address_model
-                .predict_labels_for_layout_document(
-                    raw_aff_layout_document
+                .predict_labels_for_layout_documents(
+                    raw_aff_layout_documents
                 )
             )
-            LOGGER.debug('labeled_layout_tokens (author): %r', labeled_layout_tokens)
+            LOGGER.debug('labeled_layout_tokens_list (aff): %r', labeled_layout_tokens_list)
             aff_iterable = (
-                self.affiliation_address_model.iter_semantic_content_for_labeled_layout_tokens(
-                    labeled_layout_tokens
+                aff
+                for labeled_layout_tokens in labeled_layout_tokens_list
+                for aff in (
+                    self.affiliation_address_model
+                    .iter_semantic_content_for_labeled_layout_tokens(labeled_layout_tokens)
                 )
             )
             for aff in aff_iterable:
                 result_content.append(aff)
         semantic_document.front.mixed_content = result_content
+        self._assign_content_ids(
+            semantic_document.front.iter_by_type(SemanticAffiliationAddress),
+            iter(iter_ids('aff'))
+        )
 
     def _extract_raw_references_from_segmentation(
         self,

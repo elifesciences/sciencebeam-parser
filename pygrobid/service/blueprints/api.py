@@ -22,6 +22,7 @@ from pygrobid.models.model import Model
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.semantic_document import (
     SemanticMixedContentWrapper,
+    SemanticRawAffiliationAddress,
     SemanticRawAuthors,
     SemanticRawFigure,
     SemanticRawReference,
@@ -333,12 +334,24 @@ class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
         header_layout_document = self.filter_layout_document_by_segmentation_label(
             layout_document, '<header>'
         )
-        header_label_result = self.header_model.get_label_layout_document_result(
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
             header_layout_document
         )
-        return [header_label_result.get_filtered_document_by_labels(
-            ['<affiliation>', '<address>']
-        ).remove_empty_blocks()]
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_aff_address_list = list(
+            SemanticMixedContentWrapper(list(
+                self.header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawAffiliationAddress)
+        )
+        LOGGER.info('semantic_raw_aff_address_list count: %d', len(semantic_raw_aff_address_list))
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_aff_address.iter_blocks())
+            ).remove_empty_blocks()
+            for semantic_raw_aff_address in semantic_raw_aff_address_list
+        ]
 
 
 class CitationModelNestedBluePrint(SegmentedModelNestedBluePrint):

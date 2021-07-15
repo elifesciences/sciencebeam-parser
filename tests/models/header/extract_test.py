@@ -3,6 +3,7 @@ from pygrobid.document.semantic_document import (
     SemanticFront,
     SemanticRawAddress,
     SemanticRawAffiliation,
+    SemanticRawAffiliationAddress,
     SemanticTitle
 )
 from pygrobid.document.layout_document import (
@@ -23,7 +24,11 @@ ABSTRACT_1 = 'the abstract 1'
 AUTHOR_1 = 'Author 1'
 AUTHOR_2 = 'Author 2'
 AFFILIATION_1 = 'Affiliation 1'
+AFFILIATION_2 = 'Affiliation 2'
 ADDRESS_1 = 'Address 1'
+ADDRESS_2 = 'Address 2'
+
+OTHER_1 = 'Other 1'
 
 
 class TestGetCleanedAbstractText:
@@ -128,5 +133,76 @@ class TestHeaderSemanticExtractor:
         )
         front = SemanticFront(semantic_content_list)
         LOGGER.debug('front: %s', front)
-        assert front.get_text_by_type(SemanticRawAffiliation) == AFFILIATION_1
-        assert front.get_text_by_type(SemanticRawAddress) == ADDRESS_1
+        aff_address_list = list(front.iter_by_type(SemanticRawAffiliationAddress))
+        assert len(aff_address_list) == 1
+        aff_address = aff_address_list[0]
+        assert aff_address.get_text_by_type(SemanticRawAffiliation) == AFFILIATION_1
+        assert aff_address.get_text_by_type(SemanticRawAddress) == ADDRESS_1
+
+    def test_should_split_raw_affiliation_on_new_aff_without_address(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_2))
+            ])
+        )
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        aff_address_list = list(front.iter_by_type(SemanticRawAffiliationAddress))
+        assert [
+            aff_address.get_text_by_type(SemanticRawAffiliation)
+            for aff_address in aff_address_list
+        ] == [AFFILIATION_1, AFFILIATION_2]
+
+    def test_should_split_raw_affiliation_on_new_aff_with_address(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
+                ('<address>', LayoutBlock.for_text(ADDRESS_1)),
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_2)),
+                ('<address>', LayoutBlock.for_text(ADDRESS_2))
+            ])
+        )
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        aff_address_list = list(front.iter_by_type(SemanticRawAffiliationAddress))
+        assert [
+            aff_address.get_text_by_type(SemanticRawAffiliation)
+            for aff_address in aff_address_list
+        ] == [AFFILIATION_1, AFFILIATION_2]
+        assert [
+            aff_address.get_text_by_type(SemanticRawAddress)
+            for aff_address in aff_address_list
+        ] == [ADDRESS_1, ADDRESS_2]
+
+    def test_should_not_split_raw_affiliation_separated_by_other(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
+                ('O', LayoutBlock.for_text(OTHER_1)),
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_2))
+            ])
+        )
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        aff_address_list = list(front.iter_by_type(SemanticRawAffiliationAddress))
+        assert [
+            aff_address.get_text_by_type(SemanticRawAffiliation)
+            for aff_address in aff_address_list
+        ] == [AFFILIATION_1 + ' ' + AFFILIATION_2]
+
+    def test_should_split_raw_affiliation_separated_by_known_label(self):
+        semantic_content_list = list(
+            HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
+                ('<author>', LayoutBlock.for_text(AUTHOR_1)),
+                ('<affiliation>', LayoutBlock.for_text(AFFILIATION_2))
+            ])
+        )
+        front = SemanticFront(semantic_content_list)
+        LOGGER.debug('front: %s', front)
+        aff_address_list = list(front.iter_by_type(SemanticRawAffiliationAddress))
+        assert [
+            aff_address.get_text_by_type(SemanticRawAffiliation)
+            for aff_address in aff_address_list
+        ] == [AFFILIATION_1, AFFILIATION_2]

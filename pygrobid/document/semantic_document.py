@@ -331,6 +331,10 @@ class SemanticRawAddress(SemanticMixedContentWrapper):
     pass
 
 
+class SemanticRawAffiliationAddress(SemanticMixedContentWrapper):
+    pass
+
+
 class SemanticMarker(SemanticSimpleContentWrapper):
     pass
 

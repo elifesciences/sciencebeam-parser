@@ -1,12 +1,13 @@
 import logging
 import re
-from typing import Iterable, Mapping, Tuple
+from typing import Iterable, Mapping, Optional, Tuple
 
 from pygrobid.document.semantic_document import (
     SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
+    SemanticRawAffiliationAddress,
     SemanticTitle,
     SemanticAbstract,
     SemanticRawAuthors
@@ -69,7 +70,11 @@ class HeaderSemanticExtractor(SimpleModelSemanticExtractor):
         LOGGER.debug('entity_tokens: %s', entity_tokens)
         has_title: bool = False
         has_abstract: bool = False
+        aff_address: Optional[SemanticRawAffiliationAddress] = None
+        next_previous_label: str = ''
         for name, layout_block in entity_tokens:
+            previous_label = next_previous_label
+            next_previous_label = name
             if name == '<title>' and not has_title:
                 yield SemanticTitle(layout_block=layout_block)
                 has_title = True
@@ -81,6 +86,25 @@ class HeaderSemanticExtractor(SimpleModelSemanticExtractor):
                 yield SemanticAbstract(layout_block=abstract_layout_block)
                 has_abstract = True
                 continue
+            if name in {'<affiliation>', '<address>'}:
+                if (
+                    aff_address is not None
+                    and name == '<affiliation>'
+                    and previous_label in {'<affiliation>', '<address>'}
+                ):
+                    yield aff_address
+                    aff_address = None
+                if aff_address is None:
+                    aff_address = SemanticRawAffiliationAddress()
+                aff_address.add_content(self.get_semantic_content_for_entity_name(
+                    name, layout_block
+                ))
+                continue
+            if aff_address is not None and name != 'O':
+                yield aff_address
+                aff_address = None
             yield self.get_semantic_content_for_entity_name(
                 name, layout_block
             )
+        if aff_address is not None:
+            yield aff_address

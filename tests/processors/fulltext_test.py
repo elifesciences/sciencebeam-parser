@@ -420,6 +420,55 @@ class TestFullTextProcessor:
         assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
         assert affiliations[0].content_id == 'aff0'
 
+    def test_should_not_merge_separate_raw_affiliations(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        aff_suffix_texts = ['1', '2']
+        institution_blocks = [
+            LayoutBlock.for_text(f'Institution{t}')
+            for t in aff_suffix_texts
+        ]
+        aff_blocks = institution_blocks
+        aff_address_blocks = aff_blocks
+        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        header_block = LayoutBlock.merge_blocks(aff_address_blocks)
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        header_model_mock = fulltext_models_mock.header_model_mock
+        affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            header_block, '<header>'
+        )
+
+        for aff_block in aff_blocks:
+            header_model_mock.update_label_by_layout_block(
+                aff_block, '<affiliation>'
+            )
+
+        for institution_block in institution_blocks:
+            affiliation_address_model_mock.update_label_by_layout_block(
+                institution_block, '<institution>'
+            )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            header_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        assert semantic_document is not None
+        affiliations = list(semantic_document.front.iter_by_type(SemanticAffiliationAddress))
+        LOGGER.debug('affiliations: %r', affiliations)
+        assert (
+            [aff.get_text() for aff in affiliations]
+            == [aff_block.text for aff_block in aff_blocks]
+        )
+        assert (
+            [aff.content_id for aff in affiliations]
+            == ['aff0', 'aff1']
+        )
+
     def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
     ):

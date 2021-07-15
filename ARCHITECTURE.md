@@ -21,7 +21,7 @@ Models will often consist of:
   * responsible for translating model output to Semantic Content elements
 * Model Wrapper (`model.py`)
   * Provides model-specific implementation with common interface
-  * Usually by providing constructurs for the data generator and semantic extractor
+  * Usually by providing constructors for the data generator and semantic extractor
 
 A model will not directly interact with another model. The [FullText Processor](pygrobid/processors/fulltext.py) will handle those interactions.
 
