@@ -39,5 +39,5 @@ class FullTextDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
             token_features.get_dummy_str_is_bitmap_around(),
             token_features.get_dummy_callout_type(),
             token_features.get_dummy_str_is_callout_known(),
-            token_features.get_dummy_str_is_superscript()
+            token_features.get_str_is_superscript()
         ])

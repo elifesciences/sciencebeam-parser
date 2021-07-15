@@ -85,7 +85,9 @@ class AltoParser:
             font_family=font_node.attrib.get('FONTFAMILY'),
             font_size=float(font_node.attrib.get('FONTSIZE')),
             is_bold='bold' in font_styles,
-            is_italics='italics' in font_styles
+            is_italics='italics' in font_styles,
+            is_subscript='subscript' in font_styles,
+            is_superscript='superscript' in font_styles
         )
 
     def parse_font_by_id_map(self, root: etree.ElementBase) -> Dict[str, LayoutFont]:

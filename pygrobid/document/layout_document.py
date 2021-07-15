@@ -15,6 +15,8 @@ class LayoutFont(NamedTuple):
     font_size: Optional[float] = None
     is_bold: Optional[bool] = None
     is_italics: Optional[bool] = None
+    is_subscript: Optional[bool] = None
+    is_superscript: Optional[bool] = None
 
 
 EMPTY_FONT = LayoutFont(font_id='_EMPTY')

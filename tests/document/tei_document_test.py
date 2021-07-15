@@ -98,6 +98,16 @@ BOLD_ITALICS_FONT_1 = LayoutFont(
     is_italics=True
 )
 
+SUBSCRIPT_FONT_1 = LayoutFont(
+    font_id='font1',
+    is_subscript=True
+)
+
+SUPERSCRIPT_FONT_1 = LayoutFont(
+    font_id='font1',
+    is_superscript=True
+)
+
 
 class TestIterLayoutBlockTeiChildren:
     def test_should_add_italic_text(self):
@@ -156,6 +166,30 @@ class TestIterLayoutBlockTeiChildren:
             node, './/tei:hi[@rend="italic"]'
         ) == [' '.join([TOKEN_2, TOKEN_3])]
         assert get_text_content(node) == ' '.join([TOKEN_1, TOKEN_2, TOKEN_3, TOKEN_4])
+
+    def test_should_add_subscript_text(self):
+        block = LayoutBlock.for_tokens([
+            LayoutToken(TOKEN_1),
+            LayoutToken(TOKEN_2, font=SUBSCRIPT_FONT_1),
+            LayoutToken(TOKEN_3)
+        ])
+        node = TEI_E.node(*iter_layout_block_tei_children(block))
+        assert get_tei_xpath_text_content_list(
+            node, './tei:hi[@rend="subscript"]'
+        ) == [TOKEN_2]
+        assert get_text_content(node) == ' '.join([TOKEN_1, TOKEN_2, TOKEN_3])
+
+    def test_should_add_superscript_text(self):
+        block = LayoutBlock.for_tokens([
+            LayoutToken(TOKEN_1),
+            LayoutToken(TOKEN_2, font=SUPERSCRIPT_FONT_1),
+            LayoutToken(TOKEN_3)
+        ])
+        node = TEI_E.node(*iter_layout_block_tei_children(block))
+        assert get_tei_xpath_text_content_list(
+            node, './tei:hi[@rend="superscript"]'
+        ) == [TOKEN_2]
+        assert get_text_content(node) == ' '.join([TOKEN_1, TOKEN_2, TOKEN_3])
 
 
 class TestGetTeiChildElementForSemanticContent:

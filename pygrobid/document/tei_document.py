@@ -151,6 +151,10 @@ def get_required_styles(layout_token: LayoutToken) -> List[str]:
         required_styles.append('bold')
     if layout_token.font.is_italics:
         required_styles.append('italic')
+    if layout_token.font.is_subscript:
+        required_styles.append('subscript')
+    if layout_token.font.is_superscript:
+        required_styles.append('superscript')
     return required_styles
 
 

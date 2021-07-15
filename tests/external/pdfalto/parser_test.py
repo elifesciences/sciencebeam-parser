@@ -1,7 +1,7 @@
 from lxml.builder import ElementMaker
 
 from pygrobid.document.layout_document import LayoutPageCoordinates
-from pygrobid.external.pdfalto.parser import parse_alto_root, ALTO_NS
+from pygrobid.external.pdfalto.parser import AltoParser, parse_alto_root, ALTO_NS
 
 
 ALTO_E = ElementMaker(namespace=ALTO_NS, nsmap={
@@ -19,6 +19,8 @@ FONTSIZE_2 = 22.2
 
 BOLD = 'bold'
 ITALICS = 'italics'
+SUBSCRIPT = 'subscript'
+SUPERSCRIPT = 'superscript'
 
 TOKEN_1 = 'token1'
 TOKEN_2 = 'token2'
@@ -30,6 +32,67 @@ COORDINATES_1 = LayoutPageCoordinates(
 COORDINATES_2 = LayoutPageCoordinates(
     x=200.1, y=201.1, width=202.2, height=203.3, page_number=1
 )
+
+
+class TestAltoParser:
+    def test_should_parse_font_without_fontstyle(self):
+        font = AltoParser().parse_font(ALTO_E.TextStyle(
+            ID=FONT_ID_1,
+            FONTFAMILY=FONTFAMILY_1,
+            FONTSIZE=str(FONTSIZE_1)
+        ))
+        assert font.is_bold is False
+        assert font.is_italics is False
+        assert font.is_subscript is False
+        assert font.is_superscript is False
+
+    def test_should_parse_font_with_bold_fontstyle(self):
+        font = AltoParser().parse_font(ALTO_E.TextStyle(
+            ID=FONT_ID_1,
+            FONTFAMILY=FONTFAMILY_1,
+            FONTSIZE=str(FONTSIZE_1),
+            FONTSTYLE=BOLD
+        ))
+        assert font.is_bold is True
+        assert font.is_italics is False
+        assert font.is_subscript is False
+        assert font.is_superscript is False
+
+    def test_should_parse_font_with_italitcs_fontstyle(self):
+        font = AltoParser().parse_font(ALTO_E.TextStyle(
+            ID=FONT_ID_1,
+            FONTFAMILY=FONTFAMILY_1,
+            FONTSIZE=str(FONTSIZE_1),
+            FONTSTYLE=ITALICS
+        ))
+        assert font.is_bold is False
+        assert font.is_italics is True
+        assert font.is_subscript is False
+        assert font.is_superscript is False
+
+    def test_should_parse_font_with_subscript_fontstyle(self):
+        font = AltoParser().parse_font(ALTO_E.TextStyle(
+            ID=FONT_ID_1,
+            FONTFAMILY=FONTFAMILY_1,
+            FONTSIZE=str(FONTSIZE_1),
+            FONTSTYLE=SUBSCRIPT
+        ))
+        assert font.is_bold is False
+        assert font.is_italics is False
+        assert font.is_subscript is True
+        assert font.is_superscript is False
+
+    def test_should_parse_font_with_superscript_fontstyle(self):
+        font = AltoParser().parse_font(ALTO_E.TextStyle(
+            ID=FONT_ID_1,
+            FONTFAMILY=FONTFAMILY_1,
+            FONTSIZE=str(FONTSIZE_1),
+            FONTSTYLE=SUPERSCRIPT
+        ))
+        assert font.is_bold is False
+        assert font.is_italics is False
+        assert font.is_subscript is False
+        assert font.is_superscript is True
 
 
 class TestParseAltoRoot:

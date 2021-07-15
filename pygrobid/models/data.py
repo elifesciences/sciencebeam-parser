@@ -344,6 +344,9 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
     def get_str_is_italic(self) -> str:
         return get_str_bool_feature_value(self.layout_token.font.is_italics)
 
+    def get_str_is_superscript(self) -> str:
+        return get_str_bool_feature_value(self.layout_token.font.is_superscript)
+
     def get_str_is_single_char(self) -> str:
         return get_str_bool_feature_value(len(self.token_text) == 1)
 
@@ -360,9 +363,6 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
 
     def get_word_shape_feature(self) -> str:
         return get_word_shape_feature(self.token_text)
-
-    def get_dummy_str_is_superscript(self) -> str:
-        return '0'
 
     def get_dummy_str_is_proper_name(self) -> str:
         return '0'
