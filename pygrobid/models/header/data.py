@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable
 
 from pygrobid.models.data import (
     ContextAwareLayoutTokenFeatures,
@@ -12,18 +12,17 @@ class HeaderDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
         self,
         token_features: ContextAwareLayoutTokenFeatures
     ) -> Iterable[LayoutModelData]:
-        token_text: str = token_features.token_text
-        features: List[str] = [
-            token_text,
-            token_text.lower(),
-            token_text[:1],
-            token_text[:2],
-            token_text[:3],
-            token_text[:4],
-            token_text[-1:],
-            token_text[-2:],
-            token_text[-3:],
-            token_text[-4:],
+        yield token_features.get_layout_model_data([
+            token_features.token_text,
+            token_features.get_lower_token_text(),
+            token_features.get_prefix(1),
+            token_features.get_prefix(2),
+            token_features.get_prefix(3),
+            token_features.get_prefix(4),
+            token_features.get_suffix(1),
+            token_features.get_suffix(2),
+            token_features.get_suffix(3),
+            token_features.get_suffix(4),
             token_features.get_block_status_with_blockend_for_single_token(),
             token_features.get_line_status_with_lineend_for_single_token(),
             token_features.get_alignment_status(),
@@ -43,12 +42,9 @@ class HeaderDataGenerator(ContextAwareLayoutTokenModelDataGenerator):
             token_features.get_dummy_str_is_http(),
             token_features.get_punctuation_type_feature(),
             token_features.get_str_is_largest_font_size(),
-            token_features.get_str_is_smallest_font_size(),
-            token_features.get_str_is_larger_than_average_font_size(),
+            # bug in GROBID #795
+            token_features.get_dummy_str_is_smallest_font_size(),
+            # due to bug, usually larger than mean
+            token_features.get_dummy_str_is_larger_than_average_font_size('1'),
             token_features.get_dummy_label()
-        ]
-        yield LayoutModelData(
-            layout_line=token_features.layout_line,
-            layout_token=token_features.layout_token,
-            data_line=' '.join(features)
-        )
+        ])

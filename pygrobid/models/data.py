@@ -217,9 +217,21 @@ class RelativeFontSizeFeature:
             for layout_token in layout_tokens
             if layout_token.font.font_size
         ]
+        LOGGER.debug('font_sizes (%d): %r', len(font_sizes), font_sizes)
         self.largest_font_size = max(font_sizes) if font_sizes else 0.0
         self.smallest_font_size = min(font_sizes) if font_sizes else 0.0
         self.mean_font_size = sum(font_sizes) / len(font_sizes) if font_sizes else 0.0
+        LOGGER.debug('relative font size: %r', self)
+
+    def __repr__(self) -> str:
+        return (
+            '%s(largest_font_size=%f, smallest_font_size=%f, mean_font_size=%f)'
+        ) % (
+            type(self).__name__,
+            self.largest_font_size,
+            self.smallest_font_size,
+            self.mean_font_size
+        )
 
     def is_largest_font_size(self, layout_token: LayoutToken):
         return layout_token.font.font_size == self.largest_font_size
@@ -503,6 +515,9 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
             )
         )
 
+    def get_dummy_str_is_smallest_font_size(self) -> str:
+        return '0'
+
     def get_str_is_smallest_font_size(self) -> str:
         assert self.relative_font_size_feature
         return get_str_bool_feature_value(
@@ -510,6 +525,9 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
                 self.layout_token
             )
         )
+
+    def get_dummy_str_is_larger_than_average_font_size(self, value: str = '0') -> str:
+        return value
 
     def get_str_is_larger_than_average_font_size(self) -> str:
         assert self.relative_font_size_feature
