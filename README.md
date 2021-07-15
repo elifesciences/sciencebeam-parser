@@ -97,3 +97,7 @@ docker run --rm \
     -p 8070:8070 \
     de4code/pygrobid-poc_unstable
 ```
+
+## See also
+
+* [architecture](ARCHITECTURE.md)
