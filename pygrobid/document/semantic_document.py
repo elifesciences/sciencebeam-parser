@@ -145,6 +145,11 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
             self.mixed_content, type_, self
         )
 
+    def has_type(
+        self, type_: Type[T_SemanticContentWrapper]
+    ) -> bool:
+        return next(iter(self.iter_by_type(type_)), None) is not None
+
     def view_by_type(self, type_: Type[T_SemanticContentWrapper]) -> 'SemanticMixedContentWrapper':
         return SemanticMixedContentWrapper(list(self.iter_by_type(type_)))
 

@@ -61,6 +61,13 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
             semantic_content = self.get_semantic_content_for_entity_name(
                 name, layout_block
             )
+            if (
+                aff is not None
+                and isinstance(semantic_content, SemanticInstitution)
+                and aff.has_type(SemanticInstitution)
+            ):
+                yield aff
+                aff = None
             if not aff:
                 if isinstance(semantic_content, SemanticNote):
                     yield semantic_content
