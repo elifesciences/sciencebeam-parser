@@ -12,6 +12,8 @@ class AffiliationAddressDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
         self,
         token_features: ContextAwareLayoutTokenFeatures
     ) -> Iterable[LayoutModelData]:
+        # using dummy line status due to https://github.com/kermitt2/grobid/issues/796
+        dummy_line_status = 'LINEEND'
         yield token_features.get_layout_model_data([
             token_features.token_text,
             token_features.get_lower_token_text(),
@@ -23,7 +25,7 @@ class AffiliationAddressDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
             token_features.get_suffix(2),
             token_features.get_suffix(3),
             token_features.get_suffix(4),
-            token_features.get_line_status_with_lineend_for_single_token(),
+            dummy_line_status,
             token_features.get_capitalisation_status(),
             token_features.get_digit_status(),
             token_features.get_str_is_single_char(),
