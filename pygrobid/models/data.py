@@ -350,13 +350,25 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
     def get_str_is_single_char(self) -> str:
         return get_str_bool_feature_value(len(self.token_text) == 1)
 
-    def get_digit_status(self) -> str:
+    def get_digit_status_using_containsdigits(self) -> str:
         return get_digit_feature(self.token_text)
 
-    def get_capitalisation_status(self) -> str:
-        if self.get_digit_status() == 'ALLDIGIT':
+    def get_digit_status_using_containdigit(self) -> str:
+        digit_status = get_digit_feature(self.token_text)
+        if digit_status == 'CONTAINSDIGITS':
+            digit_status = 'CONTAINDIGIT'
+        return digit_status
+
+    def get_capitalisation_status_using_allcap(self) -> str:
+        if self.get_digit_status_using_containsdigits() == 'ALLDIGIT':
             return 'NOCAPS'
         return get_capitalisation_feature(self.token_text)
+
+    def get_capitalisation_status_using_allcaps(self) -> str:
+        capitalisation_status = self.get_capitalisation_status_using_allcap()
+        if capitalisation_status == 'ALLCAP':
+            return 'ALLCAPS'
+        return capitalisation_status
 
     def get_punctuation_type_feature(self) -> str:
         return get_punctuation_type_feature(self.token_text)

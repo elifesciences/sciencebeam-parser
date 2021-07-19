@@ -20,8 +20,55 @@ ALTO_NS_MAP = {
 }
 
 
+# mostly copied from:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L773-L948
+REPLACEMENT_CHARACTER_BY_CHARACTER_MAP = {
+    '\uFB00': 'ff',
+    '\uFB01': 'fi',
+    '\uFB02': 'fl',
+    '\uFB03': 'ffi',
+    '\uFB04': 'ffl',
+    '\uFB05': 'ft',
+    '\uFB06': 'st',
+    '\u00E6': 'ae',
+    '\u00C6': 'AE',
+    '\u0153': 'oe',
+    '\u0152': 'OE',
+    '\u201C': '"',
+    '\u201D': '"',
+    '\u201E': '"',
+    '\u201F': '"',
+    '\u2019': '\'',
+    '\u2018': '\'',
+    '\u2022': '•',
+    '\u2023': '•',
+    '\u2043': '•',
+    '\u204C': '•',
+    '\u204D': '•',
+    '\u2219': '•',
+    '\u25C9': '•',
+    '\u25D8': '•',
+    '\u25E6': '•',
+    '\u2619': '•',
+    '\u2765': '•',
+    '\u2767': '•',
+    '\u29BE': '•',
+    '\u29BF': '•',
+    '\u2217': '*'
+}
+
+
+REPLACEMENT_CHARACTER_BY_CHARACTER_TRANSLATION = str.maketrans(
+    REPLACEMENT_CHARACTER_BY_CHARACTER_MAP
+)
+
+
 def alto_xpath(parent: etree.ElementBase, xpath: str) -> List[etree.ElementBase]:
     return parent.xpath(xpath, namespaces=ALTO_NS_MAP)
+
+
+def normalize_text(text: str) -> str:
+    return text.translate(REPLACEMENT_CHARACTER_BY_CHARACTER_TRANSLATION)
 
 
 class AltoParser:
@@ -34,7 +81,7 @@ class AltoParser:
         page_index: int
     ) -> LayoutToken:
         return LayoutToken(
-            text=token_node.attrib.get('CONTENT') or '',
+            text=normalize_text(token_node.attrib.get('CONTENT') or ''),
             font=self.font_by_id_map.get(
                 token_node.attrib.get('STYLEREFS'),
                 EMPTY_FONT
