@@ -20,10 +20,7 @@ from typing import (
 )
 from typing_extensions import Protocol
 
-from pygrobid.document.layout_document import LayoutBlock, LayoutToken
-
-
-EMPTY_BLOCK = LayoutBlock(lines=[])
+from pygrobid.document.layout_document import EMPTY_BLOCK, LayoutBlock, LayoutToken
 
 
 class SemanticContentWrapper(ABC):

@@ -210,6 +210,8 @@ class LayoutBlock:
 
     @staticmethod
     def for_tokens(tokens: List[LayoutToken]) -> 'LayoutBlock':
+        if not tokens:
+            return EMPTY_BLOCK
         return LayoutBlock(lines=[LayoutLine(tokens=tokens)])
 
     @staticmethod
@@ -260,6 +262,9 @@ class LayoutBlock:
         if not self.lines or not self.lines[-1].tokens:
             return ''
         return self.lines[-1].tokens[-1].whitespace
+
+
+EMPTY_BLOCK = LayoutBlock(lines=[])
 
 
 @dataclass

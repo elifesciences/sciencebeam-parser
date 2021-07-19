@@ -67,7 +67,7 @@ class TestNameSemanticExtractor:
         assert author.view_by_type(SemanticMarker).get_text() == '1'
         assert author.view_by_type(SemanticInstitution).get_text() == 'Institution 1'
 
-    def test_should_split_affiliation_on_second_(self):
+    def test_should_split_affiliation_on_second_institution(self):
         semantic_content_list = list(
             AffiliationAddressSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<marker>', LayoutBlock.for_text('1')),
@@ -83,3 +83,16 @@ class TestNameSemanticExtractor:
         aff2 = semantic_content_list[1]
         assert isinstance(aff2, SemanticAffiliationAddress)
         assert aff2.view_by_type(SemanticInstitution).get_text() == 'Institution 2'
+
+    def test_should_remove_trailing_dot_from_country(self):
+        semantic_content_list = list(
+            AffiliationAddressSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<marker>', LayoutBlock.for_text('1')),
+                ('<country>', LayoutBlock.for_text('Country1.'))
+            ])
+        )
+        assert len(semantic_content_list) == 1
+        aff1 = semantic_content_list[0]
+        assert isinstance(aff1, SemanticAffiliationAddress)
+        assert aff1.view_by_type(SemanticMarker).get_text() == '1'
+        assert aff1.view_by_type(SemanticCountry).get_text() == 'Country1'

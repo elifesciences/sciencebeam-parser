@@ -19,7 +19,10 @@ from pygrobid.document.semantic_document import (
     SemanticSettlement
 )
 from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.models.extract import SimpleModelSemanticExtractor
+from pygrobid.models.extract import (
+    SimpleModelSemanticExtractor,
+    get_regex_cleaned_layout_block_with_prefix_suffix
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -35,6 +38,10 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
     '<region>': SemanticRegion,
     '<settlement>': SemanticSettlement,
     '<country>': SemanticCountry
+}
+
+CLEAN_REGEX_BY_TAG: Mapping[str, str] = {
+    '<country>': r'(.*[^.]).*'
 }
 
 
@@ -58,8 +65,14 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
                 aff = SemanticAffiliationAddress(content_id=next(ids_iterator, '?'))
                 aff.add_content(SemanticMarker(layout_block=layout_block))
                 continue
+            prefix_block, cleaned_block, suffix_block = (
+                get_regex_cleaned_layout_block_with_prefix_suffix(
+                    layout_block,
+                    CLEAN_REGEX_BY_TAG.get(name)
+                )
+            )
             semantic_content = self.get_semantic_content_for_entity_name(
-                name, layout_block
+                name, cleaned_block
             )
             if (
                 aff is not None
@@ -73,6 +86,10 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
                     yield semantic_content
                     continue
                 aff = SemanticAffiliationAddress(content_id=next(ids_iterator, '?'))
+            if prefix_block:
+                aff.add_content(SemanticNote(layout_block=prefix_block))
             aff.add_content(semantic_content)
+            if suffix_block:
+                aff.add_content(SemanticNote(layout_block=suffix_block))
         if aff:
             yield aff
