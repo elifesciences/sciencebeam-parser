@@ -87,9 +87,9 @@ class AffiliationAddressSemanticExtractor(SimpleModelSemanticExtractor):
                     continue
                 aff = SemanticAffiliationAddress(content_id=next(ids_iterator, '?'))
             if prefix_block:
-                aff.add_content(SemanticNote(layout_block=prefix_block))
+                aff.add_content(SemanticNote(layout_block=prefix_block, note_type=f'{name}-prefix'))
             aff.add_content(semantic_content)
             if suffix_block:
-                aff.add_content(SemanticNote(layout_block=suffix_block))
+                aff.add_content(SemanticNote(layout_block=suffix_block, note_type=f'{name}-suffix'))
         if aff:
             yield aff
