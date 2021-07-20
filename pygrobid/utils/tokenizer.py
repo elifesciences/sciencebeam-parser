@@ -4,8 +4,8 @@ from typing import Iterable, List
 
 # delimters mostly copied from:
 # https://github.com/kermitt2/delft/blob/v0.2.6/delft/utilities/Tokenizer.py
-# added: `@`
-DELIMITERS = "\n\r\t\f\u00A0([ •*,:;?.!/)-−–‐\"“”‘’'`$]*\u2666\u2665\u2663\u2660\u00A0@"
+# added: `@`, `#`
+DELIMITERS = "\n\r\t\f\u00A0([ •*,:;?.!/#)-−–‐\"“”‘’'`$]*\u2666\u2665\u2663\u2660\u00A0@"
 DELIMITERS_REGEX = r'(' + r'|'.join(map(re.escape, DELIMITERS)) + r'|\s)'
 
 
