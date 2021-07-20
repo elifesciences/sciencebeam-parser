@@ -3,10 +3,31 @@ from pygrobid.models.data import feature_linear_scaling_int
 
 from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutLine, LayoutPage
 
-from pygrobid.models.segmentation.data import NBBINS_POSITION, SegmentationLineFeaturesProvider
+from pygrobid.models.segmentation.data import (
+    NBBINS_POSITION,
+    SegmentationLineFeaturesProvider,
+    get_text_pattern
+)
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class TestGetTextPattern:
+    def test_should_keep_lowercase_characters(self):
+        assert get_text_pattern('abc') == 'abc'
+
+    def test_should_keep_uppercase_characters_and_convert_to_lowercase(self):
+        assert get_text_pattern('ABC') == 'abc'
+
+    def test_should_keep_spaces(self):
+        assert get_text_pattern('abc abc') == 'abc abc'
+
+    def test_should_remove_punctuation(self):
+        assert get_text_pattern('abc.,:;') == 'abc'
+
+    def test_should_remove_digits(self):
+        assert get_text_pattern('abc123') == 'abc'
 
 
 class TestSegmentationLineFeaturesProvider:
@@ -136,4 +157,46 @@ class TestSegmentationLineFeaturesProvider:
                 )),
             }
             for i in range(10)
+        ]
+
+    def test_should_provide_repetitive_pattern_feature(self):
+        layout_document = LayoutDocument(pages=[
+            LayoutPage(blocks=[
+                LayoutBlock.for_text('this is repetitive'),
+                LayoutBlock.for_text('this is not')
+            ]),
+            LayoutPage(blocks=[
+                LayoutBlock.for_text('this is repetitive'),
+                LayoutBlock.for_text('it is different')
+            ])
+        ])
+        features_provider = SegmentationLineFeaturesProvider()
+        feature_values = []
+        for features in features_provider.iter_line_features(layout_document):
+            feature_values.append({
+                'get_str_is_repetitive_pattern': (
+                    features.get_str_is_repetitive_pattern()
+                ),
+                'get_str_is_first_repetitive_pattern': (
+                    features.get_str_is_first_repetitive_pattern()
+                )
+            })
+        LOGGER.debug('feature_values: %r', feature_values)
+        assert feature_values == [
+            {
+                'get_str_is_repetitive_pattern': '1',
+                'get_str_is_first_repetitive_pattern': '1'
+            },
+            {
+                'get_str_is_repetitive_pattern': '0',
+                'get_str_is_first_repetitive_pattern': '0'
+            },
+            {
+                'get_str_is_repetitive_pattern': '1',
+                'get_str_is_first_repetitive_pattern': '0'
+            },
+            {
+                'get_str_is_repetitive_pattern': '0',
+                'get_str_is_first_repetitive_pattern': '0'
+            },
         ]

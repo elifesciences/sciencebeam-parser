@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Iterable, List, Optional
+from typing import Counter, Iterable, List, Optional, Set
 
 from pygrobid.document.layout_document import (
     LayoutBlock,
@@ -15,7 +15,8 @@ from pygrobid.models.data import (
     ModelDataGenerator,
     LayoutModelData,
     feature_linear_scaling_int,
-    _LINESCALE
+    _LINESCALE,
+    get_str_bool_feature_value
 )
 
 
@@ -57,6 +58,13 @@ def get_page_status(block_index: int, block_count: int, block_status: str) -> st
     )
 
 
+# based on:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/features/FeatureFactory.java#L359-L367
+def get_text_pattern(text: str) -> str:
+    # Note: original code is meant to shadow numbers but are actually removed
+    return re.sub(r'[^a-zA-Z ]', '', text).lower()
+
+
 class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
     def __init__(self, layout_token: LayoutToken = EMPTY_LAYOUT_TOKEN):
         super().__init__(layout_token, layout_line=EMPTY_LAYOUT_LINE)
@@ -70,6 +78,8 @@ class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
         self.max_block_line_text_length = 0
         self.document_token_count = 0
         self.document_token_index = 0
+        self.is_repetitive_pattern: bool = False
+        self.is_first_repetitive_pattern: bool = False
 
     def get_block_status(self) -> str:
         return get_block_status(self.block_line_index, len(self.block_lines))
@@ -81,6 +91,12 @@ class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
 
     def get_formatted_whole_line_feature(self) -> str:
         return format_feature_text(self.line_text)
+
+    def get_str_is_repetitive_pattern(self) -> str:
+        return get_str_bool_feature_value(self.is_repetitive_pattern)
+
+    def get_str_is_first_repetitive_pattern(self) -> str:
+        return get_str_bool_feature_value(self.is_first_repetitive_pattern)
 
     def get_dummy_str_is_repetitive_pattern(self) -> str:
         return '0'
@@ -119,6 +135,30 @@ class SegmentationLineFeaturesProvider:
             for block in layout_document.iter_all_blocks()
             for line in block.lines
         )
+        pattern_candididate_block_iterable = (
+            block
+            for page in layout_document.pages
+            for block_index, block in enumerate(page.blocks)
+            if block_index < 2 or block_index > len(page.blocks) - 2
+        )
+        pattern_candididate_line_iterable = (
+            block.lines[0]
+            for block in pattern_candididate_block_iterable
+            if block.lines and block.lines[0].tokens
+        )
+        all_pattern_by_line_id = {
+            id(line): get_text_pattern(line.text)
+            for line in pattern_candididate_line_iterable
+        }
+        LOGGER.debug('all_pattern_by_line_id: %s', all_pattern_by_line_id)
+        pattern_by_line_id = {
+            key: value
+            for key, value in all_pattern_by_line_id.items()
+            if len(value) > 8
+        }
+        pattern_counter = Counter(pattern_by_line_id.values())
+        LOGGER.debug('pattern_counter: %s', pattern_counter)
+        seen_repetitive_patterns: Set[str] = set()
         document_token_index = 0
         for page in layout_document.pages:
             blocks = page.blocks
@@ -151,6 +191,17 @@ class SegmentationLineFeaturesProvider:
                         retokenized_token_texts[1] if len(retokenized_token_texts) >= 2 else ''
                     )
                     segmentation_line_features.previous_layout_token = previous_token
+                    line_pattern = pattern_by_line_id.get(id(line), '')
+                    LOGGER.debug('line_pattern: %r', line_pattern)
+                    segmentation_line_features.is_repetitive_pattern = (
+                        pattern_counter[line_pattern] > 1
+                    )
+                    segmentation_line_features.is_first_repetitive_pattern = (
+                        segmentation_line_features.is_repetitive_pattern
+                        and line_pattern not in seen_repetitive_patterns
+                    )
+                    if segmentation_line_features.is_first_repetitive_pattern:
+                        seen_repetitive_patterns.add(line_pattern)
                     yield segmentation_line_features
                     previous_token = token
 
@@ -199,8 +250,8 @@ class SegmentationDataGenerator(ModelDataGenerator):
                 features.get_str_block_relative_line_length_feature(),
                 features.get_dummy_str_is_bitmap_around(),
                 features.get_dummy_str_is_vector_around(),
-                features.get_dummy_str_is_repetitive_pattern(),
-                features.get_dummy_str_is_first_repetitive_pattern(),
+                features.get_str_is_repetitive_pattern(),
+                features.get_str_is_first_repetitive_pattern(),
                 features.get_dummy_str_is_main_area(),
                 features.get_formatted_whole_line_feature()
             ]
