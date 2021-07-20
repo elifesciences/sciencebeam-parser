@@ -18,6 +18,9 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 from pygrobid.config.config import AppConfig
 from pygrobid.external.pdfalto.wrapper import PdfAltoWrapper
 from pygrobid.external.pdfalto.parser import parse_alto_root
+from pygrobid.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
+from pygrobid.lookup.country import CountryLookUp
+from pygrobid.models.data import AppFeaturesContext, DocumentFeaturesContext
 from pygrobid.models.model import Model
 from pygrobid.document.layout_document import LayoutDocument
 from pygrobid.document.semantic_document import (
@@ -162,11 +165,13 @@ class ModelNestedBluePrint:
         name: str,
         model: Model,
         pdfalto_wrapper: PdfAltoWrapper,
+        app_features_context: AppFeaturesContext,
         model_name: str = 'dummy'
     ):
         self.name = name
         self.model = model
         self.pdfalto_wrapper = pdfalto_wrapper
+        self.app_features_context = app_features_context
         self.model_name = model_name
 
     def add_routes(self, parent_blueprint: Blueprint, url_prefix: str):
@@ -212,7 +217,11 @@ class ModelNestedBluePrint:
                     parse_alto_root(root)
                 )
             )
-            data_generator = self.model.get_data_generator()
+            data_generator = self.model.get_data_generator(
+                DocumentFeaturesContext(
+                    app_features_context=self.app_features_context
+                )
+            )
             data_lines = data_generator.iter_data_lines_for_layout_documents(
                 layout_document_iterable
             )
@@ -494,6 +503,30 @@ class TableModelNestedBluePrint(FullTextChildModelNestedBluePrint):
         super().__init__(*args, semantic_type=SemanticRawTable, **kwargs)
 
 
+def load_country_lookup(
+    path: Optional[str],
+    download_manager: DownloadManager
+) -> Optional[CountryLookUp]:
+    if not path:
+        return None
+    LOGGER.info('loading country lookup from: %r', path)
+    return load_xml_country_lookup_from_file(
+        download_manager.download_if_url(path)
+    )
+
+
+def load_app_features_context(
+    config: AppConfig,
+    download_manager: DownloadManager
+):
+    return AppFeaturesContext(
+        country_lookup=load_country_lookup(
+            config.get('lookup', {}).get('country'),
+            download_manager=download_manager
+        )
+    )
+
+
 class ApiBlueprint(Blueprint):
     def __init__(self, config: AppConfig):
         super().__init__('api', __name__)
@@ -508,16 +541,25 @@ class ApiBlueprint(Blueprint):
         )
         self.pdfalto_wrapper.ensure_excutable()
         fulltext_models = load_models(config)
-        self.fulltext_processor = FullTextProcessor(fulltext_models)
+        app_features_context = load_app_features_context(
+            config,
+            download_manager=self.download_manager
+        )
+        self.fulltext_processor = FullTextProcessor(
+            fulltext_models,
+            app_features_context=app_features_context
+        )
         ModelNestedBluePrint(
             'Segmentation',
             model=fulltext_models.segmentation_model,
-            pdfalto_wrapper=self.pdfalto_wrapper
+            pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context
         ).add_routes(self, '/models/segmentation')
         SegmentedModelNestedBluePrint(
             'Header',
             model=fulltext_models.header_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<header>']
         ).add_routes(self, '/models/header')
@@ -525,6 +567,7 @@ class ApiBlueprint(Blueprint):
             'Name Header',
             model=fulltext_models.name_header_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model
@@ -533,6 +576,7 @@ class ApiBlueprint(Blueprint):
             'Affiliation Address',
             model=fulltext_models.affiliation_address_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model
@@ -542,6 +586,7 @@ class ApiBlueprint(Blueprint):
             'FullText',
             model=fulltext_models.fulltext_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=fulltext_segmentation_labels
         ).add_routes(self, '/models/fulltext')
@@ -549,6 +594,7 @@ class ApiBlueprint(Blueprint):
             'Figure',
             model=fulltext_models.figure_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=fulltext_segmentation_labels,
             fulltext_model=fulltext_models.fulltext_model
@@ -557,6 +603,7 @@ class ApiBlueprint(Blueprint):
             'Table',
             model=fulltext_models.table_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=fulltext_segmentation_labels,
             fulltext_model=fulltext_models.fulltext_model
@@ -565,6 +612,7 @@ class ApiBlueprint(Blueprint):
             'Reference Segmenter',
             model=fulltext_models.reference_segmenter_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<references>']
         ).add_routes(self, '/models/reference-segmenter')
@@ -572,6 +620,7 @@ class ApiBlueprint(Blueprint):
             'Citation (Reference)',
             model=fulltext_models.citation_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<references>'],
             reference_segmenter_model=fulltext_models.reference_segmenter_model
@@ -580,6 +629,7 @@ class ApiBlueprint(Blueprint):
             'Name Citaton',
             model=fulltext_models.name_citation_model,
             pdfalto_wrapper=self.pdfalto_wrapper,
+            app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<references>'],
             reference_segmenter_model=fulltext_models.reference_segmenter_model,

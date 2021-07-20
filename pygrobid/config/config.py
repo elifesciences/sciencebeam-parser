@@ -2,7 +2,7 @@ import logging
 import os
 import copy
 from pathlib import Path
-from typing import Union
+from typing import Any, Optional, Union
 
 import yaml
 
@@ -52,8 +52,8 @@ class AppConfig:
             parent_props[leaf_key] = parse_env_value(env_value)
         return AppConfig(updated_props)
 
-    def get(self, key: str):
-        return self.props.get(key)
+    def get(self, key: str, default_value: Optional[Any] = None):
+        return self.props.get(key, default_value)
 
     def __getitem__(self, key: str):
         return self.props[key]

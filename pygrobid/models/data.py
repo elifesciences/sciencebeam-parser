@@ -3,10 +3,11 @@ import math
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from typing import Iterable, List, NamedTuple, Optional
 
 from lxml import etree
 
+from pygrobid.lookup.country import CountryLookUp
 from pygrobid.document.layout_document import LayoutDocument, LayoutToken,  LayoutLine
 from pygrobid.external.pdfalto.parser import parse_alto_root
 
@@ -434,14 +435,29 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
 _LINESCALE = 10
 
 
+class AppFeaturesContext(NamedTuple):
+    country_lookup: Optional[CountryLookUp] = None
+
+
+DEFAULT_APP_FEATURES_CONTEXT = AppFeaturesContext()
+
+
+class DocumentFeaturesContext(NamedTuple):
+    app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+
+
+DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
+
+
 class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-methods
     CommonLayoutTokenFeatures
 ):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-locals
         self,
         layout_token: LayoutToken,
         layout_line: LayoutLine,
         previous_layout_token: Optional[LayoutToken] = None,
+        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT,
         token_index: int = 0,
         token_count: int = 0,
         document_token_index: int = 0,
@@ -457,6 +473,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         super().__init__(layout_token)
         self.layout_line = layout_line
         self.previous_layout_token = previous_layout_token
+        self.document_features_context = document_features_context
         self.token_index = token_index
         self.token_count = token_count
         self.document_token_index = document_token_index
@@ -579,6 +596,14 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
             12
         ))
 
+    def get_str_is_country(self) -> str:
+        country_lookup = self.document_features_context.app_features_context.country_lookup
+        if not country_lookup:
+            return get_str_bool_feature_value(False)
+        return get_str_bool_feature_value(
+            country_lookup.is_country(self.token_text)
+        )
+
     def get_dummy_str_relative_document_position(self):
         # position within whole document
         return '0'
@@ -600,6 +625,12 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
 
 
 class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
+    def __init__(
+        self,
+        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+    ):
+        self.document_features_context = document_features_context
+
     @abstractmethod
     def iter_model_data_for_context_layout_token_features(
         self,
@@ -646,6 +677,7 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
                             token,
                             layout_line=line,
                             previous_layout_token=previous_layout_token,
+                            document_features_context=self.document_features_context,
                             token_index=token_index,
                             token_count=token_count,
                             document_token_index=document_token_index,

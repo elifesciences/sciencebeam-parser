@@ -27,6 +27,11 @@ from pygrobid.document.semantic_document import (
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
+from pygrobid.models.data import (
+    AppFeaturesContext,
+    DEFAULT_APP_FEATURES_CONTEXT,
+    DocumentFeaturesContext
+)
 from pygrobid.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
 from pygrobid.models.model import LayoutModelLabel, Model
 from pygrobid.models.segmentation.model import SegmentationModel
@@ -88,18 +93,27 @@ class MockDelftModelWrapper:
 
     def _iter_label_layout_documents(
         self,
-        layout_documents: Iterable[LayoutDocument]
+        layout_documents: Iterable[LayoutDocument],
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
         for index, layout_document in enumerate(layout_documents):
             if index > 0:
                 yield NEW_DOCUMENT_MARKER
-            yield from self._iter_label_layout_document(layout_document)
+            yield from self._iter_label_layout_document(
+                layout_document,
+                app_features_context=app_features_context
+            )
 
     def _iter_label_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> Iterable[LayoutModelLabel]:
-        data_generator = self._model_wrapper.get_data_generator()
+        data_generator = self._model_wrapper.get_data_generator(
+            document_features_context=DocumentFeaturesContext(
+                app_features_context=app_features_context
+            )
+        )
         LOGGER.debug('_label_by_layout_token.keys: %s', self._label_by_layout_token.keys())
         for model_data in data_generator.iter_model_data_for_layout_document(layout_document):
             if model_data.layout_token:

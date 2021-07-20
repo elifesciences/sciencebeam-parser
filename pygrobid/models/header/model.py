@@ -3,6 +3,7 @@ from typing import Iterable, Tuple
 
 from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import SemanticDocument
+from pygrobid.models.data import DEFAULT_DOCUMENT_FEATURES_CONTEXT, DocumentFeaturesContext
 from pygrobid.models.header.data import HeaderDataGenerator
 from pygrobid.models.header.extract import HeaderSemanticExtractor
 from pygrobid.models.model import Model
@@ -12,8 +13,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class HeaderModel(Model):
-    def get_data_generator(self) -> HeaderDataGenerator:
-        return HeaderDataGenerator()
+    def get_data_generator(
+        self,
+        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+    ) -> HeaderDataGenerator:
+        return HeaderDataGenerator(
+            document_features_context=document_features_context
+        )
 
     def get_semantic_extractor(self) -> HeaderSemanticExtractor:
         return HeaderSemanticExtractor()

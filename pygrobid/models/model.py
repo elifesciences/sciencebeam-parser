@@ -13,7 +13,13 @@ from pygrobid.document.layout_document import (
     LayoutPage,
     LayoutDocument
 )
-from pygrobid.models.data import ModelDataGenerator
+from pygrobid.models.data import (
+    AppFeaturesContext,
+    DEFAULT_APP_FEATURES_CONTEXT,
+    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+    DocumentFeaturesContext,
+    ModelDataGenerator
+)
 from pygrobid.models.extract import ModelSemanticExtractor
 from pygrobid.document.semantic_document import SemanticContentWrapper
 from pygrobid.models.model_impl import ModelImpl, T_ModelImplFactory
@@ -204,7 +210,10 @@ class Model(ABC):
         self._model_impl: Optional[ModelImpl] = None
 
     @abstractmethod
-    def get_data_generator(self) -> ModelDataGenerator:
+    def get_data_generator(
+        self,
+        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+    ) -> ModelDataGenerator:
         pass
 
     # @abstractmethod
@@ -245,12 +254,14 @@ class Model(ABC):
 
     def iter_label_layout_documents(
         self,
-        layout_documents: List[LayoutDocument]
+        layout_documents: List[LayoutDocument],
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> Iterable[List[LayoutModelLabel]]:
         doc_layout_model_labels: List[LayoutModelLabel] = []
         result_doc_count = 0
         for layout_model_label in self._iter_label_layout_documents(
-            layout_documents
+            layout_documents,
+            app_features_context=app_features_context
         ):
             if isinstance(layout_model_label, NewDocumentMarker):
                 yield doc_layout_model_labels
@@ -271,11 +282,16 @@ class Model(ABC):
             assert isinstance(layout_model_label, LayoutModelLabel)
             yield layout_model_label
 
-    def _iter_label_layout_documents(
+    def _iter_label_layout_documents(  # pylint: disable=too-many-locals
         self,
-        layout_documents: Iterable[LayoutDocument]
+        layout_documents: Iterable[LayoutDocument],
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
-        data_generator = self.get_data_generator()
+        data_generator = self.get_data_generator(
+            document_features_context=DocumentFeaturesContext(
+                app_features_context=app_features_context
+            )
+        )
         model_data_lists = [
             list(data_generator.iter_model_data_for_layout_document(
                 layout_document
@@ -349,13 +365,17 @@ class Model(ABC):
 
     def predict_labels_for_layout_documents(
         self,
-        layout_documents: List[LayoutDocument]
+        layout_documents: List[LayoutDocument],
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> List[List[LabeledLayoutToken]]:
         return [
             list(iter_labeled_layout_token_for_layout_model_label(
                 layout_model_labels
             ))
-            for layout_model_labels in self.iter_label_layout_documents(layout_documents)
+            for layout_model_labels in self.iter_label_layout_documents(
+                layout_documents,
+                app_features_context=app_features_context
+            )
         ]
 
     def iter_entity_layout_blocks_for_labeled_layout_tokens(

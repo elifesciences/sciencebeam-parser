@@ -10,6 +10,8 @@ from pygrobid.document.layout_document import (
 )
 from pygrobid.models.data import (
     ContextAwareLayoutTokenFeatures,
+    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+    DocumentFeaturesContext,
     ModelDataGenerator,
     LayoutModelData,
     feature_linear_scaling_int,
@@ -154,9 +156,15 @@ class SegmentationLineFeaturesProvider:
 
 
 class SegmentationDataGenerator(ModelDataGenerator):
+    def __init__(
+        self,
+        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+    ):
+        self.document_features_context = document_features_context
+
     def iter_model_data_for_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
     ) -> Iterable[LayoutModelData]:
         features_provider = SegmentationLineFeaturesProvider()
         for features in features_provider.iter_line_features(layout_document):

@@ -13,6 +13,7 @@ from typing import (
 )
 
 from pygrobid.config.config import AppConfig
+from pygrobid.models.data import AppFeaturesContext, DEFAULT_APP_FEATURES_CONTEXT
 from pygrobid.models.model import LayoutDocumentLabelResult, Model
 from pygrobid.models.model_impl_factory import get_delft_model_impl_factory_for_config
 from pygrobid.utils.misc import iter_ids
@@ -140,9 +141,11 @@ class FullTextProcessor:
     def __init__(
         self,
         fulltext_models: FullTextModels,
-        config: Optional[FullTextProcessorConfig] = None
+        config: Optional[FullTextProcessorConfig] = None,
+        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
     ) -> None:
         self.fulltext_models = fulltext_models
+        self.app_features_context = app_features_context
         if not config:
             config = FullTextProcessorConfig()
         self.config = config
@@ -350,7 +353,8 @@ class FullTextProcessor:
             labeled_layout_tokens_list = (
                 self.affiliation_address_model
                 .predict_labels_for_layout_documents(
-                    raw_aff_layout_documents
+                    raw_aff_layout_documents,
+                    app_features_context=self.app_features_context
                 )
             )
             LOGGER.debug('labeled_layout_tokens_list (aff): %r', labeled_layout_tokens_list)

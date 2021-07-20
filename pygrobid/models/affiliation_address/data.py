@@ -33,7 +33,7 @@ class AffiliationAddressDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
             token_features.get_dummy_str_is_common_name(),
             token_features.get_dummy_str_is_first_name(),
             token_features.get_dummy_str_is_location_name(),
-            token_features.get_dummy_str_is_country_name(),
+            token_features.get_str_is_country(),
             token_features.get_punctuation_type_feature(),
             token_features.get_word_shape_feature(),
             token_features.get_dummy_label()
