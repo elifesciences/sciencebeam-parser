@@ -39,6 +39,6 @@ class ReferenceSegmenterDataGenerator(ContextAwareLayoutTokenModelDataGenerator)
             token_features.get_str_line_token_relative_position(),
             token_features.get_str_line_relative_length(),
             token_features.get_block_status_with_blockend_for_single_token(),
-            token_features.get_line_punctuation_profile_length_feature(),
+            token_features.get_truncated_line_punctuation_profile_length_feature(),
             token_features.get_dummy_label()
         ])

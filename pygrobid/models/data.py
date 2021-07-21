@@ -278,7 +278,7 @@ def get_punctuation_type_feature(text: str) -> str:
     return result
 
 
-def get_punctuation_profile_feature(text: str) -> str:
+def get_raw_punctuation_profile_feature(text: str) -> str:
     if not text:
         return ''
     return ''.join((
@@ -288,12 +288,21 @@ def get_punctuation_profile_feature(text: str) -> str:
     ))
 
 
-def get_punctuation_profile_length_for_punctuation_profile_feature(
-    punctuation_profile: str
+def get_punctuation_profile_feature_for_raw_punctuation_profile_feature(
+    raw_punctuation_profile: str
 ) -> str:
-    if not punctuation_profile:
+    if not raw_punctuation_profile:
         return 'no'
-    return str(min(10, len(punctuation_profile)))
+    return raw_punctuation_profile
+
+
+def get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+    raw_punctuation_profile: str,
+    max_length: Optional[int] = None
+) -> str:
+    if max_length:
+        return str(min(10, len(raw_punctuation_profile)))
+    return str(len(raw_punctuation_profile))
 
 
 def get_char_shape_feature(ch: str) -> str:
@@ -566,12 +575,23 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
             )
         )
 
+    def get_raw_line_punctuation_profile(self) -> str:
+        return get_raw_punctuation_profile_feature(self.concatenated_line_tokens_text)
+
     def get_line_punctuation_profile(self) -> str:
-        return get_punctuation_profile_feature(self.concatenated_line_tokens_text)
+        return get_punctuation_profile_feature_for_raw_punctuation_profile_feature(
+            self.get_raw_line_punctuation_profile()
+        )
 
     def get_line_punctuation_profile_length_feature(self) -> str:
-        return get_punctuation_profile_length_for_punctuation_profile_feature(
-            self.get_line_punctuation_profile()
+        return get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+            self.get_raw_line_punctuation_profile()
+        )
+
+    def get_truncated_line_punctuation_profile_length_feature(self) -> str:
+        return get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+            self.get_raw_line_punctuation_profile(),
+            max_length=10
         )
 
     def get_str_line_token_relative_position(self) -> str:

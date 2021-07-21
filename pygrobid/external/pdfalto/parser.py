@@ -22,6 +22,7 @@ ALTO_NS_MAP = {
 
 # mostly copied from:
 # https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L773-L948
+# added: '\u2014'
 REPLACEMENT_CHARACTER_BY_CHARACTER_MAP = {
     '\uFB00': 'ff',
     '\uFB01': 'fi',
@@ -34,6 +35,7 @@ REPLACEMENT_CHARACTER_BY_CHARACTER_MAP = {
     '\u00C6': 'AE',
     '\u0153': 'oe',
     '\u0152': 'OE',
+    '\u2014': '-',
     '\u201C': '"',
     '\u201D': '"',
     '\u201E': '"',

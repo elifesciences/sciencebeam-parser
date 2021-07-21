@@ -47,12 +47,16 @@ def get_block_status(line_index: int, line_count: int) -> str:
     )
 
 
-def get_page_status(block_index: int, block_count: int, block_status: str) -> str:
+def get_page_status(
+    block_index: int, block_count: int,
+    is_first_block_token: bool,
+    is_last_block_token: bool
+) -> str:
     return (
-        'PAGESTART' if block_index == 0 and block_status == 'BLOCKSTART'
+        'PAGESTART' if block_index == 0 and is_first_block_token
         else (
             'PAGEEND'
-            if block_index == block_count - 1 and block_status == 'BLOCKEND'
+            if block_index == block_count - 1 and is_last_block_token
             else 'PAGEIN'
         )
     )
@@ -86,7 +90,9 @@ class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
 
     def get_page_status(self) -> str:
         return get_page_status(
-            self.page_block_index, len(self.page_blocks), self.get_block_status()
+            self.page_block_index, len(self.page_blocks),
+            is_first_block_token=self.block_line_index == 0,
+            is_last_block_token=self.block_line_index == len(self.block_lines) - 1
         )
 
     def get_formatted_whole_line_feature(self) -> str:

@@ -31,7 +31,7 @@ class TestGetTextPattern:
 
 
 class TestSegmentationLineFeaturesProvider:
-    def test_should_provide_page_and_block_status(self):
+    def test_should_provide_page_and_block_status_for_multi_line_blocks(self):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text('line1'),
@@ -51,6 +51,28 @@ class TestSegmentationLineFeaturesProvider:
             {'page_status': 'PAGESTART', 'block_status': 'BLOCKSTART'},
             {'page_status': 'PAGEIN', 'block_status': 'BLOCKIN'},
             {'page_status': 'PAGEEND', 'block_status': 'BLOCKEND'}
+        ]
+
+    def test_should_provide_page_and_block_status_for_single_token_blocks(self):
+        layout_document = LayoutDocument(pages=[
+            LayoutPage(blocks=[
+                LayoutBlock.for_text('line1'),
+                LayoutBlock.for_text('line2'),
+                LayoutBlock.for_text('line3')
+            ])
+        ])
+        features_provider = SegmentationLineFeaturesProvider()
+        feature_values = []
+        for features in features_provider.iter_line_features(layout_document):
+            feature_values.append({
+                'page_status': features.get_page_status(),
+                'block_status': features.get_block_status()
+            })
+        LOGGER.debug('feature_values: %r', feature_values)
+        assert feature_values == [
+            {'page_status': 'PAGESTART', 'block_status': 'BLOCKSTART'},
+            {'page_status': 'PAGEIN', 'block_status': 'BLOCKSTART'},
+            {'page_status': 'PAGEEND', 'block_status': 'BLOCKSTART'}
         ]
 
     def test_should_provide_line_text(self):

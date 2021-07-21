@@ -16,8 +16,9 @@ from pygrobid.models.data import (
     get_digit_feature,
     get_capitalisation_feature,
     get_punctuation_type_feature,
-    get_punctuation_profile_feature,
-    get_punctuation_profile_length_for_punctuation_profile_feature,
+    get_raw_punctuation_profile_feature,
+    get_punctuation_profile_feature_for_raw_punctuation_profile_feature,
+    get_punctuation_profile_length_for_raw_punctuation_profile_feature,
     get_word_shape_feature
 )
 
@@ -270,35 +271,53 @@ class TestGetPunctuationTypeFeature:
         assert get_punctuation_type_feature('abc') == 'NOPUNCT'
 
 
-class TestGetPunctuationProfileFeature:
+class TestGetRawPunctuationProfileFeature:
     def test_should_return_empty_string_for_empty_string(self):
-        assert get_punctuation_profile_feature('') == ''
+        assert get_raw_punctuation_profile_feature('') == ''
 
     def test_should_return_empty_string_for_letters_or_digits(self):
-        assert get_punctuation_profile_feature('abc123') == ''
+        assert get_raw_punctuation_profile_feature('abc123') == ''
 
     def test_should_return_empty_string_for_space(self):
-        assert get_punctuation_profile_feature(' ') == ''
+        assert get_raw_punctuation_profile_feature(' ') == ''
 
     def test_should_return_punctuation_characters(self):
-        assert get_punctuation_profile_feature('x.,;x') == '.,;'
+        assert get_raw_punctuation_profile_feature('x.,;x') == '.,;'
 
 
-class TestGetPunctuationProfileLengthForPunctuationPofileFeature:
+class TestGetPunctuationProfileForRawPunctuationPofileFeature:
     def test_should_return_no_for_empty_punctuation_profile(self):
-        assert get_punctuation_profile_length_for_punctuation_profile_feature(
+        assert get_punctuation_profile_feature_for_raw_punctuation_profile_feature(
             ''
         ) == 'no'
 
+    def test_should_return_passed_in_value_if_not_empty(self):
+        assert get_punctuation_profile_feature_for_raw_punctuation_profile_feature(
+            '.:'
+        ) == '.:'
+
+
+class TestGetPunctuationProfileLengthForRawPunctuationPofileFeature:
+    def test_should_return_zero_for_empty_punctuation_profile(self):
+        assert get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+            ''
+        ) == '0'
+
     def test_should_return_length_of_punctuation_profile(self):
-        assert get_punctuation_profile_length_for_punctuation_profile_feature(
+        assert get_punctuation_profile_length_for_raw_punctuation_profile_feature(
             '.'
         ) == '1'
 
-    def test_should_return_ten_for_larger_lengths(self):
-        assert get_punctuation_profile_length_for_punctuation_profile_feature(
-            '.' * 11
+    def test_should_clip_value_if_max_length_is_provided(self):
+        assert get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+            '.' * 11,
+            max_length=10
         ) == '10'
+
+    def test_should_not_clip_value_if_max_length_is_not_provided(self):
+        assert get_punctuation_profile_length_for_raw_punctuation_profile_feature(
+            '.' * 11
+        ) == '11'
 
 
 class TestGetWordShapeFeature:
