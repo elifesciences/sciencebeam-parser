@@ -442,6 +442,10 @@ class SemanticReference(SemanticMixedContentWrapper):
     pass
 
 
+class SemanticInvalidReference(SemanticMixedContentWrapper):
+    pass
+
+
 class SemanticReferenceList(SemanticMixedContentWrapper):
     pass
 

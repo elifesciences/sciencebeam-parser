@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Iterable, Mapping, Optional, Tuple, Union
+from typing import Iterable, Mapping, Optional, Set, Tuple, Type, Union
 
 from pygrobid.utils.misc import iter_ids
 from pygrobid.document.semantic_document import (
@@ -10,6 +10,7 @@ from pygrobid.document.semantic_document import (
     SemanticExternalIdentifier,
     SemanticExternalIdentifierTypes,
     SemanticExternalUrl,
+    SemanticInvalidReference,
     SemanticIssue,
     SemanticJournal,
     SemanticLocation,
@@ -18,6 +19,7 @@ from pygrobid.document.semantic_document import (
     SemanticRawAuthors,
     SemanticRawEditors,
     SemanticRawReference,
+    SemanticRawReferenceText,
     SemanticReference,
     SemanticTitle,
     SemanticVolume
@@ -59,6 +61,16 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
     '<issue>': SemanticIssue,
     '<publisher>': SemanticPublisher,
     '<location>': SemanticLocation
+}
+
+
+VALID_REFERENCE_TYPES: Set[Type[SemanticContentWrapper]] = {
+    SemanticTitle,
+    SemanticJournal,
+    SemanticRawAuthors,
+    SemanticRawEditors,
+    SemanticExternalIdentifier,
+    SemanticExternalUrl
 }
 
 
@@ -139,6 +151,23 @@ def parse_date(layout_block: LayoutBlock) -> SemanticDate:
     )
 
 
+def is_reference_valid(ref: SemanticReference) -> bool:
+    for semantic_content in ref:
+        if type(semantic_content) in VALID_REFERENCE_TYPES:
+            return True
+    return False
+
+
+def get_invalid_reference(ref: SemanticReference) -> SemanticInvalidReference:
+    return SemanticInvalidReference(
+        mixed_content=[
+            semantic_content
+            for semantic_content in ref
+            if not isinstance(semantic_content, SemanticRawReferenceText)
+        ]
+    )
+
+
 class CitationSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
@@ -181,5 +210,7 @@ class CitationSemanticExtractor(SimpleModelSemanticExtractor):
                 name, layout_block=layout_block
             )
             ref.add_content(semantic_content)
-        if ref:
+        if ref and not is_reference_valid(ref):
+            yield get_invalid_reference(ref)
+        elif ref:
             yield ref

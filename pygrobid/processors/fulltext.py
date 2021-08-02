@@ -9,7 +9,8 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Type
+    Type,
+    Union
 )
 
 from pygrobid.config.config import AppConfig
@@ -27,6 +28,7 @@ from pygrobid.document.semantic_document import (
     SemanticEditor,
     SemanticFigure,
     SemanticFigureCitation,
+    SemanticInvalidReference,
     SemanticLabel,
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
@@ -399,7 +401,7 @@ class FullTextProcessor:
     def _iter_parse_semantic_references(
         self,
         semantic_raw_references: List[SemanticRawReference]
-    ) -> Iterable[SemanticReference]:
+    ) -> Iterable[Union[SemanticReference, SemanticInvalidReference]]:
         layout_documents = [
             LayoutDocument.for_blocks([semantic_raw_reference.merged_block])
             for semantic_raw_reference in semantic_raw_references
@@ -419,9 +421,9 @@ class FullTextProcessor:
                     semantic_raw_reference=semantic_raw_reference
                 )
             )
-            ref: Optional[SemanticReference] = None
+            ref: Optional[Union[SemanticReference, SemanticInvalidReference]] = None
             for semantic_content in semantic_content_iterable:
-                if isinstance(semantic_content, SemanticReference):
+                if isinstance(semantic_content, (SemanticReference, SemanticInvalidReference)):
                     ref = semantic_content
             if not ref:
                 raise AssertionError('no semantic reference extracted')

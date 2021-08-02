@@ -6,6 +6,7 @@ from pygrobid.document.semantic_document import (
     SemanticExternalIdentifier,
     SemanticExternalIdentifierTypes,
     SemanticExternalUrl,
+    SemanticInvalidReference,
     SemanticIssue,
     SemanticJournal,
     SemanticLabel,
@@ -236,3 +237,20 @@ class TestReferenceSegmenterSemanticExtractor:
         assert ref.view_by_type(SemanticRawAuthors).get_text() == 'Author 1'
         assert ref.view_by_type(SemanticTitle).get_text() == 'Title 1'
         assert ref.content_id == semantic_raw_ref.content_id
+
+    def test_should_reject_reference_without_any_detected_fields(self):
+        semantic_raw_ref_text = SemanticRawReferenceText(
+            layout_block=LayoutBlock.for_text('Reference 1')
+        )
+        semantic_raw_ref = SemanticRawReference([
+            semantic_raw_ref_text
+        ], content_id='raw1')
+        semantic_content_list = list(
+            CitationSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('O', LayoutBlock.for_text(semantic_raw_ref_text.get_text())),
+            ], semantic_raw_reference=semantic_raw_ref)
+        )
+        assert len(semantic_content_list) == 1
+        ref = semantic_content_list[0]
+        assert isinstance(ref, SemanticInvalidReference)
+        assert ref.get_text() == semantic_raw_ref_text.get_text()

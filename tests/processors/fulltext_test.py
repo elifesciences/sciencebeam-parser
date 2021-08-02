@@ -14,6 +14,7 @@ from pygrobid.document.semantic_document import (
     SemanticFigure,
     SemanticFigureCitation,
     SemanticInstitution,
+    SemanticInvalidReference,
     SemanticLabel,
     SemanticMarker,
     SemanticRawReference,
@@ -596,6 +597,62 @@ class TestFullTextProcessor:
         )
         assert len(ref_citations) == 1
         assert ref_citations[0].target_content_id == 'b0'
+
+    def test_should_extract_invalid_reference_from_document(  # pylint: disable=too-many-locals
+        self, fulltext_models_mock: MockFullTextModels
+    ):
+        other_body = LayoutBlock.for_text('the body')
+        citation_block = LayoutBlock.for_text('1')
+        body_block = LayoutBlock.merge_blocks([other_body, citation_block])
+        invalid_reference_block = LayoutBlock.for_text('This is an invalid reference 1')
+        ref_text_block = invalid_reference_block
+        ref_block = ref_text_block
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(extract_citation_fields=True)
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+        reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
+        citation_model_mock = fulltext_models_mock.citation_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            body_block, '<body>'
+        )
+        segmentation_model_mock.update_label_by_layout_block(
+            ref_block, '<references>'
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            other_body, '<section>'
+        )
+        fulltext_model_mock.update_label_by_layout_block(
+            citation_block, '<citation_marker>'
+        )
+
+        reference_segmenter_model_mock.update_label_by_layout_block(
+            ref_text_block, '<reference>'
+        )
+
+        citation_model_mock.update_label_by_layout_block(
+            invalid_reference_block, 'O'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            body_block,
+            ref_block
+        ])])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        reference_list = list(semantic_document.back_section.iter_by_type(SemanticReferenceList))
+        assert len(reference_list) == 1
+        references = list(reference_list[0].iter_by_type(SemanticInvalidReference))
+        assert len(references) == 1
+        assert references[0].get_text() == invalid_reference_block.text
 
     def test_should_extract_author_names_from_references_fields(  # pylint: disable=too-many-locals
         self, fulltext_models_mock: MockFullTextModels
