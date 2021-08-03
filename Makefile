@@ -1,3 +1,7 @@
+DOCKER_COMPOSE_DEV = docker-compose
+DOCKER_COMPOSE_CI = docker-compose -f docker-compose.yml
+DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
+
 VENV = venv
 
 ifeq ($(OS),Windows_NT)
@@ -19,14 +23,15 @@ PDFALTO_CONVERT_API_URL = http://localhost:$(SCIENCEBEAM_PARSER_PORT)/api/pdfalt
 EXAMPLE_PDF_DOCUMENT = test-data/minimal-example.pdf
 
 
-IMAGE_NAME = de4code/sciencebeam-parser_unstable
-IMAGE_TAG = develop
-
-
 SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH = 2000
 SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE = 1800
 SCIENCEBEAM_DELFT_BATCH_SIZE = 1
 SCIENCEBEAM_DELFT_STATEFUL = false
+
+
+DOCKER_PDFALTO_CONVERT_API_URL = http://sciencebeam-parser:8070/api/pdfalto
+DOCKER_DEV_RUN = $(DOCKER_COMPOSE) run --rm sciencebeam-parser-dev
+DOCKER_DEV_PYTHON = $(DOCKER_DEV_RUN) python
 
 
 venv-clean:
@@ -108,11 +113,61 @@ run:
 	$(PYTHON) -m sciencebeam_parser $(ARGS)
 
 
-docker-build:
-	docker build . -t $(IMAGE_NAME):$(IMAGE_TAG)
+docker-build-all:
+	$(DOCKER_COMPOSE) build
 
 
-docker-run:
-	docker run --rm \
-		-p 8072:8070 \
-		$(IMAGE_NAME):$(IMAGE_TAG) $(ARGS)
+docker-lint:
+	$(MAKE) PYTHON="$(DOCKER_DEV_PYTHON)" dev-lint
+
+
+docker-pytest:
+	$(MAKE) PYTHON="$(DOCKER_DEV_PYTHON)" dev-pytest
+
+
+docker-wait-for-api:
+	$(DOCKER_COMPOSE) run --rm wait-for-it \
+		"sciencebeam-parser:8070" \
+		--timeout=30 \
+		--strict \
+		-- echo "ScienceBeam Parser API is up"
+
+
+docker-start:
+	$(DOCKER_COMPOSE) up -d
+
+
+docker-stop:
+	$(DOCKER_COMPOSE) down
+
+
+docker-start-and-wait-for-api:
+	$(MAKE) docker-start
+	$(MAKE) docker-wait-for-api
+
+
+docker-end-to-end: docker-start-and-wait-for-api
+	$(DOCKER_DEV_RUN) curl --fail --show-error \
+		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
+		--silent "$(DOCKER_PDFALTO_CONVERT_API_URL)" \
+		--output /dev/null
+
+
+ci-build-all:
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-build-all
+
+
+ci-lint:
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-lint
+
+
+ci-pytest:
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-pytest
+
+
+ci-end-to-end:
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end
+
+
+ci-clean:
+	$(DOCKER_COMPOSE_CI) down -v

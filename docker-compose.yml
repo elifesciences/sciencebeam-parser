@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  sciencebeam-parser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: elifesciences/sciencebeam-parser:${IMAGE_TAG}
+
+  sciencebeam-parser-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    image: elifesciences/sciencebeam-parser-dev:${IMAGE_TAG}
+
+  wait-for-it:
+    image: willwill/wait-for-it

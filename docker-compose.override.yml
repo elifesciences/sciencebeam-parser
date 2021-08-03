@@ -1,0 +1,6 @@
+version: '3.4'
+
+services:
+  sciencebeam-parser:
+    ports:
+      - "${SCIENCEBEAM_PARSER_PORT}:8070"

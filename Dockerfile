@@ -1,4 +1,4 @@
-FROM python:3.7.10-buster as base
+FROM python:3.7.10-buster AS base
 
 
 # shared between builder and runtime image
@@ -11,7 +11,7 @@ WORKDIR /opt/sciencebeam_parser
 
 
 # builder
-FROM base as builder
+FROM base AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -31,8 +31,20 @@ COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location --user -r requirements.txt
 
 
+# dev image
+FROM builder AS dev
+
+COPY requirements.dev.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location --user -r requirements.dev.txt
+
+COPY sciencebeam_parser ./sciencebeam_parser
+COPY tests ./tests
+COPY test-data ./test-data
+COPY .flake8 .pylintrc setup.py config.yml ./
+
+
 # runtime image
-FROM base
+FROM base AS runtime
 
 COPY --from=builder /root/.local /root/.local
 

@@ -96,13 +96,13 @@ curl --fail --show-error \
 ### Docker Usage
 
 ```bash
-docker pull de4code/sciencebeam_parser-poc_unstable
+docker pull elifesciences/sciencebeam_parser-poc_unstable
 ```
 
 ```bash
 docker run --rm \
     -p 8070:8070 \
-    de4code/sciencebeam_parser-poc_unstable
+    elifesciences/sciencebeam_parser-poc_unstable
 ```
 
 ## See also
