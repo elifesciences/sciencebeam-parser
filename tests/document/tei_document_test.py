@@ -2,12 +2,12 @@ import logging
 
 from lxml import etree
 
-from pygrobid.document.layout_document import (
+from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutToken,
     LayoutFont
 )
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.semantic_document import (
     SemanticAbstract,
     SemanticAddressLine,
     SemanticAffiliationAddress,
@@ -56,7 +56,7 @@ from pygrobid.document.semantic_document import (
     SemanticTitle,
     SemanticVolume
 )
-from pygrobid.document.tei_document import (
+from sciencebeam_parser.document.tei_document import (
     TeiElementWrapper,
     get_text_content,
     get_tei_xpath_text_content_list,

@@ -10,4 +10,4 @@ elif [[ ${SUB_COMMAND} == "python" ]]; then
    exec "python" "${@}"
 fi
 
-exec python -m pygrobid.service.server "${@}"
+exec python -m sciencebeam_parser.service.server "${@}"

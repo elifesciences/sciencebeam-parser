@@ -3,8 +3,8 @@ from pathlib import Path
 from lxml import etree
 from lxml.builder import ElementMaker
 
-from pygrobid.lookup.country import SimpleCountryLookUp
-from pygrobid.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
+from sciencebeam_parser.lookup.country import SimpleCountryLookUp
+from sciencebeam_parser.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
 
 
 TEI_NS = 'http://www.tei-c.org/ns/1.0'

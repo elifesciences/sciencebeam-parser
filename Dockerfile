@@ -7,7 +7,7 @@ RUN apt-get update \
         dumb-init \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/pygrobid
+WORKDIR /opt/sciencebeam_parser
 
 
 # builder
@@ -36,7 +36,7 @@ FROM base
 
 COPY --from=builder /root/.local /root/.local
 
-COPY pygrobid ./pygrobid
+COPY sciencebeam_parser ./sciencebeam_parser
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
@@ -46,4 +46,4 @@ ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
 
 CMD [ "--port=8070", "--host=0.0.0.0" ]
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "/opt/pygrobid/docker/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/opt/sciencebeam_parser/docker/entrypoint.sh"]

@@ -1,7 +1,7 @@
 import logging
 
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.document.semantic_document import (
     SemanticAuthor,
     SemanticEditor,
     SemanticGivenName,
@@ -12,7 +12,7 @@ from pygrobid.document.semantic_document import (
     SemanticNote,
     SemanticSurname
 )
-from pygrobid.models.name.extract import NameSemanticExtractor
+from sciencebeam_parser.models.name.extract import NameSemanticExtractor
 
 
 LOGGER = logging.getLogger(__name__)

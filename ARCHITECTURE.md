@@ -5,11 +5,11 @@
 The following gives an overview of the processing:
 
 * PDF parsed using [pdfalto](https://github.com/kermitt2/pdfalto)
-* [pdfalto](https://github.com/kermitt2/pdfalto) XML parsed into [Layout Document](pygrobid/document/layout_document.py)
+* [pdfalto](https://github.com/kermitt2/pdfalto) XML parsed into [Layout Document](sciencebeam_parser/document/layout_document.py)
 * The layout document is re-tokenized
-* [FullText Processor](pygrobid/processors/fulltext.py):
-  * uses [models](pygrobid/models) to convert the [Layout Document](pygrobid/document/layout_document.py) to a [Semantic Document](pygrobid/document/semantic_document.py)
-* the [Semantic Document](pygrobid/document/semantic_document.py) is converted to [TEI XML](pygrobid/document/tei_document.py)
+* [FullText Processor](sciencebeam_parser/processors/fulltext.py):
+  * uses [models](sciencebeam_parser/models) to convert the [Layout Document](sciencebeam_parser/document/layout_document.py) to a [Semantic Document](sciencebeam_parser/document/semantic_document.py)
+* the [Semantic Document](sciencebeam_parser/document/semantic_document.py) is converted to [TEI XML](sciencebeam_parser/document/tei_document.py)
 
 ## Models
 
@@ -23,11 +23,11 @@ Models will often consist of:
   * Provides model-specific implementation with common interface
   * Usually by providing constructors for the data generator and semantic extractor
 
-A model will not directly interact with another model. The [FullText Processor](pygrobid/processors/fulltext.py) will handle those interactions.
+A model will not directly interact with another model. The [FullText Processor](sciencebeam_parser/processors/fulltext.py) will handle those interactions.
 
 ## Layout Document
 
-The [Layout Document](pygrobid/document/layout_document.py) represents the parsed input document without layout information.
+The [Layout Document](sciencebeam_parser/document/layout_document.py) represents the parsed input document without layout information.
 
 A layout document and all of it's classes should be treated as immutable.
 
@@ -35,7 +35,7 @@ A view may be created by constructing a layout document with a sub-set of the to
 
 ## Semantic Document
 
-The [Semantic Document](pygrobid/document/semantic_document.py)
+The [Semantic Document](sciencebeam_parser/document/semantic_document.py)
 represents the intermediate semantically extracted document.
 
 This semantic document is mutable and may be changed during processing. The type class is the main *semantic label*.
@@ -55,7 +55,7 @@ As the semantic content contains layout tokens, the original formatting can be p
 
 ## TEI Document
 
-The [TEI Document](pygrobid/document/tei_document.py) is used for the TEI XML output. It maps the [Semantic Document](pygrobid/document/semantic_document.py) to XML elements.
+The [TEI Document](sciencebeam_parser/document/tei_document.py) is used for the TEI XML output. It maps the [Semantic Document](sciencebeam_parser/document/semantic_document.py) to XML elements.
 
 Currently it will aim to output every content that is represented in the semantic document, by default as a `note`.
 
@@ -65,7 +65,7 @@ Formatting is preserved for most fields.
 
 ## Rest API
 
-The [rest API](pygrobid/service/blueprints/api.py) is the general entry point for the document conversion.
+The [rest API](sciencebeam_parser/service/blueprints/api.py) is the general entry point for the document conversion.
 
 Some of the end points:
 

@@ -24,17 +24,17 @@ def local_scheme(version):
 packages = find_packages(exclude=["tests", "tests.*"])
 
 setup(
-    name="pygrobid",
+    name="sciencebeam_parser",
     use_scm_version={
         "local_scheme": local_scheme
     },
     setup_requires=['setuptools_scm'],
     author="Daniel Ecer",
-    url="https://github.com/de-code/pygrobid",
+    url="https://github.com/de-code/sciencebeam_parser",
     install_requires=REQUIRED_PACKAGES,
     packages=packages,
     include_package_data=True,
-    description='Python implemention of GROBID.',
+    description='ScienceBeam Parser, parse scientific documents.',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     classifiers=[

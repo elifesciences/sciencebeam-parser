@@ -1,4 +1,4 @@
-from pygrobid.processors.ref_matching import (
+from sciencebeam_parser.processors.ref_matching import (
     get_normalized_key_text,
     get_token_prefix_normalized_key_text,
     SimpleContentIdMatcher,

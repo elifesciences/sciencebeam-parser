@@ -1,12 +1,12 @@
 import logging
 
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.document.semantic_document import (
     SemanticCaption,
     SemanticLabel,
     SemanticTable
 )
-from pygrobid.models.table.extract import (
+from sciencebeam_parser.models.table.extract import (
     TableSemanticExtractor
 )
 

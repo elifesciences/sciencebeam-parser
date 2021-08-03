@@ -1,6 +1,6 @@
 from itertools import islice
 
-from pygrobid.utils.misc import iter_ids
+from sciencebeam_parser.utils.misc import iter_ids
 
 
 class TestIterIds:

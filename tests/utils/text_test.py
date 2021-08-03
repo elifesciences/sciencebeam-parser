@@ -1,4 +1,4 @@
-from pygrobid.utils.text import normalize_text
+from sciencebeam_parser.utils.text import normalize_text
 
 
 class TestNormalizeText:

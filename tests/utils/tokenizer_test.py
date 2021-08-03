@@ -1,4 +1,4 @@
-from pygrobid.utils.tokenizer import iter_tokenized_tokens
+from sciencebeam_parser.utils.tokenizer import iter_tokenized_tokens
 
 
 class TestIterTokenizedTokens:

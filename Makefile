@@ -13,13 +13,13 @@ SYSTEM_PYTHON = python3
 
 ARGS =
 
-PYGROBID_PORT = 8080
+SCIENCEBEAM_PARSER_PORT = 8080
 
-PDFALTO_CONVERT_API_URL = http://localhost:$(PYGROBID_PORT)/api/pdfalto
+PDFALTO_CONVERT_API_URL = http://localhost:$(SCIENCEBEAM_PARSER_PORT)/api/pdfalto
 EXAMPLE_PDF_DOCUMENT = test-data/minimal-example.pdf
 
 
-IMAGE_NAME = de4code/pygrobid-poc_unstable
+IMAGE_NAME = de4code/sciencebeam-parser_unstable
 IMAGE_TAG = develop
 
 
@@ -51,15 +51,15 @@ dev-venv: venv-create dev-install
 
 
 dev-flake8:
-	$(PYTHON) -m flake8 pygrobid tests setup.py
+	$(PYTHON) -m flake8 sciencebeam_parser tests setup.py
 
 
 dev-pylint:
-	$(PYTHON) -m pylint pygrobid tests setup.py
+	$(PYTHON) -m pylint sciencebeam_parser tests setup.py
 
 
 dev-mypy:
-	$(PYTHON) -m mypy --ignore-missing-imports pygrobid tests setup.py
+	$(PYTHON) -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
 
 
 dev-lint: dev-flake8 dev-pylint dev-mypy
@@ -81,19 +81,19 @@ dev-start:
 	SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=$(SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE) \
 	SCIENCEBEAM_DELFT_BATCH_SIZE=$(SCIENCEBEAM_DELFT_BATCH_SIZE) \
 	SCIENCEBEAM_DELFT_STATEFUL=$(SCIENCEBEAM_DELFT_STATEFUL) \
-		$(PYTHON) -m pygrobid.service.server --port=$(PYGROBID_PORT)
+		$(PYTHON) -m sciencebeam_parser.service.server --port=$(SCIENCEBEAM_PARSER_PORT)
 
 
 dev-start-debug:
 	FLASK_ENV=development \
-	PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL=DEBUG \
+	SCIENCEBEAM_PARSER__LOGGING__HANDLERS__LOG_FILE__LEVEL=DEBUG \
 	$(MAKE) dev-start
 
 
 dev-start-no-debug-logging-auto-reload:
 	FLASK_ENV=development \
 	FLASK_DEBUG=1 \
-	PYGROBID__LOGGING__HANDLERS__LOG_FILE__LEVEL=INFO \
+	SCIENCEBEAM_PARSER__LOGGING__HANDLERS__LOG_FILE__LEVEL=INFO \
 	$(MAKE) dev-start
 
 
@@ -105,7 +105,7 @@ dev-end-to-end:
 
 
 run:
-	$(PYTHON) -m pygrobid $(ARGS)
+	$(PYTHON) -m sciencebeam_parser $(ARGS)
 
 
 docker-build:

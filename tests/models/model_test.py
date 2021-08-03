@@ -1,4 +1,4 @@
-from pygrobid.document.layout_document import (
+from sciencebeam_parser.document.layout_document import (
     LayoutPage,
     get_layout_tokens_for_text,
     join_layout_tokens,
@@ -6,7 +6,7 @@ from pygrobid.document.layout_document import (
     LayoutBlock,
     LayoutLine
 )
-from pygrobid.models.model import (
+from sciencebeam_parser.models.model import (
     LayoutDocumentLabelResult,
     LayoutModelLabel,
     iter_entity_values_predicted_labels

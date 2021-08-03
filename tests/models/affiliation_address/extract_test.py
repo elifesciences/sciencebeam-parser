@@ -1,7 +1,7 @@
 import logging
 
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.document.semantic_document import (
     SemanticAddressLine,
     SemanticAffiliationAddress,
     SemanticCountry,
@@ -15,7 +15,9 @@ from pygrobid.document.semantic_document import (
     SemanticRegion,
     SemanticSettlement
 )
-from pygrobid.models.affiliation_address.extract import AffiliationAddressSemanticExtractor
+from sciencebeam_parser.models.affiliation_address.extract import (
+    AffiliationAddressSemanticExtractor
+)
 
 
 LOGGER = logging.getLogger(__name__)

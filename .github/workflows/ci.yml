@@ -44,7 +44,7 @@ jobs:
       - name: Set tags
         id: set_tags
         run: |
-          DOCKER_IMAGE=de4code/pygrobid-poc
+          DOCKER_IMAGE=de4code/sciencebeam-parser
           VERSION=""
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}

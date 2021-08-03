@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pygrobid.config.config import AppConfig
-from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.config.config import AppConfig
+from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
+from sciencebeam_parser.document.semantic_document import (
     SemanticAffiliationAddress,
     SemanticAuthor,
     SemanticCaption,
@@ -29,23 +29,23 @@ from pygrobid.document.semantic_document import (
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
-from pygrobid.models.data import (
+from sciencebeam_parser.models.data import (
     AppFeaturesContext,
     DEFAULT_APP_FEATURES_CONTEXT,
     DocumentFeaturesContext
 )
-from pygrobid.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
-from pygrobid.models.model import LayoutModelLabel, Model
-from pygrobid.models.segmentation.model import SegmentationModel
-from pygrobid.models.header.model import HeaderModel
-from pygrobid.models.affiliation_address.model import AffiliationAddressModel
-from pygrobid.models.name.model import NameModel
-from pygrobid.models.fulltext.model import FullTextModel
-from pygrobid.models.figure.model import FigureModel
-from pygrobid.models.table.model import TableModel
-from pygrobid.models.reference_segmenter.model import ReferenceSegmenterModel
-from pygrobid.models.citation.model import CitationModel
-from pygrobid.processors.fulltext import (
+from sciencebeam_parser.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
+from sciencebeam_parser.models.model import LayoutModelLabel, Model
+from sciencebeam_parser.models.segmentation.model import SegmentationModel
+from sciencebeam_parser.models.header.model import HeaderModel
+from sciencebeam_parser.models.affiliation_address.model import AffiliationAddressModel
+from sciencebeam_parser.models.name.model import NameModel
+from sciencebeam_parser.models.fulltext.model import FullTextModel
+from sciencebeam_parser.models.figure.model import FigureModel
+from sciencebeam_parser.models.table.model import TableModel
+from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
+from sciencebeam_parser.models.citation.model import CitationModel
+from sciencebeam_parser.processors.fulltext import (
     FullTextProcessor,
     FullTextModels,
     FullTextProcessorConfig

@@ -1,7 +1,7 @@
 from lxml.builder import ElementMaker
 
-from pygrobid.document.layout_document import LayoutPageCoordinates
-from pygrobid.external.pdfalto.parser import AltoParser, parse_alto_root, ALTO_NS
+from sciencebeam_parser.document.layout_document import LayoutPageCoordinates
+from sciencebeam_parser.external.pdfalto.parser import AltoParser, parse_alto_root, ALTO_NS
 
 
 ALTO_E = ElementMaker(namespace=ALTO_NS, nsmap={

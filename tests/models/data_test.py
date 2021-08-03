@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from pygrobid.document.layout_document import (
+from sciencebeam_parser.document.layout_document import (
     LayoutPageCoordinates,
     LayoutFont,
     LayoutToken
 )
-from pygrobid.models.data import (
+from sciencebeam_parser.models.data import (
     RelativeFontSizeFeature,
     LineIndentationStatusFeature,
     get_block_status_with_blockend_for_single_token,

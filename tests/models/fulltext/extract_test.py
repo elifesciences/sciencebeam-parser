@@ -1,8 +1,8 @@
 import logging
 from typing import Optional, Tuple
 
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.document.semantic_document import (
     SemanticFigureCitation,
     SemanticHeading,
     SemanticLabel,
@@ -14,7 +14,7 @@ from pygrobid.document.semantic_document import (
     SemanticTableCitation,
     SemanticTitle
 )
-from pygrobid.models.fulltext.extract import (
+from sciencebeam_parser.models.fulltext.extract import (
     get_section_label_and_title_from_layout_block,
     FullTextSemanticExtractor
 )

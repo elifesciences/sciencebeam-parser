@@ -1,4 +1,4 @@
-from pygrobid.document.layout_document import (
+from sciencebeam_parser.document.layout_document import (
     LayoutPageCoordinates,
     LayoutToken,
     LayoutLine,

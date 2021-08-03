@@ -1,4 +1,4 @@
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.semantic_document import (
     SemanticAbstract,
     SemanticFront,
     SemanticRawAddress,
@@ -6,13 +6,13 @@ from pygrobid.document.semantic_document import (
     SemanticRawAffiliationAddress,
     SemanticTitle
 )
-from pygrobid.document.layout_document import (
+from sciencebeam_parser.document.layout_document import (
     LOGGER,
     LayoutBlock,
     join_layout_tokens
 )
 
-from pygrobid.models.header.extract import (
+from sciencebeam_parser.models.header.extract import (
     HeaderSemanticExtractor,
     get_cleaned_abstract_text,
     get_cleaned_abstract_layout_block

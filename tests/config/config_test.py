@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from pygrobid.config.config import AppConfig
+from sciencebeam_parser.config.config import AppConfig
 
 
 @pytest.fixture(name='env_vars_mock')
@@ -29,7 +29,7 @@ class TestAppConfig:
         tmp_path: Path,
         env_vars_mock: dict
     ):
-        env_vars_mock['PYGROBID__KEY1'] = 'updated value1'
+        env_vars_mock['SCIENCEBEAM_PARSER__KEY1'] = 'updated value1'
         config_path = tmp_path / 'config.yml'
         config_path.write_text(yaml.dump({
             'key1': 'value1'
@@ -43,7 +43,7 @@ class TestAppConfig:
         tmp_path: Path,
         env_vars_mock: dict
     ):
-        env_vars_mock['PYGROBID__PARENT1__KEY1'] = 'updated value1'
+        env_vars_mock['SCIENCEBEAM_PARSER__PARENT1__KEY1'] = 'updated value1'
         config_path = tmp_path / 'config.yml'
         config_path.write_text(yaml.dump({
             'parent1': {
@@ -60,7 +60,7 @@ class TestAppConfig:
         tmp_path: Path,
         env_vars_mock: dict
     ):
-        env_vars_mock['PYGROBID__KEY1'] = '222'
+        env_vars_mock['SCIENCEBEAM_PARSER__KEY1'] = '222'
         config_path = tmp_path / 'config.yml'
         config_path.write_text(yaml.dump({
             'key1': 111

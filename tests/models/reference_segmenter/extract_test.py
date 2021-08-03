@@ -1,13 +1,15 @@
 import logging
 
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.document.semantic_document import (
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.document.semantic_document import (
     SemanticHeading,
     SemanticLabel,
     SemanticRawReference,
     SemanticRawReferenceText
 )
-from pygrobid.models.reference_segmenter.extract import ReferenceSegmenterSemanticExtractor
+from sciencebeam_parser.models.reference_segmenter.extract import (
+    ReferenceSegmenterSemanticExtractor
+)
 
 
 LOGGER = logging.getLogger(__name__)

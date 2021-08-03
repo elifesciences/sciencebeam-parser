@@ -1,6 +1,6 @@
 from lxml.builder import E
 
-from pygrobid.utils.xml import get_text_content
+from sciencebeam_parser.utils.xml import get_text_content
 
 
 class TestGetTextContent:

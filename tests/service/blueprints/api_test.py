@@ -13,9 +13,9 @@ from werkzeug.exceptions import BadRequest
 
 import pytest
 
-from pygrobid.config.config import AppConfig, DEFAULT_CONFIG_PATH
-from pygrobid.service.blueprints import api as api_module
-from pygrobid.service.blueprints.api import (
+from sciencebeam_parser.config.config import AppConfig, DEFAULT_CONFIG_PATH
+from sciencebeam_parser.service.blueprints import api as api_module
+from sciencebeam_parser.service.blueprints.api import (
     ApiBlueprint
 )
 

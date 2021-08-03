@@ -1,5 +1,5 @@
-from pygrobid.document.layout_document import LayoutBlock
-from pygrobid.models.extract import get_regex_cleaned_layout_block_with_prefix_suffix
+from sciencebeam_parser.document.layout_document import LayoutBlock
+from sciencebeam_parser.models.extract import get_regex_cleaned_layout_block_with_prefix_suffix
 
 
 class TestGetRegexCleanedLayoutBlockWithPrefixSuffix:

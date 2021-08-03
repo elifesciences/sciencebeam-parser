@@ -25,7 +25,7 @@ logging:
       handlers:
         - wsgi
         - log_file
-    pygrobid:
+    sciencebeam_parser:
       level: DEBUG
     __main__:
       level: DEBUG

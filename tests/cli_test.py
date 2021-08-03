@@ -1,4 +1,4 @@
-from pygrobid.cli import main
+from sciencebeam_parser.cli import main
 
 
 class TestMain:

@@ -1,9 +1,14 @@
 import logging
-from pygrobid.models.data import feature_linear_scaling_int
+from sciencebeam_parser.models.data import feature_linear_scaling_int
 
-from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutLine, LayoutPage
+from sciencebeam_parser.document.layout_document import (
+    LayoutBlock,
+    LayoutDocument,
+    LayoutLine,
+    LayoutPage
+)
 
-from pygrobid.models.segmentation.data import (
+from sciencebeam_parser.models.segmentation.data import (
     NBBINS_POSITION,
     SegmentationLineFeaturesProvider,
     get_text_pattern
