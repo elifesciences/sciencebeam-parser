@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from pygrobid.config.config import AppConfig
 from pygrobid.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
 from pygrobid.document.semantic_document import (
     SemanticAffiliationAddress,
@@ -189,6 +190,22 @@ def _get_layout_model_labels_for_block(
     ]
 
 
+class TestFullTextProcessorConfig:
+    @pytest.mark.parametrize("field_name,value", [
+        ("merge_raw_authors", False),
+        ("merge_raw_authors", True)
+    ])
+    def test_should_override_default_from_app_config(self, field_name: str, value: bool):
+        config = FullTextProcessorConfig.from_app_config(app_config=AppConfig(props={
+            'processors': {
+                'fulltext': {
+                    field_name: value
+                }
+            }
+        }))
+        assert getattr(config, field_name) is value
+
+
 class TestFullTextProcessor:
     def test_should_not_fail_with_empty_document(
         self, fulltext_models_mock: MockFullTextModels
@@ -342,7 +359,10 @@ class TestFullTextProcessor:
         authors_block = LayoutBlock.merge_blocks([
             given_name_block, other_block, surname_block
         ])
-        fulltext_processor = FullTextProcessor(fulltext_models_mock)
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            config=FullTextProcessorConfig(merge_raw_authors=True)
+        )
         header_block = authors_block
 
         segmentation_model_mock = fulltext_models_mock.segmentation_model_mock

@@ -229,6 +229,11 @@ class SemanticNote(SemanticSimpleContentWrapper):
     note_type: str = 'other'
 
 
+@dataclass
+class SemanticOptionalValueSemanticMixedContentWrapper(SemanticMixedContentWrapper):
+    value: Optional[str] = None
+
+
 class SemanticHeading(SemanticMixedContentWrapper):
     pass
 
@@ -301,9 +306,8 @@ class SemanticExternalIdentifier(SemanticSimpleContentWrapper):
     external_identifier_type: Optional[str] = None
 
 
-@dataclass
-class SemanticExternalUrl(SemanticSimpleContentWrapper):
-    value: Optional[str] = None
+class SemanticExternalUrl(SemanticOptionalValueSemanticMixedContentWrapper):
+    pass
 
 
 class SemanticAbstract(SemanticSimpleContentWrapper):
@@ -341,23 +345,27 @@ class SemanticMarker(SemanticSimpleContentWrapper):
     pass
 
 
-class SemanticNameTitle(SemanticMixedContentWrapper):
+class SemanticNamePart(SemanticOptionalValueSemanticMixedContentWrapper):
     pass
 
 
-class SemanticNameSuffix(SemanticMixedContentWrapper):
+class SemanticNameTitle(SemanticNamePart):
     pass
 
 
-class SemanticGivenName(SemanticMixedContentWrapper):
+class SemanticNameSuffix(SemanticNamePart):
     pass
 
 
-class SemanticMiddleName(SemanticMixedContentWrapper):
+class SemanticGivenName(SemanticNamePart):
     pass
 
 
-class SemanticSurname(SemanticMixedContentWrapper):
+class SemanticMiddleName(SemanticNamePart):
+    pass
+
+
+class SemanticSurname(SemanticNamePart):
     pass
 
 

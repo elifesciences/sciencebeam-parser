@@ -6,6 +6,7 @@ from pygrobid.document.semantic_document import (
     SemanticContentFactoryProtocol,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticNamePart,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
@@ -13,7 +14,7 @@ from pygrobid.document.semantic_document import (
     SemanticSurname,
     T_SemanticName
 )
-from pygrobid.document.layout_document import LayoutBlock
+from pygrobid.document.layout_document import LayoutBlock, LayoutDocument
 from pygrobid.models.extract import SimpleModelSemanticExtractor
 
 
@@ -30,6 +31,66 @@ SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtoco
     '<surname>': SemanticSurname,
     '<suffix>': SemanticNameSuffix
 }
+
+
+def tokenize_individual_characters(text: str) -> List[str]:
+    return list(text)
+
+
+def convert_two_letter_uppercase_given_name_to_given_middle_name(
+    name: T_SemanticName
+):
+    given_names = list(name.iter_by_type(SemanticGivenName))
+    middle_names = list(name.iter_by_type(SemanticMiddleName))
+    if middle_names:
+        LOGGER.debug('already has a middle name: %r', middle_names)
+        return
+    if len(given_names) != 1:
+        LOGGER.debug('no or too many given names: %r', given_names)
+        return
+    given_name_text = given_names[0].get_text()
+    if len(given_name_text) != 2 or not given_name_text.isupper():
+        LOGGER.debug('not two uppercase characters: %r', given_name_text)
+        return
+    layout_document = LayoutDocument.for_blocks(list(given_names[0].iter_blocks()))
+    retokenized_layout_document = layout_document.retokenize(
+        tokenize_fn=tokenize_individual_characters
+    )
+    LOGGER.debug('retokenized_layout_document: %r', retokenized_layout_document)
+    split_name_parts = [
+        (
+            SemanticGivenName(layout_block=LayoutBlock.for_tokens([token])) if index == 0
+            else SemanticMiddleName(layout_block=LayoutBlock.for_tokens([token]))
+        )
+        for index, token in enumerate(retokenized_layout_document.iter_all_tokens())
+    ]
+    LOGGER.debug('split_name_parts: %r', split_name_parts)
+    name.flat_map_inplace_by_type(
+        SemanticGivenName,
+        lambda _: split_name_parts
+    )
+
+
+def convert_name_parts_to_title_case(name: T_SemanticName):
+    for semantic_content in name:
+        if not isinstance(semantic_content, SemanticNamePart):
+            continue
+        semantic_content.value = semantic_content.get_text().title()
+
+
+# based on:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/data/Person.java#L375-L391
+# and:
+# https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/data/Person.java#L756-L775
+def normalize_name_parts(name: T_SemanticName):
+    if not list(name.iter_by_type(SemanticSurname)):
+        return SemanticNote(
+            layout_block=LayoutBlock.merge_blocks(name.iter_blocks()),
+            note_type='invalid_author_name'
+        )
+    convert_two_letter_uppercase_given_name_to_given_middle_name(name)
+    convert_name_parts_to_title_case(name)
+    return name
 
 
 class NameSemanticExtractor(SimpleModelSemanticExtractor):
@@ -67,7 +128,7 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                             'new semantic_name marker after comma, seen_name_labels=%s',
                             seen_name_labels
                         )
-                        yield semantic_name
+                        yield normalize_name_parts(semantic_name)
                         seen_name_labels = []
                         semantic_name = _name_type()
                         semantic_name.add_content(SemanticMarker(layout_block=layout_block))
@@ -83,14 +144,14 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                     'starting new semantic_name after having seen name part again, name=%r',
                     name
                 )
-                yield semantic_name
+                yield normalize_name_parts(semantic_name)
                 seen_name_labels = []
                 has_tail_marker = False
                 semantic_name = None
             if not isinstance(semantic_content, SemanticNote):
                 if has_tail_marker and semantic_name:
                     LOGGER.debug('starting new semantic_name after tail markers, name=%r', name)
-                    yield semantic_name
+                    yield normalize_name_parts(semantic_name)
                     seen_name_labels = []
                     has_tail_marker = False
                     semantic_name = None
@@ -99,4 +160,4 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                 semantic_name = _name_type()
             semantic_name.add_content(semantic_content)
         if semantic_name:
-            yield semantic_name
+            yield normalize_name_parts(semantic_name)

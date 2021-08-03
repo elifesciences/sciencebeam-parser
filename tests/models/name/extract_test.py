@@ -4,10 +4,13 @@ from pygrobid.document.layout_document import LayoutBlock
 from pygrobid.document.semantic_document import (
     SemanticAuthor,
     SemanticEditor,
+    SemanticGivenName,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNameSuffix,
-    SemanticNameTitle
+    SemanticNameTitle,
+    SemanticNote,
+    SemanticSurname
 )
 from pygrobid.models.name.extract import NameSemanticExtractor
 
@@ -271,3 +274,55 @@ class TestNameSemanticExtractor:
         assert author_2.given_name_text == 'Maria'
         assert author_2.surname_text == 'Madison'
         assert author_2.view_by_type(SemanticMarker).get_text_list() == ['2', '3']
+
+    def test_should_convert_name_parts_to_title_case(self):
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('JOHN')),
+                ('<middlename>', LayoutBlock.for_text('MIDDLE')),
+                ('<surname>', LayoutBlock.for_text('SMITH')),
+            ], name_type=SemanticAuthor)
+        )
+        assert len(semantic_content_list) == 1
+        author = semantic_content_list[0]
+        assert isinstance(author, SemanticAuthor)
+        given_name = list(author.iter_by_type(SemanticGivenName))[0]
+        assert given_name.get_text() == 'JOHN'
+        assert given_name.value == 'John'
+        middle_name = list(author.iter_by_type(SemanticMiddleName))[0]
+        assert middle_name.get_text() == 'MIDDLE'
+        assert middle_name.value == 'Middle'
+        surname = list(author.iter_by_type(SemanticSurname))[0]
+        assert surname.get_text() == 'SMITH'
+        assert surname.value == 'Smith'
+
+    def test_should_treat_two_letter_uppercase_given_name_as_given_midde_name(self):
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('JM')),
+                ('<surname>', LayoutBlock.for_text('SMITH')),
+            ], name_type=SemanticAuthor)
+        )
+        assert len(semantic_content_list) == 1
+        author = semantic_content_list[0]
+        assert isinstance(author, SemanticAuthor)
+        given_name = list(author.iter_by_type(SemanticGivenName))[0]
+        assert given_name.get_text() == 'J'
+        assert given_name.value == 'J'
+        middle_name = list(author.iter_by_type(SemanticMiddleName))[0]
+        assert middle_name.get_text() == 'M'
+        assert middle_name.value == 'M'
+        surname = list(author.iter_by_type(SemanticSurname))[0]
+        assert surname.get_text() == 'SMITH'
+        assert surname.value == 'Smith'
+
+    def test_should_consider_names_without_last_name_as_invalid(self):
+        semantic_content_list = list(
+            NameSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<forename>', LayoutBlock.for_text('J'))
+            ], name_type=SemanticAuthor)
+        )
+        assert len(semantic_content_list) == 1
+        author = semantic_content_list[0]
+        assert isinstance(author, SemanticNote)
+        assert author.get_text() == 'J'

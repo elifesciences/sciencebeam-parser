@@ -37,7 +37,7 @@ from pygrobid.document.semantic_document import (
 )
 from pygrobid.utils.text import normalize_text
 from pygrobid.utils.tokenizer import get_tokenized_tokens
-from pygrobid.processors.fulltext import FullTextProcessor, load_models
+from pygrobid.processors.fulltext import FullTextProcessor, FullTextProcessorConfig, load_models
 
 
 LOGGER = logging.getLogger(__name__)
@@ -314,9 +314,16 @@ class SegmentedModelNestedBluePrint(ModelNestedBluePrint):
 
 
 class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
-    def __init__(self, *args, header_model: Model, **kwargs):
+    def __init__(
+        self,
+        *args,
+        header_model: Model,
+        merge_raw_authors: bool,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.header_model = header_model
+        self.merge_raw_authors = merge_raw_authors
 
     def iter_filter_layout_document(
         self, layout_document: LayoutDocument
@@ -324,12 +331,33 @@ class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
         header_layout_document = self.filter_layout_document_by_segmentation_label(
             layout_document, '<header>'
         )
-        header_label_result = self.header_model.get_label_layout_document_result(
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
             header_layout_document
         )
-        return [header_label_result.get_filtered_document_by_label(
-            '<author>'
-        ).remove_empty_blocks()]
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_authors_list = list(
+            SemanticMixedContentWrapper(list(
+                self.header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawAuthors)
+        )
+        LOGGER.info('semantic_raw_authors_list count: %d', len(semantic_raw_authors_list))
+        LOGGER.info('merge_raw_authors: %s', self.merge_raw_authors)
+        if self.merge_raw_authors:
+            return [
+                LayoutDocument.for_blocks([
+                    block
+                    for semantic_raw_authors in semantic_raw_authors_list
+                    for block in semantic_raw_authors.iter_blocks()
+                ]).remove_empty_blocks()
+            ]
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_authors.iter_blocks())
+            ).remove_empty_blocks()
+            for semantic_raw_authors in semantic_raw_authors_list
+        ]
 
 
 class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
@@ -545,9 +573,11 @@ class ApiBlueprint(Blueprint):
             config,
             download_manager=self.download_manager
         )
+        fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
         self.fulltext_processor = FullTextProcessor(
             fulltext_models,
-            app_features_context=app_features_context
+            app_features_context=app_features_context,
+            config=fulltext_processor_config
         )
         ModelNestedBluePrint(
             'Segmentation',
@@ -570,7 +600,8 @@ class ApiBlueprint(Blueprint):
             app_features_context=app_features_context,
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<header>'],
-            header_model=fulltext_models.header_model
+            header_model=fulltext_models.header_model,
+            merge_raw_authors=fulltext_processor_config.merge_raw_authors
         ).add_routes(self, '/models/name-header')
         AffiliationAddressModelNestedBluePrint(
             'Affiliation Address',

@@ -50,9 +50,11 @@ from pygrobid.document.semantic_document import (
     SemanticMarker,
     SemanticMiddleName,
     SemanticMixedContentWrapper,
+    SemanticNamePart,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
+    SemanticOptionalValueSemanticMixedContentWrapper,
     SemanticPageRange,
     SemanticParagraph,
     SemanticPostBox,
@@ -534,6 +536,23 @@ def get_tei_element_for_external_identifier(
     return TEI_E('idno', attributes, external_identifier.value)
 
 
+def get_tei_element_for_name_part(
+    name_part: SemanticContentWrapper,
+    tag_expression: TagExpression
+) -> etree.ElementBase:
+    assert isinstance(name_part, SemanticNamePart)
+    if LOGGER.isEnabledFor(logging.DEBUG):
+        LOGGER.debug(
+            'name_part: type=%r, value=%r, text=%r',
+            type(name_part),
+            name_part.value,
+            name_part.get_text()
+        )
+    attributes = get_default_attributes_for_semantic_content(name_part)
+    value = name_part.value or name_part.get_text()
+    return tag_expression.create_node(attributes, value)
+
+
 CITATION_TYPE_BY_SEMANTIC_CLASS: Mapping[Type[Any], str] = {
     SemanticFigureCitation: 'figure',
     SemanticTableCitation: 'table',
@@ -704,6 +723,18 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     Type[Any],
     Callable[[SemanticContentWrapper], etree.ElementBase]
 ] = {
+    # SemanticGivenName: functools.partial(
+    #     get_tei_element_for_name_part,
+    #     tag_expression=_parse_tag_expression('forename[@type="first"]')
+    # ),
+    # SemanticGivenName: functools.partial(
+    #     get_tei_element_for_name_part,
+    #     tag_expression=_parse_tag_expression('forename[@type="first"]')
+    # ),
+    # SemanticGivenName: functools.partial(
+    #     get_tei_element_for_name_part,
+    #     tag_expression=_parse_tag_expression('forename[@type="first"]')
+    # ),
     SemanticPageRange: get_tei_biblscope_for_page_range,
     SemanticExternalIdentifier: get_tei_element_for_external_identifier,
     SemanticFigure: get_tei_element_for_figure,
@@ -741,6 +772,14 @@ def get_tei_child_element_for_semantic_content(
         semantic_type
     )
     if parsed_tag_expression:
+        if (
+            isinstance(semantic_content, SemanticOptionalValueSemanticMixedContentWrapper)
+            and semantic_content.value is not None
+        ):
+            return parsed_tag_expression.create_node(
+                get_default_attributes_for_semantic_content(semantic_content),
+                semantic_content.value
+            )
         return parsed_tag_expression.create_node(
             *iter_layout_block_tei_children(semantic_content.merged_block)
         )

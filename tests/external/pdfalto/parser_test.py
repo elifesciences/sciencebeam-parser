@@ -94,12 +94,6 @@ class TestAltoParser:
         assert font.is_subscript is False
         assert font.is_superscript is True
 
-    def test_should_replace_asterisk_operator_character_with_regular_asterisk(self):
-        token = AltoParser().parse_token(ALTO_E.String(
-            CONTENT='\u2217'
-        ), page_index=0)
-        assert token.text == '*'
-
 
 class TestParseAltoRoot:
     def test_should_parse_simple_document(self):

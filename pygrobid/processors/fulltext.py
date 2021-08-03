@@ -137,6 +137,13 @@ class FullTextProcessorConfig(NamedTuple):
     extract_citation_editors: bool = False
     extract_figure_fields: bool = True
     extract_table_fields: bool = True
+    merge_raw_authors: bool = False
+
+    @staticmethod
+    def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
+        return FullTextProcessorConfig()._replace(
+            **app_config.get('processors', {}).get('fulltext', {})
+        )
 
 
 class FullTextProcessor:
@@ -321,18 +328,30 @@ class FullTextProcessor:
                 continue
             result_content.append(semantic_content)
         if raw_authors:
-            raw_authors_layout_document = LayoutDocument.for_blocks([
-                block
-                for raw_author in raw_authors
-                for block in raw_author.iter_blocks()
-            ])
-            labeled_layout_tokens = self.name_header_model.predict_labels_for_layout_document(
-                raw_authors_layout_document
+            if self.config.merge_raw_authors:
+                raw_authors_layout_documents = [
+                    LayoutDocument.for_blocks([
+                        block
+                        for raw_author in raw_authors
+                        for block in raw_author.iter_blocks()
+                    ])
+                ]
+            else:
+                raw_authors_layout_documents = [
+                    LayoutDocument.for_blocks(list(raw_author.iter_blocks()))
+                    for raw_author in raw_authors
+                ]
+            labeled_layout_tokens_list = self.name_header_model.predict_labels_for_layout_documents(
+                raw_authors_layout_documents
             )
-            LOGGER.debug('labeled_layout_tokens (author): %r', labeled_layout_tokens)
+            LOGGER.debug('labeled_layout_tokens_list (author): %r', labeled_layout_tokens_list)
             authors_iterable = (
-                self.name_header_model.iter_semantic_content_for_labeled_layout_tokens(
-                    labeled_layout_tokens
+                author
+                for labeled_layout_tokens in labeled_layout_tokens_list
+                for author in (
+                    self.name_header_model.iter_semantic_content_for_labeled_layout_tokens(
+                        labeled_layout_tokens
+                    )
                 )
             )
             for author in authors_iterable:

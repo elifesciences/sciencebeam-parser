@@ -563,6 +563,28 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
             '//tei:author//tei:genName'
         ) == ['Suffix1']
 
+    def test_should_use_author_name_part_values(self):
+        semantic_document = SemanticDocument()
+        given_name = SemanticGivenName(layout_block=LayoutBlock.for_text('GIVEN1'))
+        given_name.value = 'Given1'
+        middle_name = SemanticMiddleName(layout_block=LayoutBlock.for_text('MIDDLE1'))
+        middle_name.value = 'Middle1'
+        surname = SemanticSurname(layout_block=LayoutBlock.for_text('SURNAME1'))
+        surname.value = 'Surname1'
+        author = SemanticAuthor([given_name, middle_name, surname])
+        semantic_document.front.add_content(author)
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:forename[@type="first"]'
+        ) == ['Given1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:forename[@type="middle"]'
+        ) == ['Middle1']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:author//tei:surname'
+        ) == ['Surname1']
+
     def test_should_add_single_author_with_affiliation(self):
         semantic_document = SemanticDocument()
         title = SemanticNameTitle(layout_block=LayoutBlock.for_text('Title1'))
