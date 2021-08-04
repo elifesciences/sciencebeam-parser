@@ -35,6 +35,8 @@ logging:
       level: INFO
 pdfalto:
   path: https://github.com/kermitt2/pdfalto/files/6104204/pdfalto-4b4e983413278a07bb4cc4b2836de03adc8ca6dc-dockcross-linux-64.gz
+wapiti:
+  install_source: 'https://github.com/kermitt2/Wapiti/archive/5f9a52351fddf21916008daa4becd41d56e7f608.tar.gz'
 lookup:
   country: https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/countries/CountryCodes.xml
 processors:
@@ -46,9 +48,13 @@ models:
   header:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-header-biorxiv-no-word-embedding.tar.gz'
   name-header:
-    path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-21-grobid-0.6.1-name-header-no-word-embedding-no-layout-features-e800.tar.gz'
+    # path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-21-grobid-0.6.1-name-header-no-word-embedding-no-layout-features-e800.tar.gz'
+    path: 'https://github.com/kermitt2/grobid/raw/0.6.2/grobid-home/models/name/header'
+    engine: 'wapiti'
   name-citation:
-    path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-28-grobid-0.6.1-name-citation-no-word-embedding-no-layout-features-e500.tar.gz'
+    # path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-28-grobid-0.6.1-name-citation-no-word-embedding-no-layout-features-e500.tar.gz'
+    path: 'https://github.com/kermitt2/grobid/raw/0.6.2/grobid-home/models/name/citation'
+    engine: 'wapiti'
   affiliation-address:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-affiliation-address-biorxiv-no-word-embedding.tar.gz'
   fulltext:

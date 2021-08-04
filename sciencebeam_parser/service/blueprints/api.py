@@ -15,9 +15,11 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     iter_format_tag_result
 )
 
+from sciencebeam_parser.app.context import AppContext
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
+from sciencebeam_parser.external.wapiti.wrapper import LazyWapitiBinaryWrapper
 from sciencebeam_parser.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
 from sciencebeam_parser.lookup.country import CountryLookUp
 from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesContext
@@ -572,7 +574,15 @@ class ApiBlueprint(Blueprint):
             self.download_manager.download_if_url(config['pdfalto']['path'])
         )
         self.pdfalto_wrapper.ensure_excutable()
-        fulltext_models = load_models(config)
+        self.app_context = AppContext(
+            app_config=config,
+            download_manager=self.download_manager,
+            lazy_wapiti_binary_wrapper=LazyWapitiBinaryWrapper(
+                install_url=config.get('wapiti', {}).get('install_source'),
+                download_manager=self.download_manager
+            )
+        )
+        fulltext_models = load_models(config, app_context=self.app_context)
         app_features_context = load_app_features_context(
             config,
             download_manager=self.download_manager

@@ -33,6 +33,11 @@ class DelftModelImpl(ModelImpl):
         self.model_url = model_url
         self._model: Optional[Sequence] = None
 
+    def __repr__(self) -> str:
+        return '%s(%r, loaded=%r)' % (
+            type(self).__name__, self.model_url, self._model is not None
+        )
+
     @property
     def model(self) -> Sequence:
         if self._model is not None:

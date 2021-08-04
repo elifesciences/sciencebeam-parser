@@ -13,10 +13,11 @@ from typing import (
     Union
 )
 
+from sciencebeam_parser.app.context import AppContext
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.models.data import AppFeaturesContext, DEFAULT_APP_FEATURES_CONTEXT
 from sciencebeam_parser.models.model import LayoutDocumentLabelResult, Model
-from sciencebeam_parser.models.model_impl_factory import get_delft_model_impl_factory_for_config
+from sciencebeam_parser.models.model_impl_factory import get_model_impl_factory_for_config
 from sciencebeam_parser.utils.misc import iter_ids
 
 from sciencebeam_parser.document.semantic_document import (
@@ -85,37 +86,47 @@ class FullTextModels:
     citation_model: CitationModel
 
 
-def load_models(app_config: AppConfig) -> FullTextModels:
+def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
     models_config = app_config['models']
-    segmentation_model = SegmentationModel(get_delft_model_impl_factory_for_config(
-        models_config['segmentation']
+    segmentation_model = SegmentationModel(get_model_impl_factory_for_config(
+        models_config['segmentation'],
+        app_context=app_context
     ))
-    header_model = HeaderModel(get_delft_model_impl_factory_for_config(
-        models_config['header']
+    header_model = HeaderModel(get_model_impl_factory_for_config(
+        models_config['header'],
+        app_context=app_context
     ))
-    name_header_model = NameModel(get_delft_model_impl_factory_for_config(
-        models_config['name-header']
+    name_header_model = NameModel(get_model_impl_factory_for_config(
+        models_config['name-header'],
+        app_context=app_context
     ))
-    name_citation_model = NameModel(get_delft_model_impl_factory_for_config(
-        models_config['name-citation']
+    name_citation_model = NameModel(get_model_impl_factory_for_config(
+        models_config['name-citation'],
+        app_context=app_context
     ))
-    affiliation_address_model = AffiliationAddressModel(get_delft_model_impl_factory_for_config(
-        models_config['affiliation-address']
+    affiliation_address_model = AffiliationAddressModel(get_model_impl_factory_for_config(
+        models_config['affiliation-address'],
+        app_context=app_context
     ))
-    fulltext_model = FullTextModel(get_delft_model_impl_factory_for_config(
-        models_config['fulltext']
+    fulltext_model = FullTextModel(get_model_impl_factory_for_config(
+        models_config['fulltext'],
+        app_context=app_context
     ))
-    figure_model = FigureModel(get_delft_model_impl_factory_for_config(
-        models_config['figure']
+    figure_model = FigureModel(get_model_impl_factory_for_config(
+        models_config['figure'],
+        app_context=app_context
     ))
-    table_model = TableModel(get_delft_model_impl_factory_for_config(
-        models_config['table']
+    table_model = TableModel(get_model_impl_factory_for_config(
+        models_config['table'],
+        app_context=app_context
     ))
-    reference_segmenter_model = ReferenceSegmenterModel(get_delft_model_impl_factory_for_config(
-        models_config['reference-segmenter']
+    reference_segmenter_model = ReferenceSegmenterModel(get_model_impl_factory_for_config(
+        models_config['reference-segmenter'],
+        app_context=app_context
     ))
-    citation_model = CitationModel(get_delft_model_impl_factory_for_config(
-        models_config['citation']
+    citation_model = CitationModel(get_model_impl_factory_for_config(
+        models_config['citation'],
+        app_context=app_context
     ))
     return FullTextModels(
         segmentation_model=segmentation_model,

@@ -6,8 +6,8 @@ However, it may deviate more in the future.
 
 ## Pre-requisites
 
-This currently only supports Linux due to the binaries used (`pdfalto`).
-Other plaforms are supported Docker.
+This currently only supports Linux due to the binaries used (`pdfalto`, `wapiti`).
+Other plaforms are supported via Docker.
 It may also be used on other platforms without Docker, provided matching binaries are configured.
 
 ## Development
