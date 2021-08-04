@@ -1,5 +1,6 @@
 import os
 import logging
+import threading
 from typing import Iterable, Optional, List, Tuple
 
 import numpy as np
@@ -20,6 +21,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class WapitiServiceModelAdapter(WapitiModelAdapter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._lock = threading.Lock()
+
     @staticmethod
     def load_from(
             model_path: str,
@@ -57,7 +62,8 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
         # by default, WapitiModelAdapter will run the binary for each call
         # using "iter_tag_using_model" will result in a wapiti process
         # that we communicate with via stdin / stdout
-        return self.iter_tag_using_model(x, features, output_format)
+        with self._lock:
+            return self.iter_tag_using_model(x, features, output_format)
 
 
 class WapitiModelImpl(ModelImpl):
