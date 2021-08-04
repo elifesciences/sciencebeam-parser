@@ -30,7 +30,7 @@ setup(
     },
     setup_requires=['setuptools_scm'],
     author="Daniel Ecer",
-    url="https://github.com/de-code/sciencebeam_parser",
+    url="https://github.com/elifesciences/sciencebeam-parser",
     install_requires=REQUIRED_PACKAGES,
     packages=packages,
     include_package_data=True,
