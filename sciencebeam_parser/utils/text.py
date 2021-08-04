@@ -1,3 +1,5 @@
+import re
+
 # mostly copied from:
 # https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L773-L948
 # added: '\u2010' .. '\u2015', '`'
@@ -50,4 +52,13 @@ REPLACEMENT_CHARACTER_BY_CHARACTER_TRANSLATION = str.maketrans(
 
 
 def normalize_text(text: str) -> str:
-    return text.translate(REPLACEMENT_CHARACTER_BY_CHARACTER_TRANSLATION)
+    return re.sub(
+        r'\s{2,}',
+        ' ',
+        re.sub(
+            r'\s*\n\s*',
+            '\n',
+            text.translate(REPLACEMENT_CHARACTER_BY_CHARACTER_TRANSLATION),
+            flags=re.RegexFlag.MULTILINE
+        )
+    )
