@@ -24,6 +24,9 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._lock = threading.Lock()
+        self._wapiti_timeout = 20.0
+        self._wapiti_timeout_counter = 0
+        self._wapiti_trial_count = 10
 
     @staticmethod
     def load_from(
@@ -53,6 +56,57 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
             model_path=model_path
         )
 
+    def stop(self):
+        wapiti_model = self._wapiti_model
+        if wapiti_model is None:
+            return
+        self._wapiti_model = None
+        LOGGER.info('stopping wapiti process: %s', wapiti_model.process.pid)
+        wapiti_model.process.kill()
+
+    def on_wapiti_timeout(self):
+        self._wapiti_timeout_counter += 1
+        LOGGER.info(
+            'wapiti timeout (%s, counter=%d)',
+            self._wapiti_timeout, self._wapiti_timeout_counter
+        )
+        self.stop()
+
+    def _get_tag_results_with_timeout(
+        self,
+        x: np.ndarray,
+        features: np.ndarray,
+        output_format: str = None
+    ) -> List[List[Tuple[str, str]]]:
+        prev_wapiti_timeout_counter = self._wapiti_timeout_counter
+        timer = threading.Timer(self._wapiti_timeout, self.on_wapiti_timeout)
+        timer.start()
+        result = list(self.iter_tag_using_model(x, features, output_format))
+        timer.cancel()
+        if self._wapiti_timeout_counter != prev_wapiti_timeout_counter:
+            raise TimeoutError('wapiti timeout received during processing')
+        return result
+
+    def _get_tag_results_with_timeout_and_retry(
+        self,
+        x: np.ndarray,
+        features: np.ndarray,
+        output_format: str = None
+    ) -> List[List[Tuple[str, str]]]:
+        attempt = 0
+        while True:
+            try:
+                return self._get_tag_results_with_timeout(x, features, output_format)
+            except Exception as exc:  # pylint: disable=broad-except
+                attempt += 1
+                LOGGER.warning(
+                    'received error processing data: %r, attempt=%d/%d, texts=%r',
+                    exc, attempt, self._wapiti_trial_count, list(x), exc_info=True
+                )
+                if attempt >= self._wapiti_trial_count:
+                    LOGGER.warning('final attempt, re-raising exception')
+                    raise
+
     def iter_tag(
         self,
         x: np.ndarray,
@@ -63,7 +117,7 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
         # using "iter_tag_using_model" will result in a wapiti process
         # that we communicate with via stdin / stdout
         with self._lock:
-            return self.iter_tag_using_model(x, features, output_format)
+            yield from self._get_tag_results_with_timeout_and_retry(x, features, output_format)
 
 
 class WapitiModelImpl(ModelImpl):
