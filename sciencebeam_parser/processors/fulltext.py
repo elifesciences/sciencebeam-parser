@@ -97,15 +97,15 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
         app_context=app_context
     ))
     name_header_model = NameModel(get_model_impl_factory_for_config(
-        models_config['name-header'],
+        models_config['name_header'],
         app_context=app_context
     ))
     name_citation_model = NameModel(get_model_impl_factory_for_config(
-        models_config['name-citation'],
+        models_config['name_citation'],
         app_context=app_context
     ))
     affiliation_address_model = AffiliationAddressModel(get_model_impl_factory_for_config(
-        models_config['affiliation-address'],
+        models_config['affiliation_address'],
         app_context=app_context
     ))
     fulltext_model = FullTextModel(get_model_impl_factory_for_config(
@@ -121,7 +121,7 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
         app_context=app_context
     ))
     reference_segmenter_model = ReferenceSegmenterModel(get_model_impl_factory_for_config(
-        models_config['reference-segmenter'],
+        models_config['reference_segmenter'],
         app_context=app_context
     ))
     citation_model = CitationModel(get_model_impl_factory_for_config(
