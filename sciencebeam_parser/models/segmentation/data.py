@@ -244,7 +244,7 @@ class SegmentationDataGenerator(ModelDataGenerator):
                 features.get_str_is_single_char(),
                 features.get_dummy_str_is_proper_name(),
                 features.get_dummy_str_is_common_name(),
-                features.get_dummy_str_is_first_name(),
+                features.get_str_is_first_name(),
                 features.get_dummy_str_is_year(),
                 features.get_dummy_str_is_month(),
                 features.get_dummy_str_is_email(),

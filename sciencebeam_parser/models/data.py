@@ -7,7 +7,7 @@ from typing import Iterable, List, NamedTuple, Optional
 
 from lxml import etree
 
-from sciencebeam_parser.lookup.country import CountryLookUp
+from sciencebeam_parser.lookup import TextLookUp
 from sciencebeam_parser.document.layout_document import LayoutDocument, LayoutToken,  LayoutLine
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 
@@ -445,7 +445,9 @@ _LINESCALE = 10
 
 
 class AppFeaturesContext(NamedTuple):
-    country_lookup: Optional[CountryLookUp] = None
+    country_lookup: Optional[TextLookUp] = None
+    first_name_lookup: Optional[TextLookUp] = None
+    last_name_lookup: Optional[TextLookUp] = None
 
 
 DEFAULT_APP_FEATURES_CONTEXT = AppFeaturesContext()
@@ -616,12 +618,26 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
             12
         ))
 
-    def get_str_is_country(self) -> str:
-        country_lookup = self.document_features_context.app_features_context.country_lookup
-        if not country_lookup:
+    def _get_str_lookup(self, lookup: Optional[TextLookUp]) -> str:
+        if not lookup:
             return get_str_bool_feature_value(False)
         return get_str_bool_feature_value(
-            country_lookup.is_country(self.token_text)
+            lookup.contains(self.token_text)
+        )
+
+    def get_str_is_country(self) -> str:
+        return self._get_str_lookup(
+            self.document_features_context.app_features_context.country_lookup
+        )
+
+    def get_str_is_first_name(self) -> str:
+        return self._get_str_lookup(
+            self.document_features_context.app_features_context.first_name_lookup
+        )
+
+    def get_str_is_last_name(self) -> str:
+        return self._get_str_lookup(
+            self.document_features_context.app_features_context.last_name_lookup
         )
 
     def get_dummy_str_relative_document_position(self):

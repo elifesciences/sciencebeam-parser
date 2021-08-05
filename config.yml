@@ -38,7 +38,18 @@ pdfalto:
 wapiti:
   install_source: 'https://github.com/kermitt2/Wapiti/archive/5f9a52351fddf21916008daa4becd41d56e7f608.tar.gz'
 lookup:
-  country: https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/countries/CountryCodes.xml
+  country:
+    paths:
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/countries/CountryCodes.xml
+  first_name:
+    paths:
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/names/firstname.5k
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/names/names.female
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/names/names.male
+  last_name:
+    paths:
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/names/lastname.5k
+      - https://raw.githubusercontent.com/kermitt2/grobid/0.6.2/grobid-home/lexicon/names/names.family
 processors:
   fulltext:
     merge_raw_authors: false

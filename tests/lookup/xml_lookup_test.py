@@ -3,8 +3,8 @@ from pathlib import Path
 from lxml import etree
 from lxml.builder import ElementMaker
 
-from sciencebeam_parser.lookup.country import SimpleCountryLookUp
-from sciencebeam_parser.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
+from sciencebeam_parser.lookup import SimpleTextLookUp
+from sciencebeam_parser.lookup.xml_lookup import load_xml_lookup_from_file
 
 
 TEI_NS = 'http://www.tei-c.org/ns/1.0'
@@ -32,10 +32,10 @@ class TestLoadXmlCountryLookupFromFile:
                 )
             ))))
         )))
-        country_lookup = load_xml_country_lookup_from_file(str(country_xml_file))
-        assert isinstance(country_lookup, SimpleCountryLookUp)
-        assert country_lookup.is_country('OTHER') is False
-        assert country_lookup.is_country('GB') is True
-        assert country_lookup.is_country('GBR') is True
-        assert country_lookup.is_country('UK') is True
-        assert country_lookup.is_country('uk') is True
+        country_lookup = load_xml_lookup_from_file(str(country_xml_file))
+        assert isinstance(country_lookup, SimpleTextLookUp)
+        assert country_lookup.contains('OTHER') is False
+        assert country_lookup.contains('GB') is True
+        assert country_lookup.contains('GBR') is True
+        assert country_lookup.contains('UK') is True
+        assert country_lookup.contains('uk') is True

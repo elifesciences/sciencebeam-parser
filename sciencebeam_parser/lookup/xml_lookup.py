@@ -3,7 +3,7 @@ import logging
 from lxml import etree
 
 from sciencebeam_parser.utils.xml import get_text_content
-from sciencebeam_parser.lookup.country import CountryLookUp, SimpleCountryLookUp
+from sciencebeam_parser.lookup import TextLookUp, SimpleTextLookUp
 
 
 LOGGER = logging.getLogger(__name__)
@@ -19,13 +19,13 @@ TEI_NS_MAP = {
 TEI_CELL = TEI_NS_PREFIX + 'cell'
 
 
-def load_xml_country_lookup_from_file(
+def load_xml_lookup_from_file(
     filename: str
-) -> CountryLookUp:
+) -> TextLookUp:
     root = etree.parse(filename)
-    valid_country_texts = {
+    valid_texts = {
         get_text_content(node)
         for node in root.xpath('//tei:cell', namespaces=TEI_NS_MAP)
     }
-    LOGGER.debug('valid_country_texts: %s', valid_country_texts)
-    return SimpleCountryLookUp(valid_country_texts)
+    LOGGER.debug('valid_texts: %s', valid_texts)
+    return SimpleTextLookUp(valid_texts)

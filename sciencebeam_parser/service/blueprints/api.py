@@ -20,8 +20,7 @@ from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 from sciencebeam_parser.external.wapiti.wrapper import LazyWapitiBinaryWrapper
-from sciencebeam_parser.lookup.country.xml_country_lookup import load_xml_country_lookup_from_file
-from sciencebeam_parser.lookup.country import CountryLookUp
+from sciencebeam_parser.lookup.loader import load_lookup_from_config
 from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesContext
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.document.layout_document import LayoutDocument
@@ -537,25 +536,21 @@ class TableModelNestedBluePrint(FullTextChildModelNestedBluePrint):
         super().__init__(*args, semantic_type=SemanticRawTable, **kwargs)
 
 
-def load_country_lookup(
-    path: Optional[str],
-    download_manager: DownloadManager
-) -> Optional[CountryLookUp]:
-    if not path:
-        return None
-    LOGGER.info('loading country lookup from: %r', path)
-    return load_xml_country_lookup_from_file(
-        download_manager.download_if_url(path)
-    )
-
-
 def load_app_features_context(
     config: AppConfig,
     download_manager: DownloadManager
 ):
     return AppFeaturesContext(
-        country_lookup=load_country_lookup(
+        country_lookup=load_lookup_from_config(
             config.get('lookup', {}).get('country'),
+            download_manager=download_manager
+        ),
+        first_name_lookup=load_lookup_from_config(
+            config.get('lookup', {}).get('first_name'),
+            download_manager=download_manager
+        ),
+        last_name_lookup=load_lookup_from_config(
+            config.get('lookup', {}).get('last_name'),
             download_manager=download_manager
         )
     )
