@@ -49,7 +49,7 @@ models:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-header-biorxiv-no-word-embedding.tar.gz'
   name-header:
     # path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-21-grobid-0.6.1-name-header-no-word-embedding-no-layout-features-e800.tar.gz'
-    path: 'https://github.com/kermitt2/grobid/raw/0.6.2/grobid-home/models/name/header'
+    path: 'https://github.com/kermitt2/grobid/raw/0.6.0/grobid-home/models/name/header'
     engine: 'wapiti'
   name-citation:
     # path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/grobid-0.6.1/2021-06-28-grobid-0.6.1-name-citation-no-word-embedding-no-layout-features-e500.tar.gz'
