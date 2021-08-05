@@ -573,7 +573,7 @@ class ApiBlueprint(Blueprint):
         self.pdfalto_wrapper = PdfAltoWrapper(
             self.download_manager.download_if_url(config['pdfalto']['path'])
         )
-        self.pdfalto_wrapper.ensure_excutable()
+        self.pdfalto_wrapper.ensure_executable()
         self.app_context = AppContext(
             app_config=config,
             download_manager=self.download_manager,

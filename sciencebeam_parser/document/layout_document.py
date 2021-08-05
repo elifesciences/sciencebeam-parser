@@ -1,4 +1,6 @@
 import logging
+import itertools
+import operator
 from dataclasses import dataclass
 from functools import partial
 from typing import Callable, List, Iterable, NamedTuple, Optional, Tuple
@@ -65,11 +67,19 @@ def get_merged_coordinates_list(
     return result
 
 
+class LayoutLineDescriptor(NamedTuple):
+    line_id: int = -1
+
+
+DEFAULT_LAYOUT_LINE_DESCRIPTOR = LayoutLineDescriptor()
+
+
 class LayoutToken(NamedTuple):
     text: str
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '
     coordinates: Optional[LayoutPageCoordinates] = None
+    line_descriptor: LayoutLineDescriptor = DEFAULT_LAYOUT_LINE_DESCRIPTOR
 
 
 T_FlatMapLayoutTokensFn = Callable[[LayoutToken], List[LayoutToken]]
@@ -151,7 +161,8 @@ def retokenize_layout_token(
                 pending_token_text,
                 text_character_offset,
                 total_text_length
-            )
+            ),
+            line_descriptor=layout_token.line_descriptor
         )
         for token_text, whitespace, text_character_offset in texts_with_whitespace
     ]
@@ -212,7 +223,13 @@ class LayoutBlock:
     def for_tokens(tokens: List[LayoutToken]) -> 'LayoutBlock':
         if not tokens:
             return EMPTY_BLOCK
-        return LayoutBlock(lines=[LayoutLine(tokens=tokens)])
+        lines = [
+            LayoutLine(tokens=list(line_tokens))
+            for _, line_tokens in itertools.groupby(
+                tokens, key=operator.attrgetter('line_descriptor')
+            )
+        ]
+        return LayoutBlock(lines=lines)
 
     @staticmethod
     def merge_blocks(blocks: Iterable['LayoutBlock']) -> 'LayoutBlock':

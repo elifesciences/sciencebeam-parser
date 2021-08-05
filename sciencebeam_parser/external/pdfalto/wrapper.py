@@ -14,7 +14,7 @@ class PdfAltoWrapper:
     def __init__(self, binary_path: str):
         self.binary_path = binary_path
 
-    def ensure_excutable(self):
+    def ensure_executable(self):
         st = os.stat(self.binary_path)
         os.chmod(self.binary_path, st.st_mode | stat.S_IEXEC)
 

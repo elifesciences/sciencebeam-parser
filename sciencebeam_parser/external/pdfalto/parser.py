@@ -3,6 +3,7 @@ from typing import Dict, List
 from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
+    LayoutLineDescriptor,
     LayoutPageCoordinates,
     LayoutFont,
     LayoutToken,
@@ -31,7 +32,8 @@ class AltoParser:
     def parse_token(
         self,
         token_node: etree.ElementBase,
-        page_index: int
+        page_index: int,
+        layout_line_descriptor: LayoutLineDescriptor
     ) -> LayoutToken:
         return LayoutToken(
             text=token_node.attrib.get('CONTENT') or '',
@@ -45,7 +47,8 @@ class AltoParser:
                 width=float(token_node.attrib.get('WIDTH', 0)),
                 height=float(token_node.attrib.get('HEIGHT', 0)),
                 page_number=(1 + page_index)
-            )
+            ),
+            line_descriptor=layout_line_descriptor
         )
 
     def parse_line(
@@ -54,7 +57,13 @@ class AltoParser:
         page_index: int
     ) -> LayoutLine:
         return LayoutLine(tokens=[
-            self.parse_token(token_node, page_index=page_index)
+            self.parse_token(
+                token_node,
+                page_index=page_index,
+                layout_line_descriptor=LayoutLineDescriptor(
+                    line_id=id(line_node)
+                )
+            )
             for token_node in alto_xpath(line_node, './/alto:String')
         ])
 

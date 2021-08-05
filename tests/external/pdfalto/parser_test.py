@@ -58,7 +58,7 @@ class TestAltoParser:
         assert font.is_subscript is False
         assert font.is_superscript is False
 
-    def test_should_parse_font_with_italitcs_fontstyle(self):
+    def test_should_parse_font_with_italics_fontstyle(self):
         font = AltoParser().parse_font(ALTO_E.TextStyle(
             ID=FONT_ID_1,
             FONTFAMILY=FONTFAMILY_1,
@@ -157,3 +157,5 @@ class TestParseAltoRoot:
         assert token.font.is_bold is True
         assert token.font.is_italics is True
         assert token.coordinates == COORDINATES_2
+        assert tokens[0].line_descriptor is not None
+        assert tokens[0].line_descriptor == tokens[1].line_descriptor

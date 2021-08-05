@@ -17,7 +17,7 @@ def _pdfalto_wrapper(sciencebeam_parser_config: dict) -> PdfAltoWrapper:
     pdfalto_wrapper = PdfAltoWrapper(
         download_manager.download_if_url(sciencebeam_parser_config['pdfalto']['path'])
     )
-    pdfalto_wrapper.ensure_excutable()
+    pdfalto_wrapper.ensure_executable()
     return pdfalto_wrapper
 
 
