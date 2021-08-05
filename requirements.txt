@@ -1,4 +1,4 @@
-Flask==1.1.2
+Flask==2.0.1
 lxml==4.6.3
 PyYAML==5.4.1
 https://github.com/elifesciences/sciencebeam-trainer-delft/archive/refs/tags/v0.0.28.zip#egg=sciencebeam-trainer-delft
