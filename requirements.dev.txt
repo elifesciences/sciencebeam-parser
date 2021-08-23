@@ -4,4 +4,4 @@ pylint==2.9.6
 pytest==6.2.4
 pytest-watch==4.2.0
 setuptools-scm==6.0.1
-types-PyYAML==5.4.3
+types-PyYAML==5.4.6
