@@ -1,6 +1,6 @@
 flake8==3.9.2
 mypy==0.910
-pylint==2.9.6
+pylint==2.10.2
 pytest==6.2.4
 pytest-watch==4.2.0
 setuptools-scm==6.0.1

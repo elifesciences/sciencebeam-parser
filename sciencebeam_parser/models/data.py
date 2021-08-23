@@ -23,7 +23,7 @@ class LayoutModelData:
 
     @property
     def label_token_text(self):
-        return self.data_line.split(' ')[0]
+        return self.data_line.split(' ', maxsplit=1)[0]
 
 
 class ModelDataGenerator(ABC):
