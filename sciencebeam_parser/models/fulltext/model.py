@@ -11,7 +11,6 @@ from sciencebeam_parser.document.semantic_document import (
 from sciencebeam_parser.models.model import Model
 
 from sciencebeam_parser.models.data import (
-    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     DocumentFeaturesContext
 )
 from sciencebeam_parser.models.fulltext.data import FullTextDataGenerator
@@ -24,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 class FullTextModel(Model):
     def get_data_generator(
         self,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context: DocumentFeaturesContext
     ) -> FullTextDataGenerator:
         return FullTextDataGenerator(
             document_features_context=document_features_context

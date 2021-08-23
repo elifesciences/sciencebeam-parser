@@ -215,7 +215,8 @@ class FullTextProcessor:
         layout_document: LayoutDocument
     ) -> SemanticDocument:
         segmentation_label_result = self.segmentation_model.get_label_layout_document_result(
-            layout_document
+            layout_document,
+            app_features_context=self.app_features_context
         )
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
@@ -224,7 +225,8 @@ class FullTextProcessor:
         document = SemanticDocument()
         if header_layout_document.pages:
             labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-                header_layout_document
+                header_layout_document,
+                app_features_context=self.app_features_context
             )
             LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
             entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
@@ -353,7 +355,8 @@ class FullTextProcessor:
                     for raw_author in raw_authors
                 ]
             labeled_layout_tokens_list = self.name_header_model.predict_labels_for_layout_documents(
-                raw_authors_layout_documents
+                raw_authors_layout_documents,
+                app_features_context=self.app_features_context
             )
             LOGGER.debug('labeled_layout_tokens_list (author): %r', labeled_layout_tokens_list)
             authors_iterable = (
@@ -418,7 +421,8 @@ class FullTextProcessor:
         if not references_layout_document:
             return
         labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
-            references_layout_document
+            references_layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         semantic_content_iterable = (
@@ -438,7 +442,10 @@ class FullTextProcessor:
         ]
         labeled_layout_tokens_list = (
             self.citation_model
-            .predict_labels_for_layout_documents(layout_documents)
+            .predict_labels_for_layout_documents(
+                layout_documents,
+                app_features_context=self.app_features_context
+            )
         )
         LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
         for labeled_layout_tokens, semantic_raw_reference in zip(
@@ -508,7 +515,10 @@ class FullTextProcessor:
         ]
         labeled_layout_tokens_list = (
             self.name_citation_model
-            .predict_labels_for_layout_documents(layout_documents)
+            .predict_labels_for_layout_documents(
+                layout_documents,
+                app_features_context=self.app_features_context
+            )
         )
         LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
         for labeled_layout_tokens, semantic_raw_name_list in zip(
@@ -600,7 +610,10 @@ class FullTextProcessor:
         ]
         labeled_layout_tokens_list = (
             model
-            .predict_labels_for_layout_documents(layout_documents)
+            .predict_labels_for_layout_documents(
+                layout_documents,
+                app_features_context=self.app_features_context
+            )
         )
         LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
         for labeled_layout_tokens, semantic_raw_name_list in zip(
@@ -704,7 +717,8 @@ class FullTextProcessor:
         if not layout_document.pages:
             return
         labeled_layout_tokens = self.fulltext_model.predict_labels_for_layout_document(
-            layout_document
+            layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens (%r): %r', section_name, labeled_layout_tokens)
         entity_blocks = self.fulltext_model.iter_entity_layout_blocks_for_labeled_layout_tokens(

@@ -4,7 +4,6 @@ from typing import Iterable, Tuple
 from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.document.semantic_document import SemanticDocument
 from sciencebeam_parser.models.data import (
-    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     DocumentFeaturesContext
 )
 from sciencebeam_parser.models.header.data import HeaderDataGenerator
@@ -18,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 class HeaderModel(Model):
     def get_data_generator(
         self,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context: DocumentFeaturesContext
     ) -> HeaderDataGenerator:
         return HeaderDataGenerator(
             document_features_context=document_features_context

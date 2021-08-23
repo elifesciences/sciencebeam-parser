@@ -15,6 +15,22 @@ from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 LOGGER = logging.getLogger(__name__)
 
 
+class AppFeaturesContext(NamedTuple):
+    country_lookup: Optional[TextLookUp] = None
+    first_name_lookup: Optional[TextLookUp] = None
+    last_name_lookup: Optional[TextLookUp] = None
+
+
+DEFAULT_APP_FEATURES_CONTEXT = AppFeaturesContext()
+
+
+class DocumentFeaturesContext(NamedTuple):
+    app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+
+
+DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
+
+
 @dataclass
 class LayoutModelData:
     data_line: str
@@ -48,7 +64,9 @@ class ModelDataGenerator(ABC):
     ) -> Iterable[str]:
         return (
             model_data.data_line
-            for model_data in self.iter_model_data_for_layout_document(layout_document)
+            for model_data in self.iter_model_data_for_layout_document(
+                layout_document
+            )
         )
 
     def iter_data_lines_for_layout_documents(  # pylint: disable=too-many-locals
@@ -62,7 +80,9 @@ class ModelDataGenerator(ABC):
                 yield from ['\n']
             yield from (
                 model_data.data_line
-                for model_data in self.iter_model_data_for_layout_document(layout_document)
+                for model_data in self.iter_model_data_for_layout_document(
+                    layout_document
+                )
             )
 
 
@@ -444,22 +464,6 @@ class CommonLayoutTokenFeatures(ABC):  # pylint: disable=too-many-public-methods
 _LINESCALE = 10
 
 
-class AppFeaturesContext(NamedTuple):
-    country_lookup: Optional[TextLookUp] = None
-    first_name_lookup: Optional[TextLookUp] = None
-    last_name_lookup: Optional[TextLookUp] = None
-
-
-DEFAULT_APP_FEATURES_CONTEXT = AppFeaturesContext()
-
-
-class DocumentFeaturesContext(NamedTuple):
-    app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
-
-
-DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
-
-
 class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-methods
     CommonLayoutTokenFeatures
 ):
@@ -467,8 +471,8 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
         self,
         layout_token: LayoutToken,
         layout_line: LayoutLine,
+        document_features_context: DocumentFeaturesContext,
         previous_layout_token: Optional[LayoutToken] = None,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT,
         token_index: int = 0,
         token_count: int = 0,
         document_token_index: int = 0,
@@ -663,7 +667,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
 class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
     def __init__(
         self,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context: DocumentFeaturesContext
     ):
         self.document_features_context = document_features_context
 

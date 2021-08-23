@@ -10,7 +10,6 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.models.data import (
     ContextAwareLayoutTokenFeatures,
-    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     DocumentFeaturesContext,
     ModelDataGenerator,
     LayoutModelData,
@@ -70,8 +69,16 @@ def get_text_pattern(text: str) -> str:
 
 
 class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
-    def __init__(self, layout_token: LayoutToken = EMPTY_LAYOUT_TOKEN):
-        super().__init__(layout_token, layout_line=EMPTY_LAYOUT_LINE)
+    def __init__(
+        self,
+        document_features_context: DocumentFeaturesContext,
+        layout_token: LayoutToken = EMPTY_LAYOUT_TOKEN
+    ):
+        super().__init__(
+            layout_token,
+            document_features_context=document_features_context,
+            layout_line=EMPTY_LAYOUT_LINE
+        )
         self.line_text = ''
         self.second_token_text = ''
         self.page_blocks: List[LayoutBlock] = []
@@ -130,11 +137,19 @@ class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
 
 
 class SegmentationLineFeaturesProvider:
+    def __init__(
+        self,
+        document_features_context: DocumentFeaturesContext
+    ):
+        self.document_features_context = document_features_context
+
     def iter_line_features(  # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
     ) -> Iterable[SegmentationLineFeatures]:
-        segmentation_line_features = SegmentationLineFeatures()
+        segmentation_line_features = SegmentationLineFeatures(
+            document_features_context=self.document_features_context
+        )
         previous_token: Optional[LayoutToken] = None
         segmentation_line_features.document_token_count = sum(
             len(line.tokens)
@@ -215,16 +230,20 @@ class SegmentationLineFeaturesProvider:
 class SegmentationDataGenerator(ModelDataGenerator):
     def __init__(
         self,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context: DocumentFeaturesContext
     ):
         self.document_features_context = document_features_context
 
     def iter_model_data_for_layout_document(
         self,
-        layout_document: LayoutDocument,
+        layout_document: LayoutDocument
     ) -> Iterable[LayoutModelData]:
-        features_provider = SegmentationLineFeaturesProvider()
-        for features in features_provider.iter_line_features(layout_document):
+        features_provider = SegmentationLineFeaturesProvider(
+            document_features_context=self.document_features_context
+        )
+        for features in features_provider.iter_line_features(
+            layout_document
+        ):
             line_features: List[str] = [
                 features.token_text,
                 features.second_token_text or features.token_text,

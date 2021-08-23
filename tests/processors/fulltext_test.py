@@ -31,7 +31,6 @@ from sciencebeam_parser.document.semantic_document import (
 )
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
-    DEFAULT_APP_FEATURES_CONTEXT,
     DocumentFeaturesContext
 )
 from sciencebeam_parser.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
@@ -96,7 +95,7 @@ class MockDelftModelWrapper:
     def _iter_label_layout_documents(
         self,
         layout_documents: Iterable[LayoutDocument],
-        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+        app_features_context: AppFeaturesContext
     ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
         for index, layout_document in enumerate(layout_documents):
             if index > 0:
@@ -109,7 +108,7 @@ class MockDelftModelWrapper:
     def _iter_label_layout_document(
         self,
         layout_document: LayoutDocument,
-        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+        app_features_context: AppFeaturesContext
     ) -> Iterable[LayoutModelLabel]:
         data_generator = self._model_wrapper.get_data_generator(
             document_features_context=DocumentFeaturesContext(

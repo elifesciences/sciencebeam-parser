@@ -1,5 +1,7 @@
 import logging
-from sciencebeam_parser.models.data import feature_linear_scaling_int
+from typing import Iterable
+
+import pytest
 
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
@@ -8,14 +10,26 @@ from sciencebeam_parser.document.layout_document import (
     LayoutPage
 )
 
+from sciencebeam_parser.models.data import (
+    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+    feature_linear_scaling_int
+)
 from sciencebeam_parser.models.segmentation.data import (
     NBBINS_POSITION,
+    SegmentationLineFeatures,
     SegmentationLineFeaturesProvider,
     get_text_pattern
 )
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+@pytest.fixture(name='features_provider')
+def _features_provider():
+    return SegmentationLineFeaturesProvider(
+        document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT
+    )
 
 
 class TestGetTextPattern:
@@ -35,8 +49,20 @@ class TestGetTextPattern:
         assert get_text_pattern('abc123') == 'abc'
 
 
+def _iter_line_features(
+    features_provider: SegmentationLineFeaturesProvider,
+    layout_document: LayoutDocument
+) -> Iterable[SegmentationLineFeatures]:
+    yield from features_provider.iter_line_features(
+        layout_document
+    )
+
+
 class TestSegmentationLineFeaturesProvider:
-    def test_should_provide_page_and_block_status_for_multi_line_blocks(self):
+    def test_should_provide_page_and_block_status_for_multi_line_blocks(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text('line1'),
@@ -44,9 +70,8 @@ class TestSegmentationLineFeaturesProvider:
                 LayoutLine.for_text('line3')
             ])])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'page_status': features.get_page_status(),
                 'block_status': features.get_block_status()
@@ -58,7 +83,10 @@ class TestSegmentationLineFeaturesProvider:
             {'page_status': 'PAGEEND', 'block_status': 'BLOCKEND'}
         ]
 
-    def test_should_provide_page_and_block_status_for_single_token_blocks(self):
+    def test_should_provide_page_and_block_status_for_single_token_blocks(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[
                 LayoutBlock.for_text('line1'),
@@ -66,9 +94,8 @@ class TestSegmentationLineFeaturesProvider:
                 LayoutBlock.for_text('line3')
             ])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'page_status': features.get_page_status(),
                 'block_status': features.get_block_status()
@@ -80,16 +107,15 @@ class TestSegmentationLineFeaturesProvider:
             {'page_status': 'PAGEEND', 'block_status': 'BLOCKSTART'}
         ]
 
-    def test_should_provide_line_text(self):
+    def test_should_provide_line_text(self, features_provider: SegmentationLineFeaturesProvider):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text('first1 second1 this is a line'),
                 LayoutLine.for_text('first2 second2 this is a line')
             ])])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'line_text': features.line_text,
                 'token_text': features.token_text,
@@ -109,15 +135,17 @@ class TestSegmentationLineFeaturesProvider:
             },
         ]
 
-    def test_should_provide_punctuation_profile(self):
+    def test_should_provide_punctuation_profile(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text('a .: b'),
             ])])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'line_punctuation_profile': features.get_line_punctuation_profile(),
                 'line_punctuation_profile_length_feature': (
@@ -132,7 +160,10 @@ class TestSegmentationLineFeaturesProvider:
             },
         ]
 
-    def test_should_provide_block_relative_line_length(self):
+    def test_should_provide_block_relative_line_length(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text('1'),
@@ -140,9 +171,8 @@ class TestSegmentationLineFeaturesProvider:
                 LayoutLine.for_text('1234567890'),
             ])])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'str_block_relative_line_length_feature': (
                     features.get_str_block_relative_line_length_feature()
@@ -161,16 +191,18 @@ class TestSegmentationLineFeaturesProvider:
             },
         ]
 
-    def test_should_provide_block_relative_document_token_position(self):
+    def test_should_provide_block_relative_document_token_position(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[LayoutBlock(lines=[
                 LayoutLine.for_text(f'line{i}')
                 for i in range(10)
             ])])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'str_relative_document_position': (
                     features.get_str_relative_document_position()
@@ -186,7 +218,10 @@ class TestSegmentationLineFeaturesProvider:
             for i in range(10)
         ]
 
-    def test_should_provide_repetitive_pattern_feature(self):
+    def test_should_provide_repetitive_pattern_feature(
+        self,
+        features_provider: SegmentationLineFeaturesProvider
+    ):
         layout_document = LayoutDocument(pages=[
             LayoutPage(blocks=[
                 LayoutBlock.for_text('this is repetitive'),
@@ -197,9 +232,8 @@ class TestSegmentationLineFeaturesProvider:
                 LayoutBlock.for_text('it is different')
             ])
         ])
-        features_provider = SegmentationLineFeaturesProvider()
         feature_values = []
-        for features in features_provider.iter_line_features(layout_document):
+        for features in _iter_line_features(features_provider, layout_document):
             feature_values.append({
                 'get_str_is_repetitive_pattern': (
                     features.get_str_is_repetitive_pattern()

@@ -280,7 +280,8 @@ class SegmentedModelNestedBluePrint(ModelNestedBluePrint):
         assert self.segmentation_model is not None
         segmentation_label_result = (
             self.segmentation_model.get_label_layout_document_result(
-                layout_document
+                layout_document,
+                app_features_context=self.app_features_context
             )
         )
         for segmentation_label in segmentation_labels:
@@ -337,7 +338,8 @@ class NameHeaderModelNestedBluePrint(SegmentedModelNestedBluePrint):
             layout_document, '<header>'
         )
         labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-            header_layout_document
+            header_layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         semantic_raw_authors_list = list(
@@ -377,7 +379,8 @@ class AffiliationAddressModelNestedBluePrint(SegmentedModelNestedBluePrint):
             layout_document, '<header>'
         )
         labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-            header_layout_document
+            header_layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         semantic_raw_aff_address_list = list(
@@ -408,7 +411,8 @@ class CitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
             layout_document, '<references>'
         )
         labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
-            references_layout_document
+            references_layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         semantic_raw_references = list(
@@ -446,7 +450,8 @@ class NameCitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
             layout_document, '<references>'
         )
         labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
-            references_layout_document
+            references_layout_document,
+            app_features_context=self.app_features_context
         )
         LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
         semantic_raw_references = list(
@@ -465,7 +470,8 @@ class NameCitationModelNestedBluePrint(SegmentedModelNestedBluePrint):
         ]
         citation_labeled_layout_tokens_list = (
             self.citation_model.predict_labels_for_layout_documents(
-                raw_reference_documents
+                raw_reference_documents,
+                app_features_context=self.app_features_context
             )
         )
         raw_authors = [
@@ -505,7 +511,8 @@ class FullTextChildModelNestedBluePrint(SegmentedModelNestedBluePrint):
         ))
         fulltext_labeled_layout_tokens_list = (
             self.fulltext_model.predict_labels_for_layout_documents(
-                fulltext_layout_documents
+                fulltext_layout_documents,
+                app_features_context=self.app_features_context
             )
         )
         LOGGER.debug('fulltext_labeled_layout_tokens_list: %r', fulltext_labeled_layout_tokens_list)

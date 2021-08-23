@@ -15,8 +15,6 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
-    DEFAULT_APP_FEATURES_CONTEXT,
-    DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     DocumentFeaturesContext,
     ModelDataGenerator
 )
@@ -212,7 +210,7 @@ class Model(ABC):
     @abstractmethod
     def get_data_generator(
         self,
-        document_features_context: DocumentFeaturesContext = DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context: DocumentFeaturesContext
     ) -> ModelDataGenerator:
         pass
 
@@ -255,7 +253,7 @@ class Model(ABC):
     def iter_label_layout_documents(
         self,
         layout_documents: List[LayoutDocument],
-        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+        app_features_context: AppFeaturesContext
     ) -> Iterable[List[LayoutModelLabel]]:
         doc_layout_model_labels: List[LayoutModelLabel] = []
         result_doc_count = 0
@@ -274,10 +272,12 @@ class Model(ABC):
 
     def iter_label_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext
     ) -> Iterable[LayoutModelLabel]:
         for layout_model_label in self._iter_label_layout_documents(
-            [layout_document]
+            [layout_document],
+            app_features_context=app_features_context
         ):
             assert isinstance(layout_model_label, LayoutModelLabel)
             yield layout_model_label
@@ -285,7 +285,7 @@ class Model(ABC):
     def _iter_label_layout_documents(  # pylint: disable=too-many-locals
         self,
         layout_documents: Iterable[LayoutDocument],
-        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+        app_features_context: AppFeaturesContext
     ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
         data_generator = self.get_data_generator(
             document_features_context=DocumentFeaturesContext(
@@ -341,32 +341,44 @@ class Model(ABC):
 
     def get_label_layout_document_result(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext
     ) -> LayoutDocumentLabelResult:
         return LayoutDocumentLabelResult(
             layout_document=layout_document,
-            layout_model_label_iterable=self.iter_label_layout_document(layout_document)
+            layout_model_label_iterable=self.iter_label_layout_document(
+                layout_document,
+                app_features_context=app_features_context
+            )
         )
 
     def iter_predict_labels_for_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext
     ) -> Iterable[LabeledLayoutToken]:
         # Note: this should get merged with Model.iter_label_layout_document
         yield from iter_labeled_layout_token_for_layout_model_label(
-            self.iter_label_layout_document(layout_document)
+            self.iter_label_layout_document(
+                layout_document,
+                app_features_context=app_features_context
+            )
         )
 
     def predict_labels_for_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext
     ) -> List[LabeledLayoutToken]:
-        return list(self.iter_predict_labels_for_layout_document(layout_document))
+        return list(self.iter_predict_labels_for_layout_document(
+            layout_document,
+            app_features_context=app_features_context
+        ))
 
     def predict_labels_for_layout_documents(
         self,
         layout_documents: List[LayoutDocument],
-        app_features_context: AppFeaturesContext = DEFAULT_APP_FEATURES_CONTEXT
+        app_features_context: AppFeaturesContext
     ) -> List[List[LabeledLayoutToken]]:
         return [
             list(iter_labeled_layout_token_for_layout_model_label(
