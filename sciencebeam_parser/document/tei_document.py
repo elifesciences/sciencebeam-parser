@@ -65,6 +65,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticPostCode,
     SemanticPublisher,
     SemanticRawEditors,
+    SemanticRawEquation,
+    SemanticRawEquationContent,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -677,6 +679,31 @@ def get_tei_element_for_semantic_section(
     return tei_section.element
 
 
+def get_tei_element_for_raw_equation(
+    semantic_raw_equation: SemanticContentWrapper
+) -> etree.ElementBase:
+    LOGGER.debug('semantic_raw_equation: %s', semantic_raw_equation)
+    assert isinstance(semantic_raw_equation, SemanticRawEquation)
+    children: T_ElementChildrenList = [
+        get_default_attributes_for_semantic_content(semantic_raw_equation)
+    ]
+    pending_whitespace = ''
+    for semantic_content in semantic_raw_equation:
+        if isinstance(semantic_content, SemanticRawEquationContent):
+            layout_block = semantic_content.merged_block
+            if pending_whitespace:
+                children.append(pending_whitespace)
+            children.extend(iter_layout_block_tei_children(layout_block))
+            pending_whitespace = layout_block.whitespace
+            continue
+        pending_whitespace = append_tei_children_list_and_get_whitespace(
+            children,
+            semantic_content,
+            pending_whitespace=pending_whitespace
+        )
+    return TEI_E('formula', *children)
+
+
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticNameTitle: 'roleName',
     SemanticGivenName: 'forename[@type="first"]',
@@ -684,6 +711,7 @@ SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
     SemanticSurname: 'surname',
     SemanticNameSuffix: 'genName',
     SemanticRawEditors: 'editor',
+    SemanticLabel: 'label',
     SemanticMarker: 'note[@type="marker"]',
     SemanticInstitution: 'orgName[@type="institution"]',
     SemanticDepartment: 'orgName[@type="department"]',
@@ -748,7 +776,8 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticReferenceCitation: get_tei_element_for_citation,
     SemanticHeading: get_tei_element_for_heading,
     SemanticParagraph: get_tei_element_for_paragraph,
-    SemanticSection: get_tei_element_for_semantic_section
+    SemanticSection: get_tei_element_for_semantic_section,
+    SemanticRawEquation: get_tei_element_for_raw_equation
 }
 
 

@@ -175,7 +175,7 @@ class SegmentationLineFeaturesProvider:
         pattern_by_line_id = {
             key: value
             for key, value in all_pattern_by_line_id.items()
-            if len(value) > 8
+            if len(value) >= 8  # Java GROBID sometimes counts an additional trailing space
         }
         pattern_counter = Counter(pattern_by_line_id.values())
         LOGGER.debug('pattern_counter: %s', pattern_counter)
@@ -190,6 +190,8 @@ class SegmentationLineFeaturesProvider:
                 segmentation_line_features.block_lines = block_lines
                 block_line_texts = [line.text for line in block_lines]
                 max_block_line_text_length = max(len(text) for text in block_line_texts)
+                first_block_token = next(iter(block.iter_all_tokens()), None)
+                assert first_block_token
                 for line_index, line in enumerate(block_lines):
                     segmentation_line_features.document_token_index = document_token_index
                     document_token_index += len(line.tokens)
@@ -198,12 +200,12 @@ class SegmentationLineFeaturesProvider:
                     segmentation_line_features.max_block_line_text_length = (
                         max_block_line_text_length
                     )
-                    line_tokens = line.tokens
                     line_text = block_line_texts[line_index]
                     retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line_text)
                     if not retokenized_token_texts:
                         continue
-                    token = line_tokens[0]
+                    # Java GROBID uses the first token in the block
+                    token = first_block_token
                     segmentation_line_features.layout_token = token
                     segmentation_line_features.line_text = line_text
                     segmentation_line_features.concatenated_line_tokens_text = line_text
@@ -263,7 +265,7 @@ class SegmentationDataGenerator(ModelDataGenerator):
                 features.get_str_is_single_char(),
                 features.get_dummy_str_is_proper_name(),
                 features.get_dummy_str_is_common_name(),
-                features.get_str_is_first_name(),
+                features.get_dummy_str_is_first_name(),
                 features.get_dummy_str_is_year(),
                 features.get_dummy_str_is_month(),
                 features.get_dummy_str_is_email(),

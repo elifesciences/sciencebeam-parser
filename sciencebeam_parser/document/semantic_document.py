@@ -474,6 +474,14 @@ class SemanticTable(SemanticMixedContentWrapper):
     pass
 
 
+class SemanticRawEquationContent(SemanticMixedContentWrapper):
+    pass
+
+
+class SemanticRawEquation(SemanticMixedContentWrapper):
+    pass
+
+
 @dataclass
 class SemanticCitation(SemanticSimpleContentWrapper):
     target_content_id: Optional[str] = None

@@ -10,6 +10,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticLabel,
     SemanticNote,
     SemanticParagraph,
+    SemanticRawEquation,
+    SemanticRawEquationContent,
     SemanticRawFigure,
     SemanticRawTable,
     SemanticReferenceCitation,
@@ -92,7 +94,20 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
             SemanticTitle(layout_block=section_title_layout_block)
         ])
 
-    def iter_semantic_content_for_entity_blocks(  # pylint: disable=arguments-differ
+    def get_raw_equation_child_semantic_content(
+        self,
+        name: str,
+        layout_block: LayoutBlock
+    ):
+        if name == '<equation_label>':
+            return SemanticLabel(layout_block=layout_block)
+        if name == '<equation>':
+            return SemanticRawEquationContent(layout_block=layout_block)
+        return self.get_semantic_content_for_entity_name(
+            name, layout_block=layout_block
+        )
+
+    def iter_semantic_content_for_entity_blocks(  # noqa pylint: disable=arguments-differ, too-many-branches
         self,
         entity_tokens: Iterable[Tuple[str, LayoutBlock]],
         section_type: str = SemanticSectionTypes.OTHER,
@@ -102,6 +117,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
         LOGGER.debug('entity_tokens: %s', entity_tokens)
         section: Optional[SemanticSection] = None
         paragraph: Optional[SemanticParagraph] = None
+        raw_equation: Optional[SemanticRawEquation] = None
         _previous_tag: Optional[str] = None
         for name, layout_block in entity_tokens:
             if LOGGER.isEnabledFor(logging.DEBUG):
@@ -121,6 +137,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                 continue
             if name == '<section>':
                 paragraph = None
+                raw_equation = None
                 if section:
                     yield section
                 section = SemanticSection(section_type=section_type)
@@ -142,6 +159,23 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                 )
             ):
                 paragraph = section.add_new_paragraph()
+            if name in {'<equation>', '<equation_label>'}:
+                semantic_content = self.get_raw_equation_child_semantic_content(
+                    name, layout_block=layout_block
+                )
+                if (
+                    isinstance(semantic_content, SemanticRawEquationContent)
+                    and raw_equation
+                    and raw_equation.has_type(SemanticRawEquationContent)
+                ):
+                    LOGGER.debug('already has equation content, start new one')
+                    raw_equation = None
+                if not raw_equation:
+                    raw_equation = SemanticRawEquation()
+                    paragraph.add_content(raw_equation)
+                raw_equation.add_content(semantic_content)
+                continue
+            raw_equation = None
             self.add_paragraph_content(
                 paragraph, name, layout_block
             )

@@ -40,6 +40,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticPostCode,
     SemanticPublisher,
     SemanticRawEditors,
+    SemanticRawEquation,
+    SemanticRawEquationContent,
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticReference,
@@ -905,6 +907,29 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
         assert tei_document.get_xpath_text_content_list(
             '//tei:body/tei:div/tei:p/tei:ref[@type="bibr"]/@target'
         ) == ['#b0']
+
+    def test_should_add_raw_equation_with_label_to_paragraph(self):
+        semantic_document = SemanticDocument()
+        semantic_document.body_section.add_content(SemanticSection([
+            SemanticParagraph([
+                SemanticTextContentWrapper(layout_block=LayoutBlock.for_text('Next')),
+                SemanticRawEquation([
+                    SemanticRawEquationContent(layout_block=LayoutBlock.for_text('Equation 1')),
+                    SemanticLabel(layout_block=LayoutBlock.for_text('(1)'))
+                ])
+            ]),
+        ]))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p/tei:formula'
+        ) == ['Equation 1 (1)']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p/tei:formula/tei:label'
+        ) == ['(1)']
+        assert tei_document.get_xpath_text_content_list(
+            '//tei:body/tei:div/tei:p'
+        ) == ['Next Equation 1 (1)']
 
     def test_should_add_raw_references(self):
         semantic_document = SemanticDocument()

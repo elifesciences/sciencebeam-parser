@@ -6,7 +6,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticFigureCitation,
     SemanticHeading,
     SemanticLabel,
-    SemanticParagraph,
+    SemanticRawEquation,
+    SemanticRawEquationContent,
     SemanticRawFigure,
     SemanticRawTable,
     SemanticReferenceCitation,
@@ -170,12 +171,7 @@ class TestFullTextSemanticExtractor:
         assert len(semantic_content_list) == 1
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
-        paragraphs = list(section.iter_by_type(SemanticParagraph))
-        figure_citations = [
-            citation
-            for paragraph in paragraphs
-            for citation in section.iter_by_type_recursively(SemanticFigureCitation)
-        ]
+        figure_citations = list(section.iter_by_type_recursively(SemanticFigureCitation))
         assert len(figure_citations) == 1
         assert figure_citations[0].get_text() == 'Figure 1'
 
@@ -191,12 +187,7 @@ class TestFullTextSemanticExtractor:
         assert len(semantic_content_list) == 1
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
-        paragraphs = list(section.iter_by_type(SemanticParagraph))
-        table_citations = [
-            citation
-            for paragraph in paragraphs
-            for citation in section.iter_by_type_recursively(SemanticTableCitation)
-        ]
+        table_citations = list(section.iter_by_type_recursively(SemanticTableCitation))
         assert len(table_citations) == 1
         assert table_citations[0].get_text() == 'Table 1'
 
@@ -212,14 +203,65 @@ class TestFullTextSemanticExtractor:
         assert len(semantic_content_list) == 1
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
-        paragraphs = list(section.iter_by_type(SemanticParagraph))
-        reference_citations = [
-            citation
-            for paragraph in paragraphs
-            for citation in section.iter_by_type_recursively(SemanticReferenceCitation)
-        ]
+        reference_citations = list(section.iter_by_type_recursively(SemanticReferenceCitation))
         assert len(reference_citations) == 1
         assert reference_citations[0].get_text() == 'Ref 1'
+
+    def test_should_include_raw_equation_with_label_after_in_paragraph(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<equation>', LayoutBlock.for_text('Equation 1')),
+                ('<equation_label>', LayoutBlock.for_text('(1)')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        raw_equations = list(section.iter_by_type_recursively(SemanticRawEquation))
+        assert len(raw_equations) == 1
+        assert raw_equations[0].get_text() == 'Equation 1 (1)'
+        assert raw_equations[0].get_text_by_type(SemanticLabel) == '(1)'
+        assert raw_equations[0].get_text_by_type(SemanticRawEquationContent) == 'Equation 1'
+
+    def test_should_include_raw_equation_with_label_before_in_paragraph(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<equation_label>', LayoutBlock.for_text('(1)')),
+                ('<equation>', LayoutBlock.for_text('Equation 1')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        raw_equations = list(section.iter_by_type_recursively(SemanticRawEquation))
+        assert len(raw_equations) == 1
+        assert raw_equations[0].get_text() == '(1) Equation 1'
+        assert raw_equations[0].get_text_by_type(SemanticLabel) == '(1)'
+        assert raw_equations[0].get_text_by_type(SemanticRawEquationContent) == 'Equation 1'
+
+    def test_should_include_multiple_raw_equations_without_label(self):
+        semantic_content_list = list(
+            FullTextSemanticExtractor().iter_semantic_content_for_entity_blocks([
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_1)),
+                ('<equation>', LayoutBlock.for_text('Equation 1')),
+                ('<equation>', LayoutBlock.for_text('Equation 2')),
+                ('<paragraph>', LayoutBlock.for_text(SECTION_PARAGRAPH_2)),
+            ])
+        )
+        LOGGER.debug('semantic_content_list: %s', semantic_content_list)
+        assert len(semantic_content_list) == 1
+        section = semantic_content_list[0]
+        assert isinstance(section, SemanticSection)
+        raw_equations = list(section.iter_by_type_recursively(SemanticRawEquation))
+        assert len(raw_equations) == 2
+        assert raw_equations[0].get_text() == 'Equation 1'
+        assert raw_equations[1].get_text() == 'Equation 2'
 
     def test_should_add_note_for_other_text_to_section(self):
         semantic_content_list = list(
