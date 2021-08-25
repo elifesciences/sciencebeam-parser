@@ -14,9 +14,7 @@ DEFAULT_CONFIG_PATH = 'config.yml'
 
 
 def parse_env_value(value: str) -> Union[str, int]:
-    if value.isdigit():
-        return int(value)
-    return value
+    return yaml.safe_load(value)
 
 
 class AppConfig:

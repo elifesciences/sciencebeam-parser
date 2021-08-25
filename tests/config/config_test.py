@@ -68,3 +68,17 @@ class TestAppConfig:
         config = AppConfig.load_yaml(str(config_path))
         config = config.apply_environment_variables()
         assert config.props['key1'] == 222
+
+    def test_should_override_bool_value_with_env_var(
+        self,
+        tmp_path: Path,
+        env_vars_mock: dict
+    ):
+        env_vars_mock['SCIENCEBEAM_PARSER__KEY1'] = 'false'
+        config_path = tmp_path / 'config.yml'
+        config_path.write_text(yaml.dump({
+            'key1': True
+        }))
+        config = AppConfig.load_yaml(str(config_path))
+        config = config.apply_environment_variables()
+        assert config.props['key1'] is False
