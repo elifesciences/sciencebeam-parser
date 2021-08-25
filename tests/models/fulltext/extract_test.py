@@ -274,7 +274,7 @@ class TestFullTextSemanticExtractor:
         section = semantic_content_list[0]
         assert isinstance(section, SemanticSection)
         assert section.get_paragraph_text_list() == [SECTION_PARAGRAPH_1]
-        assert section.get_notes_text_list('other') == [SECTION_PARAGRAPH_2]
+        assert section.get_notes_text_list('fulltext:other') == [SECTION_PARAGRAPH_2]
 
     def test_should_add_note_for_other_text_to_body(self):
         semantic_content_list = list(
@@ -284,7 +284,7 @@ class TestFullTextSemanticExtractor:
             ])
         )
         parent_section = SemanticSection(semantic_content_list)
-        assert parent_section.get_notes_text_list('other') == [SECTION_PARAGRAPH_1]
+        assert parent_section.get_notes_text_list('fulltext:other') == [SECTION_PARAGRAPH_1]
         sections = parent_section.sections
         assert len(sections) == 1
         assert sections[0].get_paragraph_text_list() == [SECTION_PARAGRAPH_2]

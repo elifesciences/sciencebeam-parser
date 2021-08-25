@@ -10,6 +10,7 @@ from typing import (
     Sequence,
     Tuple,
     Type,
+    TypeVar,
     Union
 )
 
@@ -86,48 +87,58 @@ class FullTextModels:
     citation_model: CitationModel
 
 
-def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
+T_Model = TypeVar('T_Model', bound=Model)
+
+
+def load_model(
+    app_config: AppConfig,
+    app_context: AppContext,
+    model_name: str,
+    model_class: Type[T_Model]
+) -> T_Model:
     models_config = app_config['models']
-    segmentation_model = SegmentationModel(get_model_impl_factory_for_config(
-        models_config['segmentation'],
-        app_context=app_context
-    ))
-    header_model = HeaderModel(get_model_impl_factory_for_config(
-        models_config['header'],
-        app_context=app_context
-    ))
-    name_header_model = NameModel(get_model_impl_factory_for_config(
-        models_config['name_header'],
-        app_context=app_context
-    ))
-    name_citation_model = NameModel(get_model_impl_factory_for_config(
-        models_config['name_citation'],
-        app_context=app_context
-    ))
-    affiliation_address_model = AffiliationAddressModel(get_model_impl_factory_for_config(
-        models_config['affiliation_address'],
-        app_context=app_context
-    ))
-    fulltext_model = FullTextModel(get_model_impl_factory_for_config(
-        models_config['fulltext'],
-        app_context=app_context
-    ))
-    figure_model = FigureModel(get_model_impl_factory_for_config(
-        models_config['figure'],
-        app_context=app_context
-    ))
-    table_model = TableModel(get_model_impl_factory_for_config(
-        models_config['table'],
-        app_context=app_context
-    ))
-    reference_segmenter_model = ReferenceSegmenterModel(get_model_impl_factory_for_config(
-        models_config['reference_segmenter'],
-        app_context=app_context
-    ))
-    citation_model = CitationModel(get_model_impl_factory_for_config(
-        models_config['citation'],
-        app_context=app_context
-    ))
+    model_config = models_config[model_name]
+    model = model_class(
+        get_model_impl_factory_for_config(
+            model_config,
+            app_context=app_context
+        ),
+        model_config=model_config
+    )
+    return model
+
+
+def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
+    segmentation_model = load_model(
+        app_config, app_context, 'segmentation', SegmentationModel
+    )
+    header_model = load_model(
+        app_config, app_context, 'header', HeaderModel
+    )
+    name_header_model = load_model(
+        app_config, app_context, 'name_header', NameModel
+    )
+    name_citation_model = load_model(
+        app_config, app_context, 'name_citation', NameModel
+    )
+    affiliation_address_model = load_model(
+        app_config, app_context, 'affiliation_address', AffiliationAddressModel
+    )
+    fulltext_model = load_model(
+        app_config, app_context, 'fulltext', FullTextModel
+    )
+    figure_model = load_model(
+        app_config, app_context, 'figure', FigureModel
+    )
+    table_model = load_model(
+        app_config, app_context, 'table', TableModel
+    )
+    reference_segmenter_model = load_model(
+        app_config, app_context, 'reference_segmenter', ReferenceSegmenterModel
+    )
+    citation_model = load_model(
+        app_config, app_context, 'citation', CitationModel
+    )
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,

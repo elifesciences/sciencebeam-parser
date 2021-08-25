@@ -28,7 +28,8 @@ LOGGER = logging.getLogger(__name__)
 @pytest.fixture(name='features_provider')
 def _features_provider():
     return SegmentationLineFeaturesProvider(
-        document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT
+        document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+        use_first_token_of_block=False
     )
 
 

@@ -203,9 +203,14 @@ def iter_labeled_layout_token_for_layout_model_label(
 
 
 class Model(ABC):
-    def __init__(self, model_impl_factory: Optional[T_ModelImplFactory]) -> None:
+    def __init__(
+        self,
+        model_impl_factory: Optional[T_ModelImplFactory],
+        model_config: Optional[dict] = None
+    ) -> None:
         self._model_impl_factory = model_impl_factory
         self._model_impl: Optional[ModelImpl] = None
+        self.model_config = model_config or {}
 
     @abstractmethod
     def get_data_generator(

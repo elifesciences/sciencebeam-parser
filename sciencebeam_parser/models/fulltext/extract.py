@@ -126,7 +126,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
             _previous_tag = name
             if name in {'O'}:
                 LOGGER.debug('ignoring content (%r): %r', name, layout_block)
-                note_type = 'other' if name == 'O' else name
+                note_type = 'fulltext:other' if name == 'O' else name
                 if section:
                     section.add_note(layout_block, note_type=note_type)
                 else:

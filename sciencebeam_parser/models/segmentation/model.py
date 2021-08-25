@@ -16,5 +16,8 @@ class SegmentationModel(Model):
         document_features_context: DocumentFeaturesContext
     ) -> SegmentationDataGenerator:
         return SegmentationDataGenerator(
-            document_features_context=document_features_context
+            document_features_context=document_features_context,
+            use_first_token_of_block=(
+                self.model_config.get('use_first_token_of_block', True)
+            )
         )

@@ -139,9 +139,11 @@ class SegmentationLineFeatures(ContextAwareLayoutTokenFeatures):
 class SegmentationLineFeaturesProvider:
     def __init__(
         self,
-        document_features_context: DocumentFeaturesContext
+        document_features_context: DocumentFeaturesContext,
+        use_first_token_of_block: bool
     ):
         self.document_features_context = document_features_context
+        self.use_first_token_of_block = use_first_token_of_block
 
     def iter_line_features(  # pylint: disable=too-many-locals
         self,
@@ -204,8 +206,11 @@ class SegmentationLineFeaturesProvider:
                     retokenized_token_texts = re.split(r" |\t|\f|\u00A0", line_text)
                     if not retokenized_token_texts:
                         continue
-                    # Java GROBID uses the first token in the block
-                    token = first_block_token
+                    if self.use_first_token_of_block:
+                        # Java GROBID uses the first token in the block
+                        token = first_block_token
+                    else:
+                        token = line.tokens[0]
                     segmentation_line_features.layout_token = token
                     segmentation_line_features.line_text = line_text
                     segmentation_line_features.concatenated_line_tokens_text = line_text
@@ -232,16 +237,19 @@ class SegmentationLineFeaturesProvider:
 class SegmentationDataGenerator(ModelDataGenerator):
     def __init__(
         self,
-        document_features_context: DocumentFeaturesContext
+        document_features_context: DocumentFeaturesContext,
+        use_first_token_of_block: bool
     ):
         self.document_features_context = document_features_context
+        self.use_first_token_of_block = use_first_token_of_block
 
     def iter_model_data_for_layout_document(
         self,
         layout_document: LayoutDocument
     ) -> Iterable[LayoutModelData]:
         features_provider = SegmentationLineFeaturesProvider(
-            document_features_context=self.document_features_context
+            document_features_context=self.document_features_context,
+            use_first_token_of_block=self.use_first_token_of_block
         )
         for features in features_provider.iter_line_features(
             layout_document

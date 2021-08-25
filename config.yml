@@ -56,6 +56,7 @@ processors:
 models:
   segmentation:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/biorxiv-grobid/2021-05-11-delft-grobid-segmentation-biorxiv-10k-auto-v0.0.23-train-1966-e133.tar.gz'
+    use_first_token_of_block: false
   header:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/v0.0.1/2020-10-04-delft-grobid-header-biorxiv-no-word-embedding.tar.gz'
   name_header:
