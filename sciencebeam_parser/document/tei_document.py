@@ -345,6 +345,10 @@ class TeiElementBuilder:
             return
         self.element.append(child)
 
+    def extend(self, children: List[Union[dict, etree.ElementBase]]):
+        for child in children:
+            self.append(child)
+
 
 class TeiAuthor(TeiElementWrapper):
     pass
@@ -598,7 +602,7 @@ def get_tei_element_for_figure(semantic_figure: SemanticContentWrapper) -> etree
                 'figDesc', *iter_layout_block_tei_children(semantic_content.merged_block)
             ))
             continue
-        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+        children.extend(get_tei_child_elements_for_semantic_content(semantic_content))
     return TEI_E('figure', *children)
 
 
@@ -617,7 +621,7 @@ def get_tei_element_for_table(semantic_table: SemanticContentWrapper) -> etree.E
                 'figDesc', *iter_layout_block_tei_children(semantic_content.merged_block)
             ))
             continue
-        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+        children.extend(get_tei_child_elements_for_semantic_content(semantic_content))
     return TEI_E('figure', {'type': 'table'}, *children)
 
 
@@ -645,22 +649,46 @@ def get_tei_element_for_heading(
     return TEI_E('head', *children)
 
 
-def get_tei_element_for_paragraph(
+def iter_flat_paragraph_formula(
+    semantic_paragraph: SemanticParagraph
+) -> Iterable[SemanticContentWrapper]:
+    pending_semantic_content_list: List[SemanticContentWrapper] = []
+    for semantic_content in semantic_paragraph:
+        if isinstance(semantic_content, SemanticRawEquation):
+            if pending_semantic_content_list:
+                yield SemanticParagraph(pending_semantic_content_list)
+                pending_semantic_content_list = []
+            yield semantic_content
+            continue
+        pending_semantic_content_list.append(semantic_content)
+    if pending_semantic_content_list:
+        yield SemanticParagraph(pending_semantic_content_list)
+
+
+def get_tei_elements_for_paragraph(
     semantic_paragraph: SemanticContentWrapper
-) -> etree.ElementBase:
+) -> List[etree.ElementBase]:
     LOGGER.debug('semantic_paragraph: %s', semantic_paragraph)
     assert isinstance(semantic_paragraph, SemanticParagraph)
-    children: T_ElementChildrenList = [
-        get_default_attributes_for_semantic_content(semantic_paragraph)
-    ]
-    pending_whitespace = ''
-    for semantic_content in semantic_paragraph:
-        pending_whitespace = append_tei_children_list_and_get_whitespace(
-            children,
-            semantic_content,
-            pending_whitespace=pending_whitespace
-        )
-    return TEI_E('p', *children)
+    result: List[etree.ElementBase] = []
+    for flat_parent_semantic_content in iter_flat_paragraph_formula(semantic_paragraph):
+        if not isinstance(flat_parent_semantic_content, SemanticParagraph):
+            result.extend(get_tei_child_elements_for_semantic_content(
+                flat_parent_semantic_content
+            ))
+            continue
+        children: T_ElementChildrenList = [
+            get_default_attributes_for_semantic_content(flat_parent_semantic_content)
+        ]
+        pending_whitespace = ''
+        for semantic_content in flat_parent_semantic_content:
+            pending_whitespace = append_tei_children_list_and_get_whitespace(
+                children,
+                semantic_content,
+                pending_whitespace=pending_whitespace
+            )
+        result.append(TEI_E('p', *children))
+    return result
 
 
 def get_tei_element_for_semantic_section(
@@ -668,20 +696,20 @@ def get_tei_element_for_semantic_section(
 ) -> etree.ElementBase:
     LOGGER.debug('semantic_section: %s', semantic_section)
     assert isinstance(semantic_section, SemanticSection)
-    tei_section = TeiSection(TEI_E('div'))
+    tei_section = TeiElementBuilder(TEI_E('div'))
     for semantic_content in semantic_section:
         if isinstance(semantic_content, (SemanticFigure, SemanticTable,)):
             # rendered at parent level
             continue
-        tei_section.element.append(get_tei_child_element_for_semantic_content(
+        tei_section.extend(get_tei_child_elements_for_semantic_content(
             semantic_content
         ))
     return tei_section.element
 
 
-def get_tei_element_for_raw_equation(
+def get_tei_elements_for_raw_equation(
     semantic_raw_equation: SemanticContentWrapper
-) -> etree.ElementBase:
+) -> List[etree.ElementBase]:
     LOGGER.debug('semantic_raw_equation: %s', semantic_raw_equation)
     assert isinstance(semantic_raw_equation, SemanticRawEquation)
     children: T_ElementChildrenList = [
@@ -701,7 +729,7 @@ def get_tei_element_for_raw_equation(
             semantic_content,
             pending_whitespace=pending_whitespace
         )
-    return TEI_E('formula', *children)
+    return [TEI_E('formula', *children)]
 
 
 SIMPLE_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS = {
@@ -753,7 +781,10 @@ PARENT_PATH_BY_SEMANTIC_CONTENT_CLASS = {
 
 ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     Type[Any],
-    Callable[[SemanticContentWrapper], etree.ElementBase]
+    Callable[
+        [SemanticContentWrapper],
+        Union[etree.ElementBase, List[etree.ElementBase]]
+    ]
 ] = {
     # SemanticGivenName: functools.partial(
     #     get_tei_element_for_name_part,
@@ -775,9 +806,9 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticTableCitation: get_tei_element_for_citation,
     SemanticReferenceCitation: get_tei_element_for_citation,
     SemanticHeading: get_tei_element_for_heading,
-    SemanticParagraph: get_tei_element_for_paragraph,
+    SemanticParagraph: get_tei_elements_for_paragraph,
     SemanticSection: get_tei_element_for_semantic_section,
-    SemanticRawEquation: get_tei_element_for_raw_equation
+    SemanticRawEquation: get_tei_elements_for_raw_equation
 }
 
 
@@ -792,15 +823,18 @@ def get_tei_note_for_semantic_content(
     return _create_tei_note_element(note_type, semantic_content.merged_block)
 
 
-def get_tei_child_element_for_semantic_content(
+def get_tei_child_elements_for_semantic_content(
     semantic_content: SemanticContentWrapper
-) -> etree.ElementBase:
+) -> List[etree.ElementBase]:
     semantic_type = type(semantic_content)
     element_factory = ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS.get(
         semantic_type
     )
     if element_factory:
-        return element_factory(semantic_content)
+        child_or_children = element_factory(semantic_content)
+        if isinstance(child_or_children, list):
+            return child_or_children
+        return [element_factory(semantic_content)]
     parsed_tag_expression = PARSED_TAG_EXPRESSION_BY_SEMANTIC_CONTENT_CLASS.get(
         semantic_type
     )
@@ -809,14 +843,14 @@ def get_tei_child_element_for_semantic_content(
             isinstance(semantic_content, SemanticOptionalValueSemanticMixedContentWrapper)
             and semantic_content.value is not None
         ):
-            return parsed_tag_expression.create_node(
+            return [parsed_tag_expression.create_node(
                 get_default_attributes_for_semantic_content(semantic_content),
                 semantic_content.value
-            )
-        return parsed_tag_expression.create_node(
+            )]
+        return [parsed_tag_expression.create_node(
             *iter_layout_block_tei_children(semantic_content.merged_block)
-        )
-    return get_tei_note_for_semantic_content(semantic_content)
+        )]
+    return [get_tei_note_for_semantic_content(semantic_content)]
 
 
 def get_tei_children_and_whitespace_for_semantic_content(
@@ -829,7 +863,7 @@ def get_tei_children_and_whitespace_for_semantic_content(
             layout_block.whitespace
         )
     return (
-        [get_tei_child_element_for_semantic_content(semantic_content)],
+        get_tei_child_elements_for_semantic_content(semantic_content),
         layout_block.whitespace
     )
 
@@ -910,16 +944,17 @@ def _get_tei_affiliation_for_semantic_affiliation_address(
         if isinstance(semantic_content, SemanticAddressField):
             address_semantic_content_list.append(semantic_content)
             continue
-        children.append(get_tei_child_element_for_semantic_content(
+        children.extend(get_tei_child_elements_for_semantic_content(
             semantic_content
         ))
     LOGGER.debug('address_semantic_content_list: %r', address_semantic_content_list)
     if address_semantic_content_list:
         children.append(TEI_E('address', *[
-            get_tei_child_element_for_semantic_content(
+            child
+            for semantic_content in address_semantic_content_list
+            for child in get_tei_child_elements_for_semantic_content(
                 semantic_content
             )
-            for semantic_content in address_semantic_content_list
         ]))
     return TeiAffiliation(TEI_E('affiliation', *children))
 
@@ -933,7 +968,7 @@ def _get_tei_author_for_semantic_author(
     LOGGER.debug('semantic_author: %s', semantic_author)
     pers_name_children = []
     for semantic_content in semantic_author:
-        pers_name_children.append(get_tei_child_element_for_semantic_content(
+        pers_name_children.extend(get_tei_child_elements_for_semantic_content(
             semantic_content
         ))
     children = [
@@ -1002,7 +1037,7 @@ def _get_tei_raw_reference(semantic_raw_ref: SemanticRawReference) -> TeiElement
                 'raw_reference', semantic_content.merged_block
             ))
             continue
-        children.append(get_tei_child_element_for_semantic_content(semantic_content))
+        children.extend(get_tei_child_elements_for_semantic_content(semantic_content))
     tei_ref = TeiElementWrapper(TEI_E(
         'biblStruct',
         get_default_attributes_for_semantic_content(semantic_raw_ref),
@@ -1063,7 +1098,7 @@ def _get_tei_reference(  # pylint: disable=too-many-branches
             ))
             is_first_date = False
             continue
-        tei_child_parent.append(get_tei_child_element_for_semantic_content(semantic_content))
+        tei_child_parent.extend(get_tei_child_elements_for_semantic_content(semantic_content))
     return TeiElementWrapper(tei_ref.element)
 
 
@@ -1082,7 +1117,7 @@ def _get_tei_raw_reference_list(
                 _get_tei_reference(semantic_content).element
             )
             continue
-        tei_reference_list.append(get_tei_child_element_for_semantic_content(
+        tei_reference_list.extend(get_tei_child_elements_for_semantic_content(
             semantic_content
         ))
     return TeiElementWrapper(tei_reference_list.element)
@@ -1161,15 +1196,15 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
                 semantic_content.merged_block
             )
             continue
-        tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
-            semantic_content
-        ))
+        TeiElementBuilder(tei_document.get_body_element()).extend(
+            get_tei_child_elements_for_semantic_content(semantic_content)
+        )
     for semantic_content in semantic_document.body_section.iter_by_types_recursively(
         (SemanticFigure, SemanticTable,)
     ):
-        tei_document.get_body().element.append(get_tei_child_element_for_semantic_content(
-            semantic_content
-        ))
+        TeiElementBuilder(tei_document.get_body_element()).extend(
+            get_tei_child_elements_for_semantic_content(semantic_content)
+        )
 
     LOGGER.info('generating tei document: back section')
     stop_watch_recorder.start('back')
@@ -1194,15 +1229,15 @@ def get_tei_for_semantic_document(  # pylint: disable=too-many-branches, too-man
                 _get_tei_raw_reference_list(semantic_content).element
             )
             continue
-        tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
-            semantic_content
-        ))
+        TeiElementBuilder(tei_document.get_back_annex_element()).extend(
+            get_tei_child_elements_for_semantic_content(semantic_content)
+        )
     for semantic_figure in semantic_document.back_section.iter_by_types_recursively(
         (SemanticFigure, SemanticTable,)
     ):
-        tei_document.get_back_annex().element.append(get_tei_child_element_for_semantic_content(
-            semantic_figure
-        ))
+        TeiElementBuilder(tei_document.get_back_annex_element()).extend(
+            get_tei_child_elements_for_semantic_content(semantic_figure)
+        )
     stop_watch_recorder.stop()
     LOGGER.info('generating tei document done, took: %s', stop_watch_recorder)
     return tei_document

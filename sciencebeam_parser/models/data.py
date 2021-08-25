@@ -272,6 +272,9 @@ class LineIndentationStatusFeature:
         self._is_new_line = True
         self._is_indented = False
 
+    def on_new_block(self):
+        pass
+
     def on_new_line(self):
         self._is_new_line = True
 

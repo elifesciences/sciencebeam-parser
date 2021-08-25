@@ -68,8 +68,21 @@ class TestRelativeFontSizeFeature:
 
 
 class TestLineIndentationStatusFeature:
+    def test_should_detect_not_indented_blocks(self):
+        line_indentation_status_feature = LineIndentationStatusFeature()
+        line_indentation_status_feature.on_new_block()
+        line_indentation_status_feature.on_new_line()
+        assert line_indentation_status_feature.get_is_indented_and_update(
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
+        ) is False
+        line_indentation_status_feature.on_new_line()
+        assert line_indentation_status_feature.get_is_indented_and_update(
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
+        ) is False
+
     def test_should_detect_indented_blocks(self):
         line_indentation_status_feature = LineIndentationStatusFeature()
+        line_indentation_status_feature.on_new_block()
         line_indentation_status_feature.on_new_line()
         assert line_indentation_status_feature.get_is_indented_and_update(
             LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
@@ -78,6 +91,22 @@ class TestLineIndentationStatusFeature:
         assert line_indentation_status_feature.get_is_indented_and_update(
             LayoutToken('x', coordinates=LayoutPageCoordinates(x=50, y=10, width=10, height=10))
         ) is True
+
+    def test_should_reset_indentation_when_shifted_back(self):
+        line_indentation_status_feature = LineIndentationStatusFeature()
+        line_indentation_status_feature.on_new_block()
+        line_indentation_status_feature.on_new_line()
+        assert line_indentation_status_feature.get_is_indented_and_update(
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
+        ) is False
+        line_indentation_status_feature.on_new_line()
+        assert line_indentation_status_feature.get_is_indented_and_update(
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=50, y=10, width=10, height=10))
+        ) is True
+        line_indentation_status_feature.on_new_line()
+        assert line_indentation_status_feature.get_is_indented_and_update(
+            LayoutToken('x', coordinates=LayoutPageCoordinates(x=10, y=10, width=10, height=10))
+        ) is False
 
 
 class _TestBaseGetLineStatus(ABC):

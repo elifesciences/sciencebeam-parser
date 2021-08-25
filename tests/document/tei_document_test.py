@@ -12,6 +12,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticAddressLine,
     SemanticAffiliationAddress,
     SemanticCaption,
+    SemanticContentWrapper,
     SemanticCountry,
     SemanticDate,
     SemanticDepartment,
@@ -66,7 +67,7 @@ from sciencebeam_parser.document.tei_document import (
     _get_tei_affiliation_for_semantic_affiliation_address,
     _get_tei_reference,
     get_tei_for_semantic_document,
-    get_tei_child_element_for_semantic_content,
+    get_tei_child_elements_for_semantic_content,
     TeiDocument,
     TEI_E,
     TEI_NS_MAP
@@ -109,6 +110,14 @@ SUPERSCRIPT_FONT_1 = LayoutFont(
     font_id='font1',
     is_superscript=True
 )
+
+
+def get_tei_child_element_for_semantic_content(
+    semantic_content: SemanticContentWrapper
+) -> etree.ElementBase:
+    children = get_tei_child_elements_for_semantic_content(semantic_content)
+    assert len(children) == 1
+    return children[0]
 
 
 class TestIterLayoutBlockTeiChildren:
@@ -909,6 +918,7 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
         ) == ['#b0']
 
     def test_should_add_raw_equation_with_label_to_paragraph(self):
+        # to be consistent with Java GROBID
         semantic_document = SemanticDocument()
         semantic_document.body_section.add_content(SemanticSection([
             SemanticParagraph([
@@ -922,14 +932,14 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
         assert tei_document.get_xpath_text_content_list(
-            '//tei:body/tei:div/tei:p/tei:formula'
+            '//tei:body/tei:div/tei:formula'
         ) == ['Equation 1 (1)']
         assert tei_document.get_xpath_text_content_list(
-            '//tei:body/tei:div/tei:p/tei:formula/tei:label'
+            '//tei:body/tei:div/tei:formula/tei:label'
         ) == ['(1)']
         assert tei_document.get_xpath_text_content_list(
             '//tei:body/tei:div/tei:p'
-        ) == ['Next Equation 1 (1)']
+        ) == ['Next']
 
     def test_should_add_raw_references(self):
         semantic_document = SemanticDocument()
