@@ -175,7 +175,7 @@ class TestHeaderSemanticExtractor:
             for aff_address in aff_address_list
         ] == [ADDRESS_1, ADDRESS_2]
 
-    def test_should_not_split_raw_affiliation_separated_by_other(self):
+    def test_should_split_raw_affiliation_separated_by_other(self):
         semantic_content_list = list(
             HeaderSemanticExtractor().iter_semantic_content_for_entity_blocks([
                 ('<affiliation>', LayoutBlock.for_text(AFFILIATION_1)),
@@ -189,7 +189,7 @@ class TestHeaderSemanticExtractor:
         assert [
             aff_address.get_text_by_type(SemanticRawAffiliation)
             for aff_address in aff_address_list
-        ] == [AFFILIATION_1 + ' ' + AFFILIATION_2]
+        ] == [AFFILIATION_1, AFFILIATION_2]
 
     def test_should_split_raw_affiliation_separated_by_known_label(self):
         semantic_content_list = list(

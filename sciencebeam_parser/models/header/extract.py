@@ -100,7 +100,7 @@ class HeaderSemanticExtractor(SimpleModelSemanticExtractor):
                     name, layout_block
                 ))
                 continue
-            if aff_address is not None and name != 'O':
+            if aff_address is not None:
                 yield aff_address
                 aff_address = None
             yield self.get_semantic_content_for_entity_name(
