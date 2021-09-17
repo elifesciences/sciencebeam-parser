@@ -27,7 +27,8 @@ class TeiElementFactoryContext(ABC):
     @abstractmethod
     def get_default_attributes_for_semantic_content(
         self,
-        semantic_content: SemanticContentWrapper
+        semantic_content: SemanticContentWrapper,
+        **kwargs
     ) -> Dict[str, str]:
         pass
 

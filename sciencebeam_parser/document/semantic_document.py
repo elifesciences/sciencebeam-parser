@@ -20,7 +20,12 @@ from typing import (
 )
 from typing_extensions import Protocol
 
-from sciencebeam_parser.document.layout_document import EMPTY_BLOCK, LayoutBlock, LayoutToken
+from sciencebeam_parser.document.layout_document import (
+    EMPTY_BLOCK,
+    LayoutBlock,
+    LayoutGraphic,
+    LayoutToken
+)
 
 
 class SemanticContentWrapper(ABC):
@@ -94,8 +99,14 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
         if layout_block is not None:
             self.add_block_content(layout_block)
 
+    def __len__(self):
+        return len(self.mixed_content)
+
     def __iter__(self) -> Iterator[SemanticContentWrapper]:
         return iter(self.mixed_content)
+
+    def is_empty(self):
+        return not self.mixed_content
 
     def iter_blocks(self) -> Iterable[LayoutBlock]:
         return (
@@ -226,6 +237,11 @@ def iter_by_semantic_type_recursively(
 
 @dataclass
 class SemanticNote(SemanticSimpleContentWrapper):
+    note_type: str = 'other'
+
+
+@dataclass
+class SemanticMixedNote(SemanticMixedContentWrapper):
     note_type: str = 'other'
 
 
@@ -480,6 +496,11 @@ class SemanticRawEquationContent(SemanticMixedContentWrapper):
 
 class SemanticRawEquation(SemanticMixedContentWrapper):
     pass
+
+
+@dataclass
+class SemanticGraphic(SemanticSimpleContentWrapper):
+    layout_graphic: Optional[LayoutGraphic] = None
 
 
 @dataclass

@@ -3,6 +3,7 @@ from typing import Dict, List
 from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
+    LayoutGraphic,
     LayoutLineDescriptor,
     LayoutPageCoordinates,
     LayoutFont,
@@ -29,6 +30,19 @@ class AltoParser:
     def __init__(self):
         self.font_by_id_map: Dict[str, LayoutFont] = {}
 
+    def parse_page_coordinates(
+        self,
+        node: etree.ElementBase,
+        page_index: int
+    ) -> LayoutPageCoordinates:
+        return LayoutPageCoordinates(
+            x=float(node.attrib.get('HPOS', 0)),
+            y=float(node.attrib.get('VPOS', 0)),
+            width=float(node.attrib.get('WIDTH', 0)),
+            height=float(node.attrib.get('HEIGHT', 0)),
+            page_number=(1 + page_index)
+        )
+
     def parse_token(
         self,
         token_node: etree.ElementBase,
@@ -41,13 +55,7 @@ class AltoParser:
                 token_node.attrib.get('STYLEREFS'),
                 EMPTY_FONT
             ),
-            coordinates=LayoutPageCoordinates(
-                x=float(token_node.attrib.get('HPOS', 0)),
-                y=float(token_node.attrib.get('VPOS', 0)),
-                width=float(token_node.attrib.get('WIDTH', 0)),
-                height=float(token_node.attrib.get('HEIGHT', 0)),
-                page_number=(1 + page_index)
-            ),
+            coordinates=self.parse_page_coordinates(token_node, page_index=page_index),
             line_descriptor=layout_line_descriptor
         )
 
@@ -77,15 +85,32 @@ class AltoParser:
             for line_node in alto_xpath(block_node, './/alto:TextLine[alto:String]')
         ])
 
+    def parse_graphic(
+        self,
+        graphic_node: etree.ElementBase,
+        page_index: int
+    ) -> LayoutGraphic:
+        attrib = graphic_node.attrib
+        return LayoutGraphic(
+            path=attrib.get('FILEID'),
+            coordinates=self.parse_page_coordinates(graphic_node, page_index=page_index)
+        )
+
     def parse_page(
         self,
         page_node: etree.ElementBase,
         page_index: int
     ) -> LayoutPage:
-        return LayoutPage(blocks=[
-            self.parse_block(block_node, page_index=page_index)
-            for block_node in alto_xpath(page_node, './/alto:TextBlock')
-        ])
+        return LayoutPage(
+            blocks=[
+                self.parse_block(block_node, page_index=page_index)
+                for block_node in alto_xpath(page_node, './/alto:TextBlock')
+            ],
+            graphics=[
+                self.parse_graphic(graphic_node, page_index=page_index)
+                for graphic_node in alto_xpath(page_node, './/alto:Illustration')
+            ]
+        )
 
     def parse_font(self, font_node: etree.ElementBase) -> LayoutFont:
         font_styles = (font_node.attrib.get('FONTSTYLE') or '').split(' ')

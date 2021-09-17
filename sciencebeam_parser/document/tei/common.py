@@ -219,9 +219,13 @@ def create_tei_note_element(
 
 
 def get_default_attributes_for_semantic_content(
-    semantic_content: SemanticContentWrapper
+    semantic_content: SemanticContentWrapper,
+    **kwargs
 ) -> Dict[str, str]:
-    attrib = get_default_attributes_for_layout_block(semantic_content.merged_block)
+    attrib = get_default_attributes_for_layout_block(
+        semantic_content.merged_block,
+        **kwargs
+    )
     if isinstance(semantic_content, SemanticMixedContentWrapper):
         if semantic_content.content_id:
             attrib = {

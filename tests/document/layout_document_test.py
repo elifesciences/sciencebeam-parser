@@ -107,9 +107,12 @@ class TestLayoutTokensText:
 class TestRetokenizeLayoutDocument:
     def test_should_not_retokenize_document_with_valid_tokens(self):
         layout_document = LayoutDocument(
-            pages=[LayoutPage(blocks=[LayoutBlock.for_tokens([
-                LayoutToken('token1')
-            ])])]
+            pages=[LayoutPage(
+                blocks=[LayoutBlock.for_tokens([
+                    LayoutToken('token1')
+                ])],
+                graphics=[]
+            )]
         )
         retokenized_layout_document = retokenize_layout_document(layout_document)
         line = retokenized_layout_document.pages[0].blocks[0].lines[0]
@@ -118,12 +121,15 @@ class TestRetokenizeLayoutDocument:
     def test_should_retokenize_document_with_placeholders(self):
         text = 'token1 token2'
         layout_document = LayoutDocument(
-            pages=[LayoutPage(blocks=[LayoutBlock.for_tokens([
-                LayoutToken(
-                    text, whitespace='\n',
-                    coordinates=LayoutPageCoordinates(x=10, y=10, width=100, height=50)
-                )
-            ])])]
+            pages=[LayoutPage(
+                blocks=[LayoutBlock.for_tokens([
+                    LayoutToken(
+                        text, whitespace='\n',
+                        coordinates=LayoutPageCoordinates(x=10, y=10, width=100, height=50)
+                    )
+                ])],
+                graphics=[]
+            )]
         )
         retokenized_layout_document = retokenize_layout_document(layout_document)
         line = retokenized_layout_document.pages[0].blocks[0].lines[0]
@@ -136,9 +142,12 @@ class TestRetokenizeLayoutDocument:
 
     def test_should_remove_blank_token(self):
         layout_document = LayoutDocument(
-            pages=[LayoutPage(blocks=[LayoutBlock.for_tokens([
-                LayoutToken(' ')
-            ])])]
+            pages=[LayoutPage(
+                blocks=[LayoutBlock.for_tokens([
+                    LayoutToken(' ')
+                ])],
+                graphics=[]
+            )]
         )
         retokenized_layout_document = retokenize_layout_document(layout_document)
         line = retokenized_layout_document.pages[0].blocks[0].lines[0]
@@ -149,11 +158,17 @@ class TestRemoveEmptyBlocks:
     def test_should_not_remove_empty_line_block_and_page(self):
         layout_document = LayoutDocument(
             pages=[
-                LayoutPage(blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
-                    LayoutToken('token1')
-                ])])]),
-                LayoutPage(blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
-                ])])]),
+                LayoutPage(
+                    blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                        LayoutToken('token1')
+                    ])])],
+                    graphics=[]
+                ),
+                LayoutPage(
+                    blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                    ])])],
+                    graphics=[]
+                ),
             ]
         )
         cleaned_layout_document = remove_empty_blocks(layout_document)

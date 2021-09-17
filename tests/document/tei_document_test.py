@@ -3,7 +3,9 @@ import logging
 from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
-    LayoutBlock
+    LayoutBlock,
+    LayoutGraphic,
+    LayoutPageCoordinates
 )
 from sciencebeam_parser.document.semantic_document import (
     SemanticAbstract,
@@ -14,11 +16,13 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticFigure,
     SemanticFigureCitation,
     SemanticGivenName,
+    SemanticGraphic,
     SemanticHeading,
     SemanticInstitution,
     SemanticLabel,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticMixedNote,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticParagraph,
@@ -51,6 +55,8 @@ LOGGER = logging.getLogger(__name__)
 
 WEB_URL_1 = 'http://host/path'
 DOI_1 = '10.1234/test'
+
+COORDINATES_1 = LayoutPageCoordinates(10, 20, 110, 120)
 
 
 class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
@@ -524,3 +530,15 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
             '//tei:back/tei:div[@type="references"]/tei:listBibl'
             '/tei:biblStruct/@xml:id'
         ) == ['b0']
+
+    def test_should_unmatched_graphics_to_back(self):
+        semantic_document = SemanticDocument()
+        semantic_document.back_section.add_content(SemanticMixedNote([
+            SemanticGraphic(layout_graphic=LayoutGraphic(
+                coordinates=COORDINATES_1
+            ))
+        ], note_type='unmatched_graphics'))
+        tei_document = get_tei_for_semantic_document(semantic_document)
+        LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
+        graphics_xpath = '//tei:note[@type="unmatched_graphics"]//tei:graphic'
+        assert tei_document.xpath_nodes(graphics_xpath)

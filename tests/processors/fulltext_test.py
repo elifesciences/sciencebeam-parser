@@ -5,7 +5,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from sciencebeam_parser.config.config import AppConfig
-from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument, LayoutPage
+from sciencebeam_parser.document.layout_document import (
+    LayoutBlock,
+    LayoutDocument,
+    LayoutGraphic,
+    LayoutPage,
+    LayoutPageCoordinates
+)
 from sciencebeam_parser.document.semantic_document import (
     SemanticAffiliationAddress,
     SemanticAuthor,
@@ -14,6 +20,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticEditor,
     SemanticFigure,
     SemanticFigureCitation,
+    SemanticGraphic,
     SemanticInstitution,
     SemanticInvalidReference,
     SemanticLabel,
@@ -806,8 +813,12 @@ class TestFullTextProcessor:
         segmentation_label: str
     ):
         citation_block = LayoutBlock.for_text('Figure 1')
-        label_block = LayoutBlock.for_text('Figure 1')
-        caption_block = LayoutBlock.for_text('Caption 1')
+        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        graphic = LayoutGraphic(coordinates=_coordinates, path='graphic1.svg')
+        _coordinates = _coordinates.move_by(dy=10)
+        label_block = LayoutBlock.for_text('Figure 1', coordinates=_coordinates)
+        _coordinates = _coordinates.move_by(dy=10)
+        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
@@ -840,9 +851,10 @@ class TestFullTextProcessor:
             caption_block, '<figDesc>'
         )
 
-        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
-            fulltext_block
-        ])])
+        layout_document = LayoutDocument(pages=[LayoutPage(
+            blocks=[fulltext_block],
+            graphics=[graphic]
+        )])
         semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
             layout_document=layout_document
         )
@@ -863,6 +875,9 @@ class TestFullTextProcessor:
         assert len(figure_citation_list) == 1
         assert figure_citation_list[0].get_text() == citation_block.text
         assert figure_citation_list[0].target_content_id == 'fig_0'
+        semantic_graphic_list = list(figure.iter_by_type(SemanticGraphic))
+        assert semantic_graphic_list
+        assert semantic_graphic_list[0].layout_graphic == graphic
 
     @pytest.mark.parametrize(
         'segmentation_label',

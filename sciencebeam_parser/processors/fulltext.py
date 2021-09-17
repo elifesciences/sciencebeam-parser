@@ -30,9 +30,11 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticEditor,
     SemanticFigure,
     SemanticFigureCitation,
+    SemanticGraphic,
     SemanticInvalidReference,
     SemanticLabel,
     SemanticMixedContentWrapper,
+    SemanticMixedNote,
     SemanticRawAffiliationAddress,
     SemanticRawAuthors,
     SemanticRawEditors,
@@ -52,7 +54,7 @@ from sciencebeam_parser.document.semantic_document import (
     T_SemanticRawNameList
 )
 from sciencebeam_parser.document.tei_document import TeiDocument, get_tei_for_semantic_document
-from sciencebeam_parser.document.layout_document import LayoutDocument
+from sciencebeam_parser.document.layout_document import LayoutDocument, LayoutGraphic
 from sciencebeam_parser.models.segmentation.model import SegmentationModel
 from sciencebeam_parser.models.header.model import HeaderModel
 from sciencebeam_parser.models.name.model import NameModel
@@ -67,6 +69,9 @@ from sciencebeam_parser.processors.ref_matching import (
     ContentIdMatcher,
     PartialContentIdMatcher,
     SimpleContentIdMatcher
+)
+from sciencebeam_parser.processors.graphic_matching import (
+    BoundingBoxDistanceGraphicMatcher
 )
 
 
@@ -160,6 +165,7 @@ class FullTextProcessorConfig(NamedTuple):
     extract_figure_fields: bool = True
     extract_table_fields: bool = True
     merge_raw_authors: bool = False
+    extract_graphic_bounding_boxes: bool = True
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
@@ -308,7 +314,54 @@ class FullTextProcessor:
             self._assign_target_content_ids(table_citations, SimpleContentIdMatcher(
                 self._get_semantic_content_text_by_content_id(tables, SemanticLabel)
             ))
+        if self.config.extract_graphic_bounding_boxes:
+            unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
+            self._match_graphic_elements(
+                semantic_graphic_list=(
+                    self._get_semantic_graphic_content_list_for_layout_graphic_list(
+                        layout_document.iter_all_graphics()
+                    )
+                ),
+                candidate_semantic_content_list=list(
+                    document.iter_by_type_recursively(SemanticFigure)
+                ),
+                unmatched_graphics_container=unmatched_graphics_container
+            )
+            if not unmatched_graphics_container.is_empty():
+                LOGGER.info('unmatched_graphics_container: %r', unmatched_graphics_container)
+                document.back_section.add_content(unmatched_graphics_container)
+            else:
+                LOGGER.info('no unmatched graphics')
         return document
+
+    def _get_semantic_graphic_content_list_for_layout_graphic_list(
+        self,
+        layout_graphic_iterable: Iterable[LayoutGraphic]
+    ) -> List[SemanticGraphic]:
+        return [
+            SemanticGraphic(layout_graphic=layout_graphic)
+            for layout_graphic in layout_graphic_iterable
+        ]
+
+    def _match_graphic_elements(
+        self,
+        semantic_graphic_list: Sequence[SemanticGraphic],
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper],
+        unmatched_graphics_container: SemanticMixedContentWrapper
+    ):
+        graphic_matcher = BoundingBoxDistanceGraphicMatcher()
+        graphic_match_result = graphic_matcher.get_graphic_matches(
+            semantic_graphic_list=semantic_graphic_list,
+            candidate_semantic_content_list=candidate_semantic_content_list
+        )
+        for graphic_match in graphic_match_result.graphic_matches:
+            if isinstance(graphic_match.candidate_semantic_content,  SemanticMixedContentWrapper):
+                graphic_match.candidate_semantic_content.add_content(
+                    graphic_match.semantic_graphic
+                )
+        LOGGER.info('unmatched_graphics: %r', graphic_match_result.unmatched_graphics)
+        for unmatched_graphic in graphic_match_result.unmatched_graphics:
+            unmatched_graphics_container.add_content(unmatched_graphic)
 
     def _assign_content_ids(
         self,

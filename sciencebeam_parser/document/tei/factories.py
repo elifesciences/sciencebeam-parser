@@ -25,6 +25,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticFigure,
     SemanticFigureCitation,
     SemanticGivenName,
+    SemanticGraphic,
     SemanticHeading,
     SemanticInstitution,
     SemanticIssue,
@@ -34,6 +35,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticLocation,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticMixedNote,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
@@ -69,6 +71,9 @@ from sciencebeam_parser.document.tei.factory import (
     TeiElementFactory,
     TeiElementFactoryContext
 )
+from sciencebeam_parser.document.tei.misc import (
+    SemanticMixedNoteTeiElementFactory
+)
 from sciencebeam_parser.document.tei.citation import (
     CitationTeiElementFactory
 )
@@ -81,6 +86,9 @@ from sciencebeam_parser.document.tei.equation import (
 from sciencebeam_parser.document.tei.figure_table import (
     FigureTeiElementFactory,
     TableTeiElementFactory
+)
+from sciencebeam_parser.document.tei.graphic import (
+    GraphicTeiElementFactory
 )
 from sciencebeam_parser.document.tei.page_range import (
     TeiBiblScopeForPageRangeElementFactory
@@ -146,6 +154,7 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     Type[Any],
     TeiElementFactory
 ] = {
+    SemanticMixedNote: SemanticMixedNoteTeiElementFactory(),
     SemanticPageRange: TeiBiblScopeForPageRangeElementFactory(),
     SemanticExternalIdentifier: ExternalIdentifierTeiElementFactory(),
     SemanticFigure: FigureTeiElementFactory(),
@@ -156,7 +165,8 @@ ELEMENT_FACTORY_BY_SEMANTIC_CONTENT_CLASS: Mapping[
     SemanticHeading: HeadingTeiElementFactory(),
     SemanticParagraph: ParagraphTeiElementFactory(),
     SemanticSection: SectionTeiElementFactory(),
-    SemanticRawEquation: RawEquationTeiElementFactory()
+    SemanticRawEquation: RawEquationTeiElementFactory(),
+    SemanticGraphic: GraphicTeiElementFactory()
 }
 
 
@@ -174,9 +184,10 @@ def get_tei_note_for_semantic_content(
 class DefaultTeiElementFactoryContext(TeiElementFactoryContext):
     def get_default_attributes_for_semantic_content(
         self,
-        semantic_content: SemanticContentWrapper
+        semantic_content: SemanticContentWrapper,
+        **kwargs
     ) -> Dict[str, str]:
-        return get_default_attributes_for_semantic_content(semantic_content)
+        return get_default_attributes_for_semantic_content(semantic_content, **kwargs)
 
     def iter_layout_block_tei_children(
         self,

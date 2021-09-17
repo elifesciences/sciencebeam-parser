@@ -1,7 +1,7 @@
 import logging
 import itertools
 import operator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Callable, List, Iterable, NamedTuple, Optional, Tuple
 
@@ -30,6 +30,18 @@ class LayoutPageCoordinates(NamedTuple):
     width: float
     height: float
     page_number: int = 0
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def is_empty(self) -> bool:
+        return self.width == 0 or self.height == 0
+
+    def move_by(self, dx: float = 0, dy: float = 0) -> 'LayoutPageCoordinates':
+        return LayoutPageCoordinates(
+            x=self.x + dx, y=self.y + dy, width=self.width, height=self.height,
+            page_number=self.page_number
+        )
 
     def get_merged_with(
         self,
@@ -284,26 +296,38 @@ class LayoutBlock:
 EMPTY_BLOCK = LayoutBlock(lines=[])
 
 
+class LayoutGraphic(NamedTuple):
+    path: Optional[str] = None
+    coordinates: Optional[LayoutPageCoordinates] = None
+
+
 @dataclass
 class LayoutPage:
     blocks: List[LayoutBlock]
+    graphics: List[LayoutGraphic] = field(default_factory=list)
 
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutPage':
-        return LayoutPage(blocks=[
-            block.flat_map_layout_tokens(fn)
-            for block in self.blocks
-        ])
+        return LayoutPage(
+            blocks=[
+                block.flat_map_layout_tokens(fn)
+                for block in self.blocks
+            ],
+            graphics=self.graphics
+        )
 
     def remove_empty_blocks(self) -> 'LayoutPage':
         blocks: List[LayoutBlock] = [
             block.remove_empty_lines()
             for block in self.blocks
         ]
-        return LayoutPage(blocks=[
-            block
-            for block in blocks
-            if block.lines
-        ])
+        return LayoutPage(
+            blocks=[
+                block
+                for block in blocks
+                if block.lines
+            ],
+            graphics=self.graphics
+        )
 
 
 @dataclass
@@ -315,7 +339,9 @@ class LayoutDocument:
 
     @staticmethod
     def for_blocks(blocks: List[LayoutBlock]) -> 'LayoutDocument':
-        return LayoutDocument(pages=[LayoutPage(blocks=blocks)])
+        return LayoutDocument(pages=[LayoutPage(
+            blocks=blocks, graphics=[]
+        )])
 
     def iter_all_blocks(self) -> Iterable[LayoutBlock]:
         return (
@@ -329,6 +355,13 @@ class LayoutDocument:
             token
             for block in self.iter_all_blocks()
             for token in block.iter_all_tokens()
+        )
+
+    def iter_all_graphics(self) -> Iterable[LayoutGraphic]:
+        return (
+            graphic
+            for page in self.pages
+            for graphic in page.graphics
         )
 
     def flat_map_layout_tokens(
