@@ -5,6 +5,7 @@ from typing import Callable, Iterable, List, Optional, Type, TypeVar
 from zipfile import ZipFile
 
 from flask import Blueprint, jsonify, request, Response, url_for
+from flask.helpers import send_file
 from werkzeug.exceptions import BadRequest
 from lxml import etree
 
@@ -796,10 +797,8 @@ class ApiBlueprint(Blueprint):
             semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
                 SemanticGraphic
             ))
-            LOGGER.debug('semantic_document: %r', semantic_document)
             LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
             document = get_tei_for_semantic_document(semantic_document)
-            response_type = 'application/zip'
             zip_path = temp_path / 'result.zip'
             with ZipFile(zip_path, 'w') as zip_file:
                 tei_xml_data = etree.tostring(
@@ -818,7 +817,8 @@ class ApiBlueprint(Blueprint):
                         layout_graphic.local_file_path,
                         semantic_graphic.relative_path
                     )
-            response_content = zip_path.read_bytes()
-            LOGGER.debug('response_content (bytes): %d', len(response_content))
-        headers = None
-        return Response(response_content, headers=headers, mimetype=response_type)
+            LOGGER.debug('response_content (bytes): %d', zip_path.stat().st_size)
+            return send_file(
+                str(zip_path),
+                as_attachment=True
+            )
