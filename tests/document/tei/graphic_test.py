@@ -40,7 +40,8 @@ class TestGraphicTeiElementFactory:
         semantic_graphic = SemanticGraphic(
             layout_graphic=LayoutGraphic(
                 local_file_path='image1.png',
-                coordinates=COORDINATES_1
+                coordinates=COORDINATES_1,
+                graphic_type='svg'
             )
         )
         result = _get_wrapped_graphic_tei_element(semantic_graphic)
@@ -52,3 +53,4 @@ class TestGraphicTeiElementFactory:
         assert graphic_element.attrib.get('coords') == format_coordinates(
             COORDINATES_1
         )
+        assert graphic_element.attrib.get('type') == 'svg'

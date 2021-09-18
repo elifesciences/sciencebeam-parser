@@ -93,7 +93,8 @@ class AltoParser:
         attrib = graphic_node.attrib
         return LayoutGraphic(
             local_file_path=attrib.get('FILEID'),
-            coordinates=self.parse_page_coordinates(graphic_node, page_index=page_index)
+            coordinates=self.parse_page_coordinates(graphic_node, page_index=page_index),
+            graphic_type=attrib.get('TYPE')
         )
 
     def parse_page(

@@ -299,6 +299,7 @@ EMPTY_BLOCK = LayoutBlock(lines=[])
 class LayoutGraphic(NamedTuple):
     local_file_path: Optional[str] = None
     coordinates: Optional[LayoutPageCoordinates] = None
+    graphic_type: Optional[str] = None
 
 
 @dataclass

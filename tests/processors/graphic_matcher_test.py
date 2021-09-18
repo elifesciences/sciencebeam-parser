@@ -1,6 +1,8 @@
 import logging
 from typing import Sequence, Tuple
 
+import pytest
+
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutGraphic,
@@ -246,3 +248,34 @@ class TestBoundingBoxDistanceGraphicMatcher:
         LOGGER.debug('result: %r', result)
         assert not result.graphic_matches
         assert result.unmatched_graphics == [semantic_graphic_1]
+
+    @pytest.mark.parametrize(
+        "graphic_type,should_match",
+        [("svg", False), ("bitmap", True)]
+    )
+    def test_should_match_graphic_of_specific(
+        self,
+        graphic_type: str,
+        should_match: bool
+    ):
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1,
+            graphic_type=graphic_type
+        ))
+        candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
+            coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1
+        )
+        result = BoundingBoxDistanceGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        if should_match:
+            assert len(result) == 1
+            first_match = result.graphic_matches[0]
+            assert first_match.semantic_graphic == semantic_graphic_1
+        else:
+            assert not result.graphic_matches
+            assert result.unmatched_graphics == [semantic_graphic_1]

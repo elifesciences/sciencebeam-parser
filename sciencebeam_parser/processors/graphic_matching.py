@@ -118,6 +118,12 @@ class BoundingBoxDistanceBetween(NamedTuple):
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
+    def __init__(self):
+        super().__init__()
+        # we ignore svgs for now because they currently represent the whole page
+        # rather than individual images
+        self.ignored_graphic_types = {'svg'}
+
     def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
         return distance_between.bounding_box_distance.page_number_diff == 0
 
@@ -133,7 +139,11 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 semantic_content=semantic_graphic
             )
             for semantic_graphic in semantic_graphic_list
-            if semantic_graphic.layout_graphic and semantic_graphic.layout_graphic.coordinates
+            if (
+                semantic_graphic.layout_graphic
+                and semantic_graphic.layout_graphic.coordinates
+                and semantic_graphic.layout_graphic.graphic_type not in self.ignored_graphic_types
+            )
         ]
         candidate_bounding_box_ref_list = [
             BoundingBoxRef(
@@ -211,12 +221,9 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
             for distance_between in best_distance_between_by_candidate_key.values()
         }
         unmatched_graphics = [
-            cast(
-                SemanticGraphic,
-                graphic_bounding_box_ref.semantic_content
-            )
-            for graphic_bounding_box_ref in graphic_bounding_box_ref_list
-            if graphic_bounding_box_ref.key not in matched_graphic_keys
+            semantic_graphic
+            for semantic_graphic in semantic_graphic_list
+            if id(semantic_graphic) not in matched_graphic_keys
         ]
         return GraphicMatchResult(
             graphic_matches=graphic_matches,

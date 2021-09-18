@@ -110,6 +110,7 @@ class TestAltoParser:
         graphic = page.graphics[0]
         assert graphic.local_file_path == '/path/to/graphic.svg'
         assert graphic.coordinates == COORDINATES_1
+        assert graphic.graphic_type == 'svg'
 
 
 class TestParseAltoRoot:

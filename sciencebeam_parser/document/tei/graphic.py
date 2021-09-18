@@ -40,4 +40,6 @@ class GraphicTeiElementFactory(SingleElementTeiElementFactory):
         if layout_graphic:
             if layout_graphic.coordinates:
                 children.append({'coords': format_coordinates(layout_graphic.coordinates)})
+            if layout_graphic.graphic_type:
+                children.append({'type': layout_graphic.graphic_type})
         return TEI_E('graphic', *children)
