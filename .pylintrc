@@ -14,5 +14,6 @@ disable=
     too-few-public-methods,
     too-many-arguments,
     too-many-instance-attributes,
+    consider-using-f-string,
     duplicate-code,
     invalid-name

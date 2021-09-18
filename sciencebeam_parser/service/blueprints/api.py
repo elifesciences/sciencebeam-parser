@@ -725,7 +725,7 @@ class ApiBlueprint(Blueprint):
                 first_page=first_page,
                 last_page=last_page
             )
-            response_content = output_path.read_text()
+            response_content = output_path.read_text(encoding='utf-8')
         response_type = 'text/xml'
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)

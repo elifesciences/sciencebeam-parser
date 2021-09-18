@@ -27,7 +27,7 @@ class AppConfig:
     @staticmethod
     def load_yaml(file_path: str) -> 'AppConfig':
         return AppConfig(
-            yaml.safe_load(Path(file_path).read_text())
+            yaml.safe_load(Path(file_path).read_text(encoding='utf-8'))
         )
 
     def apply_environment_variables(self, prefix: str = 'SCIENCEBEAM_PARSER__') -> 'AppConfig':

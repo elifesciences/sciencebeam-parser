@@ -14,4 +14,4 @@ def configure_logging():
 
 @pytest.fixture(scope='session')
 def sciencebeam_parser_config() -> dict:
-    return yaml.safe_load(Path('config.yml').read_text())
+    return yaml.safe_load(Path('config.yml').read_text(encoding='utf-8'))

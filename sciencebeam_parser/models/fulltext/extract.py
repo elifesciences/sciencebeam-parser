@@ -145,7 +145,7 @@ class FullTextSemanticExtractor(SimpleModelSemanticExtractor):
                 continue
             if not section:
                 section = SemanticSection(section_type=section_type)
-            if name in SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG.keys():
+            if name in SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG:
                 section.add_content(self.get_semantic_content_for_entity_name(
                     name, layout_block=layout_block
                 ))

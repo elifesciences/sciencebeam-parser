@@ -18,7 +18,7 @@ def is_xml_filename(path: str):
 
 def load_lookup_from_text_file(path: str) -> TextLookUp:
     return SimpleTextLookUp(
-        set(Path(path).read_text().splitlines()) - {''}
+        set(Path(path).read_text(encoding='utf-8').splitlines()) - {''}
     )
 
 
