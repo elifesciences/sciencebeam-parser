@@ -35,14 +35,27 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
             wapiti_binary_path: str = None) -> 'WapitiModelAdapter':
         # overriding method to return WapitiServiceModelAdapter
         model_file_path = os.path.join(model_path, 'model.wapiti.gz')
+        model_file_paths = [model_file_path, os.path.splitext(model_file_path)[0]]
         local_model_file_path = None
-        try:
-            local_model_file_path = download_manager.download_if_url(model_file_path)
-        except FileNotFoundError:
-            pass
-        if not local_model_file_path or not os.path.isfile(str(local_model_file_path)):
-            model_file_path = os.path.splitext(model_file_path)[0]
-            local_model_file_path = download_manager.download_if_url(model_file_path)
+        LOGGER.debug('checking for existing local model files: %r', model_file_paths)
+        for _model_file_path in model_file_paths:
+            _local_model_file_path = download_manager.get_local_file(_model_file_path)
+            if os.path.exists(_local_model_file_path):
+                local_model_file_path = _local_model_file_path
+                break
+        if not local_model_file_path:
+            LOGGER.debug('no existing local model files found, downloading: %r', model_file_paths)
+            for _model_file_path in model_file_paths:
+                try:
+                    local_model_file_path = download_manager.download_if_url(model_file_path)
+                    if not os.path.exists(local_model_file_path):
+                        local_model_file_path = None
+                except FileNotFoundError:
+                    pass
+        if not local_model_file_path:
+            raise FileNotFoundError(
+                'model not found, alternative urls: %r' % model_file_paths
+            )
         LOGGER.debug('local_model_file_path: %s', local_model_file_path)
         if local_model_file_path.endswith('.gz'):
             local_uncompressed_file_path = os.path.splitext(local_model_file_path)[0]
