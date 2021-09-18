@@ -534,11 +534,17 @@ class TestGetTeiForSemanticDocument:  # pylint: disable=too-many-public-methods
     def test_should_unmatched_graphics_to_back(self):
         semantic_document = SemanticDocument()
         semantic_document.back_section.add_content(SemanticMixedNote([
-            SemanticGraphic(layout_graphic=LayoutGraphic(
-                coordinates=COORDINATES_1
-            ))
+            SemanticGraphic(
+                layout_graphic=LayoutGraphic(
+                    coordinates=COORDINATES_1
+                ),
+                relative_path='image1.svg'
+            )
         ], note_type='unmatched_graphics'))
         tei_document = get_tei_for_semantic_document(semantic_document)
         LOGGER.debug('tei xml: %r', etree.tostring(tei_document.root))
         graphics_xpath = '//tei:note[@type="unmatched_graphics"]//tei:graphic'
         assert tei_document.xpath_nodes(graphics_xpath)
+        assert tei_document.get_xpath_text_content_list(
+            f'{graphics_xpath}/@url'
+        ) == ['image1.svg']

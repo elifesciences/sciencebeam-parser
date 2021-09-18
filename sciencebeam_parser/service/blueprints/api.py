@@ -2,6 +2,7 @@ import logging
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Type, TypeVar
+from zipfile import ZipFile
 
 from flask import Blueprint, jsonify, request, Response, url_for
 from werkzeug.exceptions import BadRequest
@@ -25,6 +26,7 @@ from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesC
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
+    SemanticGraphic,
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
     SemanticRawAuthors,
@@ -36,6 +38,7 @@ from sciencebeam_parser.document.semantic_document import (
     T_SemanticContentWrapper,
     iter_by_semantic_type_recursively
 )
+from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
 from sciencebeam_parser.utils.text import normalize_text
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.processors.fulltext import (
@@ -571,6 +574,12 @@ class ApiBlueprint(Blueprint):
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
         self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
         self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
+        self.route("/processFulltextAssetDocument", methods=['GET'])(
+            self.process_pdf_to_tei_assets_zip_form
+        )
+        self.route("/processFulltextAssetDocument", methods=['POST'])(
+            self.process_pdf_to_tei_assets_zip
+        )
         self.download_manager = DownloadManager()
         self.pdfalto_wrapper = PdfAltoWrapper(
             self.download_manager.download_if_url(config['pdfalto']['path'])
@@ -594,6 +603,14 @@ class ApiBlueprint(Blueprint):
             fulltext_models,
             app_features_context=app_features_context,
             config=fulltext_processor_config
+        )
+        self.assets_fulltext_processor = FullTextProcessor(
+            fulltext_models,
+            app_features_context=app_features_context,
+            config=fulltext_processor_config._replace(
+                extract_graphic_bounding_boxes=True,
+                extract_graphic_assets=True
+            )
         )
         ModelNestedBluePrint(
             'Segmentation',
@@ -746,5 +763,62 @@ class ApiBlueprint(Blueprint):
                 pretty_print=False
             )
             LOGGER.debug('response_content: %r', response_content)
+        headers = None
+        return Response(response_content, headers=headers, mimetype=response_type)
+
+    def process_pdf_to_tei_assets_zip_form(self):
+        return _get_file_upload_form('Convert PDF to TEI Assets ZIP')
+
+    def process_pdf_to_tei_assets_zip(self):  # pylint: disable=too-many-locals
+        data = get_required_post_data()
+        with TemporaryDirectory(suffix='-request') as temp_dir:
+            temp_path = Path(temp_dir)
+            pdf_path = temp_path / 'test.pdf'
+            output_path = temp_path / 'test.lxml'
+            first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
+            last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
+            pdf_path.write_bytes(data)
+            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
+                str(pdf_path),
+                str(output_path),
+                first_page=first_page,
+                last_page=last_page
+            )
+            xml_content = output_path.read_bytes()
+            root = etree.fromstring(xml_content)
+            layout_document = normalize_layout_document(
+                parse_alto_root(root)
+            )
+            semantic_document = (
+                self.assets_fulltext_processor
+                .get_semantic_document_for_layout_document(layout_document)
+            )
+            semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
+                SemanticGraphic
+            ))
+            LOGGER.debug('semantic_document: %r', semantic_document)
+            LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
+            document = get_tei_for_semantic_document(semantic_document)
+            response_type = 'application/zip'
+            zip_path = temp_path / 'result.zip'
+            with ZipFile(zip_path, 'w') as zip_file:
+                tei_xml_data = etree.tostring(
+                    document.root,
+                    encoding='utf-8',
+                    pretty_print=False
+                )
+                LOGGER.debug('tei_xml_data: %r', tei_xml_data)
+                zip_file.writestr('tei.xml', tei_xml_data)
+                for semantic_graphic in semantic_graphic_list:
+                    assert semantic_graphic.relative_path
+                    layout_graphic = semantic_graphic.layout_graphic
+                    assert layout_graphic
+                    assert layout_graphic.local_file_path
+                    zip_file.write(
+                        layout_graphic.local_file_path,
+                        semantic_graphic.relative_path
+                    )
+            response_content = zip_path.read_bytes()
+            LOGGER.debug('response_content (bytes): %d', len(response_content))
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)

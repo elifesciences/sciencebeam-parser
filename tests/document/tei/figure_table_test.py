@@ -57,7 +57,7 @@ class TestFigureTeiElementFactory:
             SemanticLabel(layout_block=LayoutBlock.for_text('Label 1')),
             SemanticCaption(layout_block=LayoutBlock.for_text('Caption 1')),
             SemanticGraphic(
-                layout_graphic=LayoutGraphic(path='image1.png')
+                layout_graphic=LayoutGraphic(local_file_path='image1.png')
             )
         ], content_id='fig_0')
         result = _get_wrapped_figure_tei_element(semantic_figure)

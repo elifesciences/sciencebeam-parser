@@ -6,14 +6,19 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from typing import Iterator
+from zipfile import ZipFile
 
 from flask import Flask
 from flask.testing import FlaskClient
 from werkzeug.exceptions import BadRequest
+from lxml import etree
 
 import pytest
 
 from sciencebeam_parser.config.config import AppConfig, DEFAULT_CONFIG_PATH
+from sciencebeam_parser.document.layout_document import LayoutGraphic
+from sciencebeam_parser.document.semantic_document import SemanticDocument, SemanticGraphic
+from sciencebeam_parser.document.tei.document import TeiDocument
 from sciencebeam_parser.service.blueprints import api as api_module
 from sciencebeam_parser.service.blueprints.api import (
     ApiBlueprint
@@ -26,6 +31,9 @@ PDF_FILENAME_1 = 'test.pdf'
 PDF_CONTENT_1 = b'test pdf content'
 XML_CONTENT_1 = b'<article></article>'
 
+TEI_XML_CONTENT_1 = b'<TEI>1</TEI>'
+IMAGE_DATA_1 = b'Image 1'
+
 
 @pytest.fixture(name='request_temp_path')
 def _request_temp_path(tmp_path: Path) -> Iterator[Path]:
@@ -34,6 +42,12 @@ def _request_temp_path(tmp_path: Path) -> Iterator[Path]:
     with patch.object(api_module, 'TemporaryDirectory') as mock:
         mock.return_value.__enter__.return_value = request_temp_path
         yield request_temp_path
+
+
+@pytest.fixture(name='download_manager_class_mock', autouse=True)
+def _download_manager_class_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'DownloadManager') as mock:
+        yield mock
 
 
 @pytest.fixture(name='pdfalto_wrapper_class_mock')
@@ -45,6 +59,35 @@ def _pdfalto_wrapper_class_mock() -> Iterator[MagicMock]:
 @pytest.fixture(name='pdfalto_wrapper_mock', autouse=True)
 def _pdfalto_wrapper_mock(pdfalto_wrapper_class_mock: MagicMock) -> MagicMock:
     return pdfalto_wrapper_class_mock.return_value
+
+
+@pytest.fixture(name='full_text_processor_class_mock')
+def _fulltextprocessor_class_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'FullTextProcessor') as mock:
+        yield mock
+
+
+@pytest.fixture(name='full_text_processor_mock', autouse=True)
+def _fulltextprocessor_mock(full_text_processor_class_mock: MagicMock) -> MagicMock:
+    return full_text_processor_class_mock.return_value
+
+
+@pytest.fixture(name='load_models_mock', autouse=True)
+def _load_models_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'load_models') as mock:
+        yield mock
+
+
+@pytest.fixture(name='get_tei_for_semantic_document_mock', autouse=True)
+def _get_tei_for_semantic_document_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'get_tei_for_semantic_document') as mock:
+        yield mock
+
+
+@pytest.fixture(name='load_app_features_context_mock', autouse=True)
+def _load_app_features_context_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'load_app_features_context') as mock:
+        yield mock
 
 
 @pytest.fixture(name='app_config', scope='session')
@@ -89,18 +132,23 @@ class TestApiBlueprint:
             response = test_client.post('/pdfalto')
             assert response.status_code == BadRequest.code
 
+        @pytest.mark.parametrize(
+            'post_data_key',
+            ['file', 'input']
+        )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
             test_client,
             pdfalto_wrapper_mock: MagicMock,
-            request_temp_path: Path
+            request_temp_path: Path,
+            post_data_key: str
         ):
             expected_pdf_path = request_temp_path / 'test.pdf'
             expected_output_path = request_temp_path / 'test.lxml'
             expected_output_path.write_bytes(XML_CONTENT_1)
-            response = test_client.post('/pdfalto', data=dict(
-                file=(BytesIO(PDF_CONTENT_1), PDF_FILENAME_1),
-            ))
+            response = test_client.post('/pdfalto', data={
+                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            })
             pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
                 str(expected_pdf_path),
                 str(expected_output_path),
@@ -110,18 +158,37 @@ class TestApiBlueprint:
             assert response.status_code == 200
             assert response.data == XML_CONTENT_1
 
-        def test_should_accept_file_as_input_name_and_pass_to_convert_method(
+    class TestProcessFullTextDocument:
+        def test_should_show_form_on_get(self, test_client):
+            response = test_client.get('/processFulltextDocument')
+            assert response.status_code == 200
+            assert 'html' in str(response.data)
+
+        def test_should_reject_post_without_data(self, test_client):
+            response = test_client.post('/processFulltextDocument')
+            assert response.status_code == BadRequest.code
+
+        @pytest.mark.parametrize(
+            'post_data_key',
+            ['file', 'input']
+        )
+        def test_should_accept_file_and_pass_to_convert_method(
             self,
             test_client,
             pdfalto_wrapper_mock: MagicMock,
-            request_temp_path: Path
+            full_text_processor_mock: MagicMock,
+            request_temp_path: Path,
+            post_data_key: str
         ):
             expected_pdf_path = request_temp_path / 'test.pdf'
             expected_output_path = request_temp_path / 'test.lxml'
             expected_output_path.write_bytes(XML_CONTENT_1)
-            response = test_client.post('/pdfalto', data=dict(
-                input=(BytesIO(PDF_CONTENT_1), PDF_FILENAME_1),
-            ))
+            full_text_processor_mock.get_tei_document_for_layout_document.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            response = test_client.post('/processFulltextDocument', data={
+                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            })
             pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
                 str(expected_pdf_path),
                 str(expected_output_path),
@@ -129,4 +196,65 @@ class TestApiBlueprint:
                 last_page=None
             )
             assert response.status_code == 200
-            assert response.data == XML_CONTENT_1
+            assert response.data == TEI_XML_CONTENT_1
+
+    class TestProcessFullTextAssetDocument:
+        def test_should_show_form_on_get(self, test_client):
+            response = test_client.get('/processFulltextAssetDocument')
+            assert response.status_code == 200
+            assert 'html' in str(response.data)
+
+        def test_should_reject_post_without_data(self, test_client):
+            response = test_client.post('/processFulltextAssetDocument')
+            assert response.status_code == BadRequest.code
+
+        @pytest.mark.parametrize(
+            'post_data_key',
+            ['file', 'input']
+        )  # pylint: disable=too-many-locals
+        def test_should_accept_file_and_pass_to_convert_method(
+            self,
+            test_client,
+            pdfalto_wrapper_mock: MagicMock,
+            full_text_processor_mock: MagicMock,
+            get_tei_for_semantic_document_mock: MagicMock,
+            request_temp_path: Path,
+            post_data_key: str
+        ):
+            expected_pdf_path = request_temp_path / 'test.pdf'
+            expected_output_path = request_temp_path / 'test.lxml'
+            graphic_local_file_path = request_temp_path / 'image1.png'
+            graphic_relative_path = graphic_local_file_path.name
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            graphic_local_file_path.write_bytes(IMAGE_DATA_1)
+            semantic_document = SemanticDocument()
+            semantic_document.back_section.add_content(
+                SemanticGraphic(
+                    layout_graphic=LayoutGraphic(
+                        local_file_path=str(graphic_local_file_path)
+                    ),
+                    relative_path=graphic_relative_path
+                )
+            )
+            full_text_processor_mock.get_semantic_document_for_layout_document.return_value = (
+                semantic_document
+            )
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            response = test_client.post('/processFulltextAssetDocument', data={
+                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            })
+            pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.assert_called_with(
+                str(expected_pdf_path),
+                str(expected_output_path),
+                first_page=None,
+                last_page=None
+            )
+            assert response.status_code == 200
+            assert response.content_type == 'application/zip'
+            with ZipFile(BytesIO(response.data), 'r') as zip_file:
+                tei_xml_data = zip_file.read('tei.xml')
+                assert tei_xml_data == TEI_XML_CONTENT_1
+                image_data = zip_file.read(graphic_relative_path)
+                assert image_data == IMAGE_DATA_1

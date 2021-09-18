@@ -501,6 +501,7 @@ class SemanticRawEquation(SemanticMixedContentWrapper):
 @dataclass
 class SemanticGraphic(SemanticSimpleContentWrapper):
     layout_graphic: Optional[LayoutGraphic] = None
+    relative_path: Optional[str] = None
 
 
 @dataclass

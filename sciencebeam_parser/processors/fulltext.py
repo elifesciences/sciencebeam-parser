@@ -1,4 +1,5 @@
 import logging
+import os
 from dataclasses import dataclass
 from typing import (
     Iterable,
@@ -166,6 +167,7 @@ class FullTextProcessorConfig(NamedTuple):
     extract_table_fields: bool = True
     merge_raw_authors: bool = False
     extract_graphic_bounding_boxes: bool = True
+    extract_graphic_assets: bool = False
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
@@ -318,7 +320,7 @@ class FullTextProcessor:
             unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
             self._match_graphic_elements(
                 semantic_graphic_list=(
-                    self._get_semantic_graphic_content_list_for_layout_graphic_list(
+                    self._get_semantic_graphic_list_for_layout_graphic_list(
                         layout_document.iter_all_graphics()
                     )
                 ),
@@ -334,12 +336,26 @@ class FullTextProcessor:
                 LOGGER.info('no unmatched graphics')
         return document
 
-    def _get_semantic_graphic_content_list_for_layout_graphic_list(
+    def _get_semantic_graphic_for_layout_graphic(
+        self,
+        layout_graphic: LayoutGraphic
+    ) -> SemanticGraphic:
+        relative_path: Optional[str] = None
+        if layout_graphic.local_file_path and self.config.extract_graphic_assets:
+            relative_path = os.path.basename(layout_graphic.local_file_path)
+        return SemanticGraphic(
+            layout_graphic=layout_graphic,
+            relative_path=relative_path
+        )
+
+    def _get_semantic_graphic_list_for_layout_graphic_list(
         self,
         layout_graphic_iterable: Iterable[LayoutGraphic]
     ) -> List[SemanticGraphic]:
         return [
-            SemanticGraphic(layout_graphic=layout_graphic)
+            self._get_semantic_graphic_for_layout_graphic(
+                layout_graphic
+            )
             for layout_graphic in layout_graphic_iterable
         ]
 

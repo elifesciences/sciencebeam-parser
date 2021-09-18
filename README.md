@@ -93,6 +93,17 @@ curl --fail --show-error \
     --silent "http://localhost:8080/api/processFulltextDocument?first_page=1&last_page=1"
 ```
 
+### Submit a sample document to the asset document api
+
+The `processFulltextAssetDocument` is like `processFulltextDocument`. But instead of returning the TEI XML directly, it will contain a zip with the TEI XML document, along with other assets such as figure images.
+
+```bash
+curl --fail --show-error \
+    --output "example-xml-and-assets.zip" \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/processFulltextAssetDocument?first_page=1&last_page=1"
+```
+
 ### Docker Usage
 
 ```bash

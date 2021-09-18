@@ -35,6 +35,8 @@ class GraphicTeiElementFactory(SingleElementTeiElementFactory):
                 enable_coordinates=False
             )
         ]
+        if semantic_graphic.relative_path:
+            children.append({'url': semantic_graphic.relative_path})
         if layout_graphic:
             if layout_graphic.coordinates:
                 children.append({'coords': format_coordinates(layout_graphic.coordinates)})

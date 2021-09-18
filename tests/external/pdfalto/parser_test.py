@@ -108,7 +108,7 @@ class TestAltoParser:
         )), page_index=(COORDINATES_1.page_number - 1))
         assert len(page.graphics) == 1
         graphic = page.graphics[0]
-        assert graphic.path == '/path/to/graphic.svg'
+        assert graphic.local_file_path == '/path/to/graphic.svg'
         assert graphic.coordinates == COORDINATES_1
 
 

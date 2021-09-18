@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Dict, Iterable, List, Mapping, Union
 from unittest.mock import MagicMock
 
@@ -814,7 +815,11 @@ class TestFullTextProcessor:
     ):
         citation_block = LayoutBlock.for_text('Figure 1')
         _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
-        graphic = LayoutGraphic(coordinates=_coordinates, path='graphic1.svg')
+        graphic_local_file_path = '/path/to/graphic1.svg'
+        graphic = LayoutGraphic(
+            coordinates=_coordinates,
+            local_file_path=graphic_local_file_path
+        )
         _coordinates = _coordinates.move_by(dy=10)
         label_block = LayoutBlock.for_text('Figure 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
@@ -826,7 +831,11 @@ class TestFullTextProcessor:
         fulltext_block = LayoutBlock.merge_blocks([citation_block, figure_block])
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
-            FullTextProcessorConfig(extract_figure_fields=True)
+            FullTextProcessorConfig(
+                extract_figure_fields=True,
+                extract_graphic_bounding_boxes=True,
+                extract_graphic_assets=True
+            )
         )
 
         segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
@@ -878,6 +887,9 @@ class TestFullTextProcessor:
         semantic_graphic_list = list(figure.iter_by_type(SemanticGraphic))
         assert semantic_graphic_list
         assert semantic_graphic_list[0].layout_graphic == graphic
+        assert semantic_graphic_list[0].relative_path == os.path.basename(
+            graphic_local_file_path
+        )
 
     @pytest.mark.parametrize(
         'segmentation_label',

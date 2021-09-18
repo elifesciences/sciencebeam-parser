@@ -39,7 +39,7 @@ class TestGraphicTeiElementFactory:
     def test_should_render_graphic_element_with_coords(self):
         semantic_graphic = SemanticGraphic(
             layout_graphic=LayoutGraphic(
-                path='image1.png',
+                local_file_path='image1.png',
                 coordinates=COORDINATES_1
             )
         )
