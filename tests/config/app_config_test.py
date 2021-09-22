@@ -17,12 +17,12 @@ from sciencebeam.config.app_config import (
 
 LOGGER = logging.getLogger(__name__)
 
-SECTION_1 = u'section1'
-SECTION_2 = u'section2'
-KEY_1 = u'key1'
-KEY_2 = u'key2'
-VALUE_1 = u'value1'
-VALUE_2 = u'value2'
+SECTION_1 = 'section1'
+SECTION_2 = 'section2'
+KEY_1 = 'key1'
+KEY_2 = 'key2'
+VALUE_1 = 'value1'
+VALUE_2 = 'value2'
 
 
 @pytest.fixture(name='get_app_root_mock')

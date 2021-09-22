@@ -16,8 +16,8 @@ from sciencebeam.pipeline_runners.simple_pipeline_runner import (
 DEFAULT_PIPELINE_MODULE = 'sciencebeam.pipelines.default_pipeline'
 
 DEFAULT_CONFIG = {
-    u'pipelines': {
-        u'default': DEFAULT_PIPELINE_MODULE
+    'pipelines': {
+        'default': DEFAULT_PIPELINE_MODULE
     }
 }
 
