@@ -77,7 +77,7 @@ class _ReadFullFile(PTransform):
             output_filename=output_filename,
             output_content=output_content)
 
-    def expand(self, pvalue):  # pylint: disable=arguments-differ
+    def expand(self, pvalue):  # pylint: disable=arguments-differ,arguments-renamed
         return pvalue.pipeline | Read(self._source)
 
 
@@ -132,5 +132,5 @@ class WriteToFile(PTransform):
             num_shards, shard_name_template,
             compression_type)
 
-    def expand(self, pcoll):  # pylint: disable=arguments-differ
+    def expand(self, pcoll):  # pylint: disable=arguments-differ,arguments-renamed
         return pcoll | Map(lambda kv: self._sink.write_full(kv[0], kv[1]))
