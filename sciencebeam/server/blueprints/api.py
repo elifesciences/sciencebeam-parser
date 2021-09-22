@@ -150,7 +150,7 @@ class ApiBlueprint(Blueprint):
             <!doctype html>
             <title>Convert PDF</title>
             <h1>Convert PDF</h1>
-            <form method=post enctype=multipart/form-data>
+            <form target=_blank method=post enctype=multipart/form-data>
             <input type=file name=file>
             <input type=submit value=Upload>
             </form>
