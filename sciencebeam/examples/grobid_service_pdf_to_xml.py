@@ -56,7 +56,7 @@ def get_cloud_project():
         'gcloud', '-q', 'config', 'list', 'project',
         '--format=value(core.project)'
     ]
-    with open(os.devnull, 'w') as dev_null:
+    with open(os.devnull, 'w', encoding='utf-8') as dev_null:
         try:
             res = subprocess.check_output(cmd, stderr=dev_null).strip()
             if not res:
