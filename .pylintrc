@@ -6,6 +6,7 @@ disable=
     invalid-name,
     too-many-arguments,
     too-many-branches,
+    consider-using-f-string,
     duplicate-code
 
 [TYPECHECK]
