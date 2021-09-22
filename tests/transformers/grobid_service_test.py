@@ -46,31 +46,37 @@ class TestGetGrobidServiceConfig:
         assert not config.consolidate_citations
         assert config.include_raw_affiliations
         assert config.include_raw_citations
+        assert config.include_coordinates
 
     def test_should_be_able_toggle_config(self, environ: dict):
         environ[GrobidServiceConfigEnvVariables.CONSOLIDATE_HEADER] = '1'
         environ[GrobidServiceConfigEnvVariables.CONSOLIDATE_CITATIONS] = '1'
         environ[GrobidServiceConfigEnvVariables.INCLUDE_RAW_AFFILIATIONS] = '0'
         environ[GrobidServiceConfigEnvVariables.INCLUDE_RAW_CITATIONS] = '0'
+        environ[GrobidServiceConfigEnvVariables.INCLUDE_COORDINATES] = '0'
         config = get_grobid_service_config()
         assert config.consolidate_header
         assert config.consolidate_citations
         assert not config.include_raw_affiliations
         assert not config.include_raw_citations
+        assert not config.include_coordinates
 
 
 class TestGetRequestDataForConfig:
-    def test_should_generate_dict_for_default_config(
-            self, grobid_service_config: GrobidServiceConfig):
-        grobid_service_config.consolidate_header = False
-        grobid_service_config.consolidate_citations = False
-        grobid_service_config.include_raw_affiliations = True
-        grobid_service_config.include_raw_citations = True
+    def test_should_generate_dict_for_default_config(self):
+        grobid_service_config = GrobidServiceConfig(
+            consolidate_header=False,
+            consolidate_citations=False,
+            include_raw_affiliations=True,
+            include_raw_citations=True,
+            include_coordinates=True
+        )
         assert get_request_data_for_config(grobid_service_config) == {
             'consolidateHeader': '0',
             'consolidateCitations': '0',
             'includeRawAffiliations': '1',
-            'includeRawCitations': '1'
+            'includeRawCitations': '1',
+            'teiCoordinates': ['s', 'biblStruct', 'persName', 'figure', 'formula', 'head']
         }
 
 
@@ -117,10 +123,7 @@ class TestCreateGrobidService:
         requests_post.assert_called_with(
             BASE_URL + PATH_1,
             files=ANY,
-            data={
-                'consolidateHeader': '0',
-                'consolidateCitations': '0',
-                'includeRawAffiliations': '1',
-                'includeRawCitations': '1'
-            }
+            data=get_request_data_for_config(
+                GrobidServiceConfig()
+            )
         )

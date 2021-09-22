@@ -2,7 +2,7 @@ import os
 from io import BytesIO
 import logging
 from functools import partial
-from typing import Dict
+from typing import Dict, NamedTuple, Sequence, Union
 
 import requests
 
@@ -25,6 +25,7 @@ class GrobidServiceConfigEnvVariables:
     CONSOLIDATE_CITATIONS = 'SCIENCEBEAM_CONSOLIDATE_CITATIONS'
     INCLUDE_RAW_AFFILIATIONS = 'SCIENCEBEAM_INCLUDE_RAW_AFFILIATIONS'
     INCLUDE_RAW_CITATIONS = 'SCIENCEBEAM_INCLUDE_RAW_CITATIONS'
+    INCLUDE_COORDINATES = 'SCIENCEBEAM_INCLUDE_COORDINATES'
 
 
 service_wrapper = GrobidServiceWrapper()
@@ -34,17 +35,12 @@ def get_logger():
     return logging.getLogger(__name__)
 
 
-class GrobidServiceConfig:
-    def __init__(
-            self,
-            consolidate_header: bool = False,
-            consolidate_citations: bool = False,
-            include_raw_affiliations: bool = True,
-            include_raw_citations: bool = True):
-        self.consolidate_header = consolidate_header
-        self.consolidate_citations = consolidate_citations
-        self.include_raw_affiliations = include_raw_affiliations
-        self.include_raw_citations = include_raw_citations
+class GrobidServiceConfig(NamedTuple):
+    consolidate_header: bool = False
+    consolidate_citations: bool = False
+    include_raw_affiliations: bool = True
+    include_raw_citations: bool = True
+    include_coordinates: bool = True
 
 
 def get_grobid_service_config() -> GrobidServiceConfig:
@@ -52,13 +48,16 @@ def get_grobid_service_config() -> GrobidServiceConfig:
         GrobidServiceConfigEnvVariables.CONSOLIDATE_HEADER: 'consolidate_header',
         GrobidServiceConfigEnvVariables.CONSOLIDATE_CITATIONS: 'consolidate_citations',
         GrobidServiceConfigEnvVariables.INCLUDE_RAW_AFFILIATIONS: 'include_raw_affiliations',
-        GrobidServiceConfigEnvVariables.INCLUDE_RAW_CITATIONS: 'include_raw_citations'
+        GrobidServiceConfigEnvVariables.INCLUDE_RAW_CITATIONS: 'include_raw_citations',
+        GrobidServiceConfigEnvVariables.INCLUDE_COORDINATES: 'include_coordinates'
     }
     config = GrobidServiceConfig()
+    overridden_values_map: Dict[str, bool] = {}
     for env_name, prop_name in env_to_prop_map.items():
         env_value = os.environ.get(env_name)
         if env_value:
-            setattr(config, prop_name, env_value == '1')
+            overridden_values_map[prop_name] = env_value == '1'
+    config = config._replace(**overridden_values_map)
     return config
 
 
@@ -66,8 +65,10 @@ def _get_bool_int_param(bool_value: bool) -> str:
     return '1' if bool_value else '0'
 
 
-def get_request_data_for_config(grobid_service_config: GrobidServiceConfig) -> Dict[str, str]:
-    return {
+def get_request_data_for_config(
+    grobid_service_config: GrobidServiceConfig
+) -> Dict[str, Union[str, Sequence[str]]]:
+    data = {
         'consolidateHeader': _get_bool_int_param(
             grobid_service_config.consolidate_header
         ),
@@ -81,6 +82,9 @@ def get_request_data_for_config(grobid_service_config: GrobidServiceConfig) -> D
             grobid_service_config.include_raw_citations
         )
     }
+    if grobid_service_config.include_coordinates:
+        data['teiCoordinates'] = ['s', 'biblStruct', 'persName', 'figure', 'formula', 'head']
+    return data
 
 
 def start_service_if_not_running():
