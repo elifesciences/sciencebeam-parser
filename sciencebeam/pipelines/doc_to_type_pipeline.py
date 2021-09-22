@@ -28,7 +28,7 @@ class DocToTypeStep(PipelineStep):
             data_type=data['type'],
             output_mime_type=self.output_mime_type
         )
-        for key in {'remove_line_no', 'remove_header_footer', 'remove_redline'}:
+        for key in ['remove_line_no', 'remove_header_footer', 'remove_redline']:
             value = request_args.get(key)
             if not value:
                 value = os.environ.get('SCIENCEBEAM_%s' % key.upper())

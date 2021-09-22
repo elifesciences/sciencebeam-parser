@@ -180,8 +180,8 @@ def get_pipeline_expression_for_configuration(
     config: ConfigParser,
     name: Optional[str] = None
 ) -> str:
-    pipelines = config[u'pipelines']
-    pipeline_names = parse_list(name or u'default')
+    pipelines = config['pipelines']
+    pipeline_names = parse_list(name or 'default')
     expressions = [pipelines[pipeline_name] for pipeline_name in pipeline_names]
     return ', '.join(
         pipelines.get(expression, expression)

@@ -24,7 +24,7 @@ from sciencebeam.pipelines.sciencebeam_autocut_pipeline import PIPELINE
 TITLE_1 = 'Title 1'
 TITLE_2 = 'Title 2'
 
-UNICODE_CONTENT_1 = u'Unicode \u1234'
+UNICODE_CONTENT_1 = 'Unicode \u1234'
 
 
 TITLE_XPATH = 'front/article-meta/title-group/article-title'

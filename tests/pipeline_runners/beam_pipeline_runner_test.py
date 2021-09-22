@@ -50,7 +50,7 @@ PDF_CONTENT_1 = b'pdf content 1'
 XML_CONTENT_1 = b'<article>xml content 1</article>'
 TEI_XML_CONTENT_1 = b'<TEI>tei content 1</TEI>'
 
-UNICODE_CONTENT_1 = u'Unicode \u1234'
+UNICODE_CONTENT_1 = 'Unicode \u1234'
 
 MIN_ARGV = [
     '--data-path=' + BASE_DATA_PATH,

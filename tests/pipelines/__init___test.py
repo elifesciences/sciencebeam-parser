@@ -19,8 +19,8 @@ PIPELINE_1 = 'pipeline1'
 PIPELINE_2 = 'pipeline2'
 
 DEFAULT_CONFIG = {
-    u'pipelines': {
-        u'default': DEFAULT_PIPELINE_MODULE,
+    'pipelines': {
+        'default': DEFAULT_PIPELINE_MODULE,
         PIPELINE_1: PIPELINE_MODULE_1,
         PIPELINE_2: PIPELINE_MODULE_2
     }
@@ -73,9 +73,9 @@ class TestGetPipelineForConfiguration:
     def test_should_default_pipeline_to_point_to_another_pipeline_configuration(
             self, import_module):
         config = dict_to_config({
-            u'pipelines': {
-                u'default': u'custom',
-                u'custom': DEFAULT_PIPELINE_MODULE
+            'pipelines': {
+                'default': 'custom',
+                'custom': DEFAULT_PIPELINE_MODULE
             }
         })
         get_pipeline_for_configuration(config)

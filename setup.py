@@ -26,7 +26,7 @@ CUSTOM_COMMANDS = [
     ]
 ]
 
-with open(os.path.join('requirements.txt'), 'r') as f:
+with open(os.path.join('requirements.txt'), 'r', encoding='utf-8') as f:
     REQUIRED_PACKAGES = f.readlines()
 
 packages = find_packages()

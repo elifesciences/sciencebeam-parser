@@ -140,7 +140,7 @@ def exec_with_logging(
         daemon: bool = False,
         check_returncode: bool = True,
         **kwargs) -> BackgroundProcess:
-    p = BackgroundProcess(subprocess.Popen(
+    p = BackgroundProcess(subprocess.Popen(  # pylint: disable=consider-using-with
         command,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         **kwargs
