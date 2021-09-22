@@ -2,7 +2,7 @@ import os
 from io import BytesIO
 import logging
 from functools import partial
-from typing import Dict, NamedTuple
+from typing import Dict, NamedTuple, Sequence, Union
 
 import requests
 
@@ -65,8 +65,10 @@ def _get_bool_int_param(bool_value: bool) -> str:
     return '1' if bool_value else '0'
 
 
-def get_request_data_for_config(grobid_service_config: GrobidServiceConfig) -> Dict[str, str]:
-    return {
+def get_request_data_for_config(
+    grobid_service_config: GrobidServiceConfig
+) -> Dict[str, Union[str, Sequence[str]]]:
+    data = {
         'consolidateHeader': _get_bool_int_param(
             grobid_service_config.consolidate_header
         ),
@@ -80,6 +82,9 @@ def get_request_data_for_config(grobid_service_config: GrobidServiceConfig) -> D
             grobid_service_config.include_raw_citations
         )
     }
+    if grobid_service_config.include_coordinates:
+        data['teiCoordinates'] = ['s', 'biblStruct', 'persName', 'figure', 'formula', 'head']
+    return data
 
 
 def start_service_if_not_running():
