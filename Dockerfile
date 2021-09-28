@@ -6,6 +6,7 @@ RUN apt-get update \
     && apt-get install --assume-yes --no-install-recommends \
         dumb-init \
         poppler-utils \
+        libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/sciencebeam_parser
