@@ -3,8 +3,9 @@ FROM python:3.7.10-buster AS base
 
 # shared between builder and runtime image
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && apt-get install --assume-yes --no-install-recommends \
         dumb-init \
+        poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/sciencebeam_parser
