@@ -1,6 +1,8 @@
 from sciencebeam_parser.document.layout_document import (
+    EMPTY_BLOCK,
     LayoutLineDescriptor,
     LayoutPageCoordinates,
+    LayoutPageMeta,
     LayoutToken,
     LayoutLine,
     LayoutBlock,
@@ -11,6 +13,9 @@ from sciencebeam_parser.document.layout_document import (
     retokenize_layout_document,
     remove_empty_blocks
 )
+
+
+COORDINATES_1 = LayoutPageCoordinates(x=10, y=10, width=100, height=100, page_number=1)
 
 
 class TestGetMergedCoordinatesList:
@@ -153,6 +158,21 @@ class TestRetokenizeLayoutDocument:
         line = retokenized_layout_document.pages[0].blocks[0].lines[0]
         assert line.tokens == []
 
+    def test_should_preserve_meta(self):
+        page_meta = LayoutPageMeta(COORDINATES_1)
+        layout_document = LayoutDocument(
+            pages=[LayoutPage(
+                blocks=[LayoutBlock.for_tokens([
+                    LayoutToken('token1 token2')
+                ])],
+                graphics=[],
+                meta=page_meta
+            )]
+        )
+        retokenized_layout_document = retokenize_layout_document(layout_document)
+        page = retokenized_layout_document.pages[0]
+        assert page.meta == page_meta
+
 
 class TestRemoveEmptyBlocks:
     def test_should_not_remove_empty_line_block_and_page(self):
@@ -175,3 +195,19 @@ class TestRemoveEmptyBlocks:
         assert len(cleaned_layout_document.pages) == 1
         line = cleaned_layout_document.pages[0].blocks[0].lines[0]
         assert [t.text for t in line.tokens] == ['token1']
+
+    def test_should_preserve_meta(self):
+        page_meta = LayoutPageMeta(COORDINATES_1)
+        layout_document = LayoutDocument(
+            pages=[LayoutPage(
+                blocks=[
+                    LayoutBlock.for_text('token1'),
+                    EMPTY_BLOCK
+                ],
+                graphics=[],
+                meta=page_meta
+            )]
+        )
+        retokenized_layout_document = remove_empty_blocks(layout_document)
+        page = retokenized_layout_document.pages[0]
+        assert page.meta == page_meta

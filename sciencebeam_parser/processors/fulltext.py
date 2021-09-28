@@ -1,5 +1,5 @@
 import logging
-import os
+import multiprocessing
 from dataclasses import dataclass
 from typing import (
     Iterable,
@@ -20,6 +20,7 @@ from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.models.data import AppFeaturesContext, DEFAULT_APP_FEATURES_CONTEXT
 from sciencebeam_parser.models.model import LayoutDocumentLabelResult, Model
 from sciencebeam_parser.models.model_impl_factory import get_model_impl_factory_for_config
+from sciencebeam_parser.cv_models.cv_model_factory import get_lazy_cv_model_for_config
 from sciencebeam_parser.utils.misc import iter_ids
 
 from sciencebeam_parser.document.semantic_document import (
@@ -55,7 +56,7 @@ from sciencebeam_parser.document.semantic_document import (
     T_SemanticRawNameList
 )
 from sciencebeam_parser.document.tei_document import TeiDocument, get_tei_for_semantic_document
-from sciencebeam_parser.document.layout_document import LayoutDocument, LayoutGraphic
+from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.models.segmentation.model import SegmentationModel
 from sciencebeam_parser.models.header.model import HeaderModel
 from sciencebeam_parser.models.name.model import NameModel
@@ -65,18 +66,32 @@ from sciencebeam_parser.models.figure.model import FigureModel
 from sciencebeam_parser.models.table.model import TableModel
 from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
 from sciencebeam_parser.models.citation.model import CitationModel
+from sciencebeam_parser.cv_models.cv_model import ComputerVisionModel
 from sciencebeam_parser.processors.ref_matching import (
     ChainedContentIdMatcher,
     ContentIdMatcher,
     PartialContentIdMatcher,
     SimpleContentIdMatcher
 )
+from sciencebeam_parser.processors.document_page_image import (
+    DEFAULT_PDF_RENDER_DPI,
+    iter_pdf_document_page_images
+)
 from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher
+)
+from sciencebeam_parser.processors.graphic_provider import (
+    DocumentGraphicProvider,
+    SimpleDocumentGraphicProvider
 )
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class FullTextProcessorDocumentContext(NamedTuple):
+    pdf_path: Optional[str] = None
+    temp_dir: Optional[str] = None
 
 
 @dataclass
@@ -91,9 +106,34 @@ class FullTextModels:
     table_model: TableModel
     reference_segmenter_model: ReferenceSegmenterModel
     citation_model: CitationModel
+    cv_model: Optional[ComputerVisionModel] = None
 
 
 T_Model = TypeVar('T_Model', bound=Model)
+
+
+def get_cv_document_graphic_provider(
+    cv_model: ComputerVisionModel,
+    context: FullTextProcessorDocumentContext,
+    page_numbers: Optional[Sequence[int]],
+    cv_render_dpi: float
+) -> DocumentGraphicProvider:
+    from sciencebeam_parser.processors.cv_graphic_provider import (  # noqa pylint: disable=import-outside-toplevel
+        ComputerVisionDocumentGraphicProvider
+    )
+    assert context.pdf_path
+    assert context.temp_dir
+    return ComputerVisionDocumentGraphicProvider(
+        cv_model,
+        iter_pdf_document_page_images(
+            pdf_path=context.pdf_path,
+            output_dir=context.temp_dir,
+            page_numbers=page_numbers,
+            dpi=cv_render_dpi,
+            thread_count=multiprocessing.cpu_count()
+        ),
+        temp_dir=context.temp_dir
+    )
 
 
 def load_model(
@@ -145,6 +185,11 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
     citation_model = load_model(
         app_config, app_context, 'citation', CitationModel
     )
+    cv_model_config = app_config.get('cv_models', {}).get('default')
+    if cv_model_config:
+        cv_model: Optional[ComputerVisionModel] = get_lazy_cv_model_for_config(cv_model_config)
+    else:
+        cv_model = None
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,
@@ -155,7 +200,8 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
         figure_model=figure_model,
         table_model=table_model,
         reference_segmenter_model=reference_segmenter_model,
-        citation_model=citation_model
+        citation_model=citation_model,
+        cv_model=cv_model
     )
 
 
@@ -168,6 +214,8 @@ class FullTextProcessorConfig(NamedTuple):
     merge_raw_authors: bool = False
     extract_graphic_bounding_boxes: bool = True
     extract_graphic_assets: bool = False
+    use_cv_model: bool = False
+    cv_render_dpi: float = DEFAULT_PDF_RENDER_DPI
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
@@ -231,8 +279,11 @@ class FullTextProcessor:
 
     def get_semantic_document_for_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        context: Optional[FullTextProcessorDocumentContext] = None
     ) -> SemanticDocument:
+        if context is None:
+            context = FullTextProcessorDocumentContext()
         segmentation_label_result = self.segmentation_model.get_label_layout_document_result(
             layout_document,
             app_features_context=self.app_features_context
@@ -317,47 +368,68 @@ class FullTextProcessor:
                 self._get_semantic_content_text_by_content_id(tables, SemanticLabel)
             ))
         if self.config.extract_graphic_bounding_boxes:
-            unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
-            self._match_graphic_elements(
-                semantic_graphic_list=(
-                    self._get_semantic_graphic_list_for_layout_graphic_list(
-                        layout_document.iter_all_graphics()
-                    )
-                ),
-                candidate_semantic_content_list=list(
-                    document.iter_by_type_recursively(SemanticFigure)
-                ),
-                unmatched_graphics_container=unmatched_graphics_container
+            self._process_graphics(
+                document=document,
+                layout_document=layout_document,
+                context=context
             )
-            if not unmatched_graphics_container.is_empty():
-                LOGGER.info('unmatched_graphics_container: %r', unmatched_graphics_container)
-                document.back_section.add_content(unmatched_graphics_container)
-            else:
-                LOGGER.info('no unmatched graphics')
         return document
 
-    def _get_semantic_graphic_for_layout_graphic(
+    def _process_graphics(
         self,
-        layout_graphic: LayoutGraphic
-    ) -> SemanticGraphic:
-        relative_path: Optional[str] = None
-        if layout_graphic.local_file_path and self.config.extract_graphic_assets:
-            relative_path = os.path.basename(layout_graphic.local_file_path)
-        return SemanticGraphic(
-            layout_graphic=layout_graphic,
-            relative_path=relative_path
+        document: SemanticDocument,
+        layout_document: LayoutDocument,
+        context: FullTextProcessorDocumentContext
+    ):
+        unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
+        candidate_semantic_content_list = list(
+            document.iter_by_type_recursively(SemanticFigure)
         )
+        self._match_graphic_elements(
+            semantic_graphic_list=list(
+                self._get_document_graphic_provider(
+                    context=context,
+                    page_numbers=self._get_candidate_graphic_page_numbers(
+                        candidate_semantic_content_list
+                    )
+                ).iter_semantic_graphic_for_layout_document(
+                    layout_document,
+                    extract_graphic_assets=self.config.extract_graphic_assets
+                )
+            ),
+            candidate_semantic_content_list=candidate_semantic_content_list,
+            unmatched_graphics_container=unmatched_graphics_container
+        )
+        if not unmatched_graphics_container.is_empty():
+            LOGGER.debug('unmatched_graphics_container: %r', unmatched_graphics_container)
+            document.back_section.add_content(unmatched_graphics_container)
+        else:
+            LOGGER.debug('no unmatched graphics')
 
-    def _get_semantic_graphic_list_for_layout_graphic_list(
+    def _get_document_graphic_provider(
         self,
-        layout_graphic_iterable: Iterable[LayoutGraphic]
-    ) -> List[SemanticGraphic]:
-        return [
-            self._get_semantic_graphic_for_layout_graphic(
-                layout_graphic
+        context: FullTextProcessorDocumentContext,
+        page_numbers: Optional[Sequence[int]]
+    ) -> DocumentGraphicProvider:
+        if self.config.use_cv_model:
+            assert self.fulltext_models.cv_model is not None
+            return get_cv_document_graphic_provider(
+                cv_model=self.fulltext_models.cv_model,
+                context=context,
+                page_numbers=page_numbers,
+                cv_render_dpi=self.config.cv_render_dpi
             )
-            for layout_graphic in layout_graphic_iterable
-        ]
+        return SimpleDocumentGraphicProvider()
+
+    def _get_candidate_graphic_page_numbers(
+        self,
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
+    ) -> Sequence[int]:
+        return sorted({
+            coordinates.page_number
+            for semantic_content in candidate_semantic_content_list
+            for coordinates in semantic_content.merged_block.get_merged_coordinates_list()
+        })
 
     def _match_graphic_elements(
         self,

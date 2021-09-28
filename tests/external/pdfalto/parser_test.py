@@ -112,6 +112,28 @@ class TestAltoParser:
         assert graphic.coordinates == COORDINATES_1
         assert graphic.graphic_type == 'svg'
 
+    def test_should_parse_page_meta_data(self):
+        page = AltoParser().parse_page(
+            ALTO_E.Page(
+                {'PHYSICAL_IMG_NR': '10', 'WIDTH': '101', 'HEIGHT': '102'},
+                ALTO_E.PrintSpace(),
+            ),
+            page_index=0
+        )
+        assert page.meta.page_number == 10
+        assert page.meta.coordinates == LayoutPageCoordinates(
+            x=0, y=0, width=101, height=102, page_number=10
+        )
+
+    def test_should_use_default_page_number(self):
+        page = AltoParser().parse_page(
+            ALTO_E.Page(
+                ALTO_E.PrintSpace(),
+            ),
+            page_index=10
+        )
+        assert page.meta.page_number == 11
+
 
 class TestParseAltoRoot:
     def test_should_parse_simple_document(self):

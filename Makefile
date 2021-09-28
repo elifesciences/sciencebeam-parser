@@ -29,7 +29,8 @@ SCIENCEBEAM_DELFT_BATCH_SIZE = 1
 SCIENCEBEAM_DELFT_STATEFUL = false
 
 
-DOCKER_PDFALTO_CONVERT_API_URL = http://sciencebeam-parser:8070/api/pdfalto
+DOCKER_SCIENCEBEAM_PARSER_HOST = sciencebeam-parser
+DOCKER_PDFALTO_CONVERT_API_URL = http://$(DOCKER_SCIENCEBEAM_PARSER_HOST):8070/api/pdfalto
 DOCKER_DEV_RUN = $(DOCKER_COMPOSE) run --rm sciencebeam-parser-dev
 DOCKER_DEV_PYTHON = $(DOCKER_DEV_RUN) python
 
@@ -46,10 +47,12 @@ venv-create:
 
 dev-install:
 	$(PIP) install -r requirements.build.txt
-	$(PIP) install -r requirements.cpu.txt
-	$(PIP) install -r requirements.dev.txt
+	$(PIP) install \
+		-r requirements.cpu.txt \
+		-r requirements.dev.txt \
+		-r requirements.cv.txt \
+		-r requirements.txt
 	$(PIP) install -r requirements.delft.txt --no-deps
-	$(PIP) install -r requirements.txt
 
 
 dev-venv: venv-create dev-install
@@ -125,12 +128,17 @@ docker-pytest:
 	$(MAKE) PYTHON="$(DOCKER_DEV_PYTHON)" dev-pytest
 
 
+docker-show-api-logs-and-fail:
+	$(DOCKER_COMPOSE) logs "$(DOCKER_SCIENCEBEAM_PARSER_HOST)" && exit 1
+
+
 docker-wait-for-api:
 	$(DOCKER_COMPOSE) run --rm wait-for-it \
-		"sciencebeam-parser:8070" \
+		"$(DOCKER_SCIENCEBEAM_PARSER_HOST):8070" \
 		--timeout=30 \
 		--strict \
-		-- echo "ScienceBeam Parser API is up"
+		-- echo "ScienceBeam Parser API is up" \
+		|| $(MAKE) docker-show-api-logs-and-fail
 
 
 docker-start:
@@ -152,6 +160,9 @@ docker-end-to-end: docker-start-and-wait-for-api
 		--silent "$(DOCKER_PDFALTO_CONVERT_API_URL)" \
 		--output /dev/null
 
+docker-end-to-end-cv:
+	$(MAKE) DOCKER_SCIENCEBEAM_PARSER_HOST=sciencebeam-parser-cv docker-end-to-end
+
 
 ci-build-all:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-build-all
@@ -167,6 +178,7 @@ ci-pytest:
 
 ci-end-to-end:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end
+	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end-cv
 
 
 ci-clean:

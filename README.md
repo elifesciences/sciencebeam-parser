@@ -116,6 +116,17 @@ docker run --rm \
     elifesciences/sciencebeam-parser
 ```
 
+Note: Docker images with the tag suffix `-cv` include the dependencies required for the CV (Computer Vision) models (disabled by default).
+
+```bash
+docker run --rm \
+    -p 8070:8070 \
+    --env SCIENCEBEAM_PARSER__PROCESSORS__FULLTEXT__USE_CV_MODEL=true \
+    elifesciences/sciencebeam-parser:latest-cv
+```
+
+Non-release builds are available with the `_unstable` image suffix, e.g. `elifesciences/sciencebeam-parser_unstable`.
+
 ## See also
 
 * [architecture](ARCHITECTURE.md)

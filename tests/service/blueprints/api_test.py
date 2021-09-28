@@ -176,14 +176,14 @@ class TestApiBlueprint:
             self,
             test_client,
             pdfalto_wrapper_mock: MagicMock,
-            full_text_processor_mock: MagicMock,
+            get_tei_for_semantic_document_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
         ):
             expected_pdf_path = request_temp_path / 'test.pdf'
             expected_output_path = request_temp_path / 'test.lxml'
             expected_output_path.write_bytes(XML_CONTENT_1)
-            full_text_processor_mock.get_tei_document_for_layout_document.return_value = (
+            get_tei_for_semantic_document_mock.return_value = (
                 TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
             )
             response = test_client.post('/processFulltextDocument', data={

@@ -3,8 +3,9 @@ import itertools
 import operator
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Callable, List, Iterable, NamedTuple, Optional, Tuple
+from typing import Callable, List, Iterable, NamedTuple, Optional, Sequence, Tuple
 
+from sciencebeam_parser.utils.bounding_box import BoundingBox
 from sciencebeam_parser.utils.tokenizer import iter_tokenized_tokens, get_tokenized_tokens
 
 
@@ -30,6 +31,23 @@ class LayoutPageCoordinates(NamedTuple):
     width: float
     height: float
     page_number: int = 0
+
+    @staticmethod
+    def from_bounding_box(
+        bounding_box: BoundingBox,
+        page_number: int = 0
+    ) -> 'LayoutPageCoordinates':
+        return LayoutPageCoordinates(
+            x=bounding_box.x,
+            y=bounding_box.y,
+            width=bounding_box.width,
+            height=bounding_box.height,
+            page_number=page_number
+        )
+
+    @property
+    def bounding_box(self) -> BoundingBox:
+        return BoundingBox(x=self.x, y=self.y, width=self.width, height=self.height)
 
     def __bool__(self) -> bool:
         return not self.is_empty()
@@ -302,10 +320,19 @@ class LayoutGraphic(NamedTuple):
     graphic_type: Optional[str] = None
 
 
+class LayoutPageMeta(NamedTuple):
+    page_number: int = 0
+    coordinates: Optional[LayoutPageCoordinates] = None
+
+
+DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
+
+
 @dataclass
 class LayoutPage:
     blocks: List[LayoutBlock]
-    graphics: List[LayoutGraphic] = field(default_factory=list)
+    graphics: Sequence[LayoutGraphic] = field(default_factory=list)
+    meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutPage':
         return LayoutPage(
@@ -313,7 +340,8 @@ class LayoutPage:
                 block.flat_map_layout_tokens(fn)
                 for block in self.blocks
             ],
-            graphics=self.graphics
+            graphics=self.graphics,
+            meta=self.meta
         )
 
     def remove_empty_blocks(self) -> 'LayoutPage':
@@ -327,7 +355,8 @@ class LayoutPage:
                 for block in blocks
                 if block.lines
             ],
-            graphics=self.graphics
+            graphics=self.graphics,
+            meta=self.meta
         )
 
 

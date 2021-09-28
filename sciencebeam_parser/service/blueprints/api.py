@@ -27,6 +27,7 @@ from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesC
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
+    SemanticDocument,
     SemanticGraphic,
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
@@ -45,6 +46,7 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.processors.fulltext import (
     FullTextProcessor,
     FullTextProcessorConfig,
+    FullTextProcessorDocumentContext,
     load_models
 )
 
@@ -734,29 +736,70 @@ class ApiBlueprint(Blueprint):
     def process_pdf_to_tei_form(self):
         return _get_file_upload_form('Convert PDF to TEI')
 
-    def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
+    def _get_pdf_path_for_request(
+        self,
+        temp_dir: str
+    ) -> str:
         data = get_required_post_data()
+        pdf_path = Path(temp_dir) / 'test.pdf'
+        pdf_path.write_bytes(data)
+        return str(pdf_path)
+
+    def _get_layout_document_for_request(
+        self,
+        temp_dir: str,
+        pdf_path: str
+    ) -> LayoutDocument:
+        output_path = Path(temp_dir) / 'test.lxml'
+        first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
+        last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
+        self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
+            str(pdf_path),
+            str(output_path),
+            first_page=first_page,
+            last_page=last_page
+        )
+        xml_content = output_path.read_bytes()
+        root = etree.fromstring(xml_content)
+        layout_document = normalize_layout_document(
+            parse_alto_root(root)
+        )
+        return layout_document
+
+    def _get_semantic_document_for_request(
+        self,
+        pdf_path: str,
+        layout_document: LayoutDocument,
+        temp_dir: str,
+        fulltext_processor: FullTextProcessor
+    ) -> SemanticDocument:
+        context = FullTextProcessorDocumentContext(
+            pdf_path=pdf_path,
+            temp_dir=temp_dir
+        )
+        semantic_document = (
+            fulltext_processor
+            .get_semantic_document_for_layout_document(
+                layout_document,
+                context=context
+            )
+        )
+        return semantic_document
+
+    def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
         with TemporaryDirectory(suffix='-request') as temp_dir:
-            temp_path = Path(temp_dir)
-            pdf_path = temp_path / 'test.pdf'
-            output_path = temp_path / 'test.lxml'
-            first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
-            last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
-            pdf_path.write_bytes(data)
-            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-                str(pdf_path),
-                str(output_path),
-                first_page=first_page,
-                last_page=last_page
+            pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
+            layout_document = self._get_layout_document_for_request(
+                temp_dir=temp_dir,
+                pdf_path=pdf_path
             )
-            xml_content = output_path.read_bytes()
-            root = etree.fromstring(xml_content)
-            layout_document = normalize_layout_document(
-                parse_alto_root(root)
+            semantic_document = self._get_semantic_document_for_request(
+                pdf_path=pdf_path,
+                layout_document=layout_document,
+                temp_dir=temp_dir,
+                fulltext_processor=self.fulltext_processor
             )
-            document = self.fulltext_processor.get_tei_document_for_layout_document(
-                layout_document
-            )
+            document = get_tei_for_semantic_document(semantic_document)
             response_type = 'application/xml'
             response_content = etree.tostring(
                 document.root,
@@ -771,35 +814,24 @@ class ApiBlueprint(Blueprint):
         return _get_file_upload_form('Convert PDF to TEI Assets ZIP')
 
     def process_pdf_to_tei_assets_zip(self):  # pylint: disable=too-many-locals
-        data = get_required_post_data()
         with TemporaryDirectory(suffix='-request') as temp_dir:
-            temp_path = Path(temp_dir)
-            pdf_path = temp_path / 'test.pdf'
-            output_path = temp_path / 'test.lxml'
-            first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
-            last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
-            pdf_path.write_bytes(data)
-            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-                str(pdf_path),
-                str(output_path),
-                first_page=first_page,
-                last_page=last_page
+            pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
+            layout_document = self._get_layout_document_for_request(
+                temp_dir=temp_dir,
+                pdf_path=pdf_path
             )
-            xml_content = output_path.read_bytes()
-            root = etree.fromstring(xml_content)
-            layout_document = normalize_layout_document(
-                parse_alto_root(root)
-            )
-            semantic_document = (
-                self.assets_fulltext_processor
-                .get_semantic_document_for_layout_document(layout_document)
+            semantic_document = self._get_semantic_document_for_request(
+                pdf_path=pdf_path,
+                layout_document=layout_document,
+                temp_dir=temp_dir,
+                fulltext_processor=self.assets_fulltext_processor
             )
             semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
                 SemanticGraphic
             ))
             LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
             document = get_tei_for_semantic_document(semantic_document)
-            zip_path = temp_path / 'result.zip'
+            zip_path = Path(temp_dir) / 'result.zip'
             with ZipFile(zip_path, 'w') as zip_file:
                 tei_xml_data = etree.tostring(
                     document.root,

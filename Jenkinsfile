@@ -43,6 +43,14 @@ elifePipeline {
                 unstable_image.tag('latest').push()
                 unstable_image.push()
             }
+
+            stage 'Push unstable sciencebeam-parser cv image', {
+                def tag = "${commit}-cv"
+                def image = DockerImage.elifesciences(this, 'sciencebeam-parser', tag)
+                def unstable_image = image.addSuffixAndTag('_unstable', tag)
+                unstable_image.tag('latest-cv').push()
+                unstable_image.push()
+            }
         }
 
         elifeTagOnly { repoTag ->
@@ -50,6 +58,13 @@ elifePipeline {
                 def image = DockerImage.elifesciences(this, 'sciencebeam-parser', commit)
                 image.tag('latest').push()
                 image.tag(version).push()
+            }
+
+            stage 'Push stable sciencebeam-parser cv image', {
+                def tag = "${commit}-cv"
+                def image = DockerImage.elifesciences(this, 'sciencebeam-parser', tag)
+                image.tag('latest-cv').push()
+                image.tag("${version}-cv").push()
             }
         }
     }

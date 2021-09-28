@@ -8,6 +8,13 @@ services:
       target: runtime
     image: elifesciences/sciencebeam-parser:${IMAGE_TAG}
 
+  sciencebeam-parser-cv:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime-cv
+    image: elifesciences/sciencebeam-parser:${IMAGE_TAG}-cv
+
   sciencebeam-parser-dev:
     build:
       context: .
