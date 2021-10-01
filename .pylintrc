@@ -1,6 +1,7 @@
 [MASTER]
 extension-pkg-whitelist=
-    lxml
+    lxml,
+    tesserocr
 
 
 [TYPECHECK]

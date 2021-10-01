@@ -32,6 +32,9 @@ class TestGetTokenPrefixNormalizedKeyText:
     def test_should_only_include_initial_letters_of_each_token(self):
         assert get_token_prefix_normalized_key_text('figure 1') == 'f1'
 
+    def test_should_only_include_specified_number_of_prefix_letters_of_each_token(self):
+        assert get_token_prefix_normalized_key_text('figure 1', prefix_length=3) == 'fig1'
+
     def test_should_not_remove_digits(self):
         assert get_token_prefix_normalized_key_text('figure 123') == 'f123'
 
@@ -74,6 +77,20 @@ class TestSimpleContentIdMatcher:
             CONTENT_ID_2: OTHER_TEXT_1
         })
         assert matcher.get_id_by_text('Fig 1') == CONTENT_ID_1
+
+    def test_should_match_on_prefix_and_number_within_prefix_length(self):
+        matcher = SimpleContentIdMatcher({
+            CONTENT_ID_1: 'Figure 1',
+            CONTENT_ID_2: OTHER_TEXT_1
+        }, prefix_length=3)
+        assert matcher.get_id_by_text('Fig 1') == CONTENT_ID_1
+
+    def test_should_not_match_on_prefix_and_number_less_than_prefix_length(self):
+        matcher = SimpleContentIdMatcher({
+            CONTENT_ID_1: 'Figure 1',
+            CONTENT_ID_2: OTHER_TEXT_1
+        }, prefix_length=4)
+        assert not matcher.get_id_by_text('Fig 1')
 
 
 class TestPartialContentIdMatcher:

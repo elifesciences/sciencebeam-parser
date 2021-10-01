@@ -51,6 +51,7 @@ dev-install:
 		-r requirements.cpu.txt \
 		-r requirements.dev.txt \
 		-r requirements.cv.txt \
+		-r requirements.ocr.txt \
 		-r requirements.txt
 	$(PIP) install -r requirements.delft.txt --no-deps
 
@@ -152,6 +153,10 @@ docker-stop:
 docker-start-and-wait-for-api:
 	$(MAKE) docker-start
 	$(MAKE) docker-wait-for-api
+
+
+docker-logs:
+	$(DOCKER_COMPOSE) logs -f
 
 
 docker-end-to-end: docker-start-and-wait-for-api

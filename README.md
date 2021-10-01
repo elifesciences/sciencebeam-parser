@@ -10,6 +10,14 @@ This currently only supports Linux due to the binaries used (`pdfalto`, `wapiti`
 Other plaforms are supported via Docker.
 It may also be used on other platforms without Docker, provided matching binaries are configured.
 
+For Computer Vision PyTorch is required.
+
+For OCR, tesseract needs to be installed. On Ubuntu the following command can be used:
+
+```bash
+apt-get install libtesseract4 tesseract-ocr-eng libtesseract-dev libleptonica-dev
+```
+
 ## Development
 
 ### Create Virtual Environment and install Dependencies
@@ -122,6 +130,7 @@ Note: Docker images with the tag suffix `-cv` include the dependencies required 
 docker run --rm \
     -p 8070:8070 \
     --env SCIENCEBEAM_PARSER__PROCESSORS__FULLTEXT__USE_CV_MODEL=true \
+    --env SCIENCEBEAM_PARSER__PROCESSORS__FULLTEXT__USE_OCR_MODEL=true \
     elifesciences/sciencebeam-parser:latest-cv
 ```
 

@@ -407,7 +407,7 @@ class LayoutDocument:
     def retokenize(self, **kwargs) -> 'LayoutDocument':
         return self.flat_map_layout_tokens(retokenize_layout_token, **kwargs)
 
-    def remove_empty_blocks(self) -> 'LayoutDocument':
+    def remove_empty_blocks(self, preserve_empty_pages: bool = False) -> 'LayoutDocument':
         pages: List[LayoutPage] = [
             page.remove_empty_blocks()
             for page in self.pages
@@ -415,7 +415,7 @@ class LayoutDocument:
         return LayoutDocument(pages=[
             page
             for page in pages
-            if page.blocks
+            if page.blocks or preserve_empty_pages
         ])
 
 
@@ -496,5 +496,8 @@ def retokenize_layout_document(
     return layout_document.retokenize(**kwargs)
 
 
-def remove_empty_blocks(layout_document: LayoutDocument) -> LayoutDocument:
-    return layout_document.remove_empty_blocks()
+def remove_empty_blocks(
+    layout_document: LayoutDocument,
+    **kwargs
+) -> LayoutDocument:
+    return layout_document.remove_empty_blocks(**kwargs)

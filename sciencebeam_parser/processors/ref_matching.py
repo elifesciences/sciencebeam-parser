@@ -24,10 +24,10 @@ def get_normalized_key_text(text: str):
     )
 
 
-def get_token_prefix_normalized_key_text(text: str):
+def get_token_prefix_normalized_key_text(text: str, prefix_length: int = 1):
     return ''.join([
         get_normalized_key_text(
-            token if re.search(r'\d', token) else token[:1]
+            token if re.search(r'\d', token) else token[:prefix_length]
         )
         for token in re.split(r'\s', text)
     ])
@@ -42,23 +42,24 @@ def get_normalized_key_tokens(text: str):
 
 
 class SimpleContentIdMatcher(ContentIdMatcher):
-    def __init__(self, text_by_content_id: Mapping[str, str]):
+    def __init__(self, text_by_content_id: Mapping[str, str], prefix_length: int = 1):
         self.text_by_content_id = text_by_content_id
         self.content_id_by_text = {
             get_normalized_key_text(value): key
             for key, value in text_by_content_id.items()
         }
         self.content_id_by_token_prefix_text = {
-            get_token_prefix_normalized_key_text(value): key
+            get_token_prefix_normalized_key_text(value, prefix_length=prefix_length): key
             for key, value in text_by_content_id.items()
         }
+        self.prefix_length = prefix_length
 
     def get_id_by_text(self, text: str) -> Optional[str]:
         content_id = self.content_id_by_text.get(get_normalized_key_text(text))
         if content_id:
             return content_id
         content_id = self.content_id_by_token_prefix_text.get(
-            get_token_prefix_normalized_key_text(text)
+            get_token_prefix_normalized_key_text(text, prefix_length=self.prefix_length)
         )
         return content_id
 

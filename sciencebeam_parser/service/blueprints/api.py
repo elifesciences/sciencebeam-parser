@@ -162,11 +162,14 @@ def normalize_and_tokenize_text(text: str) -> List[str]:
     )
 
 
-def normalize_layout_document(layout_document: LayoutDocument) -> LayoutDocument:
+def normalize_layout_document(
+    layout_document: LayoutDocument,
+    **kwargs
+) -> LayoutDocument:
     return (
         layout_document
         .retokenize(tokenize_fn=normalize_and_tokenize_text)
-        .remove_empty_blocks()
+        .remove_empty_blocks(**kwargs)
     )
 
 
@@ -762,7 +765,8 @@ class ApiBlueprint(Blueprint):
         xml_content = output_path.read_bytes()
         root = etree.fromstring(xml_content)
         layout_document = normalize_layout_document(
-            parse_alto_root(root)
+            parse_alto_root(root),
+            preserve_empty_pages=True
         )
         return layout_document
 

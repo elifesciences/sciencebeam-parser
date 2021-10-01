@@ -175,7 +175,7 @@ class TestRetokenizeLayoutDocument:
 
 
 class TestRemoveEmptyBlocks:
-    def test_should_not_remove_empty_line_block_and_page(self):
+    def test_should_remove_empty_line_block_and_page(self):
         layout_document = LayoutDocument(
             pages=[
                 LayoutPage(
@@ -195,6 +195,25 @@ class TestRemoveEmptyBlocks:
         assert len(cleaned_layout_document.pages) == 1
         line = cleaned_layout_document.pages[0].blocks[0].lines[0]
         assert [t.text for t in line.tokens] == ['token1']
+
+    def test_should_preserve_empty_pages_if_requested(self):
+        layout_document = LayoutDocument(
+            pages=[
+                LayoutPage(
+                    blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                        LayoutToken('token1')
+                    ])])],
+                    graphics=[]
+                ),
+                LayoutPage(
+                    blocks=[LayoutBlock(lines=[LayoutLine(tokens=[
+                    ])])],
+                    graphics=[]
+                ),
+            ]
+        )
+        cleaned_layout_document = remove_empty_blocks(layout_document, preserve_empty_pages=True)
+        assert len(cleaned_layout_document.pages) == 2
 
     def test_should_preserve_meta(self):
         page_meta = LayoutPageMeta(COORDINATES_1)

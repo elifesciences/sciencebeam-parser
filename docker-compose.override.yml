@@ -1,6 +1,8 @@
 version: '3.4'
 
 services:
-  sciencebeam-parser:
+  sciencebeam-parser-cv:
     ports:
       - "${SCIENCEBEAM_PARSER_PORT}:8070"
+    volumes:
+      - ./config.yml:/opt/sciencebeam_parser/config.yml

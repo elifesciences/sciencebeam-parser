@@ -39,6 +39,7 @@ def get_semantic_graphic_list_for_layout_graphic_list(
             extract_graphic_assets=extract_graphic_assets
         )
         for layout_graphic in layout_graphic_iterable
+        if layout_graphic.coordinates
     ]
 
 

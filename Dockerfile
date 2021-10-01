@@ -21,6 +21,10 @@ FROM base AS builder-base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc \
+        libtesseract4 \
+        tesseract-ocr-eng \
+        libtesseract-dev \
+        libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.build.txt ./
@@ -54,6 +58,10 @@ COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cv.txt
 
+COPY requirements.ocr.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.ocr.txt
+
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.txt
@@ -74,6 +82,9 @@ COPY sciencebeam_parser ./sciencebeam_parser
 COPY tests ./tests
 COPY test-data ./test-data
 COPY .flake8 .pylintrc setup.py config.yml ./
+
+# temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
+ENV LC_ALL=C
 
 
 # runtime image
@@ -97,6 +108,12 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--", "/opt/sciencebeam_parser/docker/entrypoi
 # runtime-cv image
 FROM base AS runtime-cv
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libtesseract4 \
+        tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder-cv /opt/venv /opt/venv
 
 COPY sciencebeam_parser ./sciencebeam_parser
@@ -107,6 +124,9 @@ COPY config.yml ./
 
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
+
+# temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
+ENV LC_ALL=C
 
 CMD [ "--port=8070", "--host=0.0.0.0" ]
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/opt/sciencebeam_parser/docker/entrypoint.sh"]

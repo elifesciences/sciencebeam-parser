@@ -1,7 +1,11 @@
 import logging
+from pathlib import Path
 from typing import Sequence, Tuple
+from unittest.mock import MagicMock
 
 import pytest
+
+import PIL.Image
 
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
@@ -13,10 +17,12 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticContentWrapper,
     SemanticFigure,
     SemanticGraphic,
+    SemanticLabel,
     SemanticMixedContentWrapper
 )
 from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher,
+    OpticalCharacterRecognitionGraphicMatcher,
     get_bounding_box_list_distance
 )
 
@@ -64,6 +70,11 @@ FAR_AWAY_COORDINATES_2 = LayoutPageCoordinates(
     height=20,
     page_number=11
 )
+
+
+@pytest.fixture(name='ocr_model_mock')
+def _ocr_model_mock() -> MagicMock:
+    return MagicMock(name='ocr_model')
 
 
 def _get_semantic_content_for_page_coordinates(
@@ -266,6 +277,54 @@ class TestBoundingBoxDistanceGraphicMatcher:
             coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1
         )
         result = BoundingBoxDistanceGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        if should_match:
+            assert len(result) == 1
+            first_match = result.graphic_matches[0]
+            assert first_match.semantic_graphic == semantic_graphic_1
+        else:
+            assert not result.graphic_matches
+            assert result.unmatched_graphics == [semantic_graphic_1]
+
+
+class TestOpticalCharacterRecognitionGraphicMatcher:
+    @pytest.mark.parametrize(
+        "ocr_text,figure_label,should_match",
+        [
+            ("Figure 1", "Figure 1", True),
+            ("Figure 1", "Figure 2", False),
+            ("Fig 1", "Figure 1", True),
+            ("F 1", "Figure 1", False),
+            ("Fug 1", "Figure 1", False),
+            ("Other\nFigure 1\nMore", "Figure 1", True)
+        ]
+    )
+    def test_should_match_based_on_figure_label(
+        self,
+        ocr_model_mock: MagicMock,
+        ocr_text: str,
+        figure_label: str,
+        should_match: bool,
+        tmp_path:  Path
+    ):
+        local_graphic_path = tmp_path / 'image.png'
+        PIL.Image.new('RGB', (10, 10), (0, 1, 2)).save(local_graphic_path)
+        ocr_model_mock.predict_single.return_value.get_text.return_value = ocr_text
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=FAR_AWAY_COORDINATES_1,
+            local_file_path=str(local_graphic_path)
+        ))
+        candidate_semantic_content_1 = SemanticFigure([
+            SemanticLabel(layout_block=LayoutBlock.for_text(figure_label))
+        ])
+        result = OpticalCharacterRecognitionGraphicMatcher(
+            ocr_model=ocr_model_mock
+        ).get_graphic_matches(
             semantic_graphic_list=[semantic_graphic_1],
             candidate_semantic_content_list=[
                 candidate_semantic_content_1

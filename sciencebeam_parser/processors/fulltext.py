@@ -21,6 +21,9 @@ from sciencebeam_parser.models.data import AppFeaturesContext, DEFAULT_APP_FEATU
 from sciencebeam_parser.models.model import LayoutDocumentLabelResult, Model
 from sciencebeam_parser.models.model_impl_factory import get_model_impl_factory_for_config
 from sciencebeam_parser.cv_models.cv_model_factory import get_lazy_cv_model_for_config
+from sciencebeam_parser.cv_models.cv_model import ComputerVisionModel
+from sciencebeam_parser.ocr_models.ocr_model_factory import get_lazy_ocr_model_for_config
+from sciencebeam_parser.ocr_models.ocr_model import OpticalCharacterRecognitionModel
 from sciencebeam_parser.utils.misc import iter_ids
 
 from sciencebeam_parser.document.semantic_document import (
@@ -66,7 +69,6 @@ from sciencebeam_parser.models.figure.model import FigureModel
 from sciencebeam_parser.models.table.model import TableModel
 from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
 from sciencebeam_parser.models.citation.model import CitationModel
-from sciencebeam_parser.cv_models.cv_model import ComputerVisionModel
 from sciencebeam_parser.processors.ref_matching import (
     ChainedContentIdMatcher,
     ContentIdMatcher,
@@ -78,7 +80,10 @@ from sciencebeam_parser.processors.document_page_image import (
     iter_pdf_document_page_images
 )
 from sciencebeam_parser.processors.graphic_matching import (
-    BoundingBoxDistanceGraphicMatcher
+    BoundingBoxDistanceGraphicMatcher,
+    ChainedGraphicMatcher,
+    GraphicMatcher,
+    OpticalCharacterRecognitionGraphicMatcher
 )
 from sciencebeam_parser.processors.graphic_provider import (
     DocumentGraphicProvider,
@@ -107,6 +112,7 @@ class FullTextModels:
     reference_segmenter_model: ReferenceSegmenterModel
     citation_model: CitationModel
     cv_model: Optional[ComputerVisionModel] = None
+    ocr_model: Optional[OpticalCharacterRecognitionModel] = None
 
 
 T_Model = TypeVar('T_Model', bound=Model)
@@ -154,6 +160,22 @@ def load_model(
     return model
 
 
+def get_cv_model_for_app_config(app_config: AppConfig) -> Optional[ComputerVisionModel]:
+    cv_model_config = app_config.get('cv_models', {}).get('default')
+    if not cv_model_config:
+        return None
+    return get_lazy_cv_model_for_config(cv_model_config)
+
+
+def get_ocr_model_for_app_config(
+    app_config: AppConfig
+) -> Optional[OpticalCharacterRecognitionModel]:
+    ocr_model_config = app_config.get('ocr_models', {}).get('default')
+    if not ocr_model_config:
+        return None
+    return get_lazy_ocr_model_for_config(ocr_model_config)
+
+
 def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
     segmentation_model = load_model(
         app_config, app_context, 'segmentation', SegmentationModel
@@ -185,11 +207,8 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
     citation_model = load_model(
         app_config, app_context, 'citation', CitationModel
     )
-    cv_model_config = app_config.get('cv_models', {}).get('default')
-    if cv_model_config:
-        cv_model: Optional[ComputerVisionModel] = get_lazy_cv_model_for_config(cv_model_config)
-    else:
-        cv_model = None
+    cv_model = get_cv_model_for_app_config(app_config)
+    ocr_model = get_ocr_model_for_app_config(app_config)
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,
@@ -201,7 +220,8 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
         table_model=table_model,
         reference_segmenter_model=reference_segmenter_model,
         citation_model=citation_model,
-        cv_model=cv_model
+        cv_model=cv_model,
+        ocr_model=ocr_model
     )
 
 
@@ -216,6 +236,7 @@ class FullTextProcessorConfig(NamedTuple):
     extract_graphic_assets: bool = False
     use_cv_model: bool = False
     cv_render_dpi: float = DEFAULT_PDF_RENDER_DPI
+    use_ocr_model: bool = False
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
@@ -437,7 +458,15 @@ class FullTextProcessor:
         candidate_semantic_content_list: Sequence[SemanticContentWrapper],
         unmatched_graphics_container: SemanticMixedContentWrapper
     ):
-        graphic_matcher = BoundingBoxDistanceGraphicMatcher()
+        graphic_matcher: GraphicMatcher = BoundingBoxDistanceGraphicMatcher()
+        if self.config.use_ocr_model:
+            assert self.fulltext_models.ocr_model
+            graphic_matcher = ChainedGraphicMatcher([
+                graphic_matcher,
+                OpticalCharacterRecognitionGraphicMatcher(
+                    ocr_model=self.fulltext_models.ocr_model
+                )
+            ])
         graphic_match_result = graphic_matcher.get_graphic_matches(
             semantic_graphic_list=semantic_graphic_list,
             candidate_semantic_content_list=candidate_semantic_content_list

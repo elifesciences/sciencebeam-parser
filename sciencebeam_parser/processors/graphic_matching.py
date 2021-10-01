@@ -1,13 +1,19 @@
 import logging
 import math
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, NamedTuple, Sequence, cast
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, cast
+
+import PIL.Image
 
 from sciencebeam_parser.document.layout_document import LayoutPageCoordinates
 from sciencebeam_parser.document.semantic_document import (
     SemanticContentWrapper,
-    SemanticGraphic
+    SemanticGraphic,
+    SemanticLabel,
+    SemanticMixedContentWrapper
 )
+from sciencebeam_parser.ocr_models.ocr_model import OpticalCharacterRecognitionModel
+from sciencebeam_parser.processors.ref_matching import SimpleContentIdMatcher
 
 
 LOGGER = logging.getLogger(__name__)
@@ -37,6 +43,39 @@ class GraphicMatcher(ABC):
         candidate_semantic_content_list: Sequence[SemanticContentWrapper]
     ) -> GraphicMatchResult:
         pass
+
+
+class ChainedGraphicMatcher(GraphicMatcher):
+    def __init__(self, graphic_matchers: Sequence[GraphicMatcher]):
+        super().__init__()
+        self.graphic_matchers = graphic_matchers
+
+    def get_graphic_matches(
+        self,
+        semantic_graphic_list: Sequence[SemanticGraphic],
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
+    ) -> GraphicMatchResult:
+        current_graphic_match_result = GraphicMatchResult(
+            graphic_matches=[],
+            unmatched_graphics=semantic_graphic_list
+        )
+        for graphic_matcher in self.graphic_matchers:
+            if not current_graphic_match_result.unmatched_graphics:
+                break
+            temp_graphic_matches = graphic_matcher.get_graphic_matches(
+                current_graphic_match_result.unmatched_graphics,
+                candidate_semantic_content_list
+            )
+            if not temp_graphic_matches.graphic_matches:
+                continue
+            current_graphic_match_result = GraphicMatchResult(
+                graphic_matches=(
+                    list(current_graphic_match_result.graphic_matches)
+                    + list(temp_graphic_matches.graphic_matches)
+                ),
+                unmatched_graphics=temp_graphic_matches.unmatched_graphics
+            )
+        return current_graphic_match_result
 
 
 class BoundingBoxDistance(NamedTuple):
@@ -225,6 +264,71 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
             for semantic_graphic in semantic_graphic_list
             if id(semantic_graphic) not in matched_graphic_keys
         ]
+        return GraphicMatchResult(
+            graphic_matches=graphic_matches,
+            unmatched_graphics=unmatched_graphics
+        )
+
+
+class OpticalCharacterRecognitionGraphicMatcher(GraphicMatcher):
+    def __init__(self, ocr_model: OpticalCharacterRecognitionModel):
+        super().__init__()
+        self.ocr_model = ocr_model
+
+    def get_text_for_semantic_graphic(self, semantic_graphic: SemanticGraphic) -> str:
+        assert semantic_graphic.layout_graphic
+        if semantic_graphic.layout_graphic.graphic_type == 'svg':
+            return ''
+        assert semantic_graphic.layout_graphic.local_file_path
+        with PIL.Image.open(semantic_graphic.layout_graphic.local_file_path) as image:
+            return self.ocr_model.predict_single(image).get_text()
+
+    def get_text_for_candidate_semantic_content(
+        self,
+        semantic_content: SemanticContentWrapper
+    ) -> str:
+        assert isinstance(semantic_content, SemanticMixedContentWrapper)
+        return semantic_content.get_text_by_type(SemanticLabel)
+
+    def get_graphic_matches(
+        self,
+        semantic_graphic_list: Sequence[SemanticGraphic],
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
+    ) -> GraphicMatchResult:
+        graphic_text_list = [
+            self.get_text_for_semantic_graphic(semantic_graphic)
+            for semantic_graphic in semantic_graphic_list
+        ]
+        LOGGER.debug('graphic_text_list: %r', graphic_text_list)
+        candidate_label_text_list = [
+            self.get_text_for_candidate_semantic_content(candidate_semantic_content)
+            for candidate_semantic_content in candidate_semantic_content_list
+        ]
+        LOGGER.debug('candidate_label_text_list: %r', candidate_label_text_list)
+        content_id_matcher = SimpleContentIdMatcher(
+            {str(index): value for index, value in enumerate(candidate_label_text_list)},
+            prefix_length=3
+        )
+        graphic_matches: List[GraphicMatch] = []
+        unmatched_graphics: List[SemanticGraphic] = []
+        for graphic_index, graphic_text in enumerate(graphic_text_list):
+            semantic_graphic = semantic_graphic_list[graphic_index]
+            candidate_id: Optional[str] = None
+            for graphic_text_line in graphic_text.splitlines():
+                if not graphic_text_line:
+                    continue
+                candidate_id = content_id_matcher.get_id_by_text(graphic_text_line)
+                if candidate_id is not None:
+                    break
+            LOGGER.debug('get_id_by_text: candidate_id=%r (text=%r)', candidate_id, graphic_text)
+            if candidate_id is None:
+                unmatched_graphics.append(semantic_graphic)
+                continue
+            candidate_semantic_content = candidate_semantic_content_list[int(candidate_id)]
+            graphic_matches.append(GraphicMatch(
+                semantic_graphic=semantic_graphic,
+                candidate_semantic_content=candidate_semantic_content
+            ))
         return GraphicMatchResult(
             graphic_matches=graphic_matches,
             unmatched_graphics=unmatched_graphics
