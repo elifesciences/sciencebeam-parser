@@ -338,3 +338,27 @@ class TestOpticalCharacterRecognitionGraphicMatcher:
         else:
             assert not result.graphic_matches
             assert result.unmatched_graphics == [semantic_graphic_1]
+
+    def test_should_ignore_layout_graphic_without_local_path(
+        self,
+        ocr_model_mock: MagicMock
+    ):
+        ocr_model_mock.predict_single.return_value.get_text.side_effect = RuntimeError
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=FAR_AWAY_COORDINATES_1,
+            local_file_path=None
+        ))
+        candidate_semantic_content_1 = SemanticFigure([
+            SemanticLabel(layout_block=LayoutBlock.for_text('Figure 1'))
+        ])
+        result = OpticalCharacterRecognitionGraphicMatcher(
+            ocr_model=ocr_model_mock
+        ).get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        assert not result.graphic_matches
+        assert result.unmatched_graphics == [semantic_graphic_1]
