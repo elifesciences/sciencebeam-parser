@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Optional
 
 import PIL.Image
@@ -18,6 +19,7 @@ LOGGER = logging.getLogger(__name__)
 class TesserComputerVisionModel(OpticalCharacterRecognitionModel):
     def __init__(self):
         super().__init__()
+        self._lock = threading.Lock()
         self._tesser_api: Optional[PyTessBaseAPI] = None
 
     @property
@@ -27,9 +29,10 @@ class TesserComputerVisionModel(OpticalCharacterRecognitionModel):
         return self._tesser_api
 
     def predict_single(self, image: PIL.Image) -> OpticalCharacterRecognitionModelResult:
-        tesser_api = self.tesser_api
-        tesser_api.SetImage(image)
-        text = self.tesser_api.GetUTF8Text()
-        return SimpleOpticalCharacterRecognitionModelResult(
-            text=text
-        )
+        with self._lock:
+            tesser_api = self.tesser_api
+            tesser_api.SetImage(image)
+            text = self.tesser_api.GetUTF8Text()
+            return SimpleOpticalCharacterRecognitionModelResult(
+                text=text
+            )
