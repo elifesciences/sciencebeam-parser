@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, cast
 
 import PIL.Image
 
+from sciencebeam_parser.utils.image import get_image_with_max_resolution
 from sciencebeam_parser.document.layout_document import LayoutPageCoordinates
 from sciencebeam_parser.document.semantic_document import (
     SemanticContentWrapper,
@@ -270,10 +271,18 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         )
 
 
+DEFAULT_OCR_MAX_RESOLUTION = 1024
+
+
 class OpticalCharacterRecognitionGraphicMatcher(GraphicMatcher):
-    def __init__(self, ocr_model: OpticalCharacterRecognitionModel):
+    def __init__(
+        self,
+        ocr_model: OpticalCharacterRecognitionModel,
+        max_resolution: int = DEFAULT_OCR_MAX_RESOLUTION
+    ):
         super().__init__()
         self.ocr_model = ocr_model
+        self.max_resolution = max_resolution
 
     def get_text_for_semantic_graphic(self, semantic_graphic: SemanticGraphic) -> str:
         assert semantic_graphic.layout_graphic
@@ -288,7 +297,9 @@ class OpticalCharacterRecognitionGraphicMatcher(GraphicMatcher):
             )
             return ''
         with PIL.Image.open(semantic_graphic.layout_graphic.local_file_path) as image:
-            return self.ocr_model.predict_single(image).get_text()
+            return self.ocr_model.predict_single(
+                get_image_with_max_resolution(image, self.max_resolution)
+            ).get_text()
 
     def get_text_for_candidate_semantic_content(
         self,

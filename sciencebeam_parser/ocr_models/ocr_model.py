@@ -21,7 +21,7 @@ class SimpleOpticalCharacterRecognitionModelResult(OpticalCharacterRecognitionMo
 
 class OpticalCharacterRecognitionModel(ABC):
     @abstractmethod
-    def predict_single(self, image: PIL.Image) -> OpticalCharacterRecognitionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         pass
 
 
@@ -40,5 +40,5 @@ class LazyOpticalCharacterRecognitionModel(OpticalCharacterRecognitionModel):
             self._ocr_model = self._factory()
         return self._ocr_model
 
-    def predict_single(self, image: PIL.Image) -> OpticalCharacterRecognitionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         return self.ocr_model.predict_single(image)

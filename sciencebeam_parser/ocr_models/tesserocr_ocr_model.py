@@ -28,9 +28,13 @@ class TesserComputerVisionModel(OpticalCharacterRecognitionModel):
             self._tesser_api = PyTessBaseAPI().__enter__()
         return self._tesser_api
 
-    def predict_single(self, image: PIL.Image) -> OpticalCharacterRecognitionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         with self._lock:
             tesser_api = self.tesser_api
+            LOGGER.info(
+                'setting ocr image: %dx%d (format=%r)',
+                image.width, image.height, image.format
+            )
             tesser_api.SetImage(image)
             text = self.tesser_api.GetUTF8Text()
             return SimpleOpticalCharacterRecognitionModelResult(

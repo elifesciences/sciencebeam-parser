@@ -68,7 +68,7 @@ class LayoutParserComputerVisionModel(ComputerVisionModel):
             self._layout_model = load_model(self.model_path)
         return self._layout_model
 
-    def predict_single(self, image: PIL.Image) -> ComputerVisionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         return LayoutParserComputerVisionModelResult(
             self.layout_model.detect(image)
         )

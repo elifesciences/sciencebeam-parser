@@ -29,7 +29,7 @@ class ComputerVisionModelResult(ABC):
 
 class ComputerVisionModel(ABC):
     @abstractmethod
-    def predict_single(self, image: PIL.Image) -> ComputerVisionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         pass
 
 
@@ -48,5 +48,5 @@ class LazyComputerVisionModel(ComputerVisionModel):
             self._cv_model = self._factory()
         return self._cv_model
 
-    def predict_single(self, image: PIL.Image) -> ComputerVisionModelResult:
+    def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         return self.cv_model.predict_single(image)
