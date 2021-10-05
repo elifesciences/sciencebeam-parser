@@ -91,3 +91,10 @@ cv_models:
 ocr_models:
   default:
     engine: 'tesserocr'
+    lang: 'eng'
+    # see https://github.com/sirfz/tesserocr/blob/v2.5.2/tesserocr.pyx#L75-L90
+    # (specify literal or int value)
+    oem: 'DEFAULT'
+    # see https://github.com/sirfz/tesserocr/blob/v2.5.2/tesserocr.pyx#L102-L121
+    # (specify literal or int value)
+    psm: 'SPARSE_TEXT'
