@@ -56,6 +56,12 @@ class LayoutParserComputerVisionModelInstance(ComputerVisionModelInstance):
         super().__init__()
         self.bounding_box = bounding_box
 
+    def __repr__(self) -> str:
+        return '%s(bounding_box=%r)' % (
+            type(self).__name__,
+            self.bounding_box
+        )
+
     def get_bounding_box(self) -> BoundingBox:
         return self.bounding_box
 
@@ -85,6 +91,11 @@ class LayoutParserComputerVisionModelResult(ComputerVisionModelResult):
                 block.type == type_name
                 and block.score >= self.score_threshold
             )
+        ]
+        instances = [
+            instance
+            for instance in instances
+            if instance.get_bounding_box()
         ]
         if self.avoid_overlapping:
             _instances = instances

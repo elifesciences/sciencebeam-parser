@@ -48,6 +48,9 @@ class BoundingBox(NamedTuple):
     def y_range(self):
         return BoundingRange(self.y, self.height).validate()
 
+    def is_empty(self) -> bool:
+        return self.width == 0 or self.height == 0
+
     def intersection(self, other: 'BoundingBox') -> 'BoundingBox':
         intersection_x_range = self.x_range.intersection(other.x_range)
         intersection_y_range = self.y_range.intersection(other.y_range)
@@ -57,6 +60,9 @@ class BoundingBox(NamedTuple):
             intersection_x_range.length,
             intersection_y_range.length
         )
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
 
     def __eq__(self, other):
         if other is None:

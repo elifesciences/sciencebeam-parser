@@ -192,6 +192,10 @@ class TestGetLayoutDocumentWithTextReplacedByGraphics:
             BoundingBox(10, 100, 100, 20),
             page_number=1
         )
+        empty_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(10, 100, 0, 0),
+            page_number=1
+        )
         keep_token = LayoutToken('keep', coordinates=keep_coordinates)
         remove_token = LayoutToken('remove', coordinates=remove_coordinates)
         keep_graphic = LayoutGraphic(coordinates=keep_coordinates, graphic_type='keep-graphic')
@@ -218,11 +222,16 @@ class TestGetLayoutDocumentWithTextReplacedByGraphics:
             coordinates=semantic_graphic_coordinates,
             graphic_type='new-graphic'
         )
+        no_coords_layout_graphic = LayoutGraphic(
+            coordinates=empty_coordinates,
+            graphic_type='empty-coords-graphic'
+        )
         result = get_layout_document_with_text_replaced_by_graphics(
             layout_document,
-            semantic_graphics=[SemanticGraphic(
-                layout_graphic=layout_graphic
-            )]
+            semantic_graphics=[
+                SemanticGraphic(layout_graphic=layout_graphic),
+                SemanticGraphic(layout_graphic=no_coords_layout_graphic)
+            ]
         )
         LOGGER.debug('result.pages[0].graphics: %r', result.pages[0].graphics)
         assert result.pages[0].graphics[:-1] == [keep_graphic]

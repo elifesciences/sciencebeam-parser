@@ -58,3 +58,18 @@ class TestBoundingBox:
 
     def test_should_not_equal_none(self):
         assert not BoundingBox(11, 12, 101, 102).__eq__(None)
+
+    def test_should_indicate_empty_with_zero_width(self):
+        bounding_box = BoundingBox(0, 0, 0, 100)
+        assert bounding_box.is_empty()
+        assert not bounding_box
+
+    def test_should_indicate_empty_with_zero_height(self):
+        bounding_box = BoundingBox(0, 0, 100, 0)
+        assert bounding_box.is_empty()
+        assert not bounding_box
+
+    def test_should_indicate_not_be_empty_with_non_zero_width_and_height(self):
+        bounding_box = BoundingBox(0, 0, 100, 100)
+        assert not bounding_box.is_empty()
+        assert bounding_box

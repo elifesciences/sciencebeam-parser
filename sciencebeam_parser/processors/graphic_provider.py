@@ -225,7 +225,8 @@ def get_layout_document_with_text_replaced_by_graphics(
     for semantic_graphic in semantic_graphics_list:
         layout_graphic = semantic_graphic.layout_graphic
         assert layout_graphic
-        assert layout_graphic.coordinates
+        if not layout_graphic.coordinates:
+            continue
         page_number = layout_graphic.coordinates.page_number
         page_by_page_number[page_number] = get_layout_page_with_text_replaced_by_graphic(
             page_by_page_number[page_number],
