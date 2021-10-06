@@ -22,6 +22,7 @@ from sciencebeam_parser.document.semantic_document import (
 )
 from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher,
+    GraphicRelatedBlockTextGraphicMatcher,
     OpticalCharacterRecognitionGraphicMatcher,
     get_bounding_box_list_distance
 )
@@ -290,6 +291,67 @@ class TestBoundingBoxDistanceGraphicMatcher:
         else:
             assert not result.graphic_matches
             assert result.unmatched_graphics == [semantic_graphic_1]
+
+
+class TestGraphicRelatedBlockTextGraphicMatcher:
+    @pytest.mark.parametrize(
+        "related_text,figure_label,should_match",
+        [
+            ("Figure 1", "Figure 1", True),
+            ("Figure 1", "Figure 2", False),
+            ("Fig 1", "Figure 1", True),
+            ("F 1", "Figure 1", False),
+            ("Fug 1", "Figure 1", False),
+            ("Other\nFigure 1\nMore", "Figure 1", True)
+        ]
+    )
+    def test_should_match_based_on_figure_label(
+        self,
+        related_text: str,
+        figure_label: str,
+        should_match: bool
+    ):
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=FAR_AWAY_COORDINATES_1,
+            related_block=LayoutBlock.for_text(related_text)
+        ))
+        candidate_semantic_content_1 = SemanticFigure([
+            SemanticLabel(layout_block=LayoutBlock.for_text(figure_label))
+        ])
+        result = GraphicRelatedBlockTextGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        if should_match:
+            assert len(result) == 1
+            first_match = result.graphic_matches[0]
+            assert first_match.semantic_graphic == semantic_graphic_1
+        else:
+            assert not result.graphic_matches
+            assert result.unmatched_graphics == [semantic_graphic_1]
+
+    def test_should_ignore_layout_graphic_without_related_block(
+        self
+    ):
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=FAR_AWAY_COORDINATES_1,
+            related_block=None
+        ))
+        candidate_semantic_content_1 = SemanticFigure([
+            SemanticLabel(layout_block=LayoutBlock.for_text('Figure 1'))
+        ])
+        result = GraphicRelatedBlockTextGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        assert not result.graphic_matches
+        assert result.unmatched_graphics == [semantic_graphic_1]
 
 
 class TestOpticalCharacterRecognitionGraphicMatcher:

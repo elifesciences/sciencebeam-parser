@@ -40,3 +40,21 @@ class TestBoundingBox:
                 BoundingBox(120, 110, 100, 100)
             ) == BoundingBox(120, 120, 40, 60)
         )
+
+    def test_should_equal_same_bounding_boxes(self):
+        assert BoundingBox(11, 12, 101, 102) == BoundingBox(11, 12, 101, 102)
+
+    def test_should_not_equal_bounding_boxes_with_different_x(self):
+        assert BoundingBox(11, 12, 101, 102) != BoundingBox(99, 12, 101, 102)
+
+    def test_should_not_equal_bounding_boxes_with_different_y(self):
+        assert BoundingBox(11, 12, 101, 102) != BoundingBox(11, 99, 101, 102)
+
+    def test_should_not_equal_bounding_boxes_with_different_width(self):
+        assert BoundingBox(11, 12, 101, 102) != BoundingBox(11, 12, 999, 102)
+
+    def test_should_not_equal_bounding_boxes_with_different_height(self):
+        assert BoundingBox(11, 12, 101, 102) != BoundingBox(11, 12, 101, 999)
+
+    def test_should_not_equal_none(self):
+        assert not BoundingBox(11, 12, 101, 102).__eq__(None)

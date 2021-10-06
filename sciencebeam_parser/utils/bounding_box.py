@@ -57,3 +57,8 @@ class BoundingBox(NamedTuple):
             intersection_x_range.length,
             intersection_y_range.length
         )
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return super().__eq__(other)

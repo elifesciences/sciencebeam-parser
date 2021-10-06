@@ -87,6 +87,7 @@ cv_models:
   default:
     path: 'lp://efficientdet/PubLayNet'
     engine: 'layout_parser'
+    score_threshold: 0.1
 
 ocr_models:
   default:

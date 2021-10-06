@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import itertools
 import operator
@@ -318,6 +319,7 @@ class LayoutGraphic(NamedTuple):
     local_file_path: Optional[str] = None
     coordinates: Optional[LayoutPageCoordinates] = None
     graphic_type: Optional[str] = None
+    related_block: Optional[LayoutBlock] = None
 
 
 class LayoutPageMeta(NamedTuple):
@@ -333,6 +335,16 @@ class LayoutPage:
     blocks: List[LayoutBlock]
     graphics: Sequence[LayoutGraphic] = field(default_factory=list)
     meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
+
+    def replace(self, **changes) -> 'LayoutPage':
+        return dataclasses.replace(self, **changes)
+
+    def iter_all_tokens(self) -> Iterable[LayoutToken]:
+        return (
+            token
+            for block in self.blocks
+            for token in block.iter_all_tokens()
+        )
 
     def flat_map_layout_tokens(self, fn: T_FlatMapLayoutTokensFn) -> 'LayoutPage':
         return LayoutPage(
@@ -372,6 +384,9 @@ class LayoutDocument:
         return LayoutDocument(pages=[LayoutPage(
             blocks=blocks, graphics=[]
         )])
+
+    def replace(self, **changes) -> 'LayoutDocument':
+        return dataclasses.replace(self, **changes)
 
     def iter_all_blocks(self) -> Iterable[LayoutBlock]:
         return (

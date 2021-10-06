@@ -83,11 +83,16 @@ from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher,
     ChainedGraphicMatcher,
     GraphicMatcher,
+    GraphicRelatedBlockTextGraphicMatcher,
     OpticalCharacterRecognitionGraphicMatcher
 )
 from sciencebeam_parser.processors.graphic_provider import (
     DocumentGraphicProvider,
-    SimpleDocumentGraphicProvider
+    SimpleDocumentGraphicProvider,
+    get_layout_document_with_text_replaced_by_graphics,
+    get_page_numbers_for_semantic_content_list,
+    get_page_numbers_with_mostly_bitmap_graphics,
+    get_page_numbers_with_uncommon_page_dimension
 )
 
 
@@ -305,6 +310,10 @@ class FullTextProcessor:
     ) -> SemanticDocument:
         if context is None:
             context = FullTextProcessorDocumentContext()
+        layout_document = self._preprocess_layout_graphics(
+            layout_document,
+            context=context
+        )
         segmentation_label_result = self.segmentation_model.get_label_layout_document_result(
             layout_document,
             app_features_context=self.app_features_context
@@ -396,6 +405,38 @@ class FullTextProcessor:
             )
         return document
 
+    def _preprocess_layout_graphics(
+        self,
+        layout_document: LayoutDocument,
+        context: FullTextProcessorDocumentContext
+    ) -> LayoutDocument:
+        if not self.config.use_cv_model:
+            return layout_document
+        candidate_page_numbers = sorted(
+            set(get_page_numbers_with_uncommon_page_dimension(layout_document))
+            - set(get_page_numbers_with_mostly_bitmap_graphics(layout_document))
+        )
+        LOGGER.debug('candidate_page_numbers: %r', candidate_page_numbers)
+        if not candidate_page_numbers:
+            return layout_document
+        document_graphic_provider = self._get_document_graphic_provider(
+            context=context,
+            page_numbers=candidate_page_numbers
+        )
+        semantic_graphics = list(
+            document_graphic_provider.iter_semantic_graphic_for_layout_document(
+                layout_document,
+                extract_graphic_assets=self.config.extract_graphic_assets
+            )
+        )
+        if not semantic_graphics:
+            LOGGER.info('no semantic graphics found on pages %r', candidate_page_numbers)
+            return layout_document
+        return get_layout_document_with_text_replaced_by_graphics(
+            layout_document,
+            semantic_graphics
+        )
+
     def _process_graphics(
         self,
         document: SemanticDocument,
@@ -410,7 +451,7 @@ class FullTextProcessor:
             semantic_graphic_list=list(
                 self._get_document_graphic_provider(
                     context=context,
-                    page_numbers=self._get_candidate_graphic_page_numbers(
+                    page_numbers=get_page_numbers_for_semantic_content_list(
                         candidate_semantic_content_list
                     )
                 ).iter_semantic_graphic_for_layout_document(
@@ -442,31 +483,24 @@ class FullTextProcessor:
             )
         return SimpleDocumentGraphicProvider()
 
-    def _get_candidate_graphic_page_numbers(
-        self,
-        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
-    ) -> Sequence[int]:
-        return sorted({
-            coordinates.page_number
-            for semantic_content in candidate_semantic_content_list
-            for coordinates in semantic_content.merged_block.get_merged_coordinates_list()
-        })
-
     def _match_graphic_elements(
         self,
         semantic_graphic_list: Sequence[SemanticGraphic],
         candidate_semantic_content_list: Sequence[SemanticContentWrapper],
         unmatched_graphics_container: SemanticMixedContentWrapper
     ):
-        graphic_matcher: GraphicMatcher = BoundingBoxDistanceGraphicMatcher()
+        _graphic_matchers: List[GraphicMatcher] = [
+            BoundingBoxDistanceGraphicMatcher(),
+            GraphicRelatedBlockTextGraphicMatcher()
+        ]
         if self.config.use_ocr_model:
             assert self.fulltext_models.ocr_model
-            graphic_matcher = ChainedGraphicMatcher([
-                graphic_matcher,
+            _graphic_matchers.append(
                 OpticalCharacterRecognitionGraphicMatcher(
                     ocr_model=self.fulltext_models.ocr_model
                 )
-            ])
+            )
+        graphic_matcher = ChainedGraphicMatcher(_graphic_matchers)
         graphic_match_result = graphic_matcher.get_graphic_matches(
             semantic_graphic_list=semantic_graphic_list,
             candidate_semantic_content_list=candidate_semantic_content_list
