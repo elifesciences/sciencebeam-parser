@@ -1,5 +1,5 @@
 Flask==2.0.2
 lxml==4.6.3
 pdf2image==1.16.0
-PyYAML==5.4.1
+PyYAML==6.0
 https://github.com/elifesciences/sciencebeam-trainer-delft/archive/refs/tags/v0.0.28.zip#egg=sciencebeam-trainer-delft
