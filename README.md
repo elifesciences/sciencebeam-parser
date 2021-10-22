@@ -101,16 +101,42 @@ curl --fail --show-error \
     --silent "http://localhost:8080/api/processFulltextDocument?first_page=1&last_page=1"
 ```
 
-### Submit a sample document to the asset document api
+The default response will be TEI XML (`application/tei+xml`).
+The `Accept` HTTP request header may be used to request JATS, with the mime type `application/vnd.jats+xml`.
+
+```bash
+curl --fail --show-error \
+    --header 'Accept: application/vnd.jats+xml' \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/processFulltextDocument?first_page=1&last_page=1"
+```
+
+Regardless, the returned content type will be `application/xml`.
+
+### Submit a sample document to the full text asset document api
 
 The `processFulltextAssetDocument` is like `processFulltextDocument`. But instead of returning the TEI XML directly, it will contain a zip with the TEI XML document, along with other assets such as figure images.
 
 ```bash
 curl --fail --show-error \
-    --output "example-xml-and-assets.zip" \
+    --output "example-tei-xml-and-assets.zip" \
     --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
     --silent "http://localhost:8080/api/processFulltextAssetDocument?first_page=1&last_page=1"
 ```
+
+The default response will be ZIP containing TEI XML (`application/tei+xml+zip`).
+The `Accept` HTTP request header may be used to request a ZIP containing JATS,
+with the mime type `application/vnd.jats+xml+zip`.
+
+```bash
+curl --fail --show-error \
+    --header 'Accept: application/vnd.jats+xml+zip' \
+    --output "example-jats-xml-and-assets.zip" \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/processFulltextAssetDocument?first_page=1&last_page=1"
+```
+
+Regardless, the returned content type will be `application/zip`.
 
 ### Docker Usage
 

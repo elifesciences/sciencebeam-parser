@@ -41,6 +41,10 @@ from sciencebeam_parser.document.semantic_document import (
     iter_by_semantic_type_recursively
 )
 from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
+from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
+from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
+from sciencebeam_parser.utils.flask import assert_and_get_first_accept_matching_media_type
+from sciencebeam_parser.utils.media_types import MediaTypes
 from sciencebeam_parser.utils.text import normalize_text
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.processors.fulltext import (
@@ -618,6 +622,11 @@ class ApiBlueprint(Blueprint):
                 extract_graphic_assets=True
             )
         )
+        tei_to_jats_config = config.get('xslt', {}).get('tei_to_jats', {})
+        self.tei_to_jats_xslt_transformer = XsltTransformerWrapper.from_template_file(
+            TEI_TO_JATS_XSLT_FILE,
+            xslt_template_parameters=tei_to_jats_config.get('parameters', {})
+        )
         ModelNestedBluePrint(
             'Segmentation',
             model=fulltext_models.segmentation_model,
@@ -791,6 +800,9 @@ class ApiBlueprint(Blueprint):
         return semantic_document
 
     def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+        )
         with TemporaryDirectory(suffix='-request') as temp_dir:
             pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
             layout_document = self._get_layout_document_for_request(
@@ -805,8 +817,11 @@ class ApiBlueprint(Blueprint):
             )
             document = get_tei_for_semantic_document(semantic_document)
             response_type = 'application/xml'
+            xml_root = document.root
+            if response_media_type == MediaTypes.JATS_XML:
+                xml_root = self.tei_to_jats_xslt_transformer(xml_root)
             response_content = etree.tostring(
-                document.root,
+                xml_root,
                 encoding='utf-8',
                 pretty_print=False
             )
@@ -818,6 +833,9 @@ class ApiBlueprint(Blueprint):
         return _get_file_upload_form('Convert PDF to TEI Assets ZIP')
 
     def process_pdf_to_tei_assets_zip(self):  # pylint: disable=too-many-locals
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP]
+        )
         with TemporaryDirectory(suffix='-request') as temp_dir:
             pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
             layout_document = self._get_layout_document_for_request(
@@ -835,15 +853,20 @@ class ApiBlueprint(Blueprint):
             ))
             LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
             document = get_tei_for_semantic_document(semantic_document)
+            xml_root = document.root
+            xml_filename = 'tei.xml'
+            if response_media_type == MediaTypes.JATS_ZIP:
+                xml_root = self.tei_to_jats_xslt_transformer(xml_root)
+                xml_filename = 'jats.xml'
             zip_path = Path(temp_dir) / 'result.zip'
             with ZipFile(zip_path, 'w') as zip_file:
-                tei_xml_data = etree.tostring(
-                    document.root,
+                xml_data = etree.tostring(
+                    xml_root,
                     encoding='utf-8',
                     pretty_print=False
                 )
-                LOGGER.debug('tei_xml_data: %r', tei_xml_data)
-                zip_file.writestr('tei.xml', tei_xml_data)
+                LOGGER.debug('xml_data: %r', xml_data)
+                zip_file.writestr(xml_filename, xml_data)
                 for semantic_graphic in semantic_graphic_list:
                     assert semantic_graphic.relative_path
                     layout_graphic = semantic_graphic.layout_graphic

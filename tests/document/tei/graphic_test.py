@@ -54,3 +54,20 @@ class TestGraphicTeiElementFactory:
             COORDINATES_1
         )
         assert graphic_element.attrib.get('type') == 'svg'
+        assert not graphic_element.attrib.get('url')
+
+    def test_should_render_graphic_element_with_url(self):
+        semantic_graphic = SemanticGraphic(
+            relative_path='rel-image1.png',
+            layout_graphic=LayoutGraphic(
+                local_file_path='image1.png',
+                graphic_type='svg'
+            )
+        )
+        result = _get_wrapped_graphic_tei_element(semantic_graphic)
+        graphic_elements = result.xpath_nodes(
+            '//tei:graphic'
+        )
+        assert len(graphic_elements) == 1
+        graphic_element = graphic_elements[0]
+        assert graphic_element.attrib.get('url') == 'rel-image1.png'

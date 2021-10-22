@@ -23,6 +23,7 @@ from sciencebeam_parser.service.blueprints import api as api_module
 from sciencebeam_parser.service.blueprints.api import (
     ApiBlueprint
 )
+from sciencebeam_parser.utils.media_types import MediaTypes
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ PDF_CONTENT_1 = b'test pdf content'
 XML_CONTENT_1 = b'<article></article>'
 
 TEI_XML_CONTENT_1 = b'<TEI>1</TEI>'
+JATS_XML_CONTENT_1 = b'<article>1</article>'
 IMAGE_DATA_1 = b'Image 1'
 
 
@@ -88,6 +90,19 @@ def _get_tei_for_semantic_document_mock() -> Iterator[MagicMock]:
 def _load_app_features_context_mock() -> Iterator[MagicMock]:
     with patch.object(api_module, 'load_app_features_context') as mock:
         yield mock
+
+
+@pytest.fixture(name='xslt_transformer_wrapper_class_mock', autouse=True)
+def _xslt_transformer_wrapper_class_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'XsltTransformerWrapper') as mock:
+        yield mock
+
+
+@pytest.fixture(name='xslt_transformer_wrapper_mock')
+def _xslt_transformer_wrapper_mock(
+    xslt_transformer_wrapper_class_mock: MagicMock
+) -> MagicMock:
+    return xslt_transformer_wrapper_class_mock.from_template_file.return_value
 
 
 @pytest.fixture(name='app_config', scope='session')
@@ -198,6 +213,44 @@ class TestApiBlueprint:
             assert response.status_code == 200
             assert response.data == TEI_XML_CONTENT_1
 
+        def test_should_convert_to_jats(
+            self,
+            test_client,
+            get_tei_for_semantic_document_mock: MagicMock,
+            xslt_transformer_wrapper_mock: MagicMock,
+            request_temp_path: Path
+        ):
+            expected_output_path = request_temp_path / 'test.lxml'
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            xslt_transformer_wrapper_mock.return_value = (
+                etree.fromstring(JATS_XML_CONTENT_1)
+            )
+            response = test_client.post('/processFulltextDocument', data={
+                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            }, headers={'Accept': MediaTypes.JATS_XML})
+            assert response.status_code == 200
+            assert response.data == JATS_XML_CONTENT_1
+
+        def test_should_reject_unsupported_accept_media_type(
+            self,
+            test_client,
+            get_tei_for_semantic_document_mock: MagicMock,
+            xslt_transformer_wrapper_mock: MagicMock
+        ):
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            xslt_transformer_wrapper_mock.return_value = (
+                etree.fromstring(JATS_XML_CONTENT_1)
+            )
+            response = test_client.post('/processFulltextDocument', data={
+                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            }, headers={'Accept': 'media/unsupported'})
+            assert response.status_code == 400
+
     class TestProcessFullTextAssetDocument:
         def test_should_show_form_on_get(self, test_client):
             response = test_client.get('/processFulltextAssetDocument')
@@ -258,3 +311,44 @@ class TestApiBlueprint:
                 assert tei_xml_data == TEI_XML_CONTENT_1
                 image_data = zip_file.read(graphic_relative_path)
                 assert image_data == IMAGE_DATA_1
+
+        def test_should_convert_to_jats(
+            self,
+            test_client,
+            get_tei_for_semantic_document_mock: MagicMock,
+            xslt_transformer_wrapper_mock: MagicMock,
+            request_temp_path: Path
+        ):
+            expected_output_path = request_temp_path / 'test.lxml'
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            xslt_transformer_wrapper_mock.return_value = (
+                etree.fromstring(JATS_XML_CONTENT_1)
+            )
+            response = test_client.post('/processFulltextAssetDocument', data={
+                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            }, headers={'Accept': MediaTypes.JATS_ZIP})
+            assert response.status_code == 200
+            assert response.content_type == 'application/zip'
+            with ZipFile(BytesIO(response.data), 'r') as zip_file:
+                tei_xml_data = zip_file.read('jats.xml')
+                assert tei_xml_data == JATS_XML_CONTENT_1
+
+        def test_should_reject_unsupported_accept_media_type(
+            self,
+            test_client,
+            get_tei_for_semantic_document_mock: MagicMock,
+            xslt_transformer_wrapper_mock: MagicMock
+        ):
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            xslt_transformer_wrapper_mock.return_value = (
+                etree.fromstring(JATS_XML_CONTENT_1)
+            )
+            response = test_client.post('/processFulltextAssetDocument', data={
+                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            }, headers={'Accept': 'media/unsupported'})
+            assert response.status_code == 400
