@@ -41,6 +41,7 @@ from sciencebeam_parser.document.semantic_document import (
     iter_by_semantic_type_recursively
 )
 from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
+from sciencebeam_parser.processors.fulltext.config import RequestFieldNames
 from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
 from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
 from sciencebeam_parser.utils.flask import assert_and_get_first_accept_matching_media_type
@@ -605,6 +606,12 @@ class ApiBlueprint(Blueprint):
         self.route("/processFulltextDocument", methods=['POST'])(
             self.process_fulltext_document_api
         )
+        self.route("/processReferences", methods=['GET'])(
+            self.process_references_api_form
+        )
+        self.route("/processReferences", methods=['POST'])(
+            self.process_references_api
+        )
         self.route("/processFulltextAssetDocument", methods=['GET'])(
             self.process_pdf_to_tei_assets_zip_form
         )
@@ -912,6 +919,20 @@ class ApiBlueprint(Blueprint):
         return self._process_pdf_to_response_media_type(
             response_media_type,
             fulltext_processor_config=self.fulltext_processor_config
+        )
+
+    def process_references_api_form(self):
+        return _get_file_upload_form('Convert PDF to TEI (References)')
+
+    def process_references_api(self):
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+        )
+        return self._process_pdf_to_response_media_type(
+            response_media_type,
+            fulltext_processor_config=self.fulltext_processor_config.get_for_requested_field_names({
+                RequestFieldNames.REFERENCES
+            })
         )
 
     def process_pdf_to_tei_assets_zip_form(self):

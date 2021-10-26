@@ -27,6 +27,7 @@ FRONT_FIELDS = {
 
 
 class FullTextProcessorConfig(NamedTuple):
+    extract_front: bool = True
     extract_authors: bool = True
     extract_affiliations: bool = True
     extract_body_sections: bool = True
@@ -60,10 +61,12 @@ class FullTextProcessorConfig(NamedTuple):
         remaining_field_names = request_field_names - FRONT_FIELDS - {RequestFieldNames.REFERENCES}
         if remaining_field_names:
             return self
+        extract_front = bool(FRONT_FIELDS & request_field_names)
         extract_authors = RequestFieldNames.AUTHORS in request_field_names
         extract_affiliations = RequestFieldNames.AFFILIATIONS in request_field_names
         extract_references = RequestFieldNames.REFERENCES in request_field_names
         return self._replace(  # pylint: disable=no-member
+            extract_front=extract_front,
             extract_authors=extract_authors,
             extract_affiliations=extract_affiliations,
             extract_body_sections=False,

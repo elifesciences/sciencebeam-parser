@@ -46,6 +46,7 @@ class TestFullTextProcessorConfig:
             RequestFieldNames.AUTHORS,
             RequestFieldNames.AFFILIATIONS
         })
+        assert config.extract_front
         assert config.extract_authors
         assert config.extract_affiliations
         assert not config.extract_body_sections
@@ -57,6 +58,7 @@ class TestFullTextProcessorConfig:
         config = EXTRACT_ALL_FULLTEXT_CONFIG.get_for_requested_field_names({
             RequestFieldNames.REFERENCES
         })
+        assert not config.extract_front
         assert not config.extract_authors
         assert not config.extract_affiliations
         assert not config.extract_body_sections
@@ -72,6 +74,7 @@ class TestFullTextProcessorConfig:
 
     def test_should_configure_only_header_extraction_using_get_for_header_document(self):
         config = EXTRACT_ALL_FULLTEXT_CONFIG.get_for_header_document()
+        assert config.extract_front
         assert config.extract_authors
         assert config.extract_affiliations
         assert not config.extract_body_sections

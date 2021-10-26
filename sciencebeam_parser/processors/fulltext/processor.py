@@ -304,10 +304,11 @@ class FullTextProcessor:
             '<header>'
         ).remove_empty_blocks()
         document = SemanticDocument()
-        self._process_header_layout_document(
-            header_layout_document=header_layout_document,
-            semantic_document=document
-        )
+        if self.config.extract_front:
+            self._process_header_layout_document(
+                header_layout_document=header_layout_document,
+                semantic_document=document
+            )
 
         if self.config.extract_body_sections:
             self._update_semantic_section_using_segmentation_result_and_fulltext_model(
