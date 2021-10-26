@@ -69,5 +69,9 @@ class FullTextProcessorConfig(NamedTuple):
             extract_body_sections=False,
             extract_acknowledgements=False,
             extract_back_sections=False,
-            extract_references=extract_references
+            extract_references=extract_references,
+            extract_graphic_bounding_boxes=False
         )
+
+    def get_for_header_document(self) -> 'FullTextProcessorConfig':
+        return self.get_for_requested_field_names(FRONT_FIELDS)

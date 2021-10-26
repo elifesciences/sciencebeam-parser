@@ -593,6 +593,12 @@ class ApiBlueprint(Blueprint):
         self.route('/')(self.api_root)
         self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
+        self.route("/processHeaderDocument", methods=['GET'])(
+            self.process_header_document_api_form
+        )
+        self.route("/processHeaderDocument", methods=['POST'])(
+            self.process_header_document_api
+        )
         self.route("/processFulltextDocument", methods=['GET'])(
             self.process_fulltext_document_api_form
         )
@@ -884,8 +890,20 @@ class ApiBlueprint(Blueprint):
             headers = None
             return Response(xml_data, headers=headers, mimetype=response_type)
 
+    def process_header_document_api_form(self):
+        return _get_file_upload_form('Convert PDF to TEI (Header)')
+
+    def process_header_document_api(self):
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+        )
+        return self._process_pdf_to_response_media_type(
+            response_media_type,
+            fulltext_processor_config=self.fulltext_processor_config.get_for_header_document()
+        )
+
     def process_fulltext_document_api_form(self):
-        return _get_file_upload_form('Convert PDF to TEI')
+        return _get_file_upload_form('Convert PDF to TEI (Full Text)')
 
     def process_fulltext_document_api(self):
         response_media_type = assert_and_get_first_accept_matching_media_type(

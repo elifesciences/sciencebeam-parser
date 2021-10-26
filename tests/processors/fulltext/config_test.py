@@ -69,3 +69,13 @@ class TestFullTextProcessorConfig:
             'other'
         })
         assert config == EXTRACT_ALL_FULLTEXT_CONFIG
+
+    def test_should_configure_only_header_extraction_using_get_for_header_document(self):
+        config = EXTRACT_ALL_FULLTEXT_CONFIG.get_for_header_document()
+        assert config.extract_authors
+        assert config.extract_affiliations
+        assert not config.extract_body_sections
+        assert not config.extract_acknowledgements
+        assert not config.extract_back_sections
+        assert not config.extract_references
+        assert not config.extract_graphic_bounding_boxes

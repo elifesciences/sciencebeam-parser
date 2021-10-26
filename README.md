@@ -98,7 +98,32 @@ curl --fail --show-error \
 The following APIs are aiming to be compatible with selected endpoints of the
 [GROBID's REST API](https://grobid.readthedocs.io/en/latest/Grobid-service/), for common use-cases.
 
-#### Submit a sample document to the full text api
+#### Submit a sample document to the header document api
+
+The `/processHeaderDocument` endpoint is similar to the `/processFulltextDocument`, but it will only contain front matter.
+It still uses the same segmentation model, but it won't need to process a number of other models.
+
+```bash
+curl --fail --show-error \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/processHeaderDocument?first_page=1&last_page=1"
+```
+
+The default response will be TEI XML (`application/tei+xml`).
+The `Accept` HTTP request header may be used to request JATS, with the mime type `application/vnd.jats+xml`.
+
+```bash
+curl --fail --show-error \
+    --header 'Accept: application/vnd.jats+xml' \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/processHeaderDocument?first_page=1&last_page=1"
+```
+
+Regardless, the returned content type will be `application/xml`.
+
+(BibTeX output is currently not supported)
+
+#### Submit a sample document to the full text document api
 
 ```bash
 curl --fail --show-error \
