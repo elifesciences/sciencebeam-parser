@@ -1,4 +1,4 @@
-from sciencebeam_parser.utils.text import normalize_text
+from sciencebeam_parser.utils.text import normalize_text, parse_comma_separated_value
 
 
 class TestNormalizeText:
@@ -16,3 +16,20 @@ class TestNormalizeText:
 
     def test_should_remove_space_around_line_feed(self):
         assert normalize_text('a  \n  b') == 'a\nb'
+
+
+class TestParseCommaSeparatedValue:
+    def test_should_return_empty_list_for_empty_string(self):
+        assert parse_comma_separated_value('') == []
+
+    def test_should_return_empty_list_for_blank_string(self):
+        assert parse_comma_separated_value('  ') == []
+
+    def test_should_parse_single_value(self):
+        assert parse_comma_separated_value('one') == ['one']
+
+    def test_should_parse_multiple_values(self):
+        assert parse_comma_separated_value('one,two,three') == ['one', 'two', 'three']
+
+    def test_should_remove_spaces(self):
+        assert parse_comma_separated_value(' one , two , three ') == ['one', 'two', 'three']

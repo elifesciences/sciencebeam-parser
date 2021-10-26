@@ -93,7 +93,12 @@ curl --fail --show-error \
     --silent "http://localhost:8080/api/models/name-header?first_page=1&last_page=1&output_format=xml"
 ```
 
-### Submit a sample document to the full text api
+### GROBID compatible APIs
+
+The following APIs are aiming to be compatible with selected endpoints of the
+[GROBID's REST API](https://grobid.readthedocs.io/en/latest/Grobid-service/), for common use-cases.
+
+#### Submit a sample document to the full text api
 
 ```bash
 curl --fail --show-error \
@@ -113,7 +118,7 @@ curl --fail --show-error \
 
 Regardless, the returned content type will be `application/xml`.
 
-### Submit a sample document to the full text asset document api
+#### Submit a sample document to the full text asset document api
 
 The `processFulltextAssetDocument` is like `processFulltextDocument`. But instead of returning the TEI XML directly, it will contain a zip with the TEI XML document, along with other assets such as figure images.
 
@@ -137,6 +142,55 @@ curl --fail --show-error \
 ```
 
 Regardless, the returned content type will be `application/zip`.
+
+### Submit a sample document to the `/convert` api
+
+The `/convert` API is aiming to be a single endpoint for the conversion of PDF documents to a semantic representation.
+By default it will return JATS XML.
+
+```bash
+curl --fail --show-error \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/convert?first_page=1&last_page=1"
+```
+
+The following section describe parameters to influence the response:
+
+#### Using the `Accept` HTTP header parameter
+
+The [Accept HTTP header](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields)
+may be used to request a different response type. e.g. `application/tei+xml` for TEI XML.
+
+```bash
+curl --fail --show-error \
+    --header 'Accept: application/tei+xml' \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/convert?first_page=1&last_page=1"
+```
+
+Regardless, the returned content type will be `application/xml`.
+
+#### Using the `includes` request parameter
+
+The `includes` request parameter may be used to specify the requested fields, in order to reduce the processing time.
+e.g. `title,abstract` to requst the `title` and the `abstract` only. In that case fewer models will be used.
+The output may still contain more fields than requested.
+
+```bash
+curl --fail --show-error \
+    --form "file=@test-data/minimal-example.pdf;filename=test-data/minimal-example.pdf" \
+    --silent "http://localhost:8080/api/convert?includes=title,abstract"
+```
+
+The currently supported fields are:
+
+* `title`
+* `abstract`
+* `authors`
+* `affiliations`
+* `references`
+
+Passing in any other values (no values), will behave as if no `includes` parameter was passed in.
 
 ### Docker Usage
 

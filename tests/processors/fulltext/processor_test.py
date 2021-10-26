@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutDocument,
@@ -52,7 +51,7 @@ from sciencebeam_parser.models.figure.model import FigureModel
 from sciencebeam_parser.models.table.model import TableModel
 from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
 from sciencebeam_parser.models.citation.model import CitationModel
-from sciencebeam_parser.processors.fulltext import (
+from sciencebeam_parser.processors.fulltext.processor import (
     FullTextProcessor,
     FullTextModels,
     FullTextProcessorConfig
@@ -195,22 +194,6 @@ def _get_layout_model_labels_for_block(
         for layout_line in layout_block.lines
         for layout_token in layout_line.tokens
     ]
-
-
-class TestFullTextProcessorConfig:
-    @pytest.mark.parametrize("field_name,value", [
-        ("merge_raw_authors", False),
-        ("merge_raw_authors", True)
-    ])
-    def test_should_override_default_from_app_config(self, field_name: str, value: bool):
-        config = FullTextProcessorConfig.from_app_config(app_config=AppConfig(props={
-            'processors': {
-                'fulltext': {
-                    field_name: value
-                }
-            }
-        }))
-        assert getattr(config, field_name) is value
 
 
 class TestFullTextProcessor:

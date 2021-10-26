@@ -165,7 +165,7 @@
       <object-id><xsl:value-of select="@xml:id"/></object-id>
       <label><xsl:value-of select="tei:head"/></label>
       <caption>
-        <title><xsl:apply-templates select="tei:head"/></title>
+        <xsl:apply-templates select="tei:head"/>
         <p><xsl:apply-templates select="tei:figDesc"/></p>
       </caption>
       <xsl:apply-templates select="tei:graphic"/>
@@ -184,7 +184,7 @@
       </xsl:attribute>
       <label><xsl:value-of select="tei:head"/></label>
       <caption>
-        <title><xsl:apply-templates select="tei:head"/></title>
+        <xsl:apply-templates select="tei:head"/>
         <p><xsl:apply-templates select="tei:figDesc"/></p>
       </caption>
       <table>

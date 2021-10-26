@@ -1,4 +1,5 @@
 import re
+from typing import Sequence
 
 # mostly copied from:
 # https://github.com/kermitt2/grobid/blob/0.6.2/grobid-core/src/main/java/org/grobid/core/utilities/TextUtilities.java#L773-L948
@@ -66,3 +67,10 @@ def normalize_text(text: str) -> str:
 
 def remove_whitespace(text: str) -> str:
     return re.sub(r'\s', '', text)
+
+
+def parse_comma_separated_value(s: str, sep: str = ',') -> Sequence[str]:
+    s = s.strip()
+    if not s:
+        return []
+    return [item.strip() for item in s.split(sep)]

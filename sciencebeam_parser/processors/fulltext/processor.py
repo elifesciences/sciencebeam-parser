@@ -76,7 +76,6 @@ from sciencebeam_parser.processors.ref_matching import (
     SimpleContentIdMatcher
 )
 from sciencebeam_parser.processors.document_page_image import (
-    DEFAULT_PDF_RENDER_DPI,
     iter_pdf_document_page_images
 )
 from sciencebeam_parser.processors.graphic_matching import (
@@ -93,6 +92,9 @@ from sciencebeam_parser.processors.graphic_provider import (
     get_page_numbers_for_semantic_content_list,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
+)
+from sciencebeam_parser.processors.fulltext.config import (
+    FullTextProcessorConfig
 )
 
 
@@ -230,26 +232,6 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
     )
 
 
-class FullTextProcessorConfig(NamedTuple):
-    extract_citation_fields: bool = True
-    extract_citation_authors: bool = True
-    extract_citation_editors: bool = False
-    extract_figure_fields: bool = True
-    extract_table_fields: bool = True
-    merge_raw_authors: bool = False
-    extract_graphic_bounding_boxes: bool = True
-    extract_graphic_assets: bool = False
-    use_cv_model: bool = False
-    cv_render_dpi: float = DEFAULT_PDF_RENDER_DPI
-    use_ocr_model: bool = False
-
-    @staticmethod
-    def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
-        return FullTextProcessorConfig()._replace(
-            **app_config.get('processors', {}).get('fulltext', {})
-        )
-
-
 class FullTextProcessor:
     def __init__(
         self,
@@ -321,45 +303,38 @@ class FullTextProcessor:
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
         ).remove_empty_blocks()
-        LOGGER.debug('header_layout_document: %s', header_layout_document)
         document = SemanticDocument()
-        if header_layout_document.pages:
-            labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
-                header_layout_document,
-                app_features_context=self.app_features_context
-            )
-            LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
-            entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
-                labeled_layout_tokens
-            )
-            self.header_model.update_semantic_document_with_entity_blocks(
-                document, entity_blocks
-            )
-            self._process_raw_authors(document.front)
-            self._process_raw_affiliations(document)
+        self._process_header_layout_document(
+            header_layout_document=header_layout_document,
+            semantic_document=document
+        )
 
-        self._update_semantic_section_using_segmentation_result_and_fulltext_model(
-            document.body_section,
-            segmentation_label_result,
-            '<body>',
-            SemanticSectionTypes.OTHER
-        )
-        self._update_semantic_section_using_segmentation_result_and_fulltext_model(
-            document.back_section,
-            segmentation_label_result,
-            '<acknowledgement>',
-            SemanticSectionTypes.ACKNOWLEDGEMENT
-        )
-        self._update_semantic_section_using_segmentation_result_and_fulltext_model(
-            document.back_section,
-            segmentation_label_result,
-            '<annex>',
-            SemanticSectionTypes.OTHER
-        )
-        self._extract_raw_references_from_segmentation(
-            semantic_document=document,
-            segmentation_label_result=segmentation_label_result
-        )
+        if self.config.extract_body_sections:
+            self._update_semantic_section_using_segmentation_result_and_fulltext_model(
+                document.body_section,
+                segmentation_label_result,
+                '<body>',
+                SemanticSectionTypes.OTHER
+            )
+        if self.config.extract_acknowledgements:
+            self._update_semantic_section_using_segmentation_result_and_fulltext_model(
+                document.back_section,
+                segmentation_label_result,
+                '<acknowledgement>',
+                SemanticSectionTypes.ACKNOWLEDGEMENT
+            )
+        if self.config.extract_back_sections:
+            self._update_semantic_section_using_segmentation_result_and_fulltext_model(
+                document.back_section,
+                segmentation_label_result,
+                '<annex>',
+                SemanticSectionTypes.OTHER
+            )
+        if self.config.extract_references:
+            self._extract_raw_references_from_segmentation(
+                semantic_document=document,
+                segmentation_label_result=segmentation_label_result
+            )
         if self.config.extract_citation_fields:
             self._extract_reference_fields_from_raw_references(
                 semantic_document=document
@@ -404,6 +379,30 @@ class FullTextProcessor:
                 context=context
             )
         return document
+
+    def _process_header_layout_document(
+        self,
+        header_layout_document: LayoutDocument,
+        semantic_document: SemanticDocument
+    ):
+        LOGGER.debug('header_layout_document: %s', header_layout_document)
+        if not header_layout_document.pages:
+            return
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
+            header_layout_document,
+            app_features_context=self.app_features_context
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        entity_blocks = self.header_model.iter_entity_layout_blocks_for_labeled_layout_tokens(
+            labeled_layout_tokens
+        )
+        self.header_model.update_semantic_document_with_entity_blocks(
+            semantic_document, entity_blocks
+        )
+        if self.config.extract_authors:
+            self._process_raw_authors(semantic_document.front)
+        if self.config.extract_affiliations:
+            self._process_raw_affiliations(semantic_document)
 
     def _preprocess_layout_graphics(
         self,

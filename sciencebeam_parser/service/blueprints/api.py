@@ -45,9 +45,9 @@ from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
 from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
 from sciencebeam_parser.utils.flask import assert_and_get_first_accept_matching_media_type
 from sciencebeam_parser.utils.media_types import MediaTypes
-from sciencebeam_parser.utils.text import normalize_text
+from sciencebeam_parser.utils.text import normalize_text, parse_comma_separated_value
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
-from sciencebeam_parser.processors.fulltext import (
+from sciencebeam_parser.processors.fulltext.api import (
     FullTextProcessor,
     FullTextProcessorConfig,
     FullTextProcessorDocumentContext,
@@ -66,6 +66,7 @@ class RequestArgs:
     LAST_PAGE = 'last_page'
     OUTPUT_FORMAT = 'output_format'
     NO_USE_SEGMENTATION = 'no_use_segmentation'
+    INCLUDES = 'includes'
 
 
 class ModelOutputFormats:
@@ -142,6 +143,16 @@ def get_int_request_arg(
 ) -> Optional[int]:
     return get_typed_request_arg(
         name, int, default_value=default_value, required=required
+    )
+
+
+def get_str_request_arg(
+    name: str,
+    default_value: Optional[str] = None,
+    required: bool = False
+) -> Optional[str]:
+    return get_typed_request_arg(
+        name, str, default_value=default_value, required=required
     )
 
 
@@ -582,14 +593,20 @@ class ApiBlueprint(Blueprint):
         self.route('/')(self.api_root)
         self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
-        self.route("/processFulltextDocument", methods=['GET'])(self.process_pdf_to_tei_form)
-        self.route("/processFulltextDocument", methods=['POST'])(self.process_pdf_to_tei)
+        self.route("/processFulltextDocument", methods=['GET'])(
+            self.process_fulltext_document_api_form
+        )
+        self.route("/processFulltextDocument", methods=['POST'])(
+            self.process_fulltext_document_api
+        )
         self.route("/processFulltextAssetDocument", methods=['GET'])(
             self.process_pdf_to_tei_assets_zip_form
         )
         self.route("/processFulltextAssetDocument", methods=['POST'])(
             self.process_pdf_to_tei_assets_zip
         )
+        self.route("/convert", methods=['GET'])(self.process_convert_api_form)
+        self.route("/convert", methods=['POST'])(self.process_convert_api)
         self.download_manager = DownloadManager()
         self.pdfalto_wrapper = PdfAltoWrapper(
             self.download_manager.download_if_url(config['pdfalto']['path'])
@@ -603,21 +620,18 @@ class ApiBlueprint(Blueprint):
                 download_manager=self.download_manager
             )
         )
-        fulltext_models = load_models(config, app_context=self.app_context)
-        app_features_context = load_app_features_context(
+        self.fulltext_models = load_models(config, app_context=self.app_context)
+        self.app_features_context = load_app_features_context(
             config,
             download_manager=self.download_manager
         )
-        fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
-        self.fulltext_processor = FullTextProcessor(
-            fulltext_models,
-            app_features_context=app_features_context,
-            config=fulltext_processor_config
-        )
+        fulltext_models = self.fulltext_models
+        app_features_context = self.app_features_context
+        self.fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
         self.assets_fulltext_processor = FullTextProcessor(
-            fulltext_models,
-            app_features_context=app_features_context,
-            config=fulltext_processor_config._replace(
+            self.fulltext_models,
+            app_features_context=self.app_features_context,
+            config=self.fulltext_processor_config._replace(
                 extract_graphic_bounding_boxes=True,
                 extract_graphic_assets=True
             )
@@ -649,7 +663,7 @@ class ApiBlueprint(Blueprint):
             segmentation_model=fulltext_models.segmentation_model,
             segmentation_labels=['<header>'],
             header_model=fulltext_models.header_model,
-            merge_raw_authors=fulltext_processor_config.merge_raw_authors
+            merge_raw_authors=self.fulltext_processor_config.merge_raw_authors
         ).add_routes(self, '/models/name-header')
         AffiliationAddressModelNestedBluePrint(
             'Affiliation Address',
@@ -745,9 +759,6 @@ class ApiBlueprint(Blueprint):
         headers = None
         return Response(response_content, headers=headers, mimetype=response_type)
 
-    def process_pdf_to_tei_form(self):
-        return _get_file_upload_form('Convert PDF to TEI')
-
     def _get_pdf_path_for_request(
         self,
         temp_dir: str
@@ -799,9 +810,44 @@ class ApiBlueprint(Blueprint):
         )
         return semantic_document
 
-    def process_pdf_to_tei(self):  # pylint: disable=too-many-locals
-        response_media_type = assert_and_get_first_accept_matching_media_type(
-            [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+    def _send_asset_zip(
+        self,
+        semantic_document: SemanticDocument,
+        xml_filename: str,
+        xml_data: bytes,
+        temp_dir: str
+    ):
+        semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
+            SemanticGraphic
+        ))
+        LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
+        zip_path = Path(temp_dir) / 'result.zip'
+        with ZipFile(zip_path, 'w') as zip_file:
+            zip_file.writestr(xml_filename, xml_data)
+            for semantic_graphic in semantic_graphic_list:
+                assert semantic_graphic.relative_path
+                layout_graphic = semantic_graphic.layout_graphic
+                assert layout_graphic
+                assert layout_graphic.local_file_path
+                zip_file.write(
+                    layout_graphic.local_file_path,
+                    semantic_graphic.relative_path
+                )
+        LOGGER.debug('response_content (bytes): %d', zip_path.stat().st_size)
+        return send_file(
+            str(zip_path),
+            as_attachment=True
+        )
+
+    def _process_pdf_to_response_media_type(
+        self,
+        response_media_type: str,
+        fulltext_processor_config: FullTextProcessorConfig
+    ):
+        fulltext_processor = FullTextProcessor(
+            self.fulltext_models,
+            app_features_context=self.app_features_context,
+            config=fulltext_processor_config
         )
         with TemporaryDirectory(suffix='-request') as temp_dir:
             pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
@@ -813,71 +859,74 @@ class ApiBlueprint(Blueprint):
                 pdf_path=pdf_path,
                 layout_document=layout_document,
                 temp_dir=temp_dir,
-                fulltext_processor=self.fulltext_processor
+                fulltext_processor=fulltext_processor
             )
             document = get_tei_for_semantic_document(semantic_document)
             response_type = 'application/xml'
             xml_root = document.root
-            if response_media_type == MediaTypes.JATS_XML:
+            xml_filename = 'tei.xml'
+            if response_media_type in {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}:
                 xml_root = self.tei_to_jats_xslt_transformer(xml_root)
-            response_content = etree.tostring(
+                xml_filename = 'jats.xml'
+            xml_data = etree.tostring(
                 xml_root,
                 encoding='utf-8',
                 pretty_print=False
             )
-            LOGGER.debug('response_content: %r', response_content)
-        headers = None
-        return Response(response_content, headers=headers, mimetype=response_type)
+            LOGGER.debug('xml_data: %r', xml_data)
+            if response_media_type in {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}:
+                return self._send_asset_zip(
+                    semantic_document=semantic_document,
+                    xml_filename=xml_filename,
+                    xml_data=xml_data,
+                    temp_dir=temp_dir
+                )
+            headers = None
+            return Response(xml_data, headers=headers, mimetype=response_type)
+
+    def process_fulltext_document_api_form(self):
+        return _get_file_upload_form('Convert PDF to TEI')
+
+    def process_fulltext_document_api(self):
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+        )
+        return self._process_pdf_to_response_media_type(
+            response_media_type,
+            fulltext_processor_config=self.fulltext_processor_config
+        )
 
     def process_pdf_to_tei_assets_zip_form(self):
         return _get_file_upload_form('Convert PDF to TEI Assets ZIP')
 
-    def process_pdf_to_tei_assets_zip(self):  # pylint: disable=too-many-locals
+    def process_pdf_to_tei_assets_zip(self):
         response_media_type = assert_and_get_first_accept_matching_media_type(
             [MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP]
         )
-        with TemporaryDirectory(suffix='-request') as temp_dir:
-            pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
-            layout_document = self._get_layout_document_for_request(
-                temp_dir=temp_dir,
-                pdf_path=pdf_path
-            )
-            semantic_document = self._get_semantic_document_for_request(
-                pdf_path=pdf_path,
-                layout_document=layout_document,
-                temp_dir=temp_dir,
-                fulltext_processor=self.assets_fulltext_processor
-            )
-            semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
-                SemanticGraphic
-            ))
-            LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
-            document = get_tei_for_semantic_document(semantic_document)
-            xml_root = document.root
-            xml_filename = 'tei.xml'
-            if response_media_type == MediaTypes.JATS_ZIP:
-                xml_root = self.tei_to_jats_xslt_transformer(xml_root)
-                xml_filename = 'jats.xml'
-            zip_path = Path(temp_dir) / 'result.zip'
-            with ZipFile(zip_path, 'w') as zip_file:
-                xml_data = etree.tostring(
-                    xml_root,
-                    encoding='utf-8',
-                    pretty_print=False
-                )
-                LOGGER.debug('xml_data: %r', xml_data)
-                zip_file.writestr(xml_filename, xml_data)
-                for semantic_graphic in semantic_graphic_list:
-                    assert semantic_graphic.relative_path
-                    layout_graphic = semantic_graphic.layout_graphic
-                    assert layout_graphic
-                    assert layout_graphic.local_file_path
-                    zip_file.write(
-                        layout_graphic.local_file_path,
-                        semantic_graphic.relative_path
-                    )
-            LOGGER.debug('response_content (bytes): %d', zip_path.stat().st_size)
-            return send_file(
-                str(zip_path),
-                as_attachment=True
-            )
+        return self._process_pdf_to_response_media_type(
+            response_media_type,
+            fulltext_processor_config=self.fulltext_processor_config
+        )
+
+    def process_convert_api_form(self):
+        return _get_file_upload_form('Convert API')
+
+    def process_convert_api(self):
+        response_media_type = assert_and_get_first_accept_matching_media_type(
+            [
+                MediaTypes.JATS_XML, MediaTypes.TEI_XML,
+                MediaTypes.JATS_ZIP, MediaTypes.TEI_ZIP
+            ]
+        )
+        includes_list = parse_comma_separated_value(
+            get_str_request_arg(RequestArgs.INCLUDES) or ''
+        )
+        LOGGER.info('includes_list: %r', includes_list)
+        fulltext_processor_config = self.fulltext_processor_config.get_for_requested_field_names(
+            set(includes_list)
+        )
+        LOGGER.info('fulltext_processor_config: %r', fulltext_processor_config)
+        return self._process_pdf_to_response_media_type(
+            response_media_type,
+            fulltext_processor_config=fulltext_processor_config
+        )

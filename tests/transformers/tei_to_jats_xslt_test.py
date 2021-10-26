@@ -613,6 +613,7 @@ class TestTeiToJatsXslt:
             assert _get_text(jats, 'body/sec/p/xref') == '(Figure 1)'
             assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'fig'
             assert _get_text(jats, 'body/sec/p/xref/@rid') == 'fig_0'
+            assert not _xpath(jats, '//title/title')
 
         def test_should_extract_figures_with_graphic_not_having_url(
             self,
@@ -670,6 +671,7 @@ class TestTeiToJatsXslt:
             assert _get_text(jats, 'body/sec/p/xref') == '(Table 1)'
             assert _get_text(jats, 'body/sec/p/xref/@ref-type') == 'table'
             assert _get_text(jats, 'body/sec/p/xref/@rid') == 'tab_0'
+            assert not _xpath(jats, '//title/title')
 
         def test_should_extract_bibr_ref(self, tei_to_jats_xslt_fn):
             jats = etree.fromstring(tei_to_jats_xslt_fn(
