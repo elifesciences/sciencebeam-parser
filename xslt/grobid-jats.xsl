@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Note: this XSLT has been moved and updated:
+  https://github.com/elifesciences/sciencebeam-parser/blob/develop/sciencebeam_parser/resources/xslt/tei-to-jats.xsl
+-->
 <xsl:stylesheet 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
   xmlns:xs="http://www.w3.org/2001/XMLSchema" 
