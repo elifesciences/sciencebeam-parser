@@ -21,6 +21,7 @@ SCIENCEBEAM_PARSER_PORT = 8080
 
 PDFALTO_CONVERT_API_URL = http://localhost:$(SCIENCEBEAM_PARSER_PORT)/api/pdfalto
 EXAMPLE_PDF_DOCUMENT = test-data/minimal-example.pdf
+EXAMPLE_DOCX_DOCUMENT = test-data/minimal-office-open.docx
 
 
 SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH = 2000
@@ -31,6 +32,7 @@ SCIENCEBEAM_DELFT_STATEFUL = false
 
 DOCKER_SCIENCEBEAM_PARSER_HOST = sciencebeam-parser
 DOCKER_PDFALTO_CONVERT_API_URL = http://$(DOCKER_SCIENCEBEAM_PARSER_HOST):8070/api/pdfalto
+DOCKER_CONVERT_API_URL = http://$(DOCKER_SCIENCEBEAM_PARSER_HOST):8070/api/convert
 DOCKER_DEV_RUN = $(DOCKER_COMPOSE) run --rm sciencebeam-parser-dev
 DOCKER_DEV_PYTHON = $(DOCKER_DEV_RUN) python
 
@@ -160,11 +162,21 @@ docker-logs:
 	$(DOCKER_COMPOSE) logs -f
 
 
-docker-end-to-end: docker-start-and-wait-for-api
-	$(DOCKER_DEV_RUN) curl --fail --show-error \
+docker-end-to-end-pdfalto: docker-start-and-wait-for-api
+	$(DOCKER_DEV_RUN) curl --fail --show-error --silent \
 		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
-		--silent "$(DOCKER_PDFALTO_CONVERT_API_URL)" \
-		--output /dev/null
+		--output /dev/null \
+		"$(DOCKER_PDFALTO_CONVERT_API_URL)"
+
+
+docker-end-to-end-doc-to-jats: docker-start-and-wait-for-api
+	$(DOCKER_DEV_RUN) curl --fail --show-error --silent \
+		--form "file=@$(EXAMPLE_DOCX_DOCUMENT);filename=$(EXAMPLE_DOCX_DOCUMENT)" \
+		--output /dev/null \
+		"$(DOCKER_CONVERT_API_URL)"
+
+
+docker-end-to-end: docker-end-to-end-pdfalto docker-end-to-end-doc-to-jats
 
 docker-end-to-end-cv:
 	$(MAKE) DOCKER_SCIENCEBEAM_PARSER_HOST=sciencebeam-parser-cv docker-end-to-end

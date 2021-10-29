@@ -1,7 +1,8 @@
 from sciencebeam_parser.utils.media_types import (
     MediaTypes,
     get_first_matching_media_type,
-    guess_extension_for_media_type
+    guess_extension_for_media_type,
+    guess_media_type_for_filename
 )
 
 
@@ -35,6 +36,17 @@ class TestGuessExtensionForMediaType:
 
     def test_should_guess_json_extension(self):
         assert guess_extension_for_media_type(MediaTypes.JSON) == '.json'
+
+
+class TestGuessMediaTypeForFilename:
+    def test_should_guess_docx(self):
+        assert guess_media_type_for_filename('test.docx') == MediaTypes.DOCX
+
+    def test_should_guess_pdf(self):
+        assert guess_media_type_for_filename('test.pdf') == MediaTypes.PDF
+
+    def test_should_not_guess_without_extension(self):
+        assert guess_media_type_for_filename('test') is None
 
 
 class TestGetFirstMatchingMediaType:

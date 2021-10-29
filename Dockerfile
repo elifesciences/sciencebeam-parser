@@ -7,7 +7,29 @@ RUN apt-get update \
         dumb-init \
         poppler-utils \
         libgl1 \
+        # install LibreOffice Write to convert Word to PDF
+        # also install fonts and fontconfig to provide common fonts
+        # or configuration to their alternatives
+        libreoffice-writer \
+        python3-uno \
+        fonts-liberation \
+        fonts-liberation2 \
+        fonts-crosextra-carlito \
+        fonts-crosextra-caladea \
+        fontconfig \
     && rm -rf /var/lib/apt/lists/*
+
+# set and check UNO_PATH, UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
+ENV UNO_PATH=/usr/lib/python3/dist-packages
+ENV UNO_PYTHON_PATH=python3.7
+ENV UNO_OFFICE_BINARY_PATH=/usr/lib/libreoffice/program/soffice.bin
+RUN \
+  echo "UNO_PATH: ${UNO_PATH}" \
+  && ls -l "${UNO_PATH}" \
+  && echo "UNO_PYTHON_PATH: ${UNO_PYTHON_PATH}" \
+  && PYTHONPATH="${UNO_PATH}" "${UNO_PYTHON_PATH}" -c 'import uno, unohelper' \
+  && echo "UNO_OFFICE_BINARY_PATH: ${UNO_OFFICE_BINARY_PATH}" \
+  && ls -l "${UNO_OFFICE_BINARY_PATH}"
 
 WORKDIR /opt/sciencebeam_parser
 

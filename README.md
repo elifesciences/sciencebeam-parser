@@ -6,8 +6,12 @@ However, it may deviate more in the future.
 
 ## Pre-requisites
 
+Docker containers are provided that can be used on multiple operating systems.
+It can be used as an example setup for Linux / Ubuntu based systems.
+
+Otherwise the following paragraphs list some of the pre-requisits when not using Docker:
+
 This currently only supports Linux due to the binaries used (`pdfalto`, `wapiti`).
-Other plaforms are supported via Docker.
 It may also be used on other platforms without Docker, provided matching binaries are configured.
 
 For Computer Vision PyTorch is required.
@@ -17,6 +21,8 @@ For OCR, tesseract needs to be installed. On Ubuntu the following command can be
 ```bash
 apt-get install libtesseract4 tesseract-ocr-eng libtesseract-dev libleptonica-dev
 ```
+
+The Word* to PDF conversion requires [LibreOffice](https://www.libreoffice.org/).
 
 ## Development
 
@@ -218,6 +224,17 @@ curl --fail --show-error \
 
 Regardless, the returned content type will be `application/xml`.
 
+The `/convert` endpoint can also be used for a Word* to PDF conversion
+by specifying `application/pdf` as the desired response:
+
+```bash
+curl --fail --show-error --silent \
+    --header 'Accept: application/pdf' \
+    --form "file=@test-data/minimal-office-open.docx;filename=test-data/minimal-office-open.docx" \
+    --output "example.pdf" \
+    "http://localhost:8080/api/convert?first_page=1&last_page=1"
+```
+
 #### Using the `includes` request parameter
 
 The `includes` request parameter may be used to specify the requested fields, in order to reduce the processing time.
@@ -239,6 +256,29 @@ The currently supported fields are:
 * `references`
 
 Passing in any other values (no values), will behave as if no `includes` parameter was passed in.
+
+### Word* support
+
+All of the above APIs will also accept a Word* document instead of a PDF.
+
+Formats that are supported:
+
+* `.docx` (media type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`)
+* `.dotx` (media type: `application/vnd.openxmlformats-officedocument.wordprocessingml.template`)
+* `.doc` (media type: `application/msword`)
+* `.rtf` (media type: `application/rtf`)
+
+The support is currently implemented by converting the document to PDF using [LibreOffice](https://www.libreoffice.org/).
+
+Where no content type is provided, the content type is inferred from the file extension.
+
+For example:
+
+```bash
+curl --fail --show-error \
+    --form "file=@test-data/minimal-office-open.docx;filename=test-data/minimal-office-open.docx" \
+    --silent "http://localhost:8080/api/convert?first_page=1&last_page=1"
+```
 
 ### Docker Usage
 

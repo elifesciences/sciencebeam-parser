@@ -1,12 +1,12 @@
 import logging
 from tempfile import TemporaryDirectory
+from time import monotonic
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Type, TypeVar
+from typing import Iterable, List, Type, TypeVar
 from zipfile import ZipFile
 
-from flask import Blueprint, jsonify, request, Response, url_for
+from flask import abort, Blueprint, jsonify, request, Response, url_for
 from flask.helpers import send_file
-from werkzeug.exceptions import BadRequest
 from lxml import etree
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
@@ -16,6 +16,7 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
     iter_format_tag_result
 )
+from werkzeug.exceptions import BadRequest
 
 from sciencebeam_parser.app.context import AppContext
 from sciencebeam_parser.config.config import AppConfig
@@ -43,9 +44,21 @@ from sciencebeam_parser.document.semantic_document import (
 from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
 from sciencebeam_parser.processors.fulltext.config import RequestFieldNames
 from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
+from sciencebeam_parser.transformers.doc_converter_wrapper import DocConverterWrapper
 from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
-from sciencebeam_parser.utils.flask import assert_and_get_first_accept_matching_media_type
-from sciencebeam_parser.utils.media_types import MediaTypes
+from sciencebeam_parser.utils.flask import (
+    assert_and_get_first_accept_matching_media_type,
+    get_bool_request_arg,
+    get_data_wrapper_with_improved_media_type_or_filename,
+    get_int_request_arg,
+    get_required_post_data,
+    get_required_post_data_wrapper,
+    get_str_request_arg
+)
+from sciencebeam_parser.utils.media_types import (
+    MediaTypes,
+    guess_extension_for_media_type
+)
 from sciencebeam_parser.utils.text import normalize_text, parse_comma_separated_value
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.processors.fulltext.api import (
@@ -83,78 +96,12 @@ VALID_MODEL_OUTPUT_FORMATS = {
 }
 
 
-def get_post_data():
-    if not request.files:
-        return request.data
-    supported_file_keys = ['file', 'input']
-    for name in supported_file_keys:
-        if name not in request.files:
-            continue
-        uploaded_file = request.files[name]
-        return uploaded_file.read()
-    raise BadRequest(
-        f'missing file named one pf "{supported_file_keys}", found: {request.files.keys()}'
-    )
-
-
-def get_required_post_data():
-    data = get_post_data()
-    if not data:
-        raise BadRequest('no contents')
-    return data
-
-
-def get_typed_request_arg(
-    name: str,
-    type_: Callable[[str], T],
-    default_value: Optional[T] = None,
-    required: bool = False
-) -> Optional[T]:
-    value = request.args.get(name)
-    if value:
-        return type_(value)
-    if required:
-        raise ValueError(f'request arg {name} is required')
-    return default_value
-
-
-def str_to_bool(value: str) -> bool:
-    value_lower = value.lower()
-    if value_lower in {'true', '1'}:
-        return True
-    if value_lower in {'false', '0'}:
-        return False
-    raise ValueError('unrecognised boolean value: %r' % value)
-
-
-def get_bool_request_arg(
-    name: str,
-    default_value: Optional[bool] = None,
-    required: bool = False
-) -> Optional[bool]:
-    return get_typed_request_arg(
-        name, str_to_bool, default_value=default_value, required=required
-    )
-
-
-def get_int_request_arg(
-    name: str,
-    default_value: Optional[int] = None,
-    required: bool = False
-) -> Optional[int]:
-    return get_typed_request_arg(
-        name, int, default_value=default_value, required=required
-    )
-
-
-def get_str_request_arg(
-    name: str,
-    default_value: Optional[str] = None,
-    required: bool = False
-) -> Optional[str]:
-    return get_typed_request_arg(
-        name, str, default_value=default_value, required=required
-    )
+DOC_TO_PDF_SUPPORTED_MEDIA_TYPES = {
+    MediaTypes.DOCX,
+    MediaTypes.DOTX,
+    MediaTypes.DOC,
+    MediaTypes.RTF
+}
 
 
 def _get_file_upload_form(title: str):
@@ -654,6 +601,11 @@ class ApiBlueprint(Blueprint):
             TEI_TO_JATS_XSLT_FILE,
             xslt_template_parameters=tei_to_jats_config.get('parameters', {})
         )
+        self.doc_to_pdf_enabled = config.get('doc_to_pdf', {}).get('enabled', True)
+        self.doc_to_pdf_convert_parameters = config.get('doc_to_pdf', {}).get('convert', {})
+        self.doc_converter_wrapper = DocConverterWrapper(
+            **config.get('doc_to_pdf', {}).get('listener', {})
+        )
         ModelNestedBluePrint(
             'Segmentation',
             model=fulltext_models.segmentation_model,
@@ -776,9 +728,35 @@ class ApiBlueprint(Blueprint):
         self,
         temp_dir: str
     ) -> str:
-        data = get_required_post_data()
+        data_wrapper = get_data_wrapper_with_improved_media_type_or_filename(
+            get_required_post_data_wrapper()
+        )
+        LOGGER.info(
+            'data_wrapper: media_type=%r (filename=%r)',
+            data_wrapper.media_type, data_wrapper.filename
+        )
+        if data_wrapper.media_type in DOC_TO_PDF_SUPPORTED_MEDIA_TYPES:
+            if not self.doc_to_pdf_enabled:
+                LOGGER.info('doc to pdf not enabled')
+                abort(Response('doc to pdf not enabled', BadRequest.code))
+            source_path = Path(temp_dir) / (
+                'test%s' % (
+                    guess_extension_for_media_type(data_wrapper.media_type) or ''
+                )
+            )
+            source_path.write_bytes(data_wrapper.data)
+            target_temp_file = self.doc_converter_wrapper.convert(
+                str(source_path),
+                **self.doc_to_pdf_convert_parameters
+            )
+            return target_temp_file
+        if data_wrapper.media_type != MediaTypes.PDF:
+            abort(Response(
+                'unsupported media type: %r' % data_wrapper.media_type,
+                BadRequest.code
+            ))
         pdf_path = Path(temp_dir) / 'test.pdf'
-        pdf_path.write_bytes(data)
+        pdf_path.write_bytes(data_wrapper.data)
         return str(pdf_path)
 
     def _get_layout_document_for_request(
@@ -823,6 +801,24 @@ class ApiBlueprint(Blueprint):
         )
         return semantic_document
 
+    def _get_tei_to_jats_xml_root(self, xml_root: etree.ElementBase) -> etree.ElementBase:
+        start = monotonic()
+        xml_root = self.tei_to_jats_xslt_transformer(xml_root)
+        end = monotonic()
+        LOGGER.info('tei to jats, took=%.3fs', end - start)
+        return xml_root
+
+    def _get_serialized_xml(self, xml_root: etree.ElementBase) -> bytes:
+        start = monotonic()
+        xml_data = etree.tostring(
+            xml_root,
+            encoding='utf-8',
+            pretty_print=False
+        )
+        end = monotonic()
+        LOGGER.info('serializing xml, took=%.3fs', end - start)
+        return xml_data
+
     def _send_asset_zip(
         self,
         semantic_document: SemanticDocument,
@@ -864,6 +860,8 @@ class ApiBlueprint(Blueprint):
         )
         with TemporaryDirectory(suffix='-request') as temp_dir:
             pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
+            if response_media_type == MediaTypes.PDF:
+                return send_file(pdf_path)
             layout_document = self._get_layout_document_for_request(
                 temp_dir=temp_dir,
                 pdf_path=pdf_path
@@ -879,13 +877,9 @@ class ApiBlueprint(Blueprint):
             xml_root = document.root
             xml_filename = 'tei.xml'
             if response_media_type in {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}:
-                xml_root = self.tei_to_jats_xslt_transformer(xml_root)
+                xml_root = self._get_tei_to_jats_xml_root(xml_root)
                 xml_filename = 'jats.xml'
-            xml_data = etree.tostring(
-                xml_root,
-                encoding='utf-8',
-                pretty_print=False
-            )
+            xml_data = self._get_serialized_xml(xml_root)
             LOGGER.debug('xml_data: %r', xml_data)
             if response_media_type in {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}:
                 return self._send_asset_zip(
@@ -954,7 +948,8 @@ class ApiBlueprint(Blueprint):
         response_media_type = assert_and_get_first_accept_matching_media_type(
             [
                 MediaTypes.JATS_XML, MediaTypes.TEI_XML,
-                MediaTypes.JATS_ZIP, MediaTypes.TEI_ZIP
+                MediaTypes.JATS_ZIP, MediaTypes.TEI_ZIP,
+                MediaTypes.PDF
             ]
         )
         includes_list = parse_comma_separated_value(

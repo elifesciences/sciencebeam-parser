@@ -48,6 +48,10 @@ def guess_extension_for_media_type(media_type: str) -> Optional[str]:
     return ext
 
 
+def guess_media_type_for_filename(filename: str) -> Optional[str]:
+    return mimetypes.guess_type(filename)[0]
+
+
 def get_first_matching_media_type(
     accept_media_types: Sequence[str],
     available_media_types: Sequence[str]

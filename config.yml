@@ -109,3 +109,14 @@ ocr_models:
     # see https://github.com/sirfz/tesserocr/blob/v2.5.2/tesserocr.pyx#L102-L121
     # (specify literal or int value)
     psm: 'SPARSE_TEXT'
+
+doc_to_pdf:
+  enabled: true
+  listener:
+    port: 2003
+    process_timeout: 600
+    max_uptime: 10
+  convert:
+    remove_line_no: true
+    remove_header_footer: true
+    remove_redline: true

@@ -31,6 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 PDF_FILENAME_1 = 'test.pdf'
 PDF_CONTENT_1 = b'test pdf content'
+DOCX_CONTENT_1 = b'test docx content 1'
 XML_CONTENT_1 = b'<article></article>'
 
 TEI_XML_CONTENT_1 = b'<TEI>1</TEI>'
@@ -104,6 +105,19 @@ def _xslt_transformer_wrapper_mock(
     xslt_transformer_wrapper_class_mock: MagicMock
 ) -> MagicMock:
     return xslt_transformer_wrapper_class_mock.from_template_file.return_value
+
+
+@pytest.fixture(name='doc_converter_wrapper_class_mock', autouse=True)
+def _doc_converter_wrapper_class_mock() -> Iterator[MagicMock]:
+    with patch.object(api_module, 'DocConverterWrapper') as mock:
+        yield mock
+
+
+@pytest.fixture(name='doc_converter_wrapper_mock')
+def _doc_converter_wrapper_mock(
+    doc_converter_wrapper_class_mock: MagicMock
+) -> MagicMock:
+    return doc_converter_wrapper_class_mock.return_value
 
 
 @pytest.fixture(name='app_config', scope='session')
@@ -188,18 +202,23 @@ class TestApiBlueprint:
             response = test_client.post(self.get_api_path())
             assert response.status_code == BadRequest.code
 
+        def test_should_reject_unsupported_request_media_type(
+            self,
+            test_client: FlaskClient
+        ):
+            response = test_client.post(self.get_api_path(), data={
+                'input': (BytesIO(PDF_CONTENT_1), 'test.unsupported')
+            })
+            assert response.status_code == BadRequest.code
+
         def test_should_reject_unsupported_accept_media_type(
             self,
-            test_client: FlaskClient,
-            get_tei_for_semantic_document_mock: MagicMock
+            test_client: FlaskClient
         ):
-            get_tei_for_semantic_document_mock.return_value = (
-                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
-            )
             response = test_client.post(self.get_api_path(), data={
                 'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
             }, headers={'Accept': 'media/unsupported'})
-            assert response.status_code == 400
+            assert response.status_code == BadRequest.code
 
     class TestProcessHeaderDocument(_AbstractPdfConversionApiTest):
         def get_api_path(self) -> str:
@@ -534,3 +553,52 @@ class TestApiBlueprint:
             )
             assert response.status_code == 200
             assert response.data == JATS_XML_CONTENT_1
+
+        def test_should_accept_docx(
+            self,
+            test_client: FlaskClient,
+            get_tei_for_semantic_document_mock: MagicMock,
+            xslt_transformer_wrapper_mock: MagicMock,
+            doc_converter_wrapper_mock: MagicMock,
+            pdfalto_wrapper_mock: MagicMock,
+            request_temp_path: Path
+        ):
+            expected_output_path = request_temp_path / 'test.lxml'
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            get_tei_for_semantic_document_mock.return_value = (
+                TeiDocument(etree.fromstring(TEI_XML_CONTENT_1))
+            )
+            xslt_transformer_wrapper_mock.return_value = (
+                etree.fromstring(JATS_XML_CONTENT_1)
+            )
+            doc_converter_wrapper_mock.convert.return_value = 'test.pdf'
+            response = test_client.post(
+                '/convert',
+                data={'input': (BytesIO(DOCX_CONTENT_1), 'test.docx')},
+                headers={'Accept': MediaTypes.JATS_XML},
+                query_string='includes=title'
+            )
+            assert response.status_code == 200
+            assert response.data == JATS_XML_CONTENT_1
+            assert pdfalto_wrapper_mock.convert_pdf_to_pdfalto_xml.call_args[0][0] == (
+                doc_converter_wrapper_mock.convert.return_value
+            )
+
+        def test_should_convert_docx_to_pdf(
+            self,
+            test_client: FlaskClient,
+            doc_converter_wrapper_mock: MagicMock,
+            request_temp_path: Path
+        ):
+            expected_output_path = request_temp_path / 'test.lxml'
+            expected_output_path.write_bytes(XML_CONTENT_1)
+            pdf_path = request_temp_path / 'test.pdf'
+            pdf_path.write_bytes(PDF_CONTENT_1)
+            doc_converter_wrapper_mock.convert.return_value = str(pdf_path)
+            response = test_client.post(
+                '/convert',
+                data={'input': (BytesIO(DOCX_CONTENT_1), 'test.docx')},
+                headers={'Accept': MediaTypes.PDF}
+            )
+            assert response.status_code == 200
+            assert response.data == PDF_CONTENT_1
