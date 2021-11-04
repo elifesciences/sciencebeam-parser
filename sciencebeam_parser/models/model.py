@@ -21,6 +21,7 @@ from sciencebeam_parser.models.data import (
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
 from sciencebeam_parser.document.semantic_document import SemanticContentWrapper
 from sciencebeam_parser.models.model_impl import ModelImpl, T_ModelImplFactory
+from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
 
 
 LOGGER = logging.getLogger(__name__)
@@ -202,15 +203,20 @@ def iter_labeled_layout_token_for_layout_model_label(
         )
 
 
-class Model(ABC):
+class Model(ABC, Preloadable):
     def __init__(
         self,
         model_impl_factory: Optional[T_ModelImplFactory],
         model_config: Optional[dict] = None
     ) -> None:
         self._model_impl_factory = model_impl_factory
-        self._model_impl: Optional[ModelImpl] = None
+        self._lazy_model_impl = LazyLoaded[ModelImpl](self._load_model_impl)
         self.model_config = model_config or {}
+
+    def __repr__(self) -> str:
+        return '%s(model_config=%r, loaded=%r)' % (
+            type(self).__name__, self.model_config, self._lazy_model_impl.is_loaded
+        )
 
     @abstractmethod
     def get_data_generator(
@@ -223,19 +229,25 @@ class Model(ABC):
     def get_semantic_extractor(self) -> ModelSemanticExtractor:
         raise NotImplementedError()
 
+    def _load_model_impl(self) -> ModelImpl:
+        assert self._model_impl_factory, 'model impl factory required'
+        LOGGER.info('creating model impl: %r', self._model_impl_factory)
+        model_impl = self._model_impl_factory()
+        if not isinstance(model_impl, ModelImpl):
+            raise TypeError('invalid model impl type: %r' % model_impl)
+        return model_impl
+
     @property
     def model_impl(self) -> ModelImpl:
-        model_impl = self._model_impl
-        if model_impl is None:
-            assert self._model_impl_factory, 'model impl factory required'
-            LOGGER.info('creating model impl: %r', self._model_impl_factory)
-            model_impl = self._model_impl_factory()
-            if not isinstance(model_impl, ModelImpl):
-                raise TypeError('invalid model impl type: %r' % model_impl)
-            self._model_impl = model_impl
-        else:
+        was_loaded = self._lazy_model_impl.is_loaded
+        model_impl = self._lazy_model_impl.get()
+        if was_loaded:
             LOGGER.info('model impl already loaded: %r', model_impl)
         return model_impl
+
+    def preload(self):
+        model_impl = self.model_impl
+        model_impl.preload()
 
     def iter_semantic_content_for_entity_blocks(
         self,

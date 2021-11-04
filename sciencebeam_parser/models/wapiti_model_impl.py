@@ -16,6 +16,7 @@ from sciencebeam_trainer_delft.sequence_labelling.engines.wapiti_adapters import
 from sciencebeam_parser.app.context import AppContext
 from sciencebeam_parser.models.model_impl import ModelImpl
 from sciencebeam_parser.utils.download import download_if_url_from_alternatives
+from sciencebeam_parser.utils.lazy import LazyLoaded
 
 
 LOGGER = logging.getLogger(__name__)
@@ -123,24 +124,28 @@ class WapitiModelImpl(ModelImpl):
     def __init__(self, model_url: str, app_context: AppContext):
         self.model_url = model_url
         self.app_context = app_context
-        self._model: Optional[WapitiModelAdapter] = None
+        self._lazy_model = LazyLoaded[WapitiModelAdapter](self._load_model)
 
     def __repr__(self) -> str:
         return '%s(%r, loaded=%r)' % (
-            type(self).__name__, self.model_url, self._model is not None
+            type(self).__name__, self.model_url, self._lazy_model.is_loaded
         )
 
-    @property
-    def model(self) -> WapitiModel:
-        if self._model is not None:
-            return self._model
+    def _load_model(self) -> WapitiModel:
         model = WapitiServiceModelAdapter.load_from(
             self.model_url,
             wapiti_binary_path=self.app_context.lazy_wapiti_binary_wrapper.get_binary_path(),
             download_manager=self.app_context.download_manager
         )
-        self._model = model
+        LOGGER.info('loaded wapiti model: %r', self.model_url)
         return model
+
+    @property
+    def model(self) -> WapitiModel:
+        return self._lazy_model.get()
+
+    def preload(self):
+        self._lazy_model.get()
 
     def predict_labels(
         self,

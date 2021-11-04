@@ -1,3 +1,6 @@
+from typing import List, Optional, Tuple
+from unittest.mock import MagicMock
+
 from sciencebeam_parser.document.layout_document import (
     LayoutPage,
     get_layout_tokens_for_text,
@@ -6,11 +9,15 @@ from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutLine
 )
+from sciencebeam_parser.models.data import DocumentFeaturesContext, ModelDataGenerator
+from sciencebeam_parser.models.extract import ModelSemanticExtractor
 from sciencebeam_parser.models.model import (
     LayoutDocumentLabelResult,
     LayoutModelLabel,
+    Model,
     iter_entity_values_predicted_labels
 )
+from sciencebeam_parser.models.model_impl import ModelImpl
 
 
 TAG_1 = 'tag1'
@@ -149,3 +156,48 @@ class TestIterEntityValuesPredictedLabels:
             ('O', 'Other1 Other2'),
             ('<abstract>', 'Some Abstract')
         ]
+
+
+class MockModel(Model):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._data_generator = MagicMock(name='data_generator')
+        self._semantic_extractor = MagicMock(name='semantic_extractor')
+
+    def get_data_generator(
+        self,
+        document_features_context: DocumentFeaturesContext
+    ) -> ModelDataGenerator:
+        return self._data_generator
+
+    def get_semantic_extractor(self) -> ModelSemanticExtractor:
+        return self._semantic_extractor
+
+
+class MockModelImpl(ModelImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.predict_labels_mock = MagicMock(name='predict_labels')
+        self.preload_mock = MagicMock(name='preload')
+
+    def predict_labels(
+        self,
+        texts: List[List[str]],
+        features: List[List[List[str]]],
+        output_format: Optional[str] = None
+    ) -> List[List[Tuple[str, str]]]:
+        return self.predict_labels_mock(texts, features, output_format=output_format)
+
+    def preload(self):
+        self.preload_mock()
+
+
+class TestModel:
+    def test_should_preload_model_impl(self):
+        model_impl = MockModelImpl()
+        model_impl_factory = MagicMock(name='model_impl_factory')
+        model_impl_factory.return_value = model_impl
+        mock_model = MockModel(model_impl_factory=model_impl_factory)
+        mock_model.preload()
+        model_impl_factory.assert_called()
+        model_impl.preload_mock.assert_called()

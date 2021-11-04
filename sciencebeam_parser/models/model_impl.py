@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional, Tuple
 
+from sciencebeam_parser.utils.lazy import Preloadable
 
-class ModelImpl(ABC):
+
+class ModelImpl(ABC, Preloadable):
     @abstractmethod
     def predict_labels(
         self,

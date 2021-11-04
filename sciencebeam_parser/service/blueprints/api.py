@@ -581,6 +581,8 @@ class ApiBlueprint(Blueprint):
             )
         )
         self.fulltext_models = load_models(config, app_context=self.app_context)
+        if config.get('preload_on_startup'):
+            self.fulltext_models.preload()
         self.app_features_context = load_app_features_context(
             config,
             download_manager=self.download_manager

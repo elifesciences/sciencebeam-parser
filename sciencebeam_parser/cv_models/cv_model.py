@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Optional, Sequence
+from typing import Callable, Sequence
 
 import PIL.Image
 
 from sciencebeam_parser.utils.bounding_box import BoundingBox
+from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
 
 
 class ComputerVisionModelInstance(ABC):
@@ -27,7 +28,7 @@ class ComputerVisionModelResult(ABC):
         pass
 
 
-class ComputerVisionModel(ABC):
+class ComputerVisionModel(ABC, Preloadable):
     @abstractmethod
     def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         pass
@@ -39,14 +40,19 @@ T_ComputerVisionModelFactory = Callable[[], ComputerVisionModel]
 class LazyComputerVisionModel(ComputerVisionModel):
     def __init__(self, factory: T_ComputerVisionModelFactory) -> None:
         super().__init__()
-        self._factory = factory
-        self._cv_model: Optional[ComputerVisionModel] = None
+        self._lazy_model = LazyLoaded[ComputerVisionModel](factory)
+
+    def __repr__(self) -> str:
+        return '%s(factory=%r, loaded=%r)' % (
+            type(self).__name__, self._lazy_model.factory, self._lazy_model.is_loaded
+        )
 
     @property
     def cv_model(self) -> ComputerVisionModel:
-        if self._cv_model is None:
-            self._cv_model = self._factory()
-        return self._cv_model
+        return self._lazy_model.get()
+
+    def preload(self):
+        self.cv_model.preload()
 
     def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         return self.cv_model.predict_single(image)

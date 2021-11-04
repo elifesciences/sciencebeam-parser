@@ -12,6 +12,7 @@ from sciencebeam_parser.ocr_models.ocr_model import (
     OpticalCharacterRecognitionModelResult,
     SimpleOpticalCharacterRecognitionModelResult
 )
+from sciencebeam_parser.utils.lazy import LazyLoaded
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,24 +33,29 @@ class TesserComputerVisionModel(OpticalCharacterRecognitionModel):
     def __init__(self, config: dict):
         super().__init__()
         self._lock = threading.Lock()
-        self._tesser_api: Optional[PyTessBaseAPI] = None
         self.lang = str(config.get('lang') or DEFAULT_OCR_LANG)
         self.oem = get_enum_value(tesserocr.OEM, config.get('oem'), tesserocr.OEM.DEFAULT)
         self.psm = get_enum_value(tesserocr.PSM, config.get('psm'), tesserocr.PSM.AUTO)
+        self._lazy_tesser_api = LazyLoaded[PyTessBaseAPI](self._create_tesser_api)
+
+    def _create_tesser_api(self) -> PyTessBaseAPI:
+        LOGGER.info(
+            'creating tesser api with oem=%r, psm=%r, lang=%r',
+            self.oem, self.psm, self.lang
+        )
+        return PyTessBaseAPI(
+            oem=self.oem,
+            psm=self.psm,
+            lang=self.lang
+        ).__enter__()
 
     @property
     def tesser_api(self) -> PyTessBaseAPI:
-        if self._tesser_api is None:
-            LOGGER.info(
-                'creating tesser api with oem=%r, psm=%r, lang=%r',
-                self.oem, self.psm, self.lang
-            )
-            self._tesser_api = PyTessBaseAPI(
-                oem=self.oem,
-                psm=self.psm,
-                lang=self.lang
-            ).__enter__()
-        return self._tesser_api
+        return self._lazy_tesser_api.get()
+
+    def preload(self):
+        with self._lock:
+            self._lazy_tesser_api.get()
 
     def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         with self._lock:

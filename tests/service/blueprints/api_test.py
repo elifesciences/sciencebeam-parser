@@ -82,6 +82,11 @@ def _load_models_mock() -> Iterator[MagicMock]:
         yield mock
 
 
+@pytest.fixture(name='fulltext_models', autouse=True)
+def _fulltext_models(load_models_mock: MagicMock) -> MagicMock:
+    return load_models_mock.return_value
+
+
 @pytest.fixture(name='get_tei_for_semantic_document_mock', autouse=True)
 def _get_tei_for_semantic_document_mock() -> Iterator[MagicMock]:
     with patch.object(api_module, 'get_tei_for_semantic_document') as mock:
@@ -125,12 +130,16 @@ def _app_config() -> AppConfig:
     return AppConfig.load_yaml(DEFAULT_CONFIG_PATH)
 
 
-@pytest.fixture(name='test_client')
-def _test_client(app_config: AppConfig) -> Iterator[FlaskClient]:
+def _create_test_client(app_config: AppConfig) -> FlaskClient:
     blueprint = ApiBlueprint(app_config)
     app = Flask(__name__)
     app.register_blueprint(blueprint)
-    yield app.test_client()
+    return app.test_client()
+
+
+@pytest.fixture(name='test_client')
+def _test_client(app_config: AppConfig) -> FlaskClient:
+    return _create_test_client(app_config)
 
 
 def _get_json(response):
@@ -143,6 +152,33 @@ def _get_ok_json(response):
 
 
 class TestApiBlueprint:
+    class TestStartup:
+        def test_should_not_preload_if_disabled(
+            self,
+            app_config: AppConfig,
+            fulltext_models: MagicMock
+        ):
+            _create_test_client(
+                AppConfig({
+                    **app_config.props,
+                    'preload_on_startup': False
+                })
+            )
+            fulltext_models.preload.assert_not_called()
+
+        def test_should_preload_if_enabled(
+            self,
+            app_config: AppConfig,
+            fulltext_models: MagicMock
+        ):
+            _create_test_client(
+                AppConfig({
+                    **app_config.props,
+                    'preload_on_startup': True
+                })
+            )
+            fulltext_models.preload.assert_called()
+
     class TestRoot:
         def test_should_have_links(self, test_client: FlaskClient):
             response = test_client.get('/')

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 import PIL.Image
 
@@ -13,6 +13,7 @@ from sciencebeam_parser.cv_models.cv_model import (
     ComputerVisionModelInstance,
     ComputerVisionModelResult
 )
+from sciencebeam_parser.utils.lazy import LazyLoaded
 
 
 LOGGER = logging.getLogger(__name__)
@@ -128,13 +129,19 @@ class LayoutParserComputerVisionModel(ComputerVisionModel):
         self.score_threshold = float(config.get('score_threshold', DEFAULT_SCORE_THRESHOLD))
         self.avoid_overlapping = bool(config.get('avoid_overlapping', True))
         self.model_path = model_path
-        self._layout_model: Optional[BaseLayoutModel] = None
+        self._lazy_model = LazyLoaded[BaseLayoutModel](self._load_model)
+
+    def _load_model(self) -> BaseLayoutModel:
+        model = load_model(self.model_path)
+        LOGGER.info('loaded layout model: %r', self.model_path)
+        return model
 
     @property
     def layout_model(self) -> BaseLayoutModel:
-        if self._layout_model is None:
-            self._layout_model = load_model(self.model_path)
-        return self._layout_model
+        return self._lazy_model.get()
+
+    def preload(self):
+        self._lazy_model.get()
 
     def predict_single(self, image: PIL.Image.Image) -> ComputerVisionModelResult:
         return LayoutParserComputerVisionModelResult(

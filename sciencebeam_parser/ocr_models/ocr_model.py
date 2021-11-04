@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable
 
 import PIL.Image
+
+from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
 
 
 class OpticalCharacterRecognitionModelResult(ABC):
@@ -19,7 +21,7 @@ class SimpleOpticalCharacterRecognitionModelResult(OpticalCharacterRecognitionMo
         return self.text
 
 
-class OpticalCharacterRecognitionModel(ABC):
+class OpticalCharacterRecognitionModel(ABC, Preloadable):
     @abstractmethod
     def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         pass
@@ -31,14 +33,19 @@ T_OpticalCharacterRecognitionModelFactory = Callable[[], OpticalCharacterRecogni
 class LazyOpticalCharacterRecognitionModel(OpticalCharacterRecognitionModel):
     def __init__(self, factory: T_OpticalCharacterRecognitionModelFactory) -> None:
         super().__init__()
-        self._factory = factory
-        self._ocr_model: Optional[OpticalCharacterRecognitionModel] = None
+        self._lazy_model = LazyLoaded[OpticalCharacterRecognitionModel](factory)
+
+    def __repr__(self) -> str:
+        return '%s(factory=%r, loaded=%r)' % (
+            type(self).__name__, self._lazy_model.factory, self._lazy_model.is_loaded
+        )
 
     @property
     def ocr_model(self) -> OpticalCharacterRecognitionModel:
-        if self._ocr_model is None:
-            self._ocr_model = self._factory()
-        return self._ocr_model
+        return self._lazy_model.get()
+
+    def preload(self):
+        self.ocr_model.preload()
 
     def predict_single(self, image: PIL.Image.Image) -> OpticalCharacterRecognitionModelResult:
         return self.ocr_model.predict_single(image)

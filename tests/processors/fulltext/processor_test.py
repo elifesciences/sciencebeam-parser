@@ -51,9 +51,11 @@ from sciencebeam_parser.models.figure.model import FigureModel
 from sciencebeam_parser.models.table.model import TableModel
 from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
 from sciencebeam_parser.models.citation.model import CitationModel
+from sciencebeam_parser.processors.fulltext.models import (
+    FullTextModels
+)
 from sciencebeam_parser.processors.fulltext.processor import (
     FullTextProcessor,
-    FullTextModels,
     FullTextProcessorConfig
 )
 
@@ -79,7 +81,7 @@ class MockDelftModelWrapper:
         self._model_wrapper = model_wrapper
         self._label_by_layout_token: Dict[LayoutTokenId, str] = {}
         self._default_label = 'O'
-        model_wrapper._model_impl = MagicMock(name='model_impl')
+        model_wrapper._lazy_model_impl._value = MagicMock(name='model_impl')
         model_wrapper._iter_label_layout_documents = (  # type: ignore
             self._iter_label_layout_documents
         )

@@ -6,6 +6,7 @@ import tensorflow as tf
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
 
 from sciencebeam_parser.models.model_impl import ModelImpl
+from sciencebeam_parser.utils.lazy import LazyLoaded
 
 
 LOGGER = logging.getLogger(__name__)
@@ -31,21 +32,25 @@ class SeparateSessionSequenceWrapper(Sequence):
 class DelftModelImpl(ModelImpl):
     def __init__(self, model_url: str):
         self.model_url = model_url
-        self._model: Optional[Sequence] = None
+        self._lazy_model = LazyLoaded[Sequence](self._load_model)
 
     def __repr__(self) -> str:
         return '%s(%r, loaded=%r)' % (
-            type(self).__name__, self.model_url, self._model is not None
+            type(self).__name__, self.model_url, self._lazy_model.is_loaded
         )
+
+    def _load_model(self) -> Sequence:
+        model = SeparateSessionSequenceWrapper('dummy-model')
+        model.load_from(self.model_url)
+        LOGGER.info('loaded delft model: %r', self.model_url)
+        return model
 
     @property
     def model(self) -> Sequence:
-        if self._model is not None:
-            return self._model
-        model = SeparateSessionSequenceWrapper('dummy-model')
-        model.load_from(self.model_url)
-        self._model = model
-        return model
+        return self._lazy_model.get()
+
+    def preload(self):
+        self._lazy_model.get()
 
     def predict_labels(
         self,

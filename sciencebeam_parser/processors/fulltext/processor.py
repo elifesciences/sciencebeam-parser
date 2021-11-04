@@ -1,6 +1,5 @@
 import logging
 import multiprocessing
-from dataclasses import dataclass
 from typing import (
     Iterable,
     Iterator,
@@ -11,19 +10,13 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    TypeVar,
     Union
 )
 
-from sciencebeam_parser.app.context import AppContext
-from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.models.data import AppFeaturesContext, DEFAULT_APP_FEATURES_CONTEXT
 from sciencebeam_parser.models.model import LayoutDocumentLabelResult, Model
-from sciencebeam_parser.models.model_impl_factory import get_model_impl_factory_for_config
-from sciencebeam_parser.cv_models.cv_model_factory import get_lazy_cv_model_for_config
 from sciencebeam_parser.cv_models.cv_model import ComputerVisionModel
-from sciencebeam_parser.ocr_models.ocr_model_factory import get_lazy_ocr_model_for_config
-from sciencebeam_parser.ocr_models.ocr_model import OpticalCharacterRecognitionModel
+from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.utils.misc import iter_ids
 
 from sciencebeam_parser.document.semantic_document import (
@@ -106,25 +99,6 @@ class FullTextProcessorDocumentContext(NamedTuple):
     temp_dir: Optional[str] = None
 
 
-@dataclass
-class FullTextModels:
-    segmentation_model: SegmentationModel
-    header_model: HeaderModel
-    name_header_model: NameModel
-    name_citation_model: NameModel
-    affiliation_address_model: AffiliationAddressModel
-    fulltext_model: FullTextModel
-    figure_model: FigureModel
-    table_model: TableModel
-    reference_segmenter_model: ReferenceSegmenterModel
-    citation_model: CitationModel
-    cv_model: Optional[ComputerVisionModel] = None
-    ocr_model: Optional[OpticalCharacterRecognitionModel] = None
-
-
-T_Model = TypeVar('T_Model', bound=Model)
-
-
 def get_cv_document_graphic_provider(
     cv_model: ComputerVisionModel,
     context: FullTextProcessorDocumentContext,
@@ -146,89 +120,6 @@ def get_cv_document_graphic_provider(
             thread_count=multiprocessing.cpu_count()
         ),
         temp_dir=context.temp_dir
-    )
-
-
-def load_model(
-    app_config: AppConfig,
-    app_context: AppContext,
-    model_name: str,
-    model_class: Type[T_Model]
-) -> T_Model:
-    models_config = app_config['models']
-    model_config = models_config[model_name]
-    model = model_class(
-        get_model_impl_factory_for_config(
-            model_config,
-            app_context=app_context
-        ),
-        model_config=model_config
-    )
-    return model
-
-
-def get_cv_model_for_app_config(app_config: AppConfig) -> Optional[ComputerVisionModel]:
-    cv_model_config = app_config.get('cv_models', {}).get('default')
-    if not cv_model_config:
-        return None
-    return get_lazy_cv_model_for_config(cv_model_config)
-
-
-def get_ocr_model_for_app_config(
-    app_config: AppConfig
-) -> Optional[OpticalCharacterRecognitionModel]:
-    ocr_model_config = app_config.get('ocr_models', {}).get('default')
-    if not ocr_model_config:
-        return None
-    return get_lazy_ocr_model_for_config(ocr_model_config)
-
-
-def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
-    segmentation_model = load_model(
-        app_config, app_context, 'segmentation', SegmentationModel
-    )
-    header_model = load_model(
-        app_config, app_context, 'header', HeaderModel
-    )
-    name_header_model = load_model(
-        app_config, app_context, 'name_header', NameModel
-    )
-    name_citation_model = load_model(
-        app_config, app_context, 'name_citation', NameModel
-    )
-    affiliation_address_model = load_model(
-        app_config, app_context, 'affiliation_address', AffiliationAddressModel
-    )
-    fulltext_model = load_model(
-        app_config, app_context, 'fulltext', FullTextModel
-    )
-    figure_model = load_model(
-        app_config, app_context, 'figure', FigureModel
-    )
-    table_model = load_model(
-        app_config, app_context, 'table', TableModel
-    )
-    reference_segmenter_model = load_model(
-        app_config, app_context, 'reference_segmenter', ReferenceSegmenterModel
-    )
-    citation_model = load_model(
-        app_config, app_context, 'citation', CitationModel
-    )
-    cv_model = get_cv_model_for_app_config(app_config)
-    ocr_model = get_ocr_model_for_app_config(app_config)
-    return FullTextModels(
-        segmentation_model=segmentation_model,
-        header_model=header_model,
-        name_header_model=name_header_model,
-        name_citation_model=name_citation_model,
-        affiliation_address_model=affiliation_address_model,
-        fulltext_model=fulltext_model,
-        figure_model=figure_model,
-        table_model=table_model,
-        reference_segmenter_model=reference_segmenter_model,
-        citation_model=citation_model,
-        cv_model=cv_model,
-        ocr_model=ocr_model
     )
 
 

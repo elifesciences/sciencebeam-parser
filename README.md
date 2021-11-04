@@ -42,6 +42,9 @@ You may override config values using environment variables.
 Environment variables should start with `SCIENCEBEAM_PARSER__`. After that `__` is used as a section separator.
 For example `SCIENCEBEAM_PARSER__LOGGING__HANDLERS__LOG_FILE__LEVEL` would override `logging.handlers.log_file.level`.
 
+Generally, resources and models are loaded on demand, depending on the `preload_on_startup` configuration option (`SCIENCEBEAM_PARSER__PRELOAD_ON_STARTUP` environment variable).
+Models will be loaded "eagerly" at startup, by setting the configuration option to `true`.
+
 ### Run tests (linting, pytest, etc.)
 
 ```bash

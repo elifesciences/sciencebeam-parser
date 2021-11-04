@@ -120,3 +120,6 @@ doc_to_pdf:
     remove_line_no: true
     remove_header_footer: true
     remove_redline: true
+
+# preload resources and models on startup
+preload_on_startup: false
