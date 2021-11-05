@@ -27,6 +27,7 @@ from sciencebeam_parser.models.figure.model import FigureModel
 from sciencebeam_parser.models.table.model import TableModel
 from sciencebeam_parser.models.reference_segmenter.model import ReferenceSegmenterModel
 from sciencebeam_parser.models.citation.model import CitationModel
+from sciencebeam_parser.processors.fulltext.config import FullTextProcessorConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -86,23 +87,31 @@ def load_model(
     return model
 
 
-def get_cv_model_for_app_config(app_config: AppConfig) -> Optional[ComputerVisionModel]:
+def get_cv_model_for_app_config(
+    app_config: AppConfig,
+    enabled: bool = True
+) -> Optional[ComputerVisionModel]:
     cv_model_config = app_config.get('cv_models', {}).get('default')
-    if not cv_model_config:
-        return None
-    return get_lazy_cv_model_for_config(cv_model_config)
+    if enabled and cv_model_config:
+        return get_lazy_cv_model_for_config(cv_model_config)
+    return None
 
 
 def get_ocr_model_for_app_config(
-    app_config: AppConfig
+    app_config: AppConfig,
+    enabled: bool = True
 ) -> Optional[OpticalCharacterRecognitionModel]:
     ocr_model_config = app_config.get('ocr_models', {}).get('default')
-    if not ocr_model_config:
-        return None
-    return get_lazy_ocr_model_for_config(ocr_model_config)
+    if enabled and ocr_model_config:
+        return get_lazy_ocr_model_for_config(ocr_model_config)
+    return None
 
 
-def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModels:
+def load_models(
+    app_config: AppConfig,
+    app_context: AppContext,
+    fulltext_processor_config: FullTextProcessorConfig
+) -> FullTextModels:
     segmentation_model = load_model(
         app_config, app_context, 'segmentation', SegmentationModel
     )
@@ -133,8 +142,14 @@ def load_models(app_config: AppConfig, app_context: AppContext) -> FullTextModel
     citation_model = load_model(
         app_config, app_context, 'citation', CitationModel
     )
-    cv_model = get_cv_model_for_app_config(app_config)
-    ocr_model = get_ocr_model_for_app_config(app_config)
+    cv_model = get_cv_model_for_app_config(
+        app_config,
+        enabled=fulltext_processor_config.use_cv_model
+    )
+    ocr_model = get_ocr_model_for_app_config(
+        app_config,
+        enabled=fulltext_processor_config.use_ocr_model
+    )
     return FullTextModels(
         segmentation_model=segmentation_model,
         header_model=header_model,

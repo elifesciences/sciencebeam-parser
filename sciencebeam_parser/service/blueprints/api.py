@@ -580,7 +580,12 @@ class ApiBlueprint(Blueprint):
                 download_manager=self.download_manager
             )
         )
-        self.fulltext_models = load_models(config, app_context=self.app_context)
+        self.fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
+        self.fulltext_models = load_models(
+            config,
+            app_context=self.app_context,
+            fulltext_processor_config=self.fulltext_processor_config
+        )
         if config.get('preload_on_startup'):
             self.fulltext_models.preload()
         self.app_features_context = load_app_features_context(
@@ -589,7 +594,6 @@ class ApiBlueprint(Blueprint):
         )
         fulltext_models = self.fulltext_models
         app_features_context = self.app_features_context
-        self.fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
         self.assets_fulltext_processor = FullTextProcessor(
             self.fulltext_models,
             app_features_context=self.app_features_context,
