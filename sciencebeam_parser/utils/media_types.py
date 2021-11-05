@@ -25,6 +25,7 @@ class MediaTypes:
     TEI_ZIP = 'application/tei+xml+zip'
     JATS_ZIP = 'application/vnd.jats+xml+zip'
     JSON = 'application/json'
+    OCTET_STREAM = 'application/octet-stream'
 
 
 WILDCARD_MEDIA_TYPE = '*/*'

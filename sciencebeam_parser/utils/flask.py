@@ -5,6 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam_parser.utils.media_types import (
+    MediaTypes,
     get_first_matching_media_type,
     guess_extension_for_media_type,
     guess_media_type_for_filename
@@ -56,7 +57,7 @@ def get_data_wrapper_with_improved_media_type_or_filename(
         return data_wrapper._replace(filename='%s%s' % (
             DEFAULT_FILENAME, guess_extension_for_media_type(data_wrapper.media_type) or ''
         ))
-    if data_wrapper.media_type == 'application/octet-stream':
+    if not data_wrapper.media_type or data_wrapper.media_type == MediaTypes.OCTET_STREAM:
         media_type = guess_media_type_for_filename(data_wrapper.filename)
         if media_type:
             return data_wrapper._replace(media_type=media_type)
