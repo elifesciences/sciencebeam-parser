@@ -7,15 +7,64 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticGivenName,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticMixedContentWrapper,
     SemanticNameSuffix,
     SemanticNameTitle,
     SemanticNote,
     SemanticSurname
 )
-from sciencebeam_parser.models.name.extract import NameSemanticExtractor
+from sciencebeam_parser.models.name.extract import (
+    NameSemanticExtractor,
+    iter_semantic_markers_for_layout_block
+)
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class TestIterSemanticMarkersForLayoutBlock:
+    def test_should_extract_single_marker(self):
+        semantic_markers = list(iter_semantic_markers_for_layout_block(
+            LayoutBlock.for_text('1')
+        ))
+        assert len(semantic_markers) == 1
+        assert isinstance(semantic_markers[0], SemanticMarker)
+        assert semantic_markers[0].get_text() == '1'
+
+    def test_should_split_markers_on_comma(self):
+        semantic_markers = list(iter_semantic_markers_for_layout_block(
+            LayoutBlock.for_text('1,2')
+        ))
+        semantic_content_wrapper = SemanticMixedContentWrapper(semantic_markers)
+        assert semantic_content_wrapper.view_by_type(SemanticMarker).get_text_list() == ['1', '2']
+        assert semantic_content_wrapper.merged_block.text == '1,2'
+
+    def test_should_split_markers_on_space(self):
+        semantic_markers = list(iter_semantic_markers_for_layout_block(
+            LayoutBlock.for_text('1 2')
+        ))
+        LOGGER.debug('semantic_markers: %r', semantic_markers)
+        semantic_content_wrapper = SemanticMixedContentWrapper(semantic_markers)
+        assert semantic_content_wrapper.view_by_type(SemanticMarker).get_text_list() == ['1', '2']
+        assert semantic_content_wrapper.merged_block.text == '1 2'
+
+    def test_should_not_split_markers_on_digit(self):
+        semantic_markers = list(iter_semantic_markers_for_layout_block(
+            LayoutBlock.for_text('11,12')
+        ))
+        semantic_content_wrapper = SemanticMixedContentWrapper(semantic_markers)
+        assert semantic_content_wrapper.view_by_type(SemanticMarker).get_text_list() == ['11', '12']
+        assert semantic_content_wrapper.merged_block.text == '11,12'
+
+    def test_should_split_marker_on_non_numeric_characters(self):
+        semantic_markers = list(iter_semantic_markers_for_layout_block(
+            LayoutBlock.for_text('+*!')
+        ))
+        semantic_content_wrapper = SemanticMixedContentWrapper(semantic_markers)
+        assert semantic_content_wrapper.view_by_type(SemanticMarker).get_text_list() == [
+            '+', '*', '!'
+        ]
+        assert semantic_content_wrapper.merged_block.text == '+*!'
 
 
 class TestNameSemanticExtractor:
