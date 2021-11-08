@@ -1,9 +1,10 @@
 import logging
-from typing import Iterable, List, Mapping, Optional, Tuple, Type, cast
+from typing import Iterable, List, Mapping, Optional, Tuple, Type, Union, cast
 
 from sciencebeam_parser.document.semantic_document import (
     SemanticAuthor,
     SemanticContentFactoryProtocol,
+    SemanticContentWrapper,
     SemanticMarker,
     SemanticMiddleName,
     SemanticNamePart,
@@ -93,6 +94,12 @@ def normalize_name_parts(name: T_SemanticName):
     return name
 
 
+def iter_semantic_markers_for_layout_block(
+    layout_block: LayoutBlock
+) -> Iterable[Union[SemanticMarker, SemanticContentWrapper]]:
+    return [SemanticMarker(layout_block=layout_block)]
+
+
 class NameSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
@@ -119,7 +126,8 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                 if not semantic_name:
                     LOGGER.debug('new semantic_name with marker in the beginning')
                     semantic_name = _name_type()
-                    semantic_name.add_content(SemanticMarker(layout_block=layout_block))
+                    for semantic_marker in iter_semantic_markers_for_layout_block(layout_block):
+                        semantic_name.add_content(semantic_marker)
                     continue
                 if len(seen_entity_tokens) >= 2 and seen_name_labels and not has_tail_marker:
                     previous_layout_block = seen_entity_tokens[-2][1]
