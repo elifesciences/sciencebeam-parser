@@ -1,4 +1,4 @@
 layoutparser[effdet]==0.3.2
 -f https://download.pytorch.org/whl/torch_stable.html
-torch==1.9.1+cpu
+torch==1.10.0
 torchvision==0.10.1+cpu
