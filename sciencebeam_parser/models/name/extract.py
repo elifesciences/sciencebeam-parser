@@ -1,11 +1,14 @@
 import logging
-from typing import Iterable, List, Mapping, Optional, Tuple, Type, cast
+import re
+from typing import Iterable, List, Mapping, Optional, Tuple, Type, Union, cast
 
 from sciencebeam_parser.document.semantic_document import (
     SemanticAuthor,
     SemanticContentFactoryProtocol,
+    SemanticContentWrapper,
     SemanticMarker,
     SemanticMiddleName,
+    SemanticMixedContentWrapper,
     SemanticNamePart,
     SemanticNameSuffix,
     SemanticNameTitle,
@@ -14,7 +17,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticSurname,
     T_SemanticName
 )
-from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument
+from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument, LayoutToken
 from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
 
 
@@ -93,6 +96,33 @@ def normalize_name_parts(name: T_SemanticName):
     return name
 
 
+def iter_semantic_markers_for_layout_block(
+    layout_block: LayoutBlock
+) -> Iterable[Union[SemanticMarker, SemanticContentWrapper]]:
+    for text in re.split(r'(\D)', layout_block.text):
+        if not text:
+            continue
+        local_block = LayoutBlock.for_tokens([
+            LayoutToken(text, whitespace='')
+        ])
+        if text == ',' or text.isspace():
+            yield SemanticNote(
+                layout_block=local_block,
+                note_type='marker_delimiter'
+            )
+            continue
+        yield SemanticMarker(layout_block=local_block)
+
+
+def append_semantic_markers_for_layout_block(
+    parent_semantic_content: SemanticMixedContentWrapper,
+    layout_block: LayoutBlock
+) -> None:
+    semantic_markers = list(iter_semantic_markers_for_layout_block(layout_block))
+    for semantic_marker in semantic_markers:
+        parent_semantic_content.add_content(semantic_marker)
+
+
 class NameSemanticExtractor(SimpleModelSemanticExtractor):
     def __init__(self):
         super().__init__(semantic_content_class_by_tag=SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG)
@@ -119,7 +149,7 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                 if not semantic_name:
                     LOGGER.debug('new semantic_name with marker in the beginning')
                     semantic_name = _name_type()
-                    semantic_name.add_content(SemanticMarker(layout_block=layout_block))
+                    append_semantic_markers_for_layout_block(semantic_name, layout_block)
                     continue
                 if len(seen_entity_tokens) >= 2 and seen_name_labels and not has_tail_marker:
                     previous_layout_block = seen_entity_tokens[-2][1]
@@ -131,9 +161,9 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                         yield normalize_name_parts(semantic_name)
                         seen_name_labels = []
                         semantic_name = _name_type()
-                        semantic_name.add_content(SemanticMarker(layout_block=layout_block))
+                        append_semantic_markers_for_layout_block(semantic_name, layout_block)
                         continue
-                semantic_name.add_content(SemanticMarker(layout_block=layout_block))
+                append_semantic_markers_for_layout_block(semantic_name, layout_block)
                 has_tail_marker = True
                 continue
             semantic_content = self.get_semantic_content_for_entity_name(
