@@ -172,10 +172,11 @@ def _remove_tokens_within_bounding_box_flatmap_fn(
     return []
 
 
-def get_layout_page_with_text_replaced_by_graphic(
+def get_layout_page_with_text_or_graphic_replaced_by_graphic(
     layout_page: LayoutPage,
     semantic_graphic: SemanticGraphic,
-    is_only_semantic_graphic_on_page: bool
+    is_only_semantic_graphic_on_page: bool,
+    is_replace_overlapping_text: bool
 ) -> LayoutPage:
     layout_graphic = semantic_graphic.layout_graphic
     assert layout_graphic
@@ -185,7 +186,7 @@ def get_layout_page_with_text_replaced_by_graphic(
         layout_graphic = layout_graphic._replace(
             related_block=LayoutBlock.for_tokens(list(layout_page.iter_all_tokens()))
         )
-    return (
+    modified_layout_page = (
         layout_page.replace(
             graphics=[
                 _layout_graphic
@@ -195,16 +196,23 @@ def get_layout_page_with_text_replaced_by_graphic(
                     bounding_box=graphic_bounding_box
                 )
              ] + [layout_graphic]
-        ).flat_map_layout_tokens(functools.partial(
-            _remove_tokens_within_bounding_box_flatmap_fn,
-            bounding_box=graphic_bounding_box
-        )).remove_empty_blocks()
+        )
     )
+    if is_replace_overlapping_text:
+        modified_layout_page = (
+            modified_layout_page
+            .flat_map_layout_tokens(functools.partial(
+                _remove_tokens_within_bounding_box_flatmap_fn,
+                bounding_box=graphic_bounding_box
+            )).remove_empty_blocks()
+        )
+    return modified_layout_page
 
 
-def get_layout_document_with_text_replaced_by_graphics(
+def get_layout_document_with_text_or_graphic_replaced_by_graphics(
     layout_document: LayoutDocument,
-    semantic_graphics: Iterable[SemanticGraphic]
+    semantic_graphics: Iterable[SemanticGraphic],
+    is_replace_overlapping_text: bool
 ) -> LayoutDocument:
     page_by_page_number = {
         page.meta.page_number: page
@@ -228,11 +236,14 @@ def get_layout_document_with_text_replaced_by_graphics(
         if not layout_graphic.coordinates:
             continue
         page_number = layout_graphic.coordinates.page_number
-        page_by_page_number[page_number] = get_layout_page_with_text_replaced_by_graphic(
-            page_by_page_number[page_number],
-            semantic_graphic,
-            is_only_semantic_graphic_on_page=(
-                semantic_graphic_count_by_page[page_number] < 2
+        page_by_page_number[page_number] = (
+            get_layout_page_with_text_or_graphic_replaced_by_graphic(
+                page_by_page_number[page_number],
+                semantic_graphic,
+                is_only_semantic_graphic_on_page=(
+                    semantic_graphic_count_by_page[page_number] < 2
+                ),
+                is_replace_overlapping_text=is_replace_overlapping_text
             )
         )
         has_changes = True
@@ -247,6 +258,28 @@ def get_layout_document_with_text_replaced_by_graphics(
         for page in layout_document.pages
     ]
     return layout_document.replace(pages=pages)
+
+
+def get_layout_document_with_text_replaced_by_graphics(
+    layout_document: LayoutDocument,
+    semantic_graphics: Iterable[SemanticGraphic]
+) -> LayoutDocument:
+    return get_layout_document_with_text_or_graphic_replaced_by_graphics(
+        layout_document,
+        semantic_graphics=semantic_graphics,
+        is_replace_overlapping_text=True
+    )
+
+
+def get_layout_document_with_graphics_replaced_by_graphics(
+    layout_document: LayoutDocument,
+    semantic_graphics: Iterable[SemanticGraphic]
+) -> LayoutDocument:
+    return get_layout_document_with_text_or_graphic_replaced_by_graphics(
+        layout_document,
+        semantic_graphics=semantic_graphics,
+        is_replace_overlapping_text=False
+    )
 
 
 class SimpleDocumentGraphicProvider(DocumentGraphicProvider):

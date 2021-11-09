@@ -45,6 +45,7 @@ class FullTextProcessorConfig(NamedTuple):
     use_cv_model: bool = False
     cv_render_dpi: float = DEFAULT_PDF_RENDER_DPI
     use_ocr_model: bool = False
+    replace_text_by_cv_graphic: bool = False
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':
