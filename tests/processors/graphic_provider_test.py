@@ -174,7 +174,7 @@ class TestGetLayoutDocumentWithTextAndGraphicsReplacedByGraphics:
         )
         assert result == layout_document
 
-    def test_should_replacing_text_and_graphics_within_bounding_box_of_semantic_graphics(
+    def test_should_replace_text_and_graphics_within_bounding_box_of_semantic_graphics(
         self
     ):
         page_coordinates = LayoutPageCoordinates.from_bounding_box(
