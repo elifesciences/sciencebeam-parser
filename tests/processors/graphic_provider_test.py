@@ -14,7 +14,8 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.processors.graphic_provider import (
     SimpleDocumentGraphicProvider,
-    get_layout_document_with_text_replaced_by_graphics,
+    get_layout_document_with_graphics_replaced_by_graphics,
+    get_layout_document_with_text_and_graphics_replaced_by_graphics,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
 )
@@ -164,16 +165,16 @@ class TestGetPageNumbersWithMostlyBitmapGraphics:
         assert result == []
 
 
-class TestGetLayoutDocumentWithTextReplacedByGraphics:
+class TestGetLayoutDocumentWithTextAndGraphicsReplacedByGraphics:
     def test_should_not_change_layout_document_if_semantic_graphics_is_empty(self):
         layout_document = LayoutDocument(pages=[])
-        result = get_layout_document_with_text_replaced_by_graphics(
+        result = get_layout_document_with_text_and_graphics_replaced_by_graphics(
             layout_document,
             semantic_graphics=[]
         )
         assert result == layout_document
 
-    def test_should_replacing_text_and_graphics_within_bounding_box_of_semantic_graphics(
+    def test_should_replace_text_and_graphics_within_bounding_box_of_semantic_graphics(
         self
     ):
         page_coordinates = LayoutPageCoordinates.from_bounding_box(
@@ -226,7 +227,7 @@ class TestGetLayoutDocumentWithTextReplacedByGraphics:
             coordinates=empty_coordinates,
             graphic_type='empty-coords-graphic'
         )
-        result = get_layout_document_with_text_replaced_by_graphics(
+        result = get_layout_document_with_text_and_graphics_replaced_by_graphics(
             layout_document,
             semantic_graphics=[
                 SemanticGraphic(layout_graphic=layout_graphic),
@@ -242,6 +243,81 @@ class TestGetLayoutDocumentWithTextReplacedByGraphics:
         assert list(result.pages[0].graphics[-1].related_block.iter_all_tokens()) == [
             keep_token, remove_token
         ]
+
+
+class TestGetLayoutDocumentWithGraphicsReplacedByGraphics:
+    def test_should_not_change_layout_document_if_semantic_graphics_is_empty(self):
+        layout_document = LayoutDocument(pages=[])
+        result = get_layout_document_with_graphics_replaced_by_graphics(
+            layout_document,
+            semantic_graphics=[]
+        )
+        assert result == layout_document
+
+    def test_should_replace_graphics_but_not_text_within_bounding_box_of_semantic_graphics(
+        self
+    ):
+        page_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(0, 0, 200, 200),
+            page_number=1
+        )
+        semantic_graphic_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(10, 90, 100, 50),
+            page_number=1
+        )
+        keep_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(10, 10, 100, 20),
+            page_number=1
+        )
+        remove_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(10, 100, 100, 20),
+            page_number=1
+        )
+        empty_coordinates = LayoutPageCoordinates.from_bounding_box(
+            BoundingBox(10, 100, 0, 0),
+            page_number=1
+        )
+        non_overlapping_token = LayoutToken('keep', coordinates=keep_coordinates)
+        overlapping_token = LayoutToken('remove', coordinates=remove_coordinates)
+        all_tokens = [non_overlapping_token, overlapping_token]
+        keep_graphic = LayoutGraphic(coordinates=keep_coordinates, graphic_type='keep-graphic')
+        remove_graphic = LayoutGraphic(
+            coordinates=remove_coordinates, graphic_type='remove-graphic'
+        )
+        layout_document = LayoutDocument(pages=[
+            LayoutPage(
+                blocks=[LayoutBlock(lines=[LayoutLine(tokens=all_tokens)])],
+                graphics=[
+                    keep_graphic,
+                    remove_graphic
+                ],
+                meta=LayoutPageMeta(
+                    page_number=page_coordinates.page_number,
+                    coordinates=page_coordinates
+                )
+            )
+        ])
+        layout_graphic = LayoutGraphic(
+            coordinates=semantic_graphic_coordinates,
+            graphic_type='new-graphic'
+        )
+        no_coords_layout_graphic = LayoutGraphic(
+            coordinates=empty_coordinates,
+            graphic_type='empty-coords-graphic'
+        )
+        result = get_layout_document_with_graphics_replaced_by_graphics(
+            layout_document,
+            semantic_graphics=[
+                SemanticGraphic(layout_graphic=layout_graphic),
+                SemanticGraphic(layout_graphic=no_coords_layout_graphic)
+            ]
+        )
+        LOGGER.debug('result.pages[0].graphics: %r', result.pages[0].graphics)
+        assert result.pages[0].graphics[:-1] == [keep_graphic]
+        LOGGER.debug('result.pages[0].graphics[-1]: %r', result.pages[0].graphics[-1])
+        assert result.pages[0].graphics[-1].graphic_type == layout_graphic.graphic_type
+        assert result.pages[0].graphics[-1].coordinates == layout_graphic.coordinates
+        assert list(result.pages[0].blocks[0].iter_all_tokens()) == all_tokens
 
 
 class TestSimpleDocumentGraphicProvider:
