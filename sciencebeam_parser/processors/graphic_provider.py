@@ -260,7 +260,7 @@ def get_layout_document_with_text_or_graphic_replaced_by_graphics(
     return layout_document.replace(pages=pages)
 
 
-def get_layout_document_with_text_replaced_by_graphics(
+def get_layout_document_with_text_and_graphics_replaced_by_graphics(
     layout_document: LayoutDocument,
     semantic_graphics: Iterable[SemanticGraphic]
 ) -> LayoutDocument:

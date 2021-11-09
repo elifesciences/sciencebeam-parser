@@ -82,7 +82,7 @@ from sciencebeam_parser.processors.graphic_provider import (
     DocumentGraphicProvider,
     SimpleDocumentGraphicProvider,
     get_layout_document_with_graphics_replaced_by_graphics,
-    get_layout_document_with_text_replaced_by_graphics,
+    get_layout_document_with_text_and_graphics_replaced_by_graphics,
     get_page_numbers_for_semantic_content_list,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
@@ -329,7 +329,7 @@ class FullTextProcessor:
                 layout_document,
                 semantic_graphics
             )
-        return get_layout_document_with_text_replaced_by_graphics(
+        return get_layout_document_with_text_and_graphics_replaced_by_graphics(
             layout_document,
             semantic_graphics
         )

@@ -15,7 +15,7 @@ from sciencebeam_parser.document.layout_document import (
 from sciencebeam_parser.processors.graphic_provider import (
     SimpleDocumentGraphicProvider,
     get_layout_document_with_graphics_replaced_by_graphics,
-    get_layout_document_with_text_replaced_by_graphics,
+    get_layout_document_with_text_and_graphics_replaced_by_graphics,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
 )
@@ -165,10 +165,10 @@ class TestGetPageNumbersWithMostlyBitmapGraphics:
         assert result == []
 
 
-class TestGetLayoutDocumentWithTextReplacedByGraphics:
+class TestGetLayoutDocumentWithTextAndGraphicsReplacedByGraphics:
     def test_should_not_change_layout_document_if_semantic_graphics_is_empty(self):
         layout_document = LayoutDocument(pages=[])
-        result = get_layout_document_with_text_replaced_by_graphics(
+        result = get_layout_document_with_text_and_graphics_replaced_by_graphics(
             layout_document,
             semantic_graphics=[]
         )
@@ -227,7 +227,7 @@ class TestGetLayoutDocumentWithTextReplacedByGraphics:
             coordinates=empty_coordinates,
             graphic_type='empty-coords-graphic'
         )
-        result = get_layout_document_with_text_replaced_by_graphics(
+        result = get_layout_document_with_text_and_graphics_replaced_by_graphics(
             layout_document,
             semantic_graphics=[
                 SemanticGraphic(layout_graphic=layout_graphic),
