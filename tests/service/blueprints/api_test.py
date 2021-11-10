@@ -16,7 +16,7 @@ from lxml import etree
 
 import pytest
 
-from sciencebeam_parser.config.config import AppConfig, DEFAULT_CONFIG_PATH
+from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.document.layout_document import LayoutGraphic
 from sciencebeam_parser.document.semantic_document import SemanticDocument, SemanticGraphic
 from sciencebeam_parser.document.tei.document import TeiDocument
@@ -25,6 +25,7 @@ from sciencebeam_parser.service.blueprints.api import (
     ApiBlueprint
 )
 from sciencebeam_parser.utils.media_types import MediaTypes
+from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 
 
 LOGGER = logging.getLogger(__name__)
@@ -127,7 +128,7 @@ def _doc_converter_wrapper_mock(
 
 @pytest.fixture(name='app_config', scope='session')
 def _app_config() -> AppConfig:
-    return AppConfig.load_yaml(DEFAULT_CONFIG_PATH)
+    return AppConfig.load_yaml(DEFAULT_CONFIG_FILE)
 
 
 def _create_test_client(app_config: AppConfig) -> FlaskClient:

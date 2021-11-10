@@ -5,4 +5,4 @@ services:
     ports:
       - "${SCIENCEBEAM_PARSER_PORT}:8070"
     volumes:
-      - ./config.yml:/opt/sciencebeam_parser/config.yml
+      - ./sciencebeam_parser:/opt/sciencebeam_parser/sciencebeam_parser

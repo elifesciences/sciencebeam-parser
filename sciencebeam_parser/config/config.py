@@ -10,9 +10,6 @@ import yaml
 LOGGER = logging.getLogger(__name__)
 
 
-DEFAULT_CONFIG_PATH = 'config.yml'
-
-
 def parse_env_value(value: str) -> Union[str, int]:
     return yaml.safe_load(value)
 

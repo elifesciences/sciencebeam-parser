@@ -103,7 +103,7 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 COPY sciencebeam_parser ./sciencebeam_parser
 COPY tests ./tests
 COPY test-data ./test-data
-COPY .flake8 .pylintrc setup.py config.yml ./
+COPY .flake8 .pylintrc setup.py ./
 
 # temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
 ENV LC_ALL=C
@@ -117,8 +117,6 @@ COPY --from=builder /opt/venv /opt/venv
 COPY sciencebeam_parser ./sciencebeam_parser
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
-
-COPY config.yml ./
 
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
@@ -141,8 +139,6 @@ COPY --from=builder-cv /opt/venv /opt/venv
 COPY sciencebeam_parser ./sciencebeam_parser
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
-
-COPY config.yml ./
 
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
