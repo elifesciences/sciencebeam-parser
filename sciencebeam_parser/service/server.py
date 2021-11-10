@@ -5,9 +5,10 @@ from logging.config import dictConfig
 
 from flask import Flask
 
-from sciencebeam_parser.config.config import AppConfig, DEFAULT_CONFIG_PATH
+from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.service.blueprints.index import IndexBlueprint
 from sciencebeam_parser.service.blueprints.api import ApiBlueprint
+from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 
 
 LOGGER = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    config = AppConfig.load_yaml(DEFAULT_CONFIG_PATH).apply_environment_variables()
+    config = AppConfig.load_yaml(DEFAULT_CONFIG_FILE).apply_environment_variables()
     logging_config = config.get('logging')
     if logging_config:
         for handler_config in logging_config.get('handlers', {}).values():

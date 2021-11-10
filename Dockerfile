@@ -118,8 +118,6 @@ COPY sciencebeam_parser ./sciencebeam_parser
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
-COPY config.yml ./
-
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
 
@@ -141,8 +139,6 @@ COPY --from=builder-cv /opt/venv /opt/venv
 COPY sciencebeam_parser ./sciencebeam_parser
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
-
-COPY config.yml ./
 
 ENV SCIENCEBEAM_DELFT_MAX_SEQUENCE_LENGTH=2000
 ENV SCIENCEBEAM_DELFT_INPUT_WINDOW_STRIDE=1800
