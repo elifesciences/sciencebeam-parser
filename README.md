@@ -34,7 +34,7 @@ make dev-venv
 
 ### Configuration
 
-There is no implicit "grobid-home" directory. The only configuration file is [default config.yml](sciencebeam_parser/resources/default_config/config.yml).
+There is no implicit "grobid-home" directory. The only configuration file is the [default config.yml](sciencebeam_parser/resources/default_config/config.yml).
 
 Paths may point to local or remote files. Remote files are downloaded and cached locally (urls are assumed to be versioned).
 
