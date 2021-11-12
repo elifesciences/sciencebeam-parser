@@ -19,7 +19,7 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam_parser.app.context import AppContext
-from sciencebeam_parser.config.config import AppConfig
+from sciencebeam_parser.config.config import AppConfig, get_download_dir
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 from sciencebeam_parser.external.wapiti.wrapper import LazyWapitiBinaryWrapper
@@ -567,7 +567,9 @@ class ApiBlueprint(Blueprint):
         )
         self.route("/convert", methods=['GET'])(self.process_convert_api_form)
         self.route("/convert", methods=['POST'])(self.process_convert_api)
-        self.download_manager = DownloadManager()
+        self.download_manager = DownloadManager(
+            download_dir=get_download_dir(config)
+        )
         self.pdfalto_wrapper = PdfAltoWrapper(
             self.download_manager.download_if_url(config['pdfalto']['path'])
         )

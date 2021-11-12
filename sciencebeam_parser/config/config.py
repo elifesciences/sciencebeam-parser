@@ -10,6 +10,9 @@ import yaml
 LOGGER = logging.getLogger(__name__)
 
 
+DEFAULT_DOWNLOAD_DIR = 'data/download'
+
+
 def parse_env_value(value: str) -> Union[str, int]:
     return yaml.safe_load(value)
 
@@ -52,3 +55,9 @@ class AppConfig:
 
     def __getitem__(self, key: str):
         return self.props[key]
+
+
+def get_download_dir(config: Union[dict, AppConfig]) -> str:
+    return os.path.expanduser(
+        config.get('download_dir', DEFAULT_DOWNLOAD_DIR)
+    )
