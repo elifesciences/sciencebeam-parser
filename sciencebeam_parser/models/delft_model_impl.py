@@ -3,8 +3,13 @@ from typing import Optional, List, Tuple
 
 import tensorflow as tf
 
-from sciencebeam_trainer_delft.sequence_labelling.wrapper import Sequence
+from sciencebeam_trainer_delft.embedding.manager import EmbeddingManager
+from sciencebeam_trainer_delft.sequence_labelling.wrapper import (
+    DEFAULT_EMBEDDINGS_PATH,
+    Sequence
+)
 
+from sciencebeam_parser.app.context import AppContext
 from sciencebeam_parser.models.model_impl import ModelImpl
 from sciencebeam_parser.utils.lazy import LazyLoaded
 
@@ -30,8 +35,9 @@ class SeparateSessionSequenceWrapper(Sequence):
 
 
 class DelftModelImpl(ModelImpl):
-    def __init__(self, model_url: str):
+    def __init__(self, model_url: str, app_context: AppContext):
         self.model_url = model_url
+        self.app_context = app_context
         self._lazy_model = LazyLoaded[Sequence](self._load_model)
 
     def __repr__(self) -> str:
@@ -40,7 +46,15 @@ class DelftModelImpl(ModelImpl):
         )
 
     def _load_model(self) -> Sequence:
-        model = SeparateSessionSequenceWrapper('dummy-model')
+        embedding_registry_path = DEFAULT_EMBEDDINGS_PATH
+        embedding_manager = EmbeddingManager(
+            path=embedding_registry_path,
+            download_manager=self.app_context.download_manager
+        )
+        model = SeparateSessionSequenceWrapper(
+            'dummy-model',
+            embedding_manager=embedding_manager
+        )
         model.load_from(self.model_url)
         LOGGER.info('loaded delft model: %r', self.model_url)
         return model
