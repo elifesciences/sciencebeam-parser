@@ -33,6 +33,12 @@ logging:
       level: INFO
     sciencebeam_trainer_delft:
       level: INFO
+
+# The download directory for ScienceBeam Parser resources
+# Note: the CV model may download resources to `~/.torch/iopath_cache`,
+#    unless FVCORE_CACHE is set. (See `iopath.common.file_io.get_cache_dir`)
+download_dir: '~/.cache/sciencebeam-parser/downloads'
+
 pdfalto:
   path: https://github.com/kermitt2/pdfalto/files/6104204/pdfalto-4b4e983413278a07bb4cc4b2836de03adc8ca6dc-dockcross-linux-64.gz
 wapiti:

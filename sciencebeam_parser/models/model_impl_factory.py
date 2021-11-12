@@ -10,11 +10,11 @@ class EngineNames:
     WAPITI = 'wapiti'
 
 
-def get_delft_model_impl_for_path(path: str) -> ModelImpl:
+def get_delft_model_impl_for_path(path: str, app_context: AppContext) -> ModelImpl:
     from sciencebeam_parser.models.delft_model_impl import (  # noqa pylint: disable=import-outside-toplevel
         DelftModelImpl
     )
-    return DelftModelImpl(path)
+    return DelftModelImpl(path, app_context=app_context)
 
 
 def get_wapiti_model_impl_for_path(path: str, app_context: AppContext) -> ModelImpl:
@@ -37,7 +37,7 @@ def get_model_impl_for_config(config: dict, app_context: AppContext):
     if engine_name == EngineNames.WAPITI:
         return get_wapiti_model_impl_for_path(path, app_context=app_context)
     if engine_name == EngineNames.DELFT:
-        return get_delft_model_impl_for_path(path)
+        return get_delft_model_impl_for_path(path, app_context=app_context)
     raise RuntimeError('invalid engine name: %r' % engine_name)
 
 
