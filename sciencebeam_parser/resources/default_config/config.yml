@@ -34,6 +34,9 @@ logging:
     sciencebeam_trainer_delft:
       level: INFO
 
+# The download directory for ScienceBeam Parser resources
+# Note: the CV model may download resources to `~/.torch/iopath_cache`,
+#    unless FVCORE_CACHE is set. (See `iopath.common.file_io.get_cache_dir`)
 download_dir: '~/.cache/sciencebeam-parser/downloads'
 
 pdfalto:
