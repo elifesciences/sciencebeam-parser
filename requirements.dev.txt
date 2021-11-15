@@ -4,5 +4,6 @@ pylint==2.11.1
 pytest==6.2.5
 pytest-watch==4.2.0
 setuptools-scm==6.3.2
+twine==3.6.0
 types-PyYAML==6.0.1
 types-setuptools==57.4.2
