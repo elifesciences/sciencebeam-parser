@@ -1,7 +1,7 @@
 venv
 venv_temp
 data
-dist
+/dist
 build
 logs
 *.egg-info

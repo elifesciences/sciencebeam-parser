@@ -12,7 +12,7 @@ fi
 
 echo "commit=${commit}, repository=${repository}"
 
-date_version=$(date '+%Y.%-m.%-d')
+date_version=$(date '+%Y.%-m.%-d.%-H.%-M.%-S')
 version_prefix="${date_version}.dev"
 version=$($(dirname $0)/get-commit-version.sh "${version_prefix}" "${commit}")
 echo 'test'
