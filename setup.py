@@ -7,7 +7,7 @@ with open('requirements.txt', 'r', encoding='utf-8') as f:
     REQUIRED_PACKAGES = f.readlines()
 
 
-with open('README.md', 'r', encoding='utf-8') as f:
+with open('doc/python_library.md', 'r', encoding='utf-8') as f:
     LONG_DESCRIPTION = '\n'.join([
         line.rstrip()
         for line in f
