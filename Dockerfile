@@ -103,7 +103,8 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 COPY sciencebeam_parser ./sciencebeam_parser
 COPY tests ./tests
 COPY test-data ./test-data
-COPY .flake8 .pylintrc setup.py ./
+COPY scripts/dev ./scripts/dev
+COPY .flake8 .pylintrc setup.py README.md ./
 
 # temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
 ENV LC_ALL=C
