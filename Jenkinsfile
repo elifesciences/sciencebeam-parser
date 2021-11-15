@@ -53,6 +53,14 @@ elifePipeline {
             }
         }
 
+        elifePullRequestOnly { prNumber ->
+            stage 'Push package to test.pypi.org', {
+                withPypiCredentials 'staging', 'testpypi', {
+                    sh "make IMAGE_TAG=${commit} REVISION=${commit} ci-push-testpypi"
+                }
+            }
+        }
+
         elifeTagOnly { repoTag ->
             stage 'Push stable sciencebeam-parser image', {
                 def image = DockerImage.elifesciences(this, 'sciencebeam-parser', commit)
@@ -65,6 +73,12 @@ elifePipeline {
                 def image = DockerImage.elifesciences(this, 'sciencebeam-parser', tag)
                 image.tag('latest-cv').push()
                 image.tag("${version}-cv").push()
+            }
+
+            stage 'Push package to pypi', {
+                withPypiCredentials 'prod', 'pypi', {
+                    sh "make IMAGE_TAG=${commit} VERSION=${version} NO_BUILD=y ci-push-pypi"
+                }
             }
         }
     }
