@@ -1,5 +1,3 @@
-from time import time
-
 from setuptools import find_packages, setup
 
 
@@ -15,20 +13,10 @@ with open('README.md', 'r', encoding='utf-8') as f:
     ])
 
 
-def local_scheme(version):
-    if not version.distance and not version.dirty:
-        return ""
-    return str(int(time()))
-
-
 packages = find_packages(exclude=["tests", "tests.*"])
 
 setup(
     name="sciencebeam_parser",
-    use_scm_version={
-        "local_scheme": local_scheme
-    },
-    setup_requires=['setuptools_scm'],
     author="Daniel Ecer",
     url="https://github.com/elifesciences/sciencebeam-parser",
     install_requires=REQUIRED_PACKAGES,
