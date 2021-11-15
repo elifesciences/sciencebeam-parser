@@ -1,5 +1,7 @@
 from setuptools import find_packages, setup
 
+import sciencebeam_parser
+
 
 with open('requirements.txt', 'r', encoding='utf-8') as f:
     REQUIRED_PACKAGES = f.readlines()
@@ -17,6 +19,7 @@ packages = find_packages(exclude=["tests", "tests.*"])
 
 setup(
     name="sciencebeam_parser",
+    version=sciencebeam_parser.__version__,
     author="Daniel Ecer",
     url="https://github.com/elifesciences/sciencebeam-parser",
     install_requires=REQUIRED_PACKAGES,
