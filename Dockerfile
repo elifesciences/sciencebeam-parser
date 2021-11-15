@@ -104,7 +104,7 @@ COPY sciencebeam_parser ./sciencebeam_parser
 COPY tests ./tests
 COPY test-data ./test-data
 COPY scripts/dev ./scripts/dev
-COPY .flake8 .pylintrc setup.py ./
+COPY .flake8 .pylintrc setup.py README.md ./
 
 # temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
 ENV LC_ALL=C
