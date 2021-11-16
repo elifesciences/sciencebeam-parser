@@ -20,10 +20,12 @@ class MediaTypes:
     DOTX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.template'
     RTF = 'application/rtf'
     XML = 'application/xml'
+    ZIP = 'application/zip'
     TEI_XML = 'application/tei+xml'
     JATS_XML = 'application/vnd.jats+xml'
     TEI_ZIP = 'application/tei+xml+zip'
     JATS_ZIP = 'application/vnd.jats+xml+zip'
+    ALTO_XML = 'application/vnd.alto+xml'
     JSON = 'application/json'
     OCTET_STREAM = 'application/octet-stream'
 

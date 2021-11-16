@@ -1,16 +1,14 @@
 import logging
+from contextlib import contextmanager
 from tempfile import TemporaryDirectory
-from time import monotonic
 from pathlib import Path
-from typing import Iterable, List, Type, TypeVar
-from zipfile import ZipFile
+from typing import Iterable, Iterator, List, Type, TypeVar
 
-from flask import abort, Blueprint, jsonify, request, Response, url_for
+from flask import Blueprint, jsonify, request, Response, url_for
 from flask.helpers import send_file
 from lxml import etree
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
-from sciencebeam_trainer_delft.utils.download_manager import DownloadManager
 
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
@@ -18,18 +16,18 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 )
 from werkzeug.exceptions import BadRequest
 
-from sciencebeam_parser.app.context import AppContext
-from sciencebeam_parser.config.config import AppConfig, get_download_dir
+from sciencebeam_parser.app.parser import (
+    BadRequestScienceBeamParserError,
+    ScienceBeamParser,
+    ScienceBeamParserSession,
+    ScienceBeamParserSessionSource
+)
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
-from sciencebeam_parser.external.wapiti.wrapper import LazyWapitiBinaryWrapper
-from sciencebeam_parser.lookup.loader import load_lookup_from_config
 from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesContext
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
-    SemanticDocument,
-    SemanticGraphic,
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
     SemanticRawAuthors,
@@ -41,31 +39,25 @@ from sciencebeam_parser.document.semantic_document import (
     T_SemanticContentWrapper,
     iter_by_semantic_type_recursively
 )
-from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
 from sciencebeam_parser.processors.fulltext.config import RequestFieldNames
-from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
-from sciencebeam_parser.transformers.doc_converter_wrapper import DocConverterWrapper
-from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
+from sciencebeam_parser.utils.data_wrapper import (
+    get_data_wrapper_with_improved_media_type_or_filename
+)
 from sciencebeam_parser.utils.flask import (
     assert_and_get_first_accept_matching_media_type,
     get_bool_request_arg,
-    get_data_wrapper_with_improved_media_type_or_filename,
     get_int_request_arg,
     get_required_post_data,
     get_required_post_data_wrapper,
     get_str_request_arg
 )
 from sciencebeam_parser.utils.media_types import (
-    MediaTypes,
-    guess_extension_for_media_type
+    MediaTypes
 )
 from sciencebeam_parser.utils.text import normalize_text, parse_comma_separated_value
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.processors.fulltext.api import (
-    FullTextProcessor,
-    FullTextProcessorConfig,
-    FullTextProcessorDocumentContext,
-    load_models
+    FullTextProcessorConfig
 )
 
 
@@ -93,14 +85,6 @@ VALID_MODEL_OUTPUT_FORMATS = {
     TagOutputFormats.JSON,
     TagOutputFormats.DATA,
     TagOutputFormats.XML
-}
-
-
-DOC_TO_PDF_SUPPORTED_MEDIA_TYPES = {
-    MediaTypes.DOCX,
-    MediaTypes.DOTX,
-    MediaTypes.DOC,
-    MediaTypes.RTF
 }
 
 
@@ -515,29 +499,14 @@ class TableModelNestedBluePrint(FullTextChildModelNestedBluePrint):
         super().__init__(*args, semantic_type=SemanticRawTable, **kwargs)
 
 
-def load_app_features_context(
-    config: AppConfig,
-    download_manager: DownloadManager
-):
-    return AppFeaturesContext(
-        country_lookup=load_lookup_from_config(
-            config.get('lookup', {}).get('country'),
-            download_manager=download_manager
-        ),
-        first_name_lookup=load_lookup_from_config(
-            config.get('lookup', {}).get('first_name'),
-            download_manager=download_manager
-        ),
-        last_name_lookup=load_lookup_from_config(
-            config.get('lookup', {}).get('last_name'),
-            download_manager=download_manager
-        )
-    )
-
-
 class ApiBlueprint(Blueprint):
-    def __init__(self, config: AppConfig):
+    def __init__(
+        self,
+        sciencebeam_parser: ScienceBeamParser
+    ):
         super().__init__('api', __name__)
+        LOGGER.debug('sciencebeam_parser: %r', sciencebeam_parser)
+        self.sciencebeam_parser = sciencebeam_parser
         self.route('/')(self.api_root)
         self.route("/pdfalto", methods=['GET'])(self.pdfalto_form)
         self.route("/pdfalto", methods=['POST'])(self.pdfalto)
@@ -567,53 +536,13 @@ class ApiBlueprint(Blueprint):
         )
         self.route("/convert", methods=['GET'])(self.process_convert_api_form)
         self.route("/convert", methods=['POST'])(self.process_convert_api)
-        self.download_manager = DownloadManager(
-            download_dir=get_download_dir(config)
-        )
-        self.pdfalto_wrapper = PdfAltoWrapper(
-            self.download_manager.download_if_url(config['pdfalto']['path'])
-        )
-        self.pdfalto_wrapper.ensure_executable()
-        self.app_context = AppContext(
-            app_config=config,
-            download_manager=self.download_manager,
-            lazy_wapiti_binary_wrapper=LazyWapitiBinaryWrapper(
-                install_url=config.get('wapiti', {}).get('install_source'),
-                download_manager=self.download_manager
-            )
-        )
-        self.fulltext_processor_config = FullTextProcessorConfig.from_app_config(app_config=config)
-        self.fulltext_models = load_models(
-            config,
-            app_context=self.app_context,
-            fulltext_processor_config=self.fulltext_processor_config
-        )
-        if config.get('preload_on_startup'):
-            self.fulltext_models.preload()
-        self.app_features_context = load_app_features_context(
-            config,
-            download_manager=self.download_manager
-        )
+        self.pdfalto_wrapper = sciencebeam_parser.pdfalto_wrapper
+        self.app_context = sciencebeam_parser.app_context
+        self.fulltext_processor_config = sciencebeam_parser.fulltext_processor_config
+        self.fulltext_models = sciencebeam_parser.fulltext_models
+        self.app_features_context = sciencebeam_parser.app_features_context
         fulltext_models = self.fulltext_models
         app_features_context = self.app_features_context
-        self.assets_fulltext_processor = FullTextProcessor(
-            self.fulltext_models,
-            app_features_context=self.app_features_context,
-            config=self.fulltext_processor_config._replace(
-                extract_graphic_bounding_boxes=True,
-                extract_graphic_assets=True
-            )
-        )
-        tei_to_jats_config = config.get('xslt', {}).get('tei_to_jats', {})
-        self.tei_to_jats_xslt_transformer = XsltTransformerWrapper.from_template_file(
-            TEI_TO_JATS_XSLT_FILE,
-            xslt_template_parameters=tei_to_jats_config.get('parameters', {})
-        )
-        self.doc_to_pdf_enabled = config.get('doc_to_pdf', {}).get('enabled', True)
-        self.doc_to_pdf_convert_parameters = config.get('doc_to_pdf', {}).get('convert', {})
-        self.doc_converter_wrapper = DocConverterWrapper(
-            **config.get('doc_to_pdf', {}).get('listener', {})
-        )
         ModelNestedBluePrint(
             'Segmentation',
             model=fulltext_models.segmentation_model,
@@ -712,192 +641,74 @@ class ApiBlueprint(Blueprint):
     def pdfalto_form(self):
         return _get_file_upload_form('PdfAlto convert PDF to LXML')
 
-    def pdfalto(self):
-        data = get_required_post_data()
-        with TemporaryDirectory(suffix='-request') as temp_dir:
-            temp_path = Path(temp_dir)
-            pdf_path = temp_path / 'test.pdf'
-            output_path = temp_path / 'test.lxml'
-            pdf_path.write_bytes(data)
+    @contextmanager
+    def _get_new_sciencebeam_parser_session(
+        self, **kwargs
+    ) -> Iterator[ScienceBeamParserSession]:
+        with self.sciencebeam_parser.get_new_session(**kwargs) as session:
             first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
             last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
-            self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-                str(pdf_path),
-                str(output_path),
-                first_page=first_page,
-                last_page=last_page
-            )
-            response_content = output_path.read_text(encoding='utf-8')
-        response_type = 'text/xml'
-        headers = None
-        return Response(response_content, headers=headers, mimetype=response_type)
+            session.document_request_parameters.first_page = first_page
+            session.document_request_parameters.last_page = last_page
+            yield session
 
-    def _get_pdf_path_for_request(
-        self,
-        temp_dir: str
-    ) -> str:
+    @contextmanager
+    def _get_new_sciencebeam_parser_source(
+        self, **kwargs
+    ) -> Iterator[ScienceBeamParserSessionSource]:
         data_wrapper = get_data_wrapper_with_improved_media_type_or_filename(
             get_required_post_data_wrapper()
         )
-        LOGGER.info(
-            'data_wrapper: media_type=%r (filename=%r)',
-            data_wrapper.media_type, data_wrapper.filename
-        )
-        if data_wrapper.media_type in DOC_TO_PDF_SUPPORTED_MEDIA_TYPES:
-            if not self.doc_to_pdf_enabled:
-                LOGGER.info('doc to pdf not enabled')
-                abort(Response('doc to pdf not enabled', BadRequest.code))
-            source_path = Path(temp_dir) / (
-                'test%s' % (
-                    guess_extension_for_media_type(data_wrapper.media_type) or ''
-                )
-            )
+        with self._get_new_sciencebeam_parser_session(**kwargs) as session:
+            source_path = session.temp_path / 'source.file'
             source_path.write_bytes(data_wrapper.data)
-            target_temp_file = self.doc_converter_wrapper.convert(
-                str(source_path),
-                **self.doc_to_pdf_convert_parameters
+            yield session.get_source(
+                source_path=str(source_path),
+                source_media_type=data_wrapper.media_type
             )
-            return target_temp_file
-        if data_wrapper.media_type != MediaTypes.PDF:
-            abort(Response(
-                'unsupported media type: %r' % data_wrapper.media_type,
-                BadRequest.code
-            ))
-        pdf_path = Path(temp_dir) / 'test.pdf'
-        pdf_path.write_bytes(data_wrapper.data)
-        return str(pdf_path)
 
-    def _get_layout_document_for_request(
-        self,
-        temp_dir: str,
-        pdf_path: str
-    ) -> LayoutDocument:
-        output_path = Path(temp_dir) / 'test.lxml'
-        first_page = get_int_request_arg(RequestArgs.FIRST_PAGE)
-        last_page = get_int_request_arg(RequestArgs.LAST_PAGE)
-        self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-            str(pdf_path),
-            str(output_path),
-            first_page=first_page,
-            last_page=last_page
-        )
-        xml_content = output_path.read_bytes()
-        root = etree.fromstring(xml_content)
-        layout_document = normalize_layout_document(
-            parse_alto_root(root),
-            preserve_empty_pages=True
-        )
-        return layout_document
-
-    def _get_semantic_document_for_request(
-        self,
-        pdf_path: str,
-        layout_document: LayoutDocument,
-        temp_dir: str,
-        fulltext_processor: FullTextProcessor
-    ) -> SemanticDocument:
-        context = FullTextProcessorDocumentContext(
-            pdf_path=pdf_path,
-            temp_dir=temp_dir
-        )
-        semantic_document = (
-            fulltext_processor
-            .get_semantic_document_for_layout_document(
-                layout_document,
-                context=context
+    def pdfalto(self):
+        response_type = 'text/xml'
+        with self._get_new_sciencebeam_parser_source() as source:
+            return send_file(
+                source.get_local_file_for_response_media_type(
+                    MediaTypes.ALTO_XML
+                ),
+                mimetype=response_type
             )
-        )
-        return semantic_document
-
-    def _get_tei_to_jats_xml_root(self, xml_root: etree.ElementBase) -> etree.ElementBase:
-        start = monotonic()
-        xml_root = self.tei_to_jats_xslt_transformer(xml_root)
-        end = monotonic()
-        LOGGER.info('tei to jats, took=%.3fs', end - start)
-        return xml_root
-
-    def _get_serialized_xml(self, xml_root: etree.ElementBase) -> bytes:
-        start = monotonic()
-        xml_data = etree.tostring(
-            xml_root,
-            encoding='utf-8',
-            pretty_print=False
-        )
-        end = monotonic()
-        LOGGER.info('serializing xml, took=%.3fs', end - start)
-        return xml_data
-
-    def _send_asset_zip(
-        self,
-        semantic_document: SemanticDocument,
-        xml_filename: str,
-        xml_data: bytes,
-        temp_dir: str
-    ):
-        semantic_graphic_list = list(semantic_document.iter_by_type_recursively(
-            SemanticGraphic
-        ))
-        LOGGER.debug('semantic_graphic_list: %r', semantic_graphic_list)
-        zip_path = Path(temp_dir) / 'result.zip'
-        with ZipFile(zip_path, 'w') as zip_file:
-            zip_file.writestr(xml_filename, xml_data)
-            for semantic_graphic in semantic_graphic_list:
-                assert semantic_graphic.relative_path
-                layout_graphic = semantic_graphic.layout_graphic
-                assert layout_graphic
-                assert layout_graphic.local_file_path
-                zip_file.write(
-                    layout_graphic.local_file_path,
-                    semantic_graphic.relative_path
-                )
-        LOGGER.debug('response_content (bytes): %d', zip_path.stat().st_size)
-        return send_file(
-            str(zip_path),
-            as_attachment=True
-        )
 
     def _process_pdf_to_response_media_type(
         self,
         response_media_type: str,
         fulltext_processor_config: FullTextProcessorConfig
     ):
-        fulltext_processor = FullTextProcessor(
-            self.fulltext_models,
-            app_features_context=self.app_features_context,
-            config=fulltext_processor_config
-        )
-        with TemporaryDirectory(suffix='-request') as temp_dir:
-            pdf_path = self._get_pdf_path_for_request(temp_dir=temp_dir)
-            if response_media_type == MediaTypes.PDF:
-                return send_file(pdf_path)
-            layout_document = self._get_layout_document_for_request(
-                temp_dir=temp_dir,
-                pdf_path=pdf_path
-            )
-            semantic_document = self._get_semantic_document_for_request(
-                pdf_path=pdf_path,
-                layout_document=layout_document,
-                temp_dir=temp_dir,
-                fulltext_processor=fulltext_processor
-            )
-            document = get_tei_for_semantic_document(semantic_document)
-            response_type = 'application/xml'
-            xml_root = document.root
-            xml_filename = 'tei.xml'
-            if response_media_type in {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}:
-                xml_root = self._get_tei_to_jats_xml_root(xml_root)
-                xml_filename = 'jats.xml'
-            xml_data = self._get_serialized_xml(xml_root)
-            LOGGER.debug('xml_data: %r', xml_data)
-            if response_media_type in {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}:
-                return self._send_asset_zip(
-                    semantic_document=semantic_document,
-                    xml_filename=xml_filename,
-                    xml_data=xml_data,
-                    temp_dir=temp_dir
+        try:
+            LOGGER.debug('creating session source')
+            with self._get_new_sciencebeam_parser_source(
+                fulltext_processor_config=fulltext_processor_config
+            ) as source:
+                LOGGER.debug('created session source: %r', source)
+                actual_response_media_type = response_media_type
+                if response_media_type in {
+                    MediaTypes.TEI_XML, MediaTypes.JATS_XML
+                }:
+                    actual_response_media_type = MediaTypes.XML
+                elif response_media_type in {
+                    MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP
+                }:
+                    actual_response_media_type = MediaTypes.ZIP
+                result_file = source.get_local_file_for_response_media_type(
+                    response_media_type
                 )
-            headers = None
-            return Response(xml_data, headers=headers, mimetype=response_type)
+                LOGGER.debug('result_file: %r', result_file)
+                assert isinstance(result_file, str)
+                return send_file(
+                    result_file,
+                    mimetype=actual_response_media_type
+                )
+        except BadRequestScienceBeamParserError as exc:
+            LOGGER.warning('bad request: %r', exc)
+            return BadRequest(str(exc))
 
     def process_header_document_api_form(self):
         return _get_file_upload_form('Convert PDF to TEI (Header)')

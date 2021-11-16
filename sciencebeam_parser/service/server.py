@@ -5,6 +5,7 @@ from logging.config import dictConfig
 
 from flask import Flask
 
+from sciencebeam_parser.app.parser import ScienceBeamParser
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.service.blueprints.index import IndexBlueprint
 from sciencebeam_parser.service.blueprints.api import ApiBlueprint
@@ -14,16 +15,28 @@ from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 LOGGER = logging.getLogger(__name__)
 
 
-def create_app(config: AppConfig):
+def create_app_for_parser(
+    sciencebeam_parser: ScienceBeamParser
+):
     app = Flask(__name__)
 
     index = IndexBlueprint()
     app.register_blueprint(index, url_prefix='/')
 
-    api = ApiBlueprint(config)
+    api = ApiBlueprint(sciencebeam_parser)
     app.register_blueprint(api, url_prefix='/api')
 
     return app
+
+
+def create_app_for_config(config: AppConfig):
+    return create_app_for_parser(
+        ScienceBeamParser.from_config(config)
+    )
+
+
+def create_app(config: AppConfig):
+    return create_app_for_config(config)
 
 
 def parse_args(argv=None):
@@ -58,7 +71,7 @@ def main(argv=None):
             LOGGER.info('logging_config: %r', logging_config)
             raise
     LOGGER.info('app config: %s', config)
-    app = create_app(config)
+    app = create_app_for_config(config)
     app.run(port=args.port, host=args.host, threaded=True)
 
 

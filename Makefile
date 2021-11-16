@@ -56,6 +56,7 @@ dev-install:
 		-r requirements.ocr.txt \
 		-r requirements.txt
 	$(PIP) install -r requirements.delft.txt --no-deps
+	$(PIP) install -e . --no-deps
 
 
 dev-venv: venv-create dev-install

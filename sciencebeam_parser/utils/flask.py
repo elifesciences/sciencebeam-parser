@@ -1,15 +1,13 @@
 import logging
-from typing import Callable, NamedTuple, Optional, Sequence, TypeVar
+from typing import Callable, Optional, Sequence, TypeVar
 
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam_parser.utils.media_types import (
-    MediaTypes,
-    get_first_matching_media_type,
-    guess_extension_for_media_type,
-    guess_media_type_for_filename
+    get_first_matching_media_type
 )
+from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -21,15 +19,9 @@ T = TypeVar('T')
 DEFAULT_FILENAME = 'file'
 
 
-class SourceDataWrapper(NamedTuple):
-    data: bytes
-    media_type: str
-    filename: Optional[str] = None
-
-
-def get_optional_post_data_wrapper() -> SourceDataWrapper:
+def get_optional_post_data_wrapper() -> MediaDataWrapper:
     if not request.files:
-        return SourceDataWrapper(
+        return MediaDataWrapper(
             data=request.data,
             media_type=request.mimetype,
             filename=request.args.get('filename')
@@ -40,7 +32,7 @@ def get_optional_post_data_wrapper() -> SourceDataWrapper:
             continue
         uploaded_file = request.files[name]
         data = uploaded_file.stream.read()
-        return SourceDataWrapper(
+        return MediaDataWrapper(
             data=data,
             media_type=uploaded_file.mimetype,
             filename=uploaded_file.filename
@@ -50,21 +42,7 @@ def get_optional_post_data_wrapper() -> SourceDataWrapper:
     )
 
 
-def get_data_wrapper_with_improved_media_type_or_filename(
-    data_wrapper: SourceDataWrapper
-) -> SourceDataWrapper:
-    if not data_wrapper.filename:
-        return data_wrapper._replace(filename='%s%s' % (
-            DEFAULT_FILENAME, guess_extension_for_media_type(data_wrapper.media_type) or ''
-        ))
-    if not data_wrapper.media_type or data_wrapper.media_type == MediaTypes.OCTET_STREAM:
-        media_type = guess_media_type_for_filename(data_wrapper.filename)
-        if media_type:
-            return data_wrapper._replace(media_type=media_type)
-    return data_wrapper
-
-
-def get_required_post_data_wrapper() -> SourceDataWrapper:
+def get_required_post_data_wrapper() -> MediaDataWrapper:
     data_wrapper = get_optional_post_data_wrapper()
     if not data_wrapper.data:
         raise BadRequest('no contents')
