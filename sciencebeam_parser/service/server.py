@@ -4,8 +4,8 @@ import os
 from logging.config import dictConfig
 
 from flask import Flask
-from sciencebeam_parser.app.parser import ScienceBeamParser
 
+from sciencebeam_parser.app.parser import ScienceBeamParser
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.service.blueprints.index import IndexBlueprint
 from sciencebeam_parser.service.blueprints.api import ApiBlueprint
