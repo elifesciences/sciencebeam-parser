@@ -1,5 +1,8 @@
 # ScienceBeam Parser
 
+[![PyPi version](https://img.shields.io/pypi/v/sciencebeam-parser)](https://pypi.org/project/sciencebeam-parser/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ScienceBeam Parser allows you to parse scientific documents.
 Initially is starting as a partial Python variation of GROBID and allows you to re-use some of the models.
 However, it may deviate more in the future.
