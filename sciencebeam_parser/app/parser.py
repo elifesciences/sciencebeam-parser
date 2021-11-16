@@ -27,7 +27,6 @@ from sciencebeam_parser.document.semantic_document import (
 from sciencebeam_parser.document.tei_document import get_tei_for_semantic_document
 from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
-from sciencebeam_parser.service.blueprints.api import DOC_TO_PDF_SUPPORTED_MEDIA_TYPES
 from sciencebeam_parser.transformers.doc_converter_wrapper import DocConverterWrapper
 from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
 from sciencebeam_parser.utils.lazy import LazyLoaded
@@ -48,6 +47,14 @@ LOGGER = logging.getLogger(__name__)
 
 
 TEMP_ALTO_XML_FILENAME = 'temp.lxml'
+
+
+DOC_TO_PDF_SUPPORTED_MEDIA_TYPES = {
+    MediaTypes.DOCX,
+    MediaTypes.DOTX,
+    MediaTypes.DOC,
+    MediaTypes.RTF
+}
 
 
 def normalize_and_tokenize_text(text: str) -> List[str]:
@@ -125,11 +132,15 @@ class ScienceBeamParserError(RuntimeError):
     pass
 
 
-class UnsupportedRequestMediaTypeScienceBeamParserError(ScienceBeamParserError):
+class BadRequestScienceBeamParserError(ScienceBeamParserError):
     pass
 
 
-class UnsupportedResponseMediaTypeScienceBeamParserError(ScienceBeamParserError):
+class UnsupportedRequestMediaTypeScienceBeamParserError(BadRequestScienceBeamParserError):
+    pass
+
+
+class UnsupportedResponseMediaTypeScienceBeamParserError(BadRequestScienceBeamParserError):
     pass
 
 
@@ -187,7 +198,8 @@ class ScienceBeamParserBaseSession:
         self.exit_stack = ExitStack()
         self._temp_dir: Optional[str] = temp_dir
         if fulltext_processor_config is None:
-            self.fulltext_processor_config = fulltext_processor_config
+            fulltext_processor_config = parser.fulltext_processor_config
+        self.fulltext_processor_config = fulltext_processor_config
         if document_request_parameters is None:
             document_request_parameters = DocumentRequestParameters()
         self.document_request_parameters = document_request_parameters
