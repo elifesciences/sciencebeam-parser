@@ -702,6 +702,7 @@ class ApiBlueprint(Blueprint):
                     mimetype=actual_response_media_type
                 )
         except BadRequestScienceBeamParserError as exc:
+            LOGGER.warning('bad request: %r', exc)
             return BadRequest(str(exc))
 
     def process_header_document_api_form(self):
