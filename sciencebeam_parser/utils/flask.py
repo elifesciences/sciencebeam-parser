@@ -1,15 +1,13 @@
 import logging
-from typing import Callable, NamedTuple, Optional, Sequence, TypeVar
+from typing import Callable, Optional, Sequence, TypeVar
 
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from sciencebeam_parser.utils.media_types import (
-    MediaTypes,
-    get_first_matching_media_type,
-    guess_extension_for_media_type,
-    guess_media_type_for_filename
+    get_first_matching_media_type
 )
+from sciencebeam_parser.utils.data_wrapper import SourceDataWrapper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -19,12 +17,6 @@ T = TypeVar('T')
 
 
 DEFAULT_FILENAME = 'file'
-
-
-class SourceDataWrapper(NamedTuple):
-    data: bytes
-    media_type: str
-    filename: Optional[str] = None
 
 
 def get_optional_post_data_wrapper() -> SourceDataWrapper:
@@ -48,20 +40,6 @@ def get_optional_post_data_wrapper() -> SourceDataWrapper:
     raise BadRequest(
         f'missing file named one pf "{supported_file_keys}", found: {request.files.keys()}'
     )
-
-
-def get_data_wrapper_with_improved_media_type_or_filename(
-    data_wrapper: SourceDataWrapper
-) -> SourceDataWrapper:
-    if not data_wrapper.filename:
-        return data_wrapper._replace(filename='%s%s' % (
-            DEFAULT_FILENAME, guess_extension_for_media_type(data_wrapper.media_type) or ''
-        ))
-    if not data_wrapper.media_type or data_wrapper.media_type == MediaTypes.OCTET_STREAM:
-        media_type = guess_media_type_for_filename(data_wrapper.filename)
-        if media_type:
-            return data_wrapper._replace(media_type=media_type)
-    return data_wrapper
 
 
 def get_required_post_data_wrapper() -> SourceDataWrapper:

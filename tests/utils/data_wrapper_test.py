@@ -1,4 +1,4 @@
-from sciencebeam_parser.utils.flask import (
+from sciencebeam_parser.utils.data_wrapper import (
     SourceDataWrapper,
     get_data_wrapper_with_improved_media_type_or_filename
 )
