@@ -23,7 +23,7 @@ Models will often consist of:
   * Provides model-specific implementation with common interface
   * Usually by providing constructors for the data generator and semantic extractor
 
-A model will not directly interact with another model. The [FullText Processor](sciencebeam_parser/processors/fulltext.py) will handle those interactions.
+A model will not directly interact with another model. The [FullText Processor](sciencebeam_parser/processors/fulltext) will handle those interactions.
 
 ## Layout Document
 
