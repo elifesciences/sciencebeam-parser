@@ -25,8 +25,6 @@ The [default config.yml](../sciencebeam_parser/resources/default_config/config.y
 ### Python API: Start Server
 
 ```python
-import logging
-
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 from sciencebeam_parser.service.server import create_app
