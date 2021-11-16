@@ -7,7 +7,7 @@ from werkzeug.exceptions import BadRequest
 from sciencebeam_parser.utils.media_types import (
     get_first_matching_media_type
 )
-from sciencebeam_parser.utils.data_wrapper import SourceDataWrapper
+from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -19,9 +19,9 @@ T = TypeVar('T')
 DEFAULT_FILENAME = 'file'
 
 
-def get_optional_post_data_wrapper() -> SourceDataWrapper:
+def get_optional_post_data_wrapper() -> MediaDataWrapper:
     if not request.files:
-        return SourceDataWrapper(
+        return MediaDataWrapper(
             data=request.data,
             media_type=request.mimetype,
             filename=request.args.get('filename')
@@ -32,7 +32,7 @@ def get_optional_post_data_wrapper() -> SourceDataWrapper:
             continue
         uploaded_file = request.files[name]
         data = uploaded_file.stream.read()
-        return SourceDataWrapper(
+        return MediaDataWrapper(
             data=data,
             media_type=uploaded_file.mimetype,
             filename=uploaded_file.filename
@@ -42,7 +42,7 @@ def get_optional_post_data_wrapper() -> SourceDataWrapper:
     )
 
 
-def get_required_post_data_wrapper() -> SourceDataWrapper:
+def get_required_post_data_wrapper() -> MediaDataWrapper:
     data_wrapper = get_optional_post_data_wrapper()
     if not data_wrapper.data:
         raise BadRequest('no contents')
