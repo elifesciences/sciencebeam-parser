@@ -122,6 +122,24 @@ def create_asset_zip_for_semantic_document(
     LOGGER.debug('response_content (bytes): %d', Path(zip_filename).stat().st_size)
 
 
+def get_xml_tree(xml_root: etree.ElementBase) -> etree._ElementTree:
+    if isinstance(xml_root, etree._ElementTree):  # pylint: disable=protected-access
+        # Note: _XSLTResultTree is extending _ElementTree
+        return xml_root
+    return etree.ElementTree(xml_root)
+
+
+def serialize_xml_to_file(
+    xml_root: etree.ElementBase,
+    filename: str
+):
+    get_xml_tree(xml_root).write(
+        filename,
+        encoding='utf-8',
+        pretty_print=False
+    )
+
+
 @dataclass
 class DocumentRequestParameters:
     first_page: Optional[int] = None
@@ -274,11 +292,7 @@ class ScienceBeamParserSessionParsedSemanticDocument(_ScienceBeamParserSessionDe
         filename: str
     ) -> str:
         start = monotonic()
-        etree.ElementTree(xml_root).write(
-            filename,
-            encoding='utf-8',
-            pretty_print=False
-        )
+        serialize_xml_to_file(xml_root, filename=filename)
         end = monotonic()
         LOGGER.info('serializing xml, took=%.3fs', end - start)
         return filename
