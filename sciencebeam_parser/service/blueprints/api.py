@@ -40,6 +40,9 @@ from sciencebeam_parser.document.semantic_document import (
     iter_by_semantic_type_recursively
 )
 from sciencebeam_parser.processors.fulltext.config import RequestFieldNames
+from sciencebeam_parser.utils.data_wrapper import (
+    get_data_wrapper_with_improved_media_type_or_filename
+)
 from sciencebeam_parser.utils.flask import (
     assert_and_get_first_accept_matching_media_type,
     get_bool_request_arg,
@@ -653,7 +656,9 @@ class ApiBlueprint(Blueprint):
     def _get_new_sciencebeam_parser_source(
         self, **kwargs
     ) -> Iterator[ScienceBeamParserSessionSource]:
-        data_wrapper = get_required_post_data_wrapper()
+        data_wrapper = get_data_wrapper_with_improved_media_type_or_filename(
+            get_required_post_data_wrapper()
+        )
         with self._get_new_sciencebeam_parser_session(**kwargs) as session:
             source_path = session.temp_path / 'source.file'
             source_path.write_bytes(data_wrapper.data)
