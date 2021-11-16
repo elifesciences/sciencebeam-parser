@@ -312,4 +312,5 @@ Non-release builds are available with the `_unstable` image suffix, e.g. `elifes
 
 ## See also
 
-* [architecture](ARCHITECTURE.md)
+* [Architecture](ARCHITECTURE.md)
+* [Python API](doc/python_library.md)
