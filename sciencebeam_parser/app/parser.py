@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
-from typing import List, Optional
+from typing import List, Optional, Set
 from zipfile import ZipFile
 
 from lxml import etree
@@ -30,6 +30,7 @@ from sciencebeam_parser.resources.xslt import TEI_TO_JATS_XSLT_FILE
 from sciencebeam_parser.service.blueprints.api import DOC_TO_PDF_SUPPORTED_MEDIA_TYPES
 from sciencebeam_parser.transformers.doc_converter_wrapper import DocConverterWrapper
 from sciencebeam_parser.transformers.xslt import XsltTransformerWrapper
+from sciencebeam_parser.utils.lazy import LazyLoaded
 from sciencebeam_parser.utils.media_types import (
     MediaTypes
 )
@@ -44,6 +45,9 @@ from sciencebeam_parser.processors.fulltext.api import (
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+TEMP_ALTO_XML_FILENAME = 'temp.lxml'
 
 
 def normalize_and_tokenize_text(text: str) -> List[str]:
@@ -121,7 +125,11 @@ class ScienceBeamParserError(RuntimeError):
     pass
 
 
-class InvalidSourceDocumentScienceBeamParserError(ScienceBeamParserError):
+class UnsupportedRequestMediaTypeScienceBeamParserError(ScienceBeamParserError):
+    pass
+
+
+class UnsupportedResponseMediaTypeScienceBeamParserError(ScienceBeamParserError):
     pass
 
 
@@ -217,7 +225,7 @@ class _ScienceBeamParserSessionDerivative:
 
     @property
     def parser(self) -> ScienceBeamBaseParser:
-        return self.parser
+        return self.session.parser
 
     @property
     def temp_dir(self) -> str:
@@ -263,10 +271,20 @@ class ScienceBeamParserSessionParsedSemanticDocument(_ScienceBeamParserSessionDe
         LOGGER.info('serializing xml, took=%.3fs', end - start)
         return filename
 
+    def get_supported_response_media_type(self) -> Set[str]:
+        return {
+            MediaTypes.TEI_XML,
+            MediaTypes.TEI_ZIP,
+            MediaTypes.JATS_XML,
+            MediaTypes.JATS_ZIP
+        }
+
     def get_local_file_for_response_media_type(
         self,
         response_media_type: str
     ) -> str:
+        if response_media_type not in self.get_supported_response_media_type():
+            raise UnsupportedResponseMediaTypeScienceBeamParserError()
         tei_document = get_tei_for_semantic_document(
             self.semantic_document
         )
@@ -290,7 +308,7 @@ class ScienceBeamParserSessionParsedSemanticDocument(_ScienceBeamParserSessionDe
         return local_xml_filename
 
 
-class ScienceBeamParserSessionParsedDocument(_ScienceBeamParserSessionDerivative):
+class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDerivative):
     def __init__(
         self,
         session: 'ScienceBeamParserBaseSession',
@@ -360,6 +378,11 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
         super().__init__(session=session)
         self.source_path = source_path
         self.source_media_type = source_media_type
+        self.lazy_pdf_path = LazyLoaded[str](self._get_or_convert_to_pdf_path)
+        self.lazy_alto_xml_path = LazyLoaded[str](self._parse_to_alto_xml)
+        self.lazy_parsed_layout_document = LazyLoaded[
+            ScienceBeamParserSessionParsedLayoutDocument
+        ](self._parse_to_parsed_layout_document)
 
     @property
     def parser(self) -> ScienceBeamBaseParser:
@@ -385,7 +408,7 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
     def document_request_parameters(self) -> DocumentRequestParameters:
         return self.session.document_request_parameters
 
-    def get_pdf_path(
+    def _get_or_convert_to_pdf_path(
         self
     ) -> str:
         LOGGER.info(
@@ -396,7 +419,7 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
         if self.source_media_type in DOC_TO_PDF_SUPPORTED_MEDIA_TYPES:
             if not self.doc_to_pdf_enabled:
                 LOGGER.info('doc to pdf not enabled')
-                raise InvalidSourceDocumentScienceBeamParserError(
+                raise UnsupportedRequestMediaTypeScienceBeamParserError(
                     'doc to pdf not enabled'
                 )
             target_temp_file = self.doc_converter_wrapper.convert(
@@ -405,33 +428,31 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
             )
             return target_temp_file
         if self.source_media_type != MediaTypes.PDF:
-            raise InvalidSourceDocumentScienceBeamParserError(
+            raise UnsupportedRequestMediaTypeScienceBeamParserError(
                 'unsupported media type: %r' % self.source_media_type
             )
         return self.source_path
 
-    def get_layout_document_for_pdf(
-        self,
-        pdf_path: str
-    ) -> LayoutDocument:
-        output_path = self.temp_path / 'temp.lxml'
+    def _parse_to_alto_xml(self) -> str:
+        output_path = os.path.join(self.temp_dir, TEMP_ALTO_XML_FILENAME)
         self.pdfalto_wrapper.convert_pdf_to_pdfalto_xml(
-            str(pdf_path),
+            str(self.lazy_pdf_path.get()),
             str(output_path),
             first_page=self.document_request_parameters.first_page,
             last_page=self.document_request_parameters.last_page
         )
-        root = etree.parse(str(output_path))
+        return output_path
+
+    def _parse_to_parsed_layout_document(
+        self
+    ) -> ScienceBeamParserSessionParsedLayoutDocument:
+        pdf_path = self.lazy_pdf_path.get()
+        root = etree.parse(self.lazy_alto_xml_path.get())
         layout_document = normalize_layout_document(
             parse_alto_root(root),
             preserve_empty_pages=True
         )
-        return layout_document
-
-    def get_parsed_document(self) -> ScienceBeamParserSessionParsedDocument:
-        pdf_path = self.get_pdf_path()
-        layout_document = self.get_layout_document_for_pdf(pdf_path)
-        return ScienceBeamParserSessionParsedDocument(
+        return ScienceBeamParserSessionParsedLayoutDocument(
             self.session,
             layout_document=layout_document,
             pdf_path=pdf_path
@@ -442,8 +463,10 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
         response_media_type: str
     ) -> str:
         if response_media_type == MediaTypes.PDF:
-            return self.get_pdf_path()
-        return self.get_parsed_document().get_local_file_for_response_media_type(
+            return self.lazy_pdf_path.get()
+        if response_media_type == MediaTypes.ALTO_XML:
+            return self.lazy_alto_xml_path.get()
+        return self.lazy_parsed_layout_document.get().get_local_file_for_response_media_type(
             response_media_type
         )
 
