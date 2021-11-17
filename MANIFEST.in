@@ -1,5 +1,4 @@
 graft doc
-graft sciencebeam_parser
 include requirements.txt
 include requirements.*.txt
 prune tests
