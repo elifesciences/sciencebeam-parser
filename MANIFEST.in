@@ -1,0 +1,5 @@
+graft doc
+include requirements.txt
+include requirements.*.txt
+prune tests
+prune .*

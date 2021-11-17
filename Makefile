@@ -117,6 +117,10 @@ dev-end-to-end:
 		> /dev/null
 
 
+dev-build-dist:
+	$(PYTHON) setup.py sdist
+
+
 run:
 	$(PYTHON) -m sciencebeam_parser $(ARGS)
 
