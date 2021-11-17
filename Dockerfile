@@ -105,7 +105,7 @@ COPY tests ./tests
 COPY test-data ./test-data
 COPY scripts/dev ./scripts/dev
 COPY doc ./doc
-COPY .flake8 .pylintrc setup.py README.md ./
+COPY .flake8 .pylintrc setup.py MANIFEST.in README.md ./
 
 # temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
 ENV LC_ALL=C
