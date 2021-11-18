@@ -1,5 +1,5 @@
 layoutparser[effdet]==0.3.2
-matplotlib<3.5.0
+matplotlib<3.6.0
 -f https://download.pytorch.org/whl/torch_stable.html
 torch==1.9.1+cpu
 torchvision==0.10.1+cpu
