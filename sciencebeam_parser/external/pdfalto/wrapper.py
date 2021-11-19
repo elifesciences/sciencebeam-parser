@@ -1,10 +1,9 @@
 import logging
 import os
 import stat
-import sys
 from typing import Optional
 
-from subprocess import Popen, STDOUT
+from sciencebeam_parser.utils.background_process import exec_with_logging
 
 
 LOGGER = logging.getLogger(__name__)
@@ -45,5 +44,5 @@ class PdfAltoWrapper:
         command = self.get_command(*args, **kwargs)
         LOGGER.info('command: %s', command)
         LOGGER.info('command str: %s', ' '.join(command))
-        with Popen(command, stdout=sys.stderr, stderr=STDOUT) as _:
+        with exec_with_logging(command, logging_prefix='pdfalto') as _:
             pass
