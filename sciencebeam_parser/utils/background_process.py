@@ -40,6 +40,12 @@ class BackgroundProcess:
             self=self
         )
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, value, traceback):
+        self.process.__exit__(exc_type, value, traceback)
+
     def is_running(self) -> bool:
         self.process.poll()
         return self.returncode is None
