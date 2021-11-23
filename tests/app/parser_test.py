@@ -303,7 +303,7 @@ class TestScienceBeamParser:
             )
             assert Path(result_file).read_bytes() == JATS_XML_CONTENT_1
 
-        def test_should_not_convert_pdf_to_tei_zip(
+        def test_should_not_convert_pdf_to_tei_zip(  # pylint: disable=too-many-locals
             self,
             sciencebeam_parser_session: ScienceBeamParserSession,
             get_tei_for_semantic_document_mock: MagicMock,
@@ -349,7 +349,7 @@ class TestScienceBeamParser:
             full_text_processor_config = full_text_processor_kwargs['config']
             assert full_text_processor_config.extract_graphic_assets is True
 
-        def test_should_not_convert_pdf_to_jats_zip(
+        def test_should_not_convert_pdf_to_jats_zip(  # pylint: disable=too-many-locals
             self,
             sciencebeam_parser_session: ScienceBeamParserSession,
             get_tei_for_semantic_document_mock: MagicMock,
