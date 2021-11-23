@@ -57,6 +57,10 @@ DOC_TO_PDF_SUPPORTED_MEDIA_TYPES = {
 }
 
 
+JATS_MEDIA_TYPES = {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}
+ASSET_ZIP_MEDIA_TYPES = {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}
+
+
 def normalize_and_tokenize_text(text: str) -> List[str]:
     return get_tokenized_tokens(
         normalize_text(text),
@@ -317,13 +321,13 @@ class ScienceBeamParserSessionParsedSemanticDocument(_ScienceBeamParserSessionDe
         )
         xml_root = tei_document.root
         relative_xml_filename = 'tei.xml'
-        if response_media_type in {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}:
+        if response_media_type in JATS_MEDIA_TYPES:
             xml_root = self._get_tei_to_jats_xml_root(xml_root)
             relative_xml_filename = 'jats.xml'
         local_xml_filename = os.path.join(self.temp_dir, relative_xml_filename)
         self._serialize_xml_to_file(xml_root, local_xml_filename)
         LOGGER.debug('local_xml_filename: %r', local_xml_filename)
-        if response_media_type in {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}:
+        if response_media_type in ASSET_ZIP_MEDIA_TYPES:
             zip_filename = os.path.join(self.temp_dir, 'results.zip')
             create_asset_zip_for_semantic_document(
                 zip_filename,
@@ -390,6 +394,9 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
     ) -> str:
         if response_media_type == MediaTypes.PDF:
             return self.pdf_path
+        if response_media_type in ASSET_ZIP_MEDIA_TYPES:
+            assert self.session.fulltext_processor_config.extract_graphic_assets, \
+                "extract_graphic_assets required for asset zip"
         return self.get_parsed_semantic_document().get_local_file_for_response_media_type(
             response_media_type
         )
