@@ -307,6 +307,7 @@ class TestScienceBeamParser:
             self,
             sciencebeam_parser_session: ScienceBeamParserSession,
             get_tei_for_semantic_document_mock: MagicMock,
+            full_text_processor_class_mock: MagicMock,
             full_text_processor_mock: MagicMock,
             request_temp_path: Path
         ):
@@ -344,11 +345,15 @@ class TestScienceBeamParser:
                 assert tei_xml_data == TEI_XML_CONTENT_1
                 image_data = zip_file.read(graphic_relative_path)
                 assert image_data == IMAGE_DATA_1
+            full_text_processor_kwargs = full_text_processor_class_mock.call_args[1]
+            full_text_processor_config = full_text_processor_kwargs['config']
+            assert full_text_processor_config.extract_graphic_assets is True
 
         def test_should_not_convert_pdf_to_jats_zip(
             self,
             sciencebeam_parser_session: ScienceBeamParserSession,
             get_tei_for_semantic_document_mock: MagicMock,
+            full_text_processor_class_mock: MagicMock,
             full_text_processor_mock: MagicMock,
             xslt_transformer_wrapper_mock: MagicMock,
             request_temp_path: Path
@@ -390,3 +395,6 @@ class TestScienceBeamParser:
                 assert jats_xml_data == JATS_XML_CONTENT_1
                 image_data = zip_file.read(graphic_relative_path)
                 assert image_data == IMAGE_DATA_1
+            full_text_processor_kwargs = full_text_processor_class_mock.call_args[1]
+            full_text_processor_config = full_text_processor_kwargs['config']
+            assert full_text_processor_config.extract_graphic_assets is True
