@@ -377,11 +377,14 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
 
     def get_parsed_semantic_document(
         self,
+        fulltext_processor_config: Optional[FullTextProcessorConfig] = None
     ) -> ScienceBeamParserSessionParsedSemanticDocument:
+        if fulltext_processor_config is None:
+            fulltext_processor_config = self.session.fulltext_processor_config
         fulltext_processor = FullTextProcessor(
             self.fulltext_models,
             app_features_context=self.app_features_context,
-            config=self.session.fulltext_processor_config
+            config=fulltext_processor_config
         )
         return ScienceBeamParserSessionParsedSemanticDocument(
             self.session,
@@ -394,11 +397,20 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
     ) -> str:
         if response_media_type == MediaTypes.PDF:
             return self.pdf_path
+        fulltext_processor_config = self.session.fulltext_processor_config
         if response_media_type in ASSET_ZIP_MEDIA_TYPES:
-            assert self.session.fulltext_processor_config.extract_graphic_assets, \
+            fulltext_processor_config = (
+                fulltext_processor_config
+                ._replace(extract_graphic_assets=True)
+            )
+            assert fulltext_processor_config.extract_graphic_assets, \
                 "extract_graphic_assets required for asset zip"
-        return self.get_parsed_semantic_document().get_local_file_for_response_media_type(
-            response_media_type
+        return (
+            self.get_parsed_semantic_document(
+                fulltext_processor_config
+            ).get_local_file_for_response_media_type(
+                response_media_type
+            )
         )
 
 
