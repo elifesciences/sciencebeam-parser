@@ -111,7 +111,8 @@ def create_asset_zip_for_semantic_document(
             relative_xml_filename
         )
         for semantic_graphic in semantic_graphic_list:
-            assert semantic_graphic.relative_path
+            assert semantic_graphic.relative_path, \
+                "graphic relative_path missing, ensure extract_graphic_assets was enabled"
             layout_graphic = semantic_graphic.layout_graphic
             assert layout_graphic
             assert layout_graphic.local_file_path
