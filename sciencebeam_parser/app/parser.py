@@ -401,7 +401,10 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
         if response_media_type in ASSET_ZIP_MEDIA_TYPES:
             fulltext_processor_config = (
                 fulltext_processor_config
-                ._replace(extract_graphic_assets=True)
+                ._replace(
+                    extract_graphic_assets=True,
+                    extract_graphic_bounding_boxes=True
+                )
             )
             assert fulltext_processor_config.extract_graphic_assets, \
                 "extract_graphic_assets required for asset zip"
