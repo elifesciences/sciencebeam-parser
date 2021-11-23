@@ -57,6 +57,10 @@ DOC_TO_PDF_SUPPORTED_MEDIA_TYPES = {
 }
 
 
+JATS_MEDIA_TYPES = {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}
+ASSET_ZIP_MEDIA_TYPES = {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}
+
+
 def normalize_and_tokenize_text(text: str) -> List[str]:
     return get_tokenized_tokens(
         normalize_text(text),
@@ -111,7 +115,8 @@ def create_asset_zip_for_semantic_document(
             relative_xml_filename
         )
         for semantic_graphic in semantic_graphic_list:
-            assert semantic_graphic.relative_path
+            assert semantic_graphic.relative_path, \
+                "graphic relative_path missing, ensure extract_graphic_assets was enabled"
             layout_graphic = semantic_graphic.layout_graphic
             assert layout_graphic
             assert layout_graphic.local_file_path
@@ -316,13 +321,13 @@ class ScienceBeamParserSessionParsedSemanticDocument(_ScienceBeamParserSessionDe
         )
         xml_root = tei_document.root
         relative_xml_filename = 'tei.xml'
-        if response_media_type in {MediaTypes.JATS_XML, MediaTypes.JATS_ZIP}:
+        if response_media_type in JATS_MEDIA_TYPES:
             xml_root = self._get_tei_to_jats_xml_root(xml_root)
             relative_xml_filename = 'jats.xml'
         local_xml_filename = os.path.join(self.temp_dir, relative_xml_filename)
         self._serialize_xml_to_file(xml_root, local_xml_filename)
         LOGGER.debug('local_xml_filename: %r', local_xml_filename)
-        if response_media_type in {MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP}:
+        if response_media_type in ASSET_ZIP_MEDIA_TYPES:
             zip_filename = os.path.join(self.temp_dir, 'results.zip')
             create_asset_zip_for_semantic_document(
                 zip_filename,
@@ -372,11 +377,14 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
 
     def get_parsed_semantic_document(
         self,
+        fulltext_processor_config: Optional[FullTextProcessorConfig] = None
     ) -> ScienceBeamParserSessionParsedSemanticDocument:
+        if fulltext_processor_config is None:
+            fulltext_processor_config = self.session.fulltext_processor_config
         fulltext_processor = FullTextProcessor(
             self.fulltext_models,
             app_features_context=self.app_features_context,
-            config=self.session.fulltext_processor_config
+            config=fulltext_processor_config
         )
         return ScienceBeamParserSessionParsedSemanticDocument(
             self.session,
@@ -389,8 +397,23 @@ class ScienceBeamParserSessionParsedLayoutDocument(_ScienceBeamParserSessionDeri
     ) -> str:
         if response_media_type == MediaTypes.PDF:
             return self.pdf_path
-        return self.get_parsed_semantic_document().get_local_file_for_response_media_type(
-            response_media_type
+        fulltext_processor_config = self.session.fulltext_processor_config
+        if response_media_type in ASSET_ZIP_MEDIA_TYPES:
+            fulltext_processor_config = (
+                fulltext_processor_config
+                ._replace(
+                    extract_graphic_assets=True,
+                    extract_graphic_bounding_boxes=True
+                )
+            )
+            assert fulltext_processor_config.extract_graphic_assets, \
+                "extract_graphic_assets required for asset zip"
+        return (
+            self.get_parsed_semantic_document(
+                fulltext_processor_config
+            ).get_local_file_for_response_media_type(
+                response_media_type
+            )
         )
 
 
