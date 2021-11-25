@@ -6,7 +6,6 @@ from lxml.builder import ElementMaker
 
 from sciencebeam_parser.document.layout_document import (
     LayoutDocument,
-    LayoutLine,
     LayoutToken,
     join_layout_tokens
 )
@@ -33,14 +32,6 @@ class SegmentationTeiTrainingDataGenerator:
         layout_tokens: Iterable[LayoutToken]
     ) -> Iterable[Union[str, etree.ElementBase]]:
         yield join_layout_tokens(layout_tokens)
-        yield TEI_E.lb()
-        yield '\n'
-
-    def get_training_tei_children_for_layout_line(
-        self,
-        layout_line: LayoutLine
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        yield layout_line.text
         yield TEI_E.lb()
         yield '\n'
 
@@ -99,6 +90,8 @@ class SegmentationTeiTrainingDataGenerator:
                 child
                 for block in layout_document.iter_all_blocks()
                 for line in block.lines
-                for child in self.get_training_tei_children_for_layout_line(line)
+                for child in self.iter_training_tei_children_for_line_layout_tokens(
+                    line.tokens
+                )
             ])
         )
