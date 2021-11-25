@@ -93,12 +93,9 @@ class SegmentationTeiTrainingDataGenerator:
         layout_document: LayoutDocument
     ) -> etree.ElementBase:
         return TEI_E.tei(
-            TEI_E.text(*[
-                child
-                for block in layout_document.iter_all_blocks()
-                for line in block.lines
-                for child in self.iter_training_tei_children_for_line_layout_tokens(
-                    line.tokens
+            TEI_E.text(*list(
+                self.iter_training_tei_children_for_line_layout_lines(
+                    layout_document.iter_all_lines()
                 )
-            ])
+            ))
         )
