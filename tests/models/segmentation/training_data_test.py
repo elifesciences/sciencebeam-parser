@@ -22,7 +22,7 @@ class TestSegmentationTeiTrainingDataGenerator:
         )
         text_nodes = xml_root.xpath('./text')
         assert len(text_nodes) == 1
-        assert get_text_content(text_nodes[0]) == TEXT_1
+        assert get_text_content(text_nodes[0]).rstrip() == TEXT_1
 
     def test_should_add_line_feeds(self):
         training_data_generator = SegmentationTeiTrainingDataGenerator()
@@ -35,4 +35,20 @@ class TestSegmentationTeiTrainingDataGenerator:
         )
         text_nodes = xml_root.xpath('./text')
         assert len(text_nodes) == 1
-        assert get_text_content(text_nodes[0]) == '\n'.join([TEXT_1, TEXT_2])
+        assert get_text_content(text_nodes[0]).rstrip() == '\n'.join([TEXT_1, TEXT_2])
+
+    def test_should_lb_elements_before_line_feeds(self):
+        training_data_generator = SegmentationTeiTrainingDataGenerator()
+        layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
+            LayoutLine.for_text(TEXT_1, tail_whitespace='\n'),
+            LayoutLine.for_text(TEXT_2, tail_whitespace='\n')
+        ])])
+        xml_root = training_data_generator.get_training_tei_xml_for_layout_document(
+            layout_document
+        )
+        text_nodes = xml_root.xpath('./text')
+        assert len(text_nodes) == 1
+        lb_nodes = text_nodes[0].xpath('lb')
+        assert len(lb_nodes) == 2
+        assert lb_nodes[0].getparent().text == TEXT_1
+        assert lb_nodes[0].tail == '\n' + TEXT_2
