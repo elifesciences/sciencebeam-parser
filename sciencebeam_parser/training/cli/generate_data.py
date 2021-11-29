@@ -47,7 +47,7 @@ def run(args: argparse.Namespace):
     training_data_generator = SegmentationTeiTrainingDataGenerator()
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(args.source_path, MediaTypes.PDF)
-        layout_document = source.get_parsed_layout_document().layout_document
+        layout_document = source.get_layout_document()
         source_basename = os.path.basename(args.source_path)
         source_name = os.path.splitext(source_basename)[0]
         tei_file_path = output_path.joinpath(

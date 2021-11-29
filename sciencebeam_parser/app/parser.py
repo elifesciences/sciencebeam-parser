@@ -510,6 +510,9 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
     def get_parsed_layout_document(self) -> ScienceBeamParserSessionParsedLayoutDocument:
         return self.lazy_parsed_layout_document.get()
 
+    def get_layout_document(self) -> LayoutDocument:
+        return self.get_parsed_layout_document().layout_document
+
     def get_local_file_for_response_media_type(
         self,
         response_media_type: str
