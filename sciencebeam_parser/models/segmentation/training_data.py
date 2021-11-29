@@ -49,6 +49,8 @@ def iter_layout_lines_from_layout_tokens(
 
 
 class SegmentationTeiTrainingDataGenerator:
+    DEFAULT_TEI_FILENAME_SUFFIX = '.segmentation.tei.xml'
+
     def iter_training_tei_children_for_line_layout_tokens(
         self,
         layout_tokens: Iterable[LayoutToken]

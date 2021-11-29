@@ -1,8 +1,14 @@
 import argparse
 import logging
+import os
 from pathlib import Path
 from typing import List, Optional
 
+from lxml import etree
+
+from sciencebeam_parser.models.segmentation.training_data import (
+    SegmentationTeiTrainingDataGenerator
+)
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.app.parser import ScienceBeamParser
@@ -43,9 +49,21 @@ def run(args: argparse.Namespace):
     sciencebeam_parser = ScienceBeamParser.from_config(config)
     LOGGER.info('output_path: %r', output_path)
     output_path.mkdir(parents=True, exist_ok=True)
+    training_data_generator = SegmentationTeiTrainingDataGenerator()
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(args.source_path, MediaTypes.PDF)
-        _layout_document = source.lazy_parsed_layout_document.get().layout_document
+        layout_document = source.lazy_parsed_layout_document.get().layout_document
+        source_basename = os.path.basename(args.source_path)
+        source_name = os.path.splitext(source_basename)[0]
+        tei_file_path = output_path.joinpath(
+            source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        training_tei_root = training_data_generator.get_training_tei_xml_for_layout_document(
+            layout_document=layout_document
+        )
+        tei_file_path.write_bytes(
+            etree.tostring(training_tei_root, pretty_print=True)
+        )
 
 
 def main(argv: Optional[List[str]] = None):

@@ -1,5 +1,9 @@
+import os
 from pathlib import Path
 
+from sciencebeam_parser.models.segmentation.training_data import (
+    SegmentationTeiTrainingDataGenerator
+)
 from sciencebeam_parser.training.cli.generate_data import (
     main
 )
@@ -20,3 +24,9 @@ class TestMain:
             f'--output-path={output_path}'
         ])
         assert output_path.exists()
+        example_name = os.path.splitext(os.path.basename(MINIMAL_EXAMPLE_PDF))[0]
+        expected_segmentation_tei_path = (
+            output_path /
+            (example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX)
+        )
+        assert expected_segmentation_tei_path.exists()
