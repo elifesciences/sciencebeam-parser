@@ -23,11 +23,6 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         'ScienceBeam Parser: Generate Training Data'
     )
     parser.add_argument(
-        '--model',
-        type=str,
-        required=True
-    )
-    parser.add_argument(
         '--source-path',
         type=str,
         required=True

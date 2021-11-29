@@ -19,7 +19,6 @@ class TestMain:
     ):
         output_path = tmp_path / 'generated-data'
         main([
-            '--model="segmentation"',
             f'--source-path={MINIMAL_EXAMPLE_PDF}',
             f'--output-path={output_path}'
         ])
