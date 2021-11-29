@@ -40,15 +40,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def run(args: argparse.Namespace):  # pylint: disable=too-many-locals
-    LOGGER.info('args: %r', args)
-    output_path = Path(args.output_path)
-    config = AppConfig.load_yaml(
-        DEFAULT_CONFIG_FILE
-    )
-    sciencebeam_parser = ScienceBeamParser.from_config(config)
-    LOGGER.info('output_path: %r', output_path)
-    output_path.mkdir(parents=True, exist_ok=True)
+def generate_training_data_for_source_filename(
+    source_filename: str,
+    output_path: str,
+    sciencebeam_parser: ScienceBeamParser
+):
     data_generator = SegmentationDataGenerator(
         document_features_context=DocumentFeaturesContext(
             sciencebeam_parser.app_features_context
@@ -56,34 +52,52 @@ def run(args: argparse.Namespace):  # pylint: disable=too-many-locals
         use_first_token_of_block=True
     )
     training_data_generator = SegmentationTeiTrainingDataGenerator()
+    with sciencebeam_parser.get_new_session() as session:
+        source = session.get_source(source_filename, MediaTypes.PDF)
+        layout_document = source.get_layout_document()
+        source_basename = os.path.basename(source_filename)
+        source_name = os.path.splitext(source_basename)[0]
+        tei_file_path = os.path.join(
+            output_path,
+            source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        data_file_path = os.path.join(
+            output_path,
+            source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        model_data_list = list(data_generator.iter_model_data_for_layout_document(
+            layout_document
+        ))
+        training_tei_root = (
+            training_data_generator
+            .get_training_tei_xml_for_model_data_iterable(
+                model_data_list
+            )
+        )
+        Path(tei_file_path).write_bytes(
+            etree.tostring(training_tei_root, pretty_print=True)
+        )
+        Path(data_file_path).write_text('\n'.join(
+            model_data.data_line
+            for model_data in model_data_list
+        ), encoding='utf-8')
+
+
+def run(args: argparse.Namespace):
+    LOGGER.info('args: %r', args)
+    output_path = args.output_path
+    config = AppConfig.load_yaml(
+        DEFAULT_CONFIG_FILE
+    )
+    sciencebeam_parser = ScienceBeamParser.from_config(config)
+    LOGGER.info('output_path: %r', output_path)
+    os.makedirs(output_path, exist_ok=True)
     for source_filename in glob(args.source_path):
-        with sciencebeam_parser.get_new_session() as session:
-            source = session.get_source(source_filename, MediaTypes.PDF)
-            layout_document = source.get_layout_document()
-            source_basename = os.path.basename(source_filename)
-            source_name = os.path.splitext(source_basename)[0]
-            tei_file_path = output_path.joinpath(
-                source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
-            )
-            data_file_path = output_path.joinpath(
-                source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
-            model_data_list = list(data_generator.iter_model_data_for_layout_document(
-                layout_document
-            ))
-            training_tei_root = (
-                training_data_generator
-                .get_training_tei_xml_for_model_data_iterable(
-                    model_data_list
-                )
-            )
-            tei_file_path.write_bytes(
-                etree.tostring(training_tei_root, pretty_print=True)
-            )
-            data_file_path.write_text('\n'.join(
-                model_data.data_line
-                for model_data in model_data_list
-            ), encoding='utf-8')
+        generate_training_data_for_source_filename(
+            source_filename,
+            output_path=output_path,
+            sciencebeam_parser=sciencebeam_parser
+        )
 
 
 def main(argv: Optional[List[str]] = None):
