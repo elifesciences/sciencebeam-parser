@@ -1,4 +1,4 @@
-from sciencebeam_parser.training.generate_data import (
+from sciencebeam_parser.training.cli.generate_data import (
     main
 )
 

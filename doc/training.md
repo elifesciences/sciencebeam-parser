@@ -22,7 +22,7 @@ The training data for the sequential models follows the GROBID training data for
 ### Generate training data for the `segmentation` model
 
 ```bash
-python -m sciencebeam_parser.training.generate_data \
+python -m sciencebeam_parser.training.cli.generate_data \
     --model="segmentation" \
     --source-path="test-data/minimal-example.pdf" \
     --output-path="./data/generated-training-data"
