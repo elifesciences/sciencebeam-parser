@@ -5,6 +5,9 @@ from sciencebeam_parser.training.cli.generate_data import (
 )
 
 
+MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
+
+
 class TestMain:
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
@@ -13,7 +16,7 @@ class TestMain:
         output_path = tmp_path / 'generated-data'
         main([
             '--model="segmentation"',
-            '--source-path="test-data/minimal-example.pdf"',
+            f'--source-path={MINIMAL_EXAMPLE_PDF}',
             f'--output-path={output_path}'
         ])
         assert output_path.exists()
