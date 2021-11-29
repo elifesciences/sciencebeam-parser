@@ -24,8 +24,11 @@ class TestMain:
         ])
         assert output_path.exists()
         example_name = os.path.splitext(os.path.basename(MINIMAL_EXAMPLE_PDF))[0]
-        expected_segmentation_tei_path = (
-            output_path /
-            (example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX)
+        expected_segmentation_tei_path = output_path.joinpath(
+            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_segmentation_data_path = output_path.joinpath(
+            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
         )
         assert expected_segmentation_tei_path.exists()
+        assert expected_segmentation_data_path.exists()

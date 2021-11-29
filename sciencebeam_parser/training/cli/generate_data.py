@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import List, Optional
 
 from lxml import etree
+from sciencebeam_parser.models.data import DocumentFeaturesContext
 
+from sciencebeam_parser.models.segmentation.data import (
+    SegmentationDataGenerator
+)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -44,6 +48,12 @@ def run(args: argparse.Namespace):
     sciencebeam_parser = ScienceBeamParser.from_config(config)
     LOGGER.info('output_path: %r', output_path)
     output_path.mkdir(parents=True, exist_ok=True)
+    data_generator = SegmentationDataGenerator(
+        document_features_context=DocumentFeaturesContext(
+            sciencebeam_parser.app_features_context
+        ),
+        use_first_token_of_block=True
+    )
     training_data_generator = SegmentationTeiTrainingDataGenerator()
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(args.source_path, MediaTypes.PDF)
@@ -53,12 +63,22 @@ def run(args: argparse.Namespace):
         tei_file_path = output_path.joinpath(
             source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         )
-        training_tei_root = training_data_generator.get_training_tei_xml_for_layout_document(
-            layout_document=layout_document
+        data_file_path = output_path.joinpath(
+            source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        model_data_list = list(data_generator.iter_model_data_for_layout_document(
+            layout_document
+        ))
+        training_tei_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            model_data_list
         )
         tei_file_path.write_bytes(
             etree.tostring(training_tei_root, pretty_print=True)
         )
+        data_file_path.write_text('\n'.join(
+            model_data.data_line
+            for model_data in model_data_list
+        ), encoding='utf-8')
 
 
 def main(argv: Optional[List[str]] = None):

@@ -50,6 +50,7 @@ def iter_layout_lines_from_layout_tokens(
 
 class SegmentationTeiTrainingDataGenerator:
     DEFAULT_TEI_FILENAME_SUFFIX = '.segmentation.tei.xml'
+    DEFAULT_DATA_FILENAME_SUFFIX = '.segmentation'
 
     def iter_training_tei_children_for_line_layout_tokens(
         self,
