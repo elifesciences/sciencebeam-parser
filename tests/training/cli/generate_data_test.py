@@ -10,6 +10,7 @@ from sciencebeam_parser.training.cli.generate_data import (
 
 
 MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
+MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
 
 
 class TestMain:
@@ -19,7 +20,7 @@ class TestMain:
     ):
         output_path = tmp_path / 'generated-data'
         main([
-            f'--source-path={MINIMAL_EXAMPLE_PDF}',
+            f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
             f'--output-path={output_path}'
         ])
         assert output_path.exists()

@@ -23,6 +23,6 @@ The training data for the sequential models follows the GROBID training data for
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \
-    --source-path="test-data/minimal-example.pdf" \
+    --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
 ```
