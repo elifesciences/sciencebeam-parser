@@ -21,9 +21,21 @@ LOGGER = logging.getLogger(__name__)
 TEI_E = ElementMaker()
 
 
+# based on:
+# https://github.com/kermitt2/grobid/blob/0.7.0/grobid-core/src/main/java/org/grobid/core/engines/Segmentation.java
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
+    '<other>': ['text'],
     '<header>': ['text', 'front'],
-    '<body>': ['text', 'body']
+    '<headnote>': ['note[@place="headnote"]'],
+    '<footnote>': ['note[@place="footnote"]'],
+    '<marginnote>': ['note[@place="marginnote"]'],
+    '<page>': ['page'],
+    '<references>': ['listBibl'],
+    '<body>': ['text', 'body'],
+    '<cover>': ['text', 'titlePage'],
+    'toc': ['div[@type="toc"]'],
+    'annex': ['div[@type="annex"]'],
+    'acknowledgment': ['div[@type="acknowledgment"]'],
 }
 
 
