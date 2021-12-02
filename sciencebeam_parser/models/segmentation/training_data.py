@@ -3,6 +3,7 @@ from typing import Iterable, List, Optional, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
+from sciencebeam_parser.models.model import get_split_prefix_label
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
@@ -22,6 +23,7 @@ TEI_E = ElementMaker()
 
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<front>': ['text', 'front'],
+    '<header>': ['text', 'front'],
     '<body>': ['text', 'body']
 }
 
@@ -110,9 +112,10 @@ class SegmentationTeiTrainingDataGenerator:
         default_path = xml_writer.current_path
         pending_text = ''
         for model_data in model_data_iterable:
-            label = get_model_data_label(model_data)
+            prefixed_label = get_model_data_label(model_data)
+            _prefix, label = get_split_prefix_label(prefixed_label or '')
             xml_element_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '', default_path)
-            LOGGER.info('label: %r (%r)', label, xml_element_path)
+            LOGGER.debug('label: %r (%r)', label, xml_element_path)
             if xml_writer.current_path != xml_element_path:
                 xml_writer.require_path(default_path)
             xml_writer.append_text(pending_text)
