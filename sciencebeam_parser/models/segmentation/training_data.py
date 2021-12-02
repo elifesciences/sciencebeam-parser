@@ -57,7 +57,7 @@ class SegmentationTeiTrainingDataGenerator:
         layout_tokens: Iterable[LayoutToken]
     ) -> Iterable[Union[str, etree.ElementBase]]:
         yield join_layout_tokens(layout_tokens)
-        yield TEI_E.lb()
+        yield TEI_E('lb')
         yield '\n'
 
     def iter_training_tei_children_for_line_layout_lines(
@@ -85,20 +85,28 @@ class SegmentationTeiTrainingDataGenerator:
         self,
         model_data_iterable: Iterable[LayoutModelData]
     ) -> etree.ElementBase:
-        return TEI_E.tei(
-            TEI_E.text(*list(
-                self.iter_tei_child_for_model_data_iterable(model_data_iterable)
-            ))
+        return TEI_E(
+            'tei',
+            TEI_E(
+                'text',
+                *list(
+                    self.iter_tei_child_for_model_data_iterable(model_data_iterable)
+                )
+            )
         )
 
     def get_training_tei_xml_for_layout_document(
         self,
         layout_document: LayoutDocument
     ) -> etree.ElementBase:
-        return TEI_E.tei(
-            TEI_E.text(*list(
-                self.iter_training_tei_children_for_line_layout_lines(
-                    layout_document.iter_all_lines()
+        return TEI_E(
+            'tei',
+            TEI_E(
+                'text',
+                *list(
+                    self.iter_training_tei_children_for_line_layout_lines(
+                        layout_document.iter_all_lines()
+                    )
                 )
-            ))
+            )
         )
