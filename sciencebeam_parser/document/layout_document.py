@@ -395,6 +395,13 @@ class LayoutDocument:
             for block in page.blocks
         )
 
+    def iter_all_lines(self) -> Iterable[LayoutLine]:
+        return (
+            line
+            for block in self.iter_all_blocks()
+            for line in block.lines
+        )
+
     def iter_all_tokens(self) -> Iterable[LayoutToken]:
         return (
             token

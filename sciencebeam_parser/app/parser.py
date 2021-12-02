@@ -507,6 +507,12 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
             pdf_path=pdf_path
         )
 
+    def get_parsed_layout_document(self) -> ScienceBeamParserSessionParsedLayoutDocument:
+        return self.lazy_parsed_layout_document.get()
+
+    def get_layout_document(self) -> LayoutDocument:
+        return self.get_parsed_layout_document().layout_document
+
     def get_local_file_for_response_media_type(
         self,
         response_media_type: str
@@ -515,7 +521,7 @@ class ScienceBeamParserSessionSource(_ScienceBeamParserSessionDerivative):
             return self.lazy_pdf_path.get()
         if response_media_type == MediaTypes.ALTO_XML:
             return self.lazy_alto_xml_path.get()
-        return self.lazy_parsed_layout_document.get().get_local_file_for_response_media_type(
+        return self.get_parsed_layout_document().get_local_file_for_response_media_type(
             response_media_type
         )
 
