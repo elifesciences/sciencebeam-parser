@@ -6,8 +6,9 @@ from glob import glob
 from typing import List, Optional
 
 from lxml import etree
+from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_parser.document.layout_document import LayoutDocument
-from sciencebeam_parser.models.data import DocumentFeaturesContext
+from sciencebeam_parser.models.data import DocumentFeaturesContext, LabeledLayoutModelData
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -50,7 +51,8 @@ def generate_training_data_for_layout_document(
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels
 ):
-    data_generator = fulltext_models.segmentation_model.get_data_generator(
+    segmentation_model = fulltext_models.segmentation_model
+    data_generator = segmentation_model.get_data_generator(
         document_features_context=document_features_context
     )
     training_data_generator = SegmentationTeiTrainingDataGenerator()
@@ -67,10 +69,32 @@ def generate_training_data_for_layout_document(
     model_data_list = list(data_generator.iter_model_data_for_layout_document(
         layout_document
     ))
+    data_lines = [
+        model_data.data_line
+        for model_data in model_data_list
+    ]
+    texts, features = load_data_crf_lines(data_lines)
+    texts = texts.tolist()
+    tag_result = segmentation_model.predict_labels(
+        texts=texts, features=features, output_format=None
+    )
+    LOGGER.debug('texts: %r', texts)
+    LOGGER.debug('data_lines: %r', data_lines)
+    LOGGER.debug('tag_result: %r', tag_result)
+    LOGGER.debug('model_data_list: %d', len(model_data_list))
+    LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+    assert len(tag_result[0]) == len(model_data_list)
+    labeled_model_data_list = [
+        LabeledLayoutModelData.from_model_data(
+            model_data,
+            label=label
+        )
+        for model_data, (_, label) in zip(model_data_list, tag_result[0])
+    ]
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
-            model_data_list
+            labeled_model_data_list
         )
     )
     Path(tei_file_path).write_bytes(
