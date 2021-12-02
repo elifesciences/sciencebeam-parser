@@ -22,7 +22,6 @@ TEI_E = ElementMaker()
 
 
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
-    '<front>': ['text', 'front'],
     '<header>': ['text', 'front'],
     '<body>': ['text', 'body']
 }
