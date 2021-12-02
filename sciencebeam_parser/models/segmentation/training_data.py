@@ -4,6 +4,7 @@ from typing import Iterable, List, Union
 from lxml import etree
 from lxml.builder import ElementMaker
 
+from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
     LayoutDocument,
     LayoutLine,
@@ -81,6 +82,29 @@ class SegmentationTeiTrainingDataGenerator:
             )
         ))
 
+    def write_xml_line_for_layout_tokens(
+        self,
+        xml_writer: XmlTreeWriter,
+        layout_tokens: Iterable[LayoutToken]
+    ):
+        xml_writer.append_text(join_layout_tokens(layout_tokens))
+        xml_writer.append(TEI_E('lb'))
+        xml_writer.append_text('\n')
+
+    def write_xml_for_model_data_iterable(
+        self,
+        xml_writer: XmlTreeWriter,
+        model_data_iterable: Iterable[LayoutModelData]
+    ):
+        for model_data in model_data_iterable:
+            for layout_line in iter_layout_lines_from_layout_tokens(
+                iter_tokens_from_model_data(model_data)
+            ):
+                self.write_xml_line_for_layout_tokens(
+                    xml_writer,
+                    layout_line.tokens
+                )
+
     def _get_training_tei_xml_for_children(
         self,
         children: Iterable[Union[str, etree.ElementBase]]
@@ -93,13 +117,23 @@ class SegmentationTeiTrainingDataGenerator:
             )
         )
 
+    def _get_xml_writer(self) -> XmlTreeWriter:
+        return XmlTreeWriter(
+            TEI_E('tei'),
+            element_maker=TEI_E
+        )
+
     def get_training_tei_xml_for_model_data_iterable(
         self,
         model_data_iterable: Iterable[LayoutModelData]
     ) -> etree.ElementBase:
-        return self._get_training_tei_xml_for_children(
-            self.iter_tei_child_for_model_data_iterable(model_data_iterable)
+        xml_writer = self._get_xml_writer()
+        xml_writer.require_path(['text'])
+        self.write_xml_for_model_data_iterable(
+            xml_writer,
+            model_data_iterable=model_data_iterable
         )
+        return xml_writer.root
 
     def get_training_tei_xml_for_layout_document(
         self,
