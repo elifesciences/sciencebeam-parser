@@ -38,6 +38,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=str,
         required=True
     )
+    parser.add_argument(
+        '--use-model',
+        action='store_true',
+        help='Use configured models to pre-annotate training data'
+    )
     return parser.parse_args(argv)
 
 
