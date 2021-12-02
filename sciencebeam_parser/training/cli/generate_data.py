@@ -8,13 +8,10 @@ from typing import List, Optional
 from lxml import etree
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.models.data import DocumentFeaturesContext
-
-from sciencebeam_parser.models.segmentation.data import (
-    SegmentationDataGenerator
-)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
+from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.app.parser import ScienceBeamParser
@@ -50,11 +47,11 @@ def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
     output_path: str,
     source_filename: str,
-    document_features_context: DocumentFeaturesContext
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels
 ):
-    data_generator = SegmentationDataGenerator(
-        document_features_context=document_features_context,
-        use_first_token_of_block=True
+    data_generator = fulltext_models.segmentation_model.get_data_generator(
+        document_features_context=document_features_context
     )
     training_data_generator = SegmentationTeiTrainingDataGenerator()
     source_basename = os.path.basename(source_filename)
@@ -99,7 +96,8 @@ def generate_training_data_for_source_filename(
             source_filename=source_filename,
             document_features_context=DocumentFeaturesContext(
                 sciencebeam_parser.app_features_context
-            )
+            ),
+            fulltext_models=sciencebeam_parser.fulltext_models
         )
 
 
