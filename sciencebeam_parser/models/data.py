@@ -42,6 +42,23 @@ class LayoutModelData:
         return self.data_line.split(' ', maxsplit=1)[0]
 
 
+@dataclass
+class LabeledLayoutModelData(LayoutModelData):
+    label: Optional[str] = None
+
+    @staticmethod
+    def from_model_data(
+        model_data: LayoutModelData,
+        label: Optional[str] = None
+    ) -> 'LabeledLayoutModelData':
+        return LabeledLayoutModelData(
+            data_line=model_data.data_line,
+            layout_line=model_data.layout_line,
+            layout_token=model_data.layout_token,
+            label=label
+        )
+
+
 class ModelDataGenerator(ABC):
     def iter_data_lines_for_xml_root(
         self,
