@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Sequence, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -23,19 +23,21 @@ TEI_E = ElementMaker()
 
 # based on:
 # https://github.com/kermitt2/grobid/blob/0.7.0/grobid-core/src/main/java/org/grobid/core/engines/Segmentation.java
+ROOT_TRAINING_XML_ELEMENT_PATH = ['text']
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
-    '<other>': ['text'],
-    '<header>': ['text', 'front'],
-    '<headnote>': ['note[@place="headnote"]'],
-    '<footnote>': ['note[@place="footnote"]'],
-    '<marginnote>': ['note[@place="marginnote"]'],
-    '<page>': ['page'],
-    '<references>': ['listBibl'],
-    '<body>': ['text', 'body'],
-    '<cover>': ['text', 'titlePage'],
-    'toc': ['div[@type="toc"]'],
-    'annex': ['div[@type="annex"]'],
-    'acknowledgment': ['div[@type="acknowledgment"]'],
+    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH,
+    'O': ROOT_TRAINING_XML_ELEMENT_PATH,
+    '<header>': ROOT_TRAINING_XML_ELEMENT_PATH + ['front'],
+    '<headnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="headnote"]'],
+    '<footnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="footnote"]'],
+    '<marginnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="marginnote"]'],
+    '<page>': ROOT_TRAINING_XML_ELEMENT_PATH + ['page'],
+    '<references>': ROOT_TRAINING_XML_ELEMENT_PATH + ['listBibl'],
+    '<body>': ROOT_TRAINING_XML_ELEMENT_PATH + ['body'],
+    '<cover>': ROOT_TRAINING_XML_ELEMENT_PATH + ['titlePage'],
+    'toc': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="toc"]'],
+    'annex': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="annex"]'],
+    'acknowledgment': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="acknowledgment"]'],
 }
 
 
@@ -72,6 +74,20 @@ def iter_layout_lines_from_layout_tokens(
         line_layout_tokens = [layout_token]
     if line_layout_tokens:
         yield LayoutLine(tokens=line_layout_tokens)
+
+
+def get_default_note_type_for_label(label: str) -> str:
+    return label.strip('<>')
+
+
+def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
+    if not label:
+        return ROOT_TRAINING_XML_ELEMENT_PATH
+    training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
+    if not training_xml_path:
+        note_type = get_default_note_type_for_label(label)
+        training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'div[@type="{note_type}"]']
+    return training_xml_path
 
 
 class SegmentationTeiTrainingDataGenerator:
@@ -125,7 +141,7 @@ class SegmentationTeiTrainingDataGenerator:
         for model_data in model_data_iterable:
             prefixed_label = get_model_data_label(model_data)
             _prefix, label = get_split_prefix_label(prefixed_label or '')
-            xml_element_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '', default_path)
+            xml_element_path = get_training_xml_path_for_label(label)
             LOGGER.debug('label: %r (%r)', label, xml_element_path)
             if xml_writer.current_path != xml_element_path:
                 xml_writer.require_path(default_path)

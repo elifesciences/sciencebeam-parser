@@ -1,4 +1,5 @@
 import logging
+from typing import Sequence, Tuple
 
 from lxml import etree
 
@@ -21,6 +22,30 @@ LOGGER = logging.getLogger(__name__)
 
 TEXT_1 = 'this is text 1'
 TEXT_2 = 'this is text 2'
+
+
+def get_labeled_model_data_list(
+    label_and_layout_line_list: Sequence[Tuple[str, LayoutLine]]
+) -> Sequence[LabeledLayoutModelData]:
+    data_generator = SegmentationDataGenerator(
+        DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+        use_first_token_of_block=True
+    )
+    labeled_model_data_list = []
+    for label, layout_line in label_and_layout_line_list:
+        layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[layout_line])])
+        labeled_model_data_list.extend([
+            LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=('B-' if index == 0 else 'I-') + label
+            )
+            for index, model_data in enumerate(
+                data_generator.iter_model_data_for_layout_document(
+                    layout_document
+                )
+            )
+        ])
+    return labeled_model_data_list
 
 
 class TestSegmentationTeiTrainingDataGenerator:
@@ -108,24 +133,9 @@ class TestSegmentationTeiTrainingDataGenerator:
                 line_descriptor=LayoutLineDescriptor(line_id=2)
             ))
         ]
-        data_generator = SegmentationDataGenerator(
-            DEFAULT_DOCUMENT_FEATURES_CONTEXT,
-            use_first_token_of_block=True
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list
         )
-        labeled_model_data_list = []
-        for label, layout_line in label_and_layout_line_list:
-            layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[layout_line])])
-            labeled_model_data_list.extend([
-                LabeledLayoutModelData.from_model_data(
-                    model_data,
-                    label=('B-' if index == 0 else 'I-') + label
-                )
-                for index, model_data in enumerate(
-                    data_generator.iter_model_data_for_layout_document(
-                        layout_document
-                    )
-                )
-            ])
         training_data_generator = SegmentationTeiTrainingDataGenerator()
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
@@ -134,3 +144,22 @@ class TestSegmentationTeiTrainingDataGenerator:
         assert get_text_content_list(xml_root.xpath('./text/front')) == [TEXT_1]
         assert get_text_content_list(xml_root.xpath('./text/body')) == [TEXT_2]
         assert get_text_content_list(xml_root.xpath('./text')) == [f'{TEXT_1}\n{TEXT_2}\n']
+
+    def test_should_map_unknown_label_to_note(self):
+        label_and_layout_line_list = [
+            ('<unknown>', LayoutLine.for_text(
+                TEXT_1,
+                tail_whitespace='\n',
+                line_descriptor=LayoutLineDescriptor(line_id=1)
+            ))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list
+        )
+        training_data_generator = SegmentationTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(xml_root.xpath('./text/div[@type="unknown"]')) == [TEXT_1]
+        assert get_text_content_list(xml_root.xpath('./text')) == [f'{TEXT_1}\n']
