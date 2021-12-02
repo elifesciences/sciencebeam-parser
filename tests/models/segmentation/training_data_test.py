@@ -97,7 +97,7 @@ class TestSegmentationTeiTrainingDataGenerator:
 
     def test_should_generate_tei_from_model_data_using_model_labels(self):
         label_and_layout_line_list = [
-            ('<front>', LayoutLine.for_text(
+            ('<header>', LayoutLine.for_text(
                 TEXT_1,
                 tail_whitespace='\n',
                 line_descriptor=LayoutLineDescriptor(line_id=1)
