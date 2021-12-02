@@ -93,9 +93,9 @@ class TestLayoutTokensText:
         assert layout_tokens_text.get_layout_tokens_between(
             len(token_1.text) - 1, len(token_1.text)
         ) == [token_1]
-        assert layout_tokens_text.get_layout_tokens_between(
+        assert not layout_tokens_text.get_layout_tokens_between(
             len(token_1.text), len(token_1.text) + 1
-        ) == []
+        )
         assert layout_tokens_text.get_layout_tokens_between(
             len(token_1.text) + 1, len(token_1.text) + 2
         ) == [token_2]
@@ -103,10 +103,10 @@ class TestLayoutTokensText:
             len(token_1.text) + 1 + len(token_2.text) - 1,
             len(token_1.text) + 1 + len(token_2.text)
         ) == [token_2]
-        assert layout_tokens_text.get_layout_tokens_between(
+        assert not layout_tokens_text.get_layout_tokens_between(
             len(token_1.text) + 1 + len(token_2.text),
             len(token_1.text) + 1 + len(token_2.text) + 1
-        ) == []
+        )
 
 
 class TestRetokenizeLayoutDocument:
