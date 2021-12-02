@@ -161,5 +161,5 @@ class TestSegmentationTeiTrainingDataGenerator:
             labeled_model_data_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert get_text_content_list(xml_root.xpath('./text/div[@type="unknown"]')) == [TEXT_1]
+        assert get_text_content_list(xml_root.xpath('./text/note[@type="unknown"]')) == [TEXT_1]
         assert get_text_content_list(xml_root.xpath('./text')) == [f'{TEXT_1}\n']

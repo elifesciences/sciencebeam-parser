@@ -86,7 +86,7 @@ def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
     training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
     if not training_xml_path:
         note_type = get_default_note_type_for_label(label)
-        training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'div[@type="{note_type}"]']
+        training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'note[@type="{note_type}"]']
     return training_xml_path
 
 
