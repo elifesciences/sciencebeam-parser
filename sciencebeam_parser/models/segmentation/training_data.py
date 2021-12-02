@@ -112,6 +112,7 @@ class SegmentationTeiTrainingDataGenerator:
         for model_data in model_data_iterable:
             label = get_model_data_label(model_data)
             xml_element_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '', default_path)
+            LOGGER.info('label: %r (%r)', label, xml_element_path)
             if xml_writer.current_path != xml_element_path:
                 xml_writer.require_path(default_path)
             xml_writer.append_text(pending_text)
