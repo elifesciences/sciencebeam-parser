@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -11,7 +11,7 @@ from sciencebeam_parser.document.layout_document import (
     LayoutToken,
     join_layout_tokens
 )
-from sciencebeam_parser.models.data import LayoutModelData
+from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
 
 
 LOGGER = logging.getLogger(__name__)
@@ -20,12 +20,24 @@ LOGGER = logging.getLogger(__name__)
 TEI_E = ElementMaker()
 
 
+TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
+    '<front>': ['text', 'front'],
+    '<body>': ['text', 'body']
+}
+
+
 def iter_tokens_from_model_data(model_data: LayoutModelData) -> Iterable[LayoutToken]:
     if model_data.layout_token is not None:
         yield model_data.layout_token
         return
     assert model_data.layout_line is not None
     yield from model_data.layout_line.tokens
+
+
+def get_model_data_label(model_data: LayoutModelData) -> Optional[str]:
+    if isinstance(model_data, LabeledLayoutModelData):
+        return model_data.label
+    return None
 
 
 def iter_layout_lines_from_layout_tokens(
@@ -89,14 +101,22 @@ class SegmentationTeiTrainingDataGenerator:
     ):
         xml_writer.append_text(join_layout_tokens(layout_tokens))
         xml_writer.append(TEI_E('lb'))
-        xml_writer.append_text('\n')
 
     def write_xml_for_model_data_iterable(
         self,
         xml_writer: XmlTreeWriter,
         model_data_iterable: Iterable[LayoutModelData]
     ):
+        default_path = xml_writer.current_path
+        pending_text = ''
         for model_data in model_data_iterable:
+            label = get_model_data_label(model_data)
+            xml_element_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '', default_path)
+            if xml_writer.current_path != xml_element_path:
+                xml_writer.require_path(default_path)
+            xml_writer.append_text(pending_text)
+            pending_text = ''
+            xml_writer.require_path(xml_element_path)
             for layout_line in iter_layout_lines_from_layout_tokens(
                 iter_tokens_from_model_data(model_data)
             ):
@@ -104,6 +124,9 @@ class SegmentationTeiTrainingDataGenerator:
                     xml_writer,
                     layout_line.tokens
                 )
+                pending_text = '\n'
+        xml_writer.require_path(default_path)
+        xml_writer.append_text(pending_text)
 
     def _get_training_tei_xml_for_children(
         self,

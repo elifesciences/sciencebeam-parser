@@ -1,7 +1,5 @@
 import logging
 
-import pytest
-
 from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
@@ -97,7 +95,6 @@ class TestSegmentationTeiTrainingDataGenerator:
         assert lb_nodes[0].getparent().text == TEXT_1
         assert lb_nodes[0].tail == '\n' + TEXT_2
 
-    @pytest.mark.xfail(reason='not yet implemented')
     def test_should_generate_tei_from_model_data_using_model_labels(self):
         label_and_layout_line_list = [
             ('<front>', LayoutLine.for_text(
@@ -134,3 +131,4 @@ class TestSegmentationTeiTrainingDataGenerator:
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('./text/front')) == [TEXT_1]
         assert get_text_content_list(xml_root.xpath('./text/body')) == [TEXT_2]
+        assert get_text_content_list(xml_root.xpath('./text')) == [f'{TEXT_1}\n{TEXT_2}\n']
