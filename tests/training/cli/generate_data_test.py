@@ -1,6 +1,10 @@
+import logging
 import os
 from pathlib import Path
 
+from lxml import etree
+
+from sciencebeam_parser.utils.xml import get_text_content_list
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -8,6 +12,8 @@ from sciencebeam_parser.training.cli.generate_data import (
     main
 )
 
+
+LOGGER = logging.getLogger(__name__)
 
 MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
 MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
@@ -54,3 +60,6 @@ class TestMain:
         )
         assert expected_segmentation_tei_path.exists()
         assert expected_segmentation_data_path.exists()
+        xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(xml_root.xpath('//front'))
