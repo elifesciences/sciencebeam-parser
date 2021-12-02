@@ -118,10 +118,12 @@ class TestSegmentationTeiTrainingDataGenerator:
             labeled_model_data_list.extend([
                 LabeledLayoutModelData.from_model_data(
                     model_data,
-                    label=label
+                    label=('B-' if index == 0 else 'I-') + label
                 )
-                for model_data in data_generator.iter_model_data_for_layout_document(
-                    layout_document
+                for index, model_data in enumerate(
+                    data_generator.iter_model_data_for_layout_document(
+                        layout_document
+                    )
                 )
             ])
         training_data_generator = SegmentationTeiTrainingDataGenerator()
