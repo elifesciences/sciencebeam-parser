@@ -81,32 +81,32 @@ class SegmentationTeiTrainingDataGenerator:
             )
         ))
 
-    def get_training_tei_xml_for_model_data_iterable(
+    def _get_training_tei_xml_for_children(
         self,
-        model_data_iterable: Iterable[LayoutModelData]
+        children: Iterable[Union[str, etree.ElementBase]]
     ) -> etree.ElementBase:
         return TEI_E(
             'tei',
             TEI_E(
                 'text',
-                *list(
-                    self.iter_tei_child_for_model_data_iterable(model_data_iterable)
-                )
+                *list(children)
             )
+        )
+
+    def get_training_tei_xml_for_model_data_iterable(
+        self,
+        model_data_iterable: Iterable[LayoutModelData]
+    ) -> etree.ElementBase:
+        return self._get_training_tei_xml_for_children(
+            self.iter_tei_child_for_model_data_iterable(model_data_iterable)
         )
 
     def get_training_tei_xml_for_layout_document(
         self,
         layout_document: LayoutDocument
     ) -> etree.ElementBase:
-        return TEI_E(
-            'tei',
-            TEI_E(
-                'text',
-                *list(
-                    self.iter_training_tei_children_for_line_layout_lines(
-                        layout_document.iter_all_lines()
-                    )
-                )
+        return self._get_training_tei_xml_for_children(
+            self.iter_training_tei_children_for_line_layout_lines(
+                layout_document.iter_all_lines()
             )
         )
