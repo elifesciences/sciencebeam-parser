@@ -104,9 +104,11 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
             model_data_list
         )
     )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
     Path(tei_file_path).write_bytes(
         etree.tostring(training_tei_root, pretty_print=True)
     )
+    LOGGER.info('writing training raw data to: %r', data_file_path)
     Path(data_file_path).write_text('\n'.join(
         model_data.data_line
         for model_data in model_data_list

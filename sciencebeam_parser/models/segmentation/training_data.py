@@ -34,9 +34,9 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<references>': ROOT_TRAINING_XML_ELEMENT_PATH + ['listBibl'],
     '<body>': ROOT_TRAINING_XML_ELEMENT_PATH + ['body'],
     '<cover>': ROOT_TRAINING_XML_ELEMENT_PATH + ['titlePage'],
-    'toc': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="toc"]'],
-    'annex': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="annex"]'],
-    'acknowledgment': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="acknowledgment"]'],
+    '<toc>': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="toc"]'],
+    '<annex>': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="annex"]'],
+    '<acknowledgement>': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="acknowledgement"]'],
 }
 
 
@@ -85,6 +85,7 @@ def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
     training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
     if not training_xml_path:
         note_type = get_default_note_type_for_label(label)
+        LOGGER.info('label not mapped, creating note: %r', label)
         training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'note[@type="{note_type}"]']
     return training_xml_path
 
