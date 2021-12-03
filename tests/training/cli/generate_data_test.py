@@ -39,6 +39,10 @@ class TestMain:
         )
         assert expected_segmentation_tei_path.exists()
         assert expected_segmentation_data_path.exists()
+        xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(xml_root.xpath('text'))
+        assert not get_text_content_list(xml_root.xpath('text/front'))
 
     def test_should_be_able_to_generate_segmentation_training_data_using_model(
         self,
@@ -62,4 +66,4 @@ class TestMain:
         assert expected_segmentation_data_path.exists()
         xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert get_text_content_list(xml_root.xpath('//front'))
+        assert get_text_content_list(xml_root.xpath('text/front'))

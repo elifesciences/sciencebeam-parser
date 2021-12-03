@@ -3,12 +3,16 @@ import logging
 import os
 from pathlib import Path
 from glob import glob
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from lxml import etree
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_parser.document.layout_document import LayoutDocument
-from sciencebeam_parser.models.data import DocumentFeaturesContext, LabeledLayoutModelData
+from sciencebeam_parser.models.data import (
+    DocumentFeaturesContext,
+    LabeledLayoutModelData,
+    LayoutModelData
+)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -49,7 +53,8 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
     output_path: str,
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels
+    fulltext_models: FullTextModels,
+    use_model: bool
 ):
     segmentation_model = fulltext_models.segmentation_model
     data_generator = segmentation_model.get_data_generator(
@@ -66,35 +71,37 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
         output_path,
         source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    model_data_list = list(data_generator.iter_model_data_for_layout_document(
-        layout_document
-    ))
-    data_lines = [
-        model_data.data_line
-        for model_data in model_data_list
-    ]
-    texts, features = load_data_crf_lines(data_lines)
-    texts = texts.tolist()
-    tag_result = segmentation_model.predict_labels(
-        texts=texts, features=features, output_format=None
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(layout_document)
     )
-    LOGGER.debug('texts: %r', texts)
-    LOGGER.debug('data_lines: %r', data_lines)
-    LOGGER.debug('tag_result: %r', tag_result)
-    LOGGER.debug('model_data_list: %d', len(model_data_list))
-    LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-    assert len(tag_result[0]) == len(model_data_list)
-    labeled_model_data_list = [
-        LabeledLayoutModelData.from_model_data(
-            model_data,
-            label=label
+    if use_model:
+        data_lines = [
+            model_data.data_line
+            for model_data in model_data_list
+        ]
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = segmentation_model.predict_labels(
+            texts=texts, features=features, output_format=None
         )
-        for model_data, (_, label) in zip(model_data_list, tag_result[0])
-    ]
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('data_lines: %r', data_lines)
+        LOGGER.debug('tag_result: %r', tag_result)
+        LOGGER.debug('model_data_list: %d', len(model_data_list))
+        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+        assert len(tag_result[0]) == len(model_data_list)
+        labeled_model_data_list = [
+            LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=label
+            )
+            for model_data, (_, label) in zip(model_data_list, tag_result[0])
+        ]
+        model_data_list = labeled_model_data_list
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
-            labeled_model_data_list
+            model_data_list
         )
     )
     Path(tei_file_path).write_bytes(
@@ -109,7 +116,8 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
 def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
-    sciencebeam_parser: ScienceBeamParser
+    sciencebeam_parser: ScienceBeamParser,
+    use_model: bool
 ):
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(source_filename, MediaTypes.PDF)
@@ -121,7 +129,8 @@ def generate_training_data_for_source_filename(
             document_features_context=DocumentFeaturesContext(
                 sciencebeam_parser.app_features_context
             ),
-            fulltext_models=sciencebeam_parser.fulltext_models
+            fulltext_models=sciencebeam_parser.fulltext_models,
+            use_model=use_model
         )
 
 
@@ -138,7 +147,8 @@ def run(args: argparse.Namespace):
         generate_training_data_for_source_filename(
             source_filename,
             output_path=output_path,
-            sciencebeam_parser=sciencebeam_parser
+            sciencebeam_parser=sciencebeam_parser,
+            use_model=args.use_model
         )
 
 
