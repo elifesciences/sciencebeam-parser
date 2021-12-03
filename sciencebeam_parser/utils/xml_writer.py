@@ -14,7 +14,7 @@ class TagExpression(NamedTuple):
     tag: str
     attrib: Mapping[str, str]
 
-    def create_node(self, element_maker: ElementMaker, *args):
+    def create_node(self, *args, element_maker: ElementMaker):
         try:
             return element_maker(self.tag, self.attrib, *args)
         except ValueError as exc:

@@ -13,6 +13,7 @@ from typing import (
 
 from lxml import etree
 
+from sciencebeam_parser.utils.xml_writer import TagExpression
 from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.document.semantic_document import (
     SemanticAddressLine,
@@ -59,7 +60,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticVolume
 )
 from sciencebeam_parser.document.tei.common import (
-    TagExpression,
+    TEI_E,
     create_tei_note_element,
     extend_element,
     get_default_attributes_for_semantic_content,
@@ -256,10 +257,12 @@ def get_tei_child_elements_for_semantic_content(
         ):
             return [parsed_tag_expression.create_node(
                 get_default_attributes_for_semantic_content(semantic_content),
-                semantic_content.value
+                semantic_content.value,
+                element_maker=TEI_E
             )]
         return [parsed_tag_expression.create_node(
-            *iter_layout_block_tei_children(semantic_content.merged_block)
+            *iter_layout_block_tei_children(semantic_content.merged_block),
+            element_maker=TEI_E
         )]
     return [get_tei_note_for_semantic_content(semantic_content)]
 
