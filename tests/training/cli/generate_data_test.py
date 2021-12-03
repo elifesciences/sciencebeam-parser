@@ -2,6 +2,8 @@ import logging
 import os
 from pathlib import Path
 
+import pytest
+
 from lxml import etree
 
 from sciencebeam_parser.utils.xml import get_text_content_list
@@ -19,6 +21,8 @@ MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
 MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
 
 
+# Note: tests are currently using actual model and are therefore slow
+@pytest.mark.slow
 class TestMain:
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
