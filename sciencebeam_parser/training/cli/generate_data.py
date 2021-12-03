@@ -3,18 +3,20 @@ import logging
 import os
 from pathlib import Path
 from glob import glob
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from lxml import etree
+from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_parser.document.layout_document import LayoutDocument
-from sciencebeam_parser.models.data import DocumentFeaturesContext
-
-from sciencebeam_parser.models.segmentation.data import (
-    SegmentationDataGenerator
+from sciencebeam_parser.models.data import (
+    DocumentFeaturesContext,
+    LabeledLayoutModelData,
+    LayoutModelData
 )
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
+from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.app.parser import ScienceBeamParser
@@ -38,18 +40,25 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=str,
         required=True
     )
+    parser.add_argument(
+        '--use-model',
+        action='store_true',
+        help='Use configured models to pre-annotate training data'
+    )
     return parser.parse_args(argv)
 
 
-def generate_training_data_for_layout_document(
+def generate_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
     source_filename: str,
-    document_features_context: DocumentFeaturesContext
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool
 ):
-    data_generator = SegmentationDataGenerator(
-        document_features_context=document_features_context,
-        use_first_token_of_block=True
+    segmentation_model = fulltext_models.segmentation_model
+    data_generator = segmentation_model.get_data_generator(
+        document_features_context=document_features_context
     )
     training_data_generator = SegmentationTeiTrainingDataGenerator()
     source_basename = os.path.basename(source_filename)
@@ -62,9 +71,33 @@ def generate_training_data_for_layout_document(
         output_path,
         source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    model_data_list = list(data_generator.iter_model_data_for_layout_document(
-        layout_document
-    ))
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(layout_document)
+    )
+    if use_model:
+        data_lines = [
+            model_data.data_line
+            for model_data in model_data_list
+        ]
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = segmentation_model.predict_labels(
+            texts=texts, features=features, output_format=None
+        )
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('data_lines: %r', data_lines)
+        LOGGER.debug('tag_result: %r', tag_result)
+        LOGGER.debug('model_data_list: %d', len(model_data_list))
+        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+        assert len(tag_result[0]) == len(model_data_list)
+        labeled_model_data_list = [
+            LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=label
+            )
+            for model_data, (_, label) in zip(model_data_list, tag_result[0])
+        ]
+        model_data_list = labeled_model_data_list
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
@@ -83,7 +116,8 @@ def generate_training_data_for_layout_document(
 def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
-    sciencebeam_parser: ScienceBeamParser
+    sciencebeam_parser: ScienceBeamParser,
+    use_model: bool
 ):
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(source_filename, MediaTypes.PDF)
@@ -94,7 +128,9 @@ def generate_training_data_for_source_filename(
             source_filename=source_filename,
             document_features_context=DocumentFeaturesContext(
                 sciencebeam_parser.app_features_context
-            )
+            ),
+            fulltext_models=sciencebeam_parser.fulltext_models,
+            use_model=use_model
         )
 
 
@@ -111,7 +147,8 @@ def run(args: argparse.Namespace):
         generate_training_data_for_source_filename(
             source_filename,
             output_path=output_path,
-            sciencebeam_parser=sciencebeam_parser
+            sciencebeam_parser=sciencebeam_parser,
+            use_model=args.use_model
         )
 
 

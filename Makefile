@@ -17,6 +17,8 @@ SYSTEM_PYTHON = python3
 
 ARGS =
 
+NOT_SLOW_PYTEST_ARGS = -m 'not slow'
+
 SCIENCEBEAM_PARSER_PORT = 8080
 
 PDFALTO_CONVERT_API_URL = http://localhost:$(SCIENCEBEAM_PARSER_PORT)/api/pdfalto
@@ -82,6 +84,12 @@ dev-pytest:
 
 
 dev-watch:
+	$(PYTHON) -m pytest_watch --ext=.py,.xsl -- \
+		$(NOT_SLOW_PYTEST_ARGS) \
+		-p no:cacheprovider -p no:warnings $(ARGS)
+
+
+dev-watch-slow:
 	$(PYTHON) -m pytest_watch --ext=.py,.xsl -- \
 		-p no:cacheprovider -p no:warnings $(ARGS)
 

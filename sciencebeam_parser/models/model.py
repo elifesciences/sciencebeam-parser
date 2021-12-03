@@ -47,6 +47,15 @@ class NewDocumentMarker:
 NEW_DOCUMENT_MARKER = NewDocumentMarker()
 
 
+def get_split_prefix_label(prefixed_tag: str) -> Tuple[str, str]:
+    if '-' in prefixed_tag:
+        prefix, tag = prefixed_tag.split('-', maxsplit=1)
+    else:
+        prefix = ''
+        tag = prefixed_tag
+    return prefix, tag
+
+
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
     """
     Similar to get_entities, but also other (`O`) tag
@@ -54,11 +63,7 @@ def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, in
     prev_tag = 'O'
     prev_start = 0
     for index, prefixed_tag in enumerate(seq):
-        if '-' in prefixed_tag:
-            prefix, tag = prefixed_tag.split('-', maxsplit=1)
-        else:
-            prefix = ''
-            tag = prefixed_tag
+        prefix, tag = get_split_prefix_label(prefixed_tag)
         if prefix == 'B' or tag != prev_tag:
             if prev_start < index:
                 yield prev_tag, prev_start, index - 1

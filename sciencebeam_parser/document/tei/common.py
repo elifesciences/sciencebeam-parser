@@ -1,11 +1,11 @@
 import logging
-import re
 from typing import Dict, Iterable, List, Optional, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_parser.utils.xml import get_text_content
+from sciencebeam_parser.utils.xml_writer import parse_tag_expression
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutPageCoordinates,
@@ -36,35 +36,6 @@ TEI_E = ElementMaker(namespace=TEI_NS, nsmap={
 })
 
 
-class TagExpression:
-    def __init__(self, tag: str, attrib: Dict[str, str]):
-        self.tag = tag
-        self.attrib = attrib
-
-    def create_node(self, *args):
-        try:
-            return TEI_E(self.tag, self.attrib, *args)
-        except ValueError as e:
-            raise ValueError(
-                'failed to create node with tag=%r, attrib=%r due to %s' % (
-                    self.tag, self.attrib, e
-                )
-            ) from e
-
-
-def parse_tag_expression(tag_expression):
-    match = re.match(r'^([^\[]+)(\[@?([^=]+)="(.+)"\])?$', tag_expression)
-    if not match:
-        raise ValueError('invalid tag expression: %s' % tag_expression)
-    LOGGER.debug('match: %s', match.groups())
-    tag_name = match.group(1)
-    if match.group(2):
-        attrib = {match.group(3): match.group(4)}
-    else:
-        attrib = {}
-    return TagExpression(tag=tag_name, attrib=attrib)
-
-
 def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etree.ElementBase:
     if not path:
         return parent
@@ -72,7 +43,9 @@ def get_or_create_element_at(parent: etree.ElementBase, path: List[str]) -> etre
     if child is None:
         LOGGER.debug('creating element: %s', path[0])
         tag_expression = parse_tag_expression(path[0])
-        child = tag_expression.create_node()
+        child = tag_expression.create_node(
+            element_maker=TEI_E
+        )
         parent.append(child)
     return get_or_create_element_at(child, path[1:])
 

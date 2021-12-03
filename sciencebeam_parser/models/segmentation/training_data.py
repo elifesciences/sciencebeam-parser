@@ -1,16 +1,17 @@
 import logging
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Sequence, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
+from sciencebeam_parser.models.model import get_split_prefix_label
 
+from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
-    LayoutDocument,
     LayoutLine,
     LayoutToken,
     join_layout_tokens
 )
-from sciencebeam_parser.models.data import LayoutModelData
+from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
 
 
 LOGGER = logging.getLogger(__name__)
@@ -19,12 +20,38 @@ LOGGER = logging.getLogger(__name__)
 TEI_E = ElementMaker()
 
 
+# based on:
+# https://github.com/kermitt2/grobid/blob/0.7.0/grobid-core/src/main/java/org/grobid/core/engines/Segmentation.java
+ROOT_TRAINING_XML_ELEMENT_PATH = ['text']
+TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
+    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH,
+    'O': ROOT_TRAINING_XML_ELEMENT_PATH,
+    '<header>': ROOT_TRAINING_XML_ELEMENT_PATH + ['front'],
+    '<headnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="headnote"]'],
+    '<footnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="footnote"]'],
+    '<marginnote>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@place="marginnote"]'],
+    '<page>': ROOT_TRAINING_XML_ELEMENT_PATH + ['page'],
+    '<references>': ROOT_TRAINING_XML_ELEMENT_PATH + ['listBibl'],
+    '<body>': ROOT_TRAINING_XML_ELEMENT_PATH + ['body'],
+    '<cover>': ROOT_TRAINING_XML_ELEMENT_PATH + ['titlePage'],
+    'toc': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="toc"]'],
+    'annex': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="annex"]'],
+    'acknowledgment': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="acknowledgment"]'],
+}
+
+
 def iter_tokens_from_model_data(model_data: LayoutModelData) -> Iterable[LayoutToken]:
     if model_data.layout_token is not None:
         yield model_data.layout_token
         return
     assert model_data.layout_line is not None
     yield from model_data.layout_line.tokens
+
+
+def get_model_data_label(model_data: LayoutModelData) -> Optional[str]:
+    if isinstance(model_data, LabeledLayoutModelData):
+        return model_data.label
+    return None
 
 
 def iter_layout_lines_from_layout_tokens(
@@ -48,38 +75,59 @@ def iter_layout_lines_from_layout_tokens(
         yield LayoutLine(tokens=line_layout_tokens)
 
 
+def get_default_note_type_for_label(label: str) -> str:
+    return label.strip('<>')
+
+
+def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
+    if not label:
+        return ROOT_TRAINING_XML_ELEMENT_PATH
+    training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
+    if not training_xml_path:
+        note_type = get_default_note_type_for_label(label)
+        training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'note[@type="{note_type}"]']
+    return training_xml_path
+
+
 class SegmentationTeiTrainingDataGenerator:
     DEFAULT_TEI_FILENAME_SUFFIX = '.segmentation.tei.xml'
     DEFAULT_DATA_FILENAME_SUFFIX = '.segmentation'
 
-    def iter_training_tei_children_for_line_layout_tokens(
+    def write_xml_line_for_layout_tokens(
         self,
+        xml_writer: XmlTreeWriter,
         layout_tokens: Iterable[LayoutToken]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        yield join_layout_tokens(layout_tokens)
-        yield TEI_E('lb')
-        yield '\n'
+    ):
+        xml_writer.append_text(join_layout_tokens(layout_tokens))
+        xml_writer.append(TEI_E('lb'))
 
-    def iter_training_tei_children_for_line_layout_lines(
+    def write_xml_for_model_data_iterable(
         self,
-        layout_lines: Iterable[LayoutLine]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        for layout_line in layout_lines:
-            yield from self.iter_training_tei_children_for_line_layout_tokens(
-                layout_line.tokens
-            )
-
-    def iter_tei_child_for_model_data_iterable(
-        self,
+        xml_writer: XmlTreeWriter,
         model_data_iterable: Iterable[LayoutModelData]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        yield from self.iter_training_tei_children_for_line_layout_lines((
-            layout_line
-            for model_data in model_data_iterable
+    ):
+        default_path = xml_writer.current_path
+        pending_text = ''
+        for model_data in model_data_iterable:
+            prefixed_label = get_model_data_label(model_data)
+            _prefix, label = get_split_prefix_label(prefixed_label or '')
+            xml_element_path = get_training_xml_path_for_label(label)
+            LOGGER.debug('label: %r (%r)', label, xml_element_path)
+            if xml_writer.current_path != xml_element_path:
+                xml_writer.require_path(default_path)
+            xml_writer.append_text(pending_text)
+            pending_text = ''
+            xml_writer.require_path(xml_element_path)
             for layout_line in iter_layout_lines_from_layout_tokens(
                 iter_tokens_from_model_data(model_data)
-            )
-        ))
+            ):
+                self.write_xml_line_for_layout_tokens(
+                    xml_writer,
+                    layout_line.tokens
+                )
+                pending_text = '\n'
+        xml_writer.require_path(default_path)
+        xml_writer.append_text(pending_text)
 
     def _get_training_tei_xml_for_children(
         self,
@@ -93,20 +141,20 @@ class SegmentationTeiTrainingDataGenerator:
             )
         )
 
+    def _get_xml_writer(self) -> XmlTreeWriter:
+        return XmlTreeWriter(
+            TEI_E('tei'),
+            element_maker=TEI_E
+        )
+
     def get_training_tei_xml_for_model_data_iterable(
         self,
         model_data_iterable: Iterable[LayoutModelData]
     ) -> etree.ElementBase:
-        return self._get_training_tei_xml_for_children(
-            self.iter_tei_child_for_model_data_iterable(model_data_iterable)
+        xml_writer = self._get_xml_writer()
+        xml_writer.require_path(['text'])
+        self.write_xml_for_model_data_iterable(
+            xml_writer,
+            model_data_iterable=model_data_iterable
         )
-
-    def get_training_tei_xml_for_layout_document(
-        self,
-        layout_document: LayoutDocument
-    ) -> etree.ElementBase:
-        return self._get_training_tei_xml_for_children(
-            self.iter_training_tei_children_for_line_layout_lines(
-                layout_document.iter_all_lines()
-            )
-        )
+        return xml_writer.root

@@ -26,3 +26,12 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
 ```
+
+Using the configured `segmentation` model to pre-annotate the training data:
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_data \
+    --use-model \
+    --source-path="test-data/*.pdf" \
+    --output-path="./data/generated-training-data"
+```
