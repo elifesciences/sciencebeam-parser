@@ -7,7 +7,6 @@ from sciencebeam_parser.models.model import get_split_prefix_label
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
-    LayoutDocument,
     LayoutLine,
     LayoutToken,
     join_layout_tokens
@@ -94,35 +93,6 @@ class SegmentationTeiTrainingDataGenerator:
     DEFAULT_TEI_FILENAME_SUFFIX = '.segmentation.tei.xml'
     DEFAULT_DATA_FILENAME_SUFFIX = '.segmentation'
 
-    def iter_training_tei_children_for_line_layout_tokens(
-        self,
-        layout_tokens: Iterable[LayoutToken]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        yield join_layout_tokens(layout_tokens)
-        yield TEI_E('lb')
-        yield '\n'
-
-    def iter_training_tei_children_for_line_layout_lines(
-        self,
-        layout_lines: Iterable[LayoutLine]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        for layout_line in layout_lines:
-            yield from self.iter_training_tei_children_for_line_layout_tokens(
-                layout_line.tokens
-            )
-
-    def iter_tei_child_for_model_data_iterable(
-        self,
-        model_data_iterable: Iterable[LayoutModelData]
-    ) -> Iterable[Union[str, etree.ElementBase]]:
-        yield from self.iter_training_tei_children_for_line_layout_lines((
-            layout_line
-            for model_data in model_data_iterable
-            for layout_line in iter_layout_lines_from_layout_tokens(
-                iter_tokens_from_model_data(model_data)
-            )
-        ))
-
     def write_xml_line_for_layout_tokens(
         self,
         xml_writer: XmlTreeWriter,
@@ -188,13 +158,3 @@ class SegmentationTeiTrainingDataGenerator:
             model_data_iterable=model_data_iterable
         )
         return xml_writer.root
-
-    def get_training_tei_xml_for_layout_document(
-        self,
-        layout_document: LayoutDocument
-    ) -> etree.ElementBase:
-        return self._get_training_tei_xml_for_children(
-            self.iter_training_tei_children_for_line_layout_lines(
-                layout_document.iter_all_lines()
-            )
-        )
