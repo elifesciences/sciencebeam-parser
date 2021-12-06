@@ -13,6 +13,7 @@ from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
     LayoutModelData
 )
+from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -48,7 +49,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def generate_training_data_for_layout_document(  # pylint: disable=too-many-locals
+def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
     source_filename: str,
@@ -113,6 +114,99 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
         model_data.data_line
         for model_data in model_data_list
     ), encoding='utf-8')
+
+
+def generate_header_training_data_for_layout_document(  # pylint: disable=too-many-locals
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool
+):
+    header_model = fulltext_models.header_model
+    data_generator = header_model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    training_data_generator = HeaderTeiTrainingDataGenerator()
+    source_basename = os.path.basename(source_filename)
+    source_name = os.path.splitext(source_basename)[0]
+    tei_file_path = os.path.join(
+        output_path,
+        source_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+    )
+    data_file_path = os.path.join(
+        output_path,
+        source_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+    )
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(layout_document)
+    )
+    if use_model:
+        data_lines = [
+            model_data.data_line
+            for model_data in model_data_list
+        ]
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = header_model.predict_labels(
+            texts=texts, features=features, output_format=None
+        )
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('data_lines: %r', data_lines)
+        LOGGER.debug('tag_result: %r', tag_result)
+        LOGGER.debug('model_data_list: %d', len(model_data_list))
+        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+        assert len(tag_result[0]) == len(model_data_list)
+        labeled_model_data_list = [
+            LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=label
+            )
+            for model_data, (_, label) in zip(model_data_list, tag_result[0])
+        ]
+        model_data_list = labeled_model_data_list
+    training_tei_root = (
+        training_data_generator
+        .get_training_tei_xml_for_model_data_iterable(
+            model_data_list
+        )
+    )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
+    Path(tei_file_path).write_bytes(
+        etree.tostring(training_tei_root, pretty_print=True)
+    )
+    LOGGER.info('writing training raw data to: %r', data_file_path)
+    Path(data_file_path).write_text('\n'.join(
+        model_data.data_line
+        for model_data in model_data_list
+    ), encoding='utf-8')
+
+
+def generate_training_data_for_layout_document(
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool
+):
+    generate_segmentation_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model
+    )
+    generate_header_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model
+    )
 
 
 def generate_training_data_for_source_filename(
