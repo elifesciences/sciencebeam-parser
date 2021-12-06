@@ -27,7 +27,29 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<other>': ROOT_TRAINING_XML_ELEMENT_PATH,
     'O': ROOT_TRAINING_XML_ELEMENT_PATH,
     '<title>': ROOT_TRAINING_XML_ELEMENT_PATH + ['docTitle', 'titlePart'],
-    '<abstract>': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="abstract"]']
+    '<author>': ROOT_TRAINING_XML_ELEMENT_PATH + ['byline', 'docAuthor'],
+    '<location>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address'],
+    '<address>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address'],
+    '<date>': ROOT_TRAINING_XML_ELEMENT_PATH + ['date'],
+    '<page>': ROOT_TRAINING_XML_ELEMENT_PATH + ['page'],
+    '<publisher>': ROOT_TRAINING_XML_ELEMENT_PATH + ['publisher'],
+    '<journal>': ROOT_TRAINING_XML_ELEMENT_PATH + ['journal'],
+    '<institution>': ROOT_TRAINING_XML_ELEMENT_PATH + ['byline', 'affiliation'],
+    '<affiliation>': ROOT_TRAINING_XML_ELEMENT_PATH + ['byline', 'affiliation'],
+    '<note>': ROOT_TRAINING_XML_ELEMENT_PATH,
+    '<abstract>': ROOT_TRAINING_XML_ELEMENT_PATH + ['div[@type="abstract"]'],
+    '<email>': ROOT_TRAINING_XML_ELEMENT_PATH + ['email'],
+    '<pubnum>': ROOT_TRAINING_XML_ELEMENT_PATH + ['idno'],
+    '<keyword>': ROOT_TRAINING_XML_ELEMENT_PATH + ['keyword'],
+    '<phone>': ROOT_TRAINING_XML_ELEMENT_PATH + ['phone'],
+    '<web>': ROOT_TRAINING_XML_ELEMENT_PATH + ['ptr[@type="web"]'],
+    '<meeting>': ROOT_TRAINING_XML_ELEMENT_PATH + ['meeting'],
+    '<submission>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="submission"]'],
+    '<reference>': ROOT_TRAINING_XML_ELEMENT_PATH + ['reference'],
+    '<copyright>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="copyright"]'],
+    '<funding>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="funding"]'],
+    '<doctype>': ROOT_TRAINING_XML_ELEMENT_PATH + ['<note[@type="doctype"]'],
+    '<group>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="group"]']
 }
 
 
