@@ -19,7 +19,7 @@ For the sequence model (`delft` etc) the general workflow looks like:
 
 The training data for the sequential models follows the GROBID training data format.
 
-### Generate training data for the `segmentation` model
+### Generate training data for the `segmentation` and `header` model
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \
@@ -27,7 +27,7 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --output-path="./data/generated-training-data"
 ```
 
-Using the configured `segmentation` model to pre-annotate the training data:
+Using the configured `segmentation` and `header` model to pre-annotate the training data:
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \
@@ -35,3 +35,5 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
 ```
+
+Note: the `segmentation` model will be required in order to prepare the data for the `header` model.
