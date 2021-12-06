@@ -124,6 +124,7 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
     fulltext_models: FullTextModels,
     use_model: bool
 ):
+    segmentation_model = fulltext_models.segmentation_model
     header_model = fulltext_models.header_model
     data_generator = header_model.get_data_generator(
         document_features_context=document_features_context
@@ -139,8 +140,15 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
         output_path,
         source_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
+    segmentation_label_result = segmentation_model.get_label_layout_document_result(
+        layout_document,
+        app_features_context=document_features_context.app_features_context
+    )
+    header_layout_document = segmentation_label_result.get_filtered_document_by_label(
+        '<header>'
+    ).remove_empty_blocks()
     model_data_list: Sequence[LayoutModelData] = list(
-        data_generator.iter_model_data_for_layout_document(layout_document)
+        data_generator.iter_model_data_for_layout_document(header_layout_document)
     )
     if use_model:
         data_lines = [
