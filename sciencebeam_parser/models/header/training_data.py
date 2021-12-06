@@ -114,11 +114,13 @@ class HeaderTeiTrainingDataGenerator:
                 layout_token = model_data.layout_token
                 assert layout_token is not None
                 prefixed_label = get_model_data_label(model_data)
-                _prefix, label = get_split_prefix_label(prefixed_label or '')
+                prefix, label = get_split_prefix_label(prefixed_label or '')
                 xml_element_path = get_training_xml_path_for_label(label)
-                LOGGER.debug('label: %r (%r)', label, xml_element_path)
+                LOGGER.debug('label: %r (%r: %r)', label, prefix, xml_element_path)
                 if xml_writer.current_path != xml_element_path:
                     xml_writer.require_path(default_path)
+                if prefix == 'B':
+                    xml_writer.require_path(xml_element_path[:-1])
                 xml_writer.append_text(pending_text)
                 pending_text = ''
                 xml_writer.require_path(xml_element_path)

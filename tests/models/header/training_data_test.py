@@ -185,3 +185,31 @@ class TestHeaderTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/front')
         ) == [f'{TEXT_1}\n']
+
+    def test_should_not_join_separate_labels(self):
+        label_and_layout_line_list = [
+            ('<title>', LayoutLine.for_text(
+                TEXT_1,
+                tail_whitespace='\n',
+                line_descriptor=LayoutLineDescriptor(line_id=1)
+            )),
+            ('<title>', LayoutLine.for_text(
+                TEXT_2,
+                tail_whitespace='\n',
+                line_descriptor=LayoutLineDescriptor(line_id=2)
+            ))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list
+        )
+        training_data_generator = HeaderTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(
+            xml_root.xpath('./text/front/docTitle/titlePart')
+        ) == [TEXT_1, TEXT_2]
+        assert get_text_content_list(
+            xml_root.xpath('./text/front')
+        ) == [f'{TEXT_1}\n{TEXT_2}\n']
