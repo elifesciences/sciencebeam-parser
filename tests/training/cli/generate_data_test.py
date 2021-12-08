@@ -18,8 +18,6 @@ from sciencebeam_parser.training.cli.generate_data import (
     main
 )
 
-from tests.models.affiliation_address.training_data_test import AFFILIATION_XPATH
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,4 +106,3 @@ class TestMain:
         assert expected_aff_tei_path.exists()
         xml_root = etree.parse(str(expected_aff_tei_path)).getroot()
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert get_text_content_list(xml_root.xpath(AFFILIATION_XPATH))

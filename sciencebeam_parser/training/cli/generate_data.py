@@ -92,6 +92,16 @@ def get_labeled_model_data_list(
     return labeled_model_data_list
 
 
+def get_labeled_model_data_list_list(
+    model_data_list_list: Sequence[Sequence[LayoutModelData]],
+    model: Model
+) -> Sequence[Sequence[LabeledLayoutModelData]]:
+    return [
+        get_labeled_model_data_list(model_data_list, model=model)
+        for model_data_list in model_data_list_list
+    ]
+
+
 def get_labeled_model_data_list_for_layout_document(
     layout_document: LayoutDocument,
     model: Model,
@@ -329,25 +339,29 @@ def generate_aff_address_training_data_for_layout_document(  # pylint: disable=t
     )
     LOGGER.info('semantic_raw_aff_address_list count: %d', len(semantic_raw_aff_address_list))
 
-    model_data_list: Sequence[LayoutModelData] = []
+    model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
     if semantic_raw_aff_address_list:
-        aff_layout_document = LayoutDocument.for_blocks([
-            block
+        aff_layout_documents = [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_aff_address.iter_blocks())
+            )
             for semantic_raw_aff_address in semantic_raw_aff_address_list
-            for block in semantic_raw_aff_address.iter_blocks()
-        ])
-        model_data_list = list(
-            data_generator.iter_model_data_for_layout_document(aff_layout_document)
-        )
+        ]
+        model_data_list_list = [
+            list(
+                data_generator.iter_model_data_for_layout_document(aff_layout_document)
+            )
+            for aff_layout_document in aff_layout_documents
+        ]
         if use_model:
-            model_data_list = get_labeled_model_data_list(
-                model_data_list,
+            model_data_list_list = get_labeled_model_data_list_list(
+                model_data_list_list,
                 model=affiliation_address_model
             )
     training_tei_root = (
         training_data_generator
-        .get_training_tei_xml_for_model_data_iterable(
-            model_data_list
+        .get_training_tei_xml_for_multiple_model_data_iterables(
+            model_data_list_list
         )
     )
     LOGGER.info('writing training tei to: %r', tei_file_path)

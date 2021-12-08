@@ -67,6 +67,15 @@ def get_labeled_model_data_list(
     return labeled_model_data_list
 
 
+def get_labeled_model_data_list_list(
+    label_and_layout_line_list_list: Sequence[Sequence[Tuple[str, LayoutLine]]]
+) -> Sequence[Sequence[LabeledLayoutModelData]]:
+    return [
+        get_labeled_model_data_list(label_and_layout_line_list)
+        for label_and_layout_line_list in label_and_layout_line_list_list
+    ]
+
+
 class TestAffiliationAddressTeiTrainingDataGenerator:
     def test_should_include_layout_document_text_in_tei_output(self):
         training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
@@ -218,3 +227,36 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             aff_nodes[0].xpath('./orgName[@type="institution"]')
         ) == [TEXT_1, TEXT_2]
         assert get_text_content(aff_nodes[0]) == f'{TEXT_1}\n{TEXT_2}\n'
+
+    def test_should_generate_tei_from_multiple_model_data_lists_using_model_labels(self):
+        label_and_layout_line_list_list = [
+            [
+                ('<institution>', LayoutLine.for_text(
+                    TEXT_1,
+                    tail_whitespace='\n',
+                    line_descriptor=LayoutLineDescriptor(line_id=1)
+                ))
+            ], [
+                ('<institution>', LayoutLine.for_text(
+                    TEXT_2,
+                    tail_whitespace='\n',
+                    line_descriptor=LayoutLineDescriptor(line_id=2)
+                ))
+            ]
+        ]
+        labeled_model_data_list_list = get_labeled_model_data_list_list(
+            label_and_layout_line_list_list
+        )
+        training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_multiple_model_data_iterables(
+            labeled_model_data_list_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        assert len(aff_nodes) == 2
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        ) == [TEXT_1]
+        assert get_text_content_list(
+            aff_nodes[1].xpath('./orgName[@type="institution"]')
+        ) == [TEXT_2]

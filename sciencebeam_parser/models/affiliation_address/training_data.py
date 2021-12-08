@@ -140,14 +140,25 @@ class AffiliationAddressTeiTrainingDataGenerator:
             element_maker=TEI_E
         )
 
+    def get_training_tei_xml_for_multiple_model_data_iterables(
+        self,
+        model_data_iterables: Iterable[Iterable[LayoutModelData]]
+    ) -> etree.ElementBase:
+        xml_writer = self._get_xml_writer()
+        xml_writer.require_path(ROOT_TRAINING_XML_ELEMENT_PATH[:-1])
+        for model_data_iterable in model_data_iterables:
+            xml_writer.require_path(ROOT_TRAINING_XML_ELEMENT_PATH[:-1])
+            xml_writer.require_path(ROOT_TRAINING_XML_ELEMENT_PATH)
+            self.write_xml_for_model_data_iterable(
+                xml_writer,
+                model_data_iterable=model_data_iterable
+            )
+        return xml_writer.root
+
     def get_training_tei_xml_for_model_data_iterable(
         self,
         model_data_iterable: Iterable[LayoutModelData]
     ) -> etree.ElementBase:
-        xml_writer = self._get_xml_writer()
-        xml_writer.require_path(ROOT_TRAINING_XML_ELEMENT_PATH)
-        self.write_xml_for_model_data_iterable(
-            xml_writer,
-            model_data_iterable=model_data_iterable
+        return self.get_training_tei_xml_for_multiple_model_data_iterables(
+            [model_data_iterable]
         )
-        return xml_writer.root
