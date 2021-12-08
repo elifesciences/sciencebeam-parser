@@ -30,7 +30,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<other>': ROOT_TRAINING_XML_ELEMENT_PATH,
     'O': ROOT_TRAINING_XML_ELEMENT_PATH,
     '<marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['marker'],
-    '<institution>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="institution"]']
+    '<institution>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="institution"]'],
+    '<department>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="department"]']
 }
 
 

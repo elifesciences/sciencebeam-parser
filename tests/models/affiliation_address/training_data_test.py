@@ -179,6 +179,32 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         ) == [TEXT_2]
         assert get_text_content(aff_nodes[0]) == f'{TEXT_1}\n{TEXT_2}\n'
 
+    def test_should_generate_tei_for_most_labels(self):
+        label_and_layout_line_list = [
+            ('<marker>', get_next_layout_line_for_text('Marker 1')),
+            ('<institution>', get_next_layout_line_for_text('Institution 1')),
+            ('<department>', get_next_layout_line_for_text('Department 1'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list
+        )
+        training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        assert len(aff_nodes) == 1
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./marker')
+        ) == ['Marker 1']
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        ) == ['Institution 1']
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./orgName[@type="department"]')
+        ) == ['Department 1']
+
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
             ('<unknown>', get_next_layout_line_for_text(TEXT_1))
