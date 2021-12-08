@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from lxml import etree
+from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
 
 from sciencebeam_parser.utils.xml import get_text_content_list
 from sciencebeam_parser.models.segmentation.training_data import (
@@ -48,6 +49,18 @@ class TestMain:
         assert get_text_content_list(xml_root.xpath('text'))
         assert not get_text_content_list(xml_root.xpath('text/front'))
 
+        expected_header_tei_path = output_path.joinpath(
+            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_header_data_path = output_path.joinpath(
+            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert expected_header_tei_path.exists()
+        assert expected_header_data_path.exists()
+        xml_root = etree.parse(str(expected_header_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(xml_root.xpath('text/front'))
+
     def test_should_be_able_to_generate_segmentation_training_data_using_model(
         self,
         tmp_path: Path
@@ -69,5 +82,17 @@ class TestMain:
         assert expected_segmentation_tei_path.exists()
         assert expected_segmentation_data_path.exists()
         xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(xml_root.xpath('text/front'))
+
+        expected_header_tei_path = output_path.joinpath(
+            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_header_data_path = output_path.joinpath(
+            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert expected_header_tei_path.exists()
+        assert expected_header_data_path.exists()
+        xml_root = etree.parse(str(expected_header_tei_path)).getroot()
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('text/front'))

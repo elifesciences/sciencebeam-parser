@@ -1,9 +1,10 @@
 import argparse
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from glob import glob
-from typing import List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
@@ -13,6 +14,8 @@ from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
     LayoutModelData
 )
+from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
+from sciencebeam_parser.models.model import LayoutDocumentLabelResult, LayoutModelLabel, Model
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -24,6 +27,11 @@ from sciencebeam_parser.utils.media_types import MediaTypes
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class ModelResultCache:
+    segmentation_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -48,13 +56,110 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def generate_training_data_for_layout_document(  # pylint: disable=too-many-locals
+def get_labeled_model_data_list(
+    model_data_list: Sequence[LayoutModelData],
+    model: Model
+) -> Sequence[LabeledLayoutModelData]:
+    data_lines = [
+        model_data.data_line
+        for model_data in model_data_list
+    ]
+    texts, features = load_data_crf_lines(data_lines)
+    texts = texts.tolist()
+    tag_result = model.predict_labels(
+        texts=texts, features=features, output_format=None
+    )
+    LOGGER.debug('texts: %r', texts)
+    LOGGER.debug('data_lines: %r', data_lines)
+    LOGGER.debug('tag_result: %r', tag_result)
+    LOGGER.debug('model_data_list: %d', len(model_data_list))
+    LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+    assert len(tag_result[0]) == len(model_data_list)
+    labeled_model_data_list = [
+        LabeledLayoutModelData.from_model_data(
+            model_data,
+            label=label
+        )
+        for model_data, (_, label) in zip(model_data_list, tag_result[0])
+    ]
+    return labeled_model_data_list
+
+
+def get_labeled_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    model: Model,
+    document_features_context: DocumentFeaturesContext
+) -> Sequence[LabeledLayoutModelData]:
+    data_generator = model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(layout_document)
+    )
+    return get_labeled_model_data_list(
+        model_data_list,
+        model=model
+    )
+
+
+def get_layout_model_label_for_labeled_model_data(
+    labeled_model_data: LabeledLayoutModelData
+) -> LayoutModelLabel:
+    return LayoutModelLabel(
+        label=labeled_model_data.label or '',
+        label_token_text=labeled_model_data.label_token_text,
+        layout_line=labeled_model_data.layout_line,
+        layout_token=labeled_model_data.layout_token
+    )
+
+
+def iter_layout_model_label_for_labeled_model_data_list(
+    labeled_model_data_iterable: Iterable[LabeledLayoutModelData],
+) -> Iterable[LayoutModelLabel]:
+    return (
+        get_layout_model_label_for_labeled_model_data(labeled_model_data)
+        for labeled_model_data in labeled_model_data_iterable
+    )
+
+
+def get_layout_document_label_result_for_labeled_model_data_list(
+    labeled_model_data_iterable: Iterable[LabeledLayoutModelData],
+    layout_document: LayoutDocument
+) -> LayoutDocumentLabelResult:
+    return LayoutDocumentLabelResult(
+        layout_document=layout_document,
+        layout_model_label_iterable=iter_layout_model_label_for_labeled_model_data_list(
+            labeled_model_data_iterable
+        )
+    )
+
+
+def get_segmentation_label_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    segmentation_model: Model,
+    document_features_context: DocumentFeaturesContext,
+    model_result_cache: ModelResultCache
+) -> Sequence[LabeledLayoutModelData]:
+    segmentation_label_model_data_list = model_result_cache.segmentation_label_model_data_list
+    if segmentation_label_model_data_list is not None:
+        return segmentation_label_model_data_list
+    segmentation_label_model_data_list = get_labeled_model_data_list_for_layout_document(
+        layout_document,
+        model=segmentation_model,
+        document_features_context=document_features_context
+    )
+    model_result_cache.segmentation_label_model_data_list = segmentation_label_model_data_list
+    return segmentation_label_model_data_list
+
+
+def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
-    use_model: bool
+    use_model: bool,
+    model_result_cache: ModelResultCache
 ):
     segmentation_model = fulltext_models.segmentation_model
     data_generator = segmentation_model.get_data_generator(
@@ -71,33 +176,20 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
         output_path,
         source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    model_data_list: Sequence[LayoutModelData] = list(
-        data_generator.iter_model_data_for_layout_document(layout_document)
-    )
+    model_data_list: Sequence[LayoutModelData]
     if use_model:
-        data_lines = [
-            model_data.data_line
-            for model_data in model_data_list
-        ]
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        tag_result = segmentation_model.predict_labels(
-            texts=texts, features=features, output_format=None
-        )
-        LOGGER.debug('texts: %r', texts)
-        LOGGER.debug('data_lines: %r', data_lines)
-        LOGGER.debug('tag_result: %r', tag_result)
-        LOGGER.debug('model_data_list: %d', len(model_data_list))
-        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-        assert len(tag_result[0]) == len(model_data_list)
-        labeled_model_data_list = [
-            LabeledLayoutModelData.from_model_data(
-                model_data,
-                label=label
+        model_data_list = (
+            get_segmentation_label_model_data_list_for_layout_document(
+                layout_document,
+                segmentation_model=segmentation_model,
+                document_features_context=document_features_context,
+                model_result_cache=model_result_cache
             )
-            for model_data, (_, label) in zip(model_data_list, tag_result[0])
-        ]
-        model_data_list = labeled_model_data_list
+        )
+    else:
+        model_data_list = list(
+            data_generator.iter_model_data_for_layout_document(layout_document)
+        )
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
@@ -113,6 +205,100 @@ def generate_training_data_for_layout_document(  # pylint: disable=too-many-loca
         model_data.data_line
         for model_data in model_data_list
     ), encoding='utf-8')
+
+
+def generate_header_training_data_for_layout_document(  # pylint: disable=too-many-locals
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool,
+    model_result_cache: ModelResultCache
+):
+    segmentation_model = fulltext_models.segmentation_model
+    header_model = fulltext_models.header_model
+    data_generator = header_model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    training_data_generator = HeaderTeiTrainingDataGenerator()
+    source_basename = os.path.basename(source_filename)
+    source_name = os.path.splitext(source_basename)[0]
+    tei_file_path = os.path.join(
+        output_path,
+        source_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+    )
+    data_file_path = os.path.join(
+        output_path,
+        source_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+    )
+    segmentation_label_model_data_list = (
+        get_segmentation_label_model_data_list_for_layout_document(
+            layout_document,
+            segmentation_model=segmentation_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
+    )
+    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_list,
+        layout_document=layout_document
+    )
+    header_layout_document = segmentation_label_result.get_filtered_document_by_label(
+        '<header>'
+    ).remove_empty_blocks()
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(header_layout_document)
+    )
+    if use_model:
+        model_data_list = get_labeled_model_data_list(
+            model_data_list,
+            model=header_model
+        )
+    training_tei_root = (
+        training_data_generator
+        .get_training_tei_xml_for_model_data_iterable(
+            model_data_list
+        )
+    )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
+    Path(tei_file_path).write_bytes(
+        etree.tostring(training_tei_root, pretty_print=True)
+    )
+    LOGGER.info('writing training raw data to: %r', data_file_path)
+    Path(data_file_path).write_text('\n'.join(
+        model_data.data_line
+        for model_data in model_data_list
+    ), encoding='utf-8')
+
+
+def generate_training_data_for_layout_document(
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool
+):
+    model_result_cache = ModelResultCache()
+    generate_segmentation_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    )
+    generate_header_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    )
 
 
 def generate_training_data_for_source_filename(
