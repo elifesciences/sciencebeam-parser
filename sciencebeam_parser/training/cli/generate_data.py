@@ -14,10 +14,13 @@ from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
     LayoutModelData
 )
-from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
 from sciencebeam_parser.models.model import LayoutDocumentLabelResult, LayoutModelLabel, Model
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
+)
+from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
+from sciencebeam_parser.models.affiliation_address.training_data import (
+    AffiliationAddressTeiTrainingDataGenerator
 )
 from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
@@ -272,6 +275,62 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
     ), encoding='utf-8')
 
 
+def generate_aff_address_training_data_for_layout_document(  # pylint: disable=too-many-locals
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool,
+    model_result_cache: ModelResultCache
+):
+    segmentation_model = fulltext_models.segmentation_model
+    affiliation_address_model = fulltext_models.affiliation_address_model
+    data_generator = affiliation_address_model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
+    source_basename = os.path.basename(source_filename)
+    source_name = os.path.splitext(source_basename)[0]
+    tei_file_path = os.path.join(
+        output_path,
+        source_name + AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+    )
+    segmentation_label_model_data_list = (
+        get_segmentation_label_model_data_list_for_layout_document(
+            layout_document,
+            segmentation_model=segmentation_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
+    )
+    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_list,
+        layout_document=layout_document
+    )
+    header_layout_document = segmentation_label_result.get_filtered_document_by_label(
+        '<header>'
+    ).remove_empty_blocks()
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(header_layout_document)
+    )
+    if use_model:
+        model_data_list = get_labeled_model_data_list(
+            model_data_list,
+            model=affiliation_address_model
+        )
+    training_tei_root = (
+        training_data_generator
+        .get_training_tei_xml_for_model_data_iterable(
+            model_data_list
+        )
+    )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
+    Path(tei_file_path).write_bytes(
+        etree.tostring(training_tei_root, pretty_print=True)
+    )
+
+
 def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
     output_path: str,
@@ -291,6 +350,15 @@ def generate_training_data_for_layout_document(
         model_result_cache=model_result_cache
     )
     generate_header_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    )
+    generate_aff_address_training_data_for_layout_document(
         layout_document=layout_document,
         output_path=output_path,
         source_filename=source_filename,
