@@ -14,6 +14,7 @@ from sciencebeam_parser.models.data import (
     LayoutModelData
 )
 from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
+from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -49,6 +50,35 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def get_labeled_model_data_list(
+    model_data_list: Sequence[LayoutModelData],
+    model: Model
+) -> Sequence[LabeledLayoutModelData]:
+    data_lines = [
+        model_data.data_line
+        for model_data in model_data_list
+    ]
+    texts, features = load_data_crf_lines(data_lines)
+    texts = texts.tolist()
+    tag_result = model.predict_labels(
+        texts=texts, features=features, output_format=None
+    )
+    LOGGER.debug('texts: %r', texts)
+    LOGGER.debug('data_lines: %r', data_lines)
+    LOGGER.debug('tag_result: %r', tag_result)
+    LOGGER.debug('model_data_list: %d', len(model_data_list))
+    LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+    assert len(tag_result[0]) == len(model_data_list)
+    labeled_model_data_list = [
+        LabeledLayoutModelData.from_model_data(
+            model_data,
+            label=label
+        )
+        for model_data, (_, label) in zip(model_data_list, tag_result[0])
+    ]
+    return labeled_model_data_list
+
+
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
@@ -76,29 +106,10 @@ def generate_segmentation_training_data_for_layout_document(  # pylint: disable=
         data_generator.iter_model_data_for_layout_document(layout_document)
     )
     if use_model:
-        data_lines = [
-            model_data.data_line
-            for model_data in model_data_list
-        ]
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        tag_result = segmentation_model.predict_labels(
-            texts=texts, features=features, output_format=None
+        model_data_list = get_labeled_model_data_list(
+            model_data_list,
+            model=segmentation_model
         )
-        LOGGER.debug('texts: %r', texts)
-        LOGGER.debug('data_lines: %r', data_lines)
-        LOGGER.debug('tag_result: %r', tag_result)
-        LOGGER.debug('model_data_list: %d', len(model_data_list))
-        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-        assert len(tag_result[0]) == len(model_data_list)
-        labeled_model_data_list = [
-            LabeledLayoutModelData.from_model_data(
-                model_data,
-                label=label
-            )
-            for model_data, (_, label) in zip(model_data_list, tag_result[0])
-        ]
-        model_data_list = labeled_model_data_list
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
@@ -151,29 +162,10 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
         data_generator.iter_model_data_for_layout_document(header_layout_document)
     )
     if use_model:
-        data_lines = [
-            model_data.data_line
-            for model_data in model_data_list
-        ]
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        tag_result = header_model.predict_labels(
-            texts=texts, features=features, output_format=None
+        model_data_list = get_labeled_model_data_list(
+            model_data_list,
+            model=header_model
         )
-        LOGGER.debug('texts: %r', texts)
-        LOGGER.debug('data_lines: %r', data_lines)
-        LOGGER.debug('tag_result: %r', tag_result)
-        LOGGER.debug('model_data_list: %d', len(model_data_list))
-        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-        assert len(tag_result[0]) == len(model_data_list)
-        labeled_model_data_list = [
-            LabeledLayoutModelData.from_model_data(
-                model_data,
-                label=label
-            )
-            for model_data, (_, label) in zip(model_data_list, tag_result[0])
-        ]
-        model_data_list = labeled_model_data_list
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
