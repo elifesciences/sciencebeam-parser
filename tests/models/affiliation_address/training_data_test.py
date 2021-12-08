@@ -84,6 +84,16 @@ def get_layout_line_for_text(text: str, line_id: int) -> LayoutLine:
     )
 
 
+class ModuleState:
+    line_id: int = 1
+
+
+def get_next_layout_line_for_text(text: str) -> LayoutLine:
+    line_id = ModuleState.line_id
+    ModuleState.line_id += 1
+    return get_layout_line_for_text(text, line_id=line_id)
+
+
 class TestAffiliationAddressTeiTrainingDataGenerator:
     def test_should_include_layout_document_text_in_tei_output(self):
         training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
@@ -127,8 +137,8 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
 
     def test_should_generate_tei_from_model_data(self):
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
-            get_layout_line_for_text(TEXT_1, line_id=1),
-            get_layout_line_for_text(TEXT_2, line_id=2)
+            get_next_layout_line_for_text(TEXT_1),
+            get_next_layout_line_for_text(TEXT_2)
         ])])
         data_generator = get_data_generator()
         model_data_iterable = data_generator.iter_model_data_for_layout_document(
@@ -148,8 +158,8 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
 
     def test_should_generate_tei_from_model_data_using_model_labels(self):
         label_and_layout_line_list = [
-            ('<marker>', get_layout_line_for_text(TEXT_1, line_id=1)),
-            ('<institution>', get_layout_line_for_text(TEXT_2, line_id=2))
+            ('<marker>', get_next_layout_line_for_text(TEXT_1)),
+            ('<institution>', get_next_layout_line_for_text(TEXT_2))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list
@@ -171,7 +181,7 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
 
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
-            ('<unknown>', get_layout_line_for_text(TEXT_1, line_id=1))
+            ('<unknown>', get_next_layout_line_for_text(TEXT_1))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list
@@ -190,8 +200,8 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
 
     def test_should_not_join_separate_labels(self):
         label_and_layout_line_list = [
-            ('<institution>', get_layout_line_for_text(TEXT_1, line_id=1)),
-            ('<institution>', get_layout_line_for_text(TEXT_2, line_id=2))
+            ('<institution>', get_next_layout_line_for_text(TEXT_1)),
+            ('<institution>', get_next_layout_line_for_text(TEXT_2))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list
@@ -211,9 +221,9 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
     def test_should_generate_tei_from_multiple_model_data_lists_using_model_labels(self):
         label_and_layout_line_list_list = [
             [
-                ('<institution>', get_layout_line_for_text(TEXT_1, line_id=1))
+                ('<institution>', get_next_layout_line_for_text(TEXT_1))
             ], [
-                ('<institution>', get_layout_line_for_text(TEXT_2, line_id=2))
+                ('<institution>', get_next_layout_line_for_text(TEXT_2))
             ]
         ]
         labeled_model_data_list_list = get_labeled_model_data_list_list(
