@@ -34,7 +34,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<department>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="department"]'],
     '<laboratory>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="laboratory"]'],
     '<addrLine>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'addrLine'],
-    '<postCode>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'postCode']
+    '<postCode>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'postCode'],
+    '<postBox>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'postBox']
 }
 
 

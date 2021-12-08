@@ -186,7 +186,8 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             ('<department>', get_next_layout_line_for_text('Department 1')),
             ('<laboratory>', get_next_layout_line_for_text('Laboratory 1')),
             ('<addrLine>', get_next_layout_line_for_text('AddrLine 1')),
-            ('<postCode>', get_next_layout_line_for_text('PostCode 1'))
+            ('<postCode>', get_next_layout_line_for_text('PostCode 1')),
+            ('<postBox>', get_next_layout_line_for_text('PostBox 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list
@@ -216,6 +217,9 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         assert get_text_content_list(
             aff_nodes[0].xpath('./address/postCode')
         ) == ['PostCode 1']
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./address/postBox')
+        ) == ['PostBox 1']
 
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
