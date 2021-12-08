@@ -22,7 +22,8 @@ from sciencebeam_parser.models.model import (
     LayoutDocumentLabelResult,
     LayoutModelLabel,
     Model,
-    iter_data_lines_for_model_data_iterables
+    iter_data_lines_for_model_data_iterables,
+    iter_labeled_layout_token_for_layout_model_label
 )
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
@@ -44,6 +45,7 @@ LOGGER = logging.getLogger(__name__)
 @dataclass
 class ModelResultCache:
     segmentation_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
+    header_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -178,6 +180,24 @@ def get_segmentation_label_model_data_list_for_layout_document(
     return segmentation_label_model_data_list
 
 
+def get_header_label_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    header_model: Model,
+    document_features_context: DocumentFeaturesContext,
+    model_result_cache: ModelResultCache
+) -> Sequence[LabeledLayoutModelData]:
+    header_label_model_data_list = model_result_cache.header_label_model_data_list
+    if header_label_model_data_list is not None:
+        return header_label_model_data_list
+    header_label_model_data_list = get_labeled_model_data_list_for_layout_document(
+        layout_document,
+        model=header_model,
+        document_features_context=document_features_context
+    )
+    model_result_cache.header_label_model_data_list = header_label_model_data_list
+    return header_label_model_data_list
+
+
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
@@ -273,13 +293,19 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
     header_layout_document = segmentation_label_result.get_filtered_document_by_label(
         '<header>'
     ).remove_empty_blocks()
-    model_data_list: Sequence[LayoutModelData] = list(
-        data_generator.iter_model_data_for_layout_document(header_layout_document)
-    )
+    model_data_list: Sequence[LayoutModelData]
     if use_model:
-        model_data_list = get_labeled_model_data_list(
-            model_data_list,
-            model=header_model
+        model_data_list = (
+            get_header_label_model_data_list_for_layout_document(
+                header_layout_document,
+                header_model=header_model,
+                document_features_context=document_features_context,
+                model_result_cache=model_result_cache
+            )
+        )
+    else:
+        model_data_list = list(
+            data_generator.iter_model_data_for_layout_document(header_layout_document)
         )
     training_tei_root = (
         training_data_generator
@@ -335,10 +361,19 @@ def generate_aff_address_training_data_for_layout_document(  # pylint: disable=t
     header_layout_document = segmentation_label_result.get_filtered_document_by_label(
         '<header>'
     ).remove_empty_blocks()
-    header_labeled_layout_tokens = header_model.predict_labels_for_layout_document(
-        header_layout_document,
-        app_features_context=document_features_context.app_features_context
+    header_model_data_list = (
+        get_header_label_model_data_list_for_layout_document(
+            header_layout_document,
+            header_model=header_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
     )
+    header_labeled_layout_tokens = list(iter_labeled_layout_token_for_layout_model_label(
+        iter_layout_model_label_for_labeled_model_data_list(
+            header_model_data_list
+        )
+    ))
     semantic_raw_aff_address_list = list(
         SemanticMixedContentWrapper(list(
             header_model.iter_semantic_content_for_labeled_layout_tokens(
