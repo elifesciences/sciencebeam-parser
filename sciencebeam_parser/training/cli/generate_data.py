@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from glob import glob
 from typing import Iterable, List, Optional, Sequence
@@ -26,6 +27,11 @@ from sciencebeam_parser.utils.media_types import MediaTypes
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class ModelResultCache:
+    segmentation_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -128,13 +134,32 @@ def get_layout_document_label_result_for_labeled_model_data_list(
     )
 
 
+def get_segmentation_label_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    segmentation_model: Model,
+    document_features_context: DocumentFeaturesContext,
+    model_result_cache: ModelResultCache
+) -> Sequence[LabeledLayoutModelData]:
+    segmentation_label_model_data_list = model_result_cache.segmentation_label_model_data_list
+    if segmentation_label_model_data_list is not None:
+        return segmentation_label_model_data_list
+    segmentation_label_model_data_list = get_labeled_model_data_list_for_layout_document(
+        layout_document,
+        model=segmentation_model,
+        document_features_context=document_features_context
+    )
+    model_result_cache.segmentation_label_model_data_list = segmentation_label_model_data_list
+    return segmentation_label_model_data_list
+
+
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
-    use_model: bool
+    use_model: bool,
+    model_result_cache: ModelResultCache
 ):
     segmentation_model = fulltext_models.segmentation_model
     data_generator = segmentation_model.get_data_generator(
@@ -151,13 +176,19 @@ def generate_segmentation_training_data_for_layout_document(  # pylint: disable=
         output_path,
         source_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    model_data_list: Sequence[LayoutModelData] = list(
-        data_generator.iter_model_data_for_layout_document(layout_document)
-    )
+    model_data_list: Sequence[LayoutModelData]
     if use_model:
-        model_data_list = get_labeled_model_data_list(
-            model_data_list,
-            model=segmentation_model
+        model_data_list = (
+            get_segmentation_label_model_data_list_for_layout_document(
+                layout_document,
+                segmentation_model=segmentation_model,
+                document_features_context=document_features_context,
+                model_result_cache=model_result_cache
+            )
+        )
+    else:
+        model_data_list = list(
+            data_generator.iter_model_data_for_layout_document(layout_document)
         )
     training_tei_root = (
         training_data_generator
@@ -182,7 +213,8 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
-    use_model: bool
+    use_model: bool,
+    model_result_cache: ModelResultCache
 ):
     segmentation_model = fulltext_models.segmentation_model
     header_model = fulltext_models.header_model
@@ -200,10 +232,13 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
         output_path,
         source_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    segmentation_label_model_data_list = get_labeled_model_data_list_for_layout_document(
-        layout_document,
-        model=segmentation_model,
-        document_features_context=document_features_context
+    segmentation_label_model_data_list = (
+        get_segmentation_label_model_data_list_for_layout_document(
+            layout_document,
+            segmentation_model=segmentation_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
     )
     segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
         labeled_model_data_iterable=segmentation_label_model_data_list,
@@ -245,13 +280,15 @@ def generate_training_data_for_layout_document(
     fulltext_models: FullTextModels,
     use_model: bool
 ):
+    model_result_cache = ModelResultCache()
     generate_segmentation_training_data_for_layout_document(
         layout_document=layout_document,
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
-        use_model=use_model
+        use_model=use_model,
+        model_result_cache=model_result_cache
     )
     generate_header_training_data_for_layout_document(
         layout_document=layout_document,
@@ -259,7 +296,8 @@ def generate_training_data_for_layout_document(
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
-        use_model=use_model
+        use_model=use_model,
+        model_result_cache=model_result_cache
     )
 
 
