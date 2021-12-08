@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 from glob import glob
-from typing import List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
@@ -14,7 +14,7 @@ from sciencebeam_parser.models.data import (
     LayoutModelData
 )
 from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
-from sciencebeam_parser.models.model import Model
+from sciencebeam_parser.models.model import LayoutDocumentLabelResult, LayoutModelLabel, Model
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -77,6 +77,55 @@ def get_labeled_model_data_list(
         for model_data, (_, label) in zip(model_data_list, tag_result[0])
     ]
     return labeled_model_data_list
+
+
+def get_labeled_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    model: Model,
+    document_features_context: DocumentFeaturesContext
+) -> Sequence[LabeledLayoutModelData]:
+    data_generator = model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    model_data_list: Sequence[LayoutModelData] = list(
+        data_generator.iter_model_data_for_layout_document(layout_document)
+    )
+    return get_labeled_model_data_list(
+        model_data_list,
+        model=model
+    )
+
+
+def get_layout_model_label_for_labeled_model_data(
+    labeled_model_data: LabeledLayoutModelData
+) -> LayoutModelLabel:
+    return LayoutModelLabel(
+        label=labeled_model_data.label or '',
+        label_token_text=labeled_model_data.label_token_text,
+        layout_line=labeled_model_data.layout_line,
+        layout_token=labeled_model_data.layout_token
+    )
+
+
+def iter_layout_model_label_for_labeled_model_data_list(
+    labeled_model_data_iterable: Iterable[LabeledLayoutModelData],
+) -> Iterable[LayoutModelLabel]:
+    return (
+        get_layout_model_label_for_labeled_model_data(labeled_model_data)
+        for labeled_model_data in labeled_model_data_iterable
+    )
+
+
+def get_layout_document_label_result_for_labeled_model_data_list(
+    labeled_model_data_iterable: Iterable[LabeledLayoutModelData],
+    layout_document: LayoutDocument
+) -> LayoutDocumentLabelResult:
+    return LayoutDocumentLabelResult(
+        layout_document=layout_document,
+        layout_model_label_iterable=iter_layout_model_label_for_labeled_model_data_list(
+            labeled_model_data_iterable
+        )
+    )
 
 
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
@@ -151,9 +200,14 @@ def generate_header_training_data_for_layout_document(  # pylint: disable=too-ma
         output_path,
         source_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
     )
-    segmentation_label_result = segmentation_model.get_label_layout_document_result(
+    segmentation_label_model_data_list = get_labeled_model_data_list_for_layout_document(
         layout_document,
-        app_features_context=document_features_context.app_features_context
+        model=segmentation_model,
+        document_features_context=document_features_context
+    )
+    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_list,
+        layout_document=layout_document
     )
     header_layout_document = segmentation_label_result.get_filtered_document_by_label(
         '<header>'
