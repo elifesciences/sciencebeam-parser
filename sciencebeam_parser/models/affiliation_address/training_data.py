@@ -26,9 +26,10 @@ ROOT_TRAINING_XML_ELEMENT_PATH = [
     'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
     'affiliation'
 ]
+
+OTHER_LABELS = {'<other>', 'O'}
+
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
-    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH,
-    'O': ROOT_TRAINING_XML_ELEMENT_PATH,
     '<marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['marker'],
     '<institution>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="institution"]'],
     '<department>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="department"]'],
@@ -39,6 +40,11 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<region>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'region'],
     '<settlement>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'settlement'],
     '<country>': ROOT_TRAINING_XML_ELEMENT_PATH + ['address', 'country']
+}
+
+TRAINING_XML_ELEMENT_PATHS = {
+    tuple(value)
+    for value in TRAINING_XML_ELEMENT_PATH_BY_LABEL.values()
 }
 
 
@@ -90,9 +96,14 @@ def get_default_note_type_for_label(label: str) -> str:
     return label.strip('<>')
 
 
-def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
-    if not label:
-        return ROOT_TRAINING_XML_ELEMENT_PATH
+def get_training_xml_path_for_label(
+    label: Optional[str],
+    current_path: Sequence[str]
+) -> Sequence[str]:
+    if not label or label in OTHER_LABELS:
+        if tuple(current_path) in TRAINING_XML_ELEMENT_PATHS:
+            return current_path[:-1]
+        return current_path
     training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
     if not training_xml_path:
         note_type = get_default_note_type_for_label(label)
@@ -120,23 +131,32 @@ class AffiliationAddressTeiTrainingDataGenerator:
     ):
         default_path = xml_writer.current_path
         pending_text = ''
+        prev_label: str = ''
         for line_model_data_list in iter_group_model_data_by_line(model_data_iterable):
             for model_data in line_model_data_list:
                 layout_token = model_data.layout_token
                 assert layout_token is not None
                 prefixed_label = get_model_data_label(model_data)
                 prefix, label = get_split_prefix_label(prefixed_label or '')
-                xml_element_path = get_training_xml_path_for_label(label)
+                xml_element_path = get_training_xml_path_for_label(
+                    label,
+                    current_path=xml_writer.current_path
+                )
                 LOGGER.debug('label: %r (%r: %r)', label, prefix, xml_element_path)
-                if xml_writer.current_path != xml_element_path:
-                    xml_writer.require_path(default_path)
-                if prefix == 'B':
+                if (
+                    prev_label not in OTHER_LABELS
+                    and pending_text
+                    and xml_writer.current_path != xml_element_path
+                ):
+                    xml_writer.require_path(xml_writer.current_path[:-1])
+                elif prefix == 'B' and label not in OTHER_LABELS:
                     xml_writer.require_path(xml_element_path[:-1])
                 xml_writer.append_text(pending_text)
                 pending_text = ''
                 xml_writer.require_path(xml_element_path)
                 xml_writer.append_text(layout_token.text)
                 pending_text = ' '
+                prev_label = label
             xml_writer.append(TEI_E('lb'))
             pending_text = '\n'
         xml_writer.require_path(default_path)

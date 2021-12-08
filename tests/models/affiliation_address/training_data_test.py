@@ -186,10 +186,15 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             ('<department>', get_next_layout_line_for_text('Department 1')),
             ('<laboratory>', get_next_layout_line_for_text('Laboratory 1')),
             ('<addrLine>', get_next_layout_line_for_text('AddrLine 1')),
+            ('O', get_next_layout_line_for_text(',')),
             ('<postCode>', get_next_layout_line_for_text('PostCode 1')),
+            ('O', get_next_layout_line_for_text(',')),
             ('<postBox>', get_next_layout_line_for_text('PostBox 1')),
+            ('O', get_next_layout_line_for_text(',')),
             ('<region>', get_next_layout_line_for_text('Region 1')),
+            ('O', get_next_layout_line_for_text(',')),
             ('<settlement>', get_next_layout_line_for_text('Settlement 1')),
+            ('O', get_next_layout_line_for_text(',')),
             ('<country>', get_next_layout_line_for_text('Country 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
@@ -232,6 +237,11 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         assert get_text_content_list(
             aff_nodes[0].xpath('./address/country')
         ) == ['Country 1']
+        assert get_text_content_list(
+            aff_nodes[0].xpath('./address')
+        ) == ['\n,\n'.join([
+            'AddrLine 1', 'PostCode 1', 'PostBox 1', 'Region 1', 'Settlement 1', 'Country 1'
+        ])]
 
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
