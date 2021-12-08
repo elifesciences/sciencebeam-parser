@@ -18,7 +18,12 @@ from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
     LayoutModelData
 )
-from sciencebeam_parser.models.model import LayoutDocumentLabelResult, LayoutModelLabel, Model
+from sciencebeam_parser.models.model import (
+    LayoutDocumentLabelResult,
+    LayoutModelLabel,
+    Model,
+    iter_data_lines_for_model_data_iterables
+)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -63,14 +68,15 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def get_labeled_model_data_list(
-    model_data_list: Sequence[LayoutModelData],
+def get_labeled_model_data_list_list(
+    model_data_list_list: Sequence[Sequence[LayoutModelData]],
     model: Model
-) -> Sequence[LabeledLayoutModelData]:
-    data_lines = [
-        model_data.data_line
-        for model_data in model_data_list
-    ]
+) -> Sequence[Sequence[LabeledLayoutModelData]]:
+    if not model_data_list_list:
+        return []
+    data_lines = list(iter_data_lines_for_model_data_iterables(
+        model_data_list_list
+    ))
     texts, features = load_data_crf_lines(data_lines)
     texts = texts.tolist()
     tag_result = model.predict_labels(
@@ -79,27 +85,30 @@ def get_labeled_model_data_list(
     LOGGER.debug('texts: %r', texts)
     LOGGER.debug('data_lines: %r', data_lines)
     LOGGER.debug('tag_result: %r', tag_result)
-    LOGGER.debug('model_data_list: %d', len(model_data_list))
+    LOGGER.debug('model_data_list_list[0]: %d', len(model_data_list_list[0]))
     LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-    assert len(tag_result[0]) == len(model_data_list)
-    labeled_model_data_list = [
-        LabeledLayoutModelData.from_model_data(
-            model_data,
-            label=label
-        )
-        for model_data, (_, label) in zip(model_data_list, tag_result[0])
-    ]
-    return labeled_model_data_list
-
-
-def get_labeled_model_data_list_list(
-    model_data_list_list: Sequence[Sequence[LayoutModelData]],
-    model: Model
-) -> Sequence[Sequence[LabeledLayoutModelData]]:
-    return [
-        get_labeled_model_data_list(model_data_list, model=model)
+    assert len(tag_result[0]) == len(model_data_list_list[0])
+    labeled_model_data_list_list = [
+        [
+            LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=label
+            )
+            for model_data, (_, label) in zip(model_data_list, tag_result[0])
+        ]
         for model_data_list in model_data_list_list
     ]
+    return labeled_model_data_list_list
+
+
+def get_labeled_model_data_list(
+    model_data_list: Sequence[LayoutModelData],
+    model: Model
+) -> Sequence[LabeledLayoutModelData]:
+    return get_labeled_model_data_list_list(
+        [model_data_list],
+        model=model
+    )[0]
 
 
 def get_labeled_model_data_list_for_layout_document(
