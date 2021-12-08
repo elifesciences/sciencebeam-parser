@@ -94,8 +94,8 @@ def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
 
 
 class AffiliationAddressTeiTrainingDataGenerator:
-    DEFAULT_TEI_FILENAME_SUFFIX = '.header.tei.xml'
-    DEFAULT_DATA_FILENAME_SUFFIX = '.header'
+    DEFAULT_TEI_FILENAME_SUFFIX = '.affiliation.tei.xml'
+    DEFAULT_DATA_FILENAME_SUFFIX = '.affiliation'
 
     def write_xml_line_for_layout_tokens(
         self,
