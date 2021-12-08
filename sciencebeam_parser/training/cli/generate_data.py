@@ -9,6 +9,10 @@ from typing import Iterable, List, Optional, Sequence
 from lxml import etree
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_parser.document.layout_document import LayoutDocument
+from sciencebeam_parser.document.semantic_document import (
+    SemanticMixedContentWrapper,
+    SemanticRawAffiliationAddress
+)
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext,
     LabeledLayoutModelData,
@@ -285,6 +289,7 @@ def generate_aff_address_training_data_for_layout_document(  # pylint: disable=t
     model_result_cache: ModelResultCache
 ):
     segmentation_model = fulltext_models.segmentation_model
+    header_model = fulltext_models.header_model
     affiliation_address_model = fulltext_models.affiliation_address_model
     data_generator = affiliation_address_model.get_data_generator(
         document_features_context=document_features_context
@@ -311,14 +316,34 @@ def generate_aff_address_training_data_for_layout_document(  # pylint: disable=t
     header_layout_document = segmentation_label_result.get_filtered_document_by_label(
         '<header>'
     ).remove_empty_blocks()
-    model_data_list: Sequence[LayoutModelData] = list(
-        data_generator.iter_model_data_for_layout_document(header_layout_document)
+    header_labeled_layout_tokens = header_model.predict_labels_for_layout_document(
+        header_layout_document,
+        app_features_context=document_features_context.app_features_context
     )
-    if use_model:
-        model_data_list = get_labeled_model_data_list(
-            model_data_list,
-            model=affiliation_address_model
+    semantic_raw_aff_address_list = list(
+        SemanticMixedContentWrapper(list(
+            header_model.iter_semantic_content_for_labeled_layout_tokens(
+                header_labeled_layout_tokens
+            )
+        )).iter_by_type(SemanticRawAffiliationAddress)
+    )
+    LOGGER.info('semantic_raw_aff_address_list count: %d', len(semantic_raw_aff_address_list))
+
+    model_data_list: Sequence[LayoutModelData] = []
+    if semantic_raw_aff_address_list:
+        aff_layout_document = LayoutDocument.for_blocks([
+            block
+            for semantic_raw_aff_address in semantic_raw_aff_address_list
+            for block in semantic_raw_aff_address.iter_blocks()
+        ])
+        model_data_list = list(
+            data_generator.iter_model_data_for_layout_document(aff_layout_document)
         )
+        if use_model:
+            model_data_list = get_labeled_model_data_list(
+                model_data_list,
+                model=affiliation_address_model
+            )
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_model_data_iterable(
