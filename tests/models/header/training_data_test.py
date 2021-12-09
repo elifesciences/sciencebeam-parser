@@ -74,6 +74,19 @@ class TestHeaderTeiTrainingDataGenerator:
         assert len(text_nodes) == 1
         assert get_text_content(text_nodes[0]).rstrip() == TEXT_1
 
+    def test_should_keep_original_whitespace(self):
+        training_data_generator = HeaderTeiTrainingDataGenerator()
+        text = 'Token1, Token2  ,Token3'
+        layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
+            LayoutLine.for_text(text, tail_whitespace='\n')
+        ])])
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            get_model_data_list_for_layout_document(layout_document)
+        )
+        text_nodes = xml_root.xpath('./text/front')
+        assert len(text_nodes) == 1
+        assert get_text_content(text_nodes[0]).rstrip() == text
+
     def test_should_add_line_feeds(self):
         training_data_generator = HeaderTeiTrainingDataGenerator()
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
