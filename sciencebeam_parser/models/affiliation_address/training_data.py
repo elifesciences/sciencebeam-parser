@@ -127,7 +127,7 @@ class AffiliationAddressTeiTrainingDataGenerator:
         model_data_iterable: Iterable[LayoutModelData]
     ):
         default_path = xml_writer.current_path
-        pending_text = ''
+        pending_whitespace = ''
         prev_label: str = ''
         for line_model_data_list in iter_group_model_data_by_line(model_data_iterable):
             for model_data in line_model_data_list:
@@ -142,22 +142,22 @@ class AffiliationAddressTeiTrainingDataGenerator:
                 LOGGER.debug('label: %r (%r: %r)', label, prefix, xml_element_path)
                 if (
                     prev_label not in OTHER_LABELS
-                    and pending_text
+                    and pending_whitespace
                     and xml_writer.current_path != xml_element_path
                 ):
                     xml_writer.require_path(xml_writer.current_path[:-1])
                 elif prefix == 'B' and label not in OTHER_LABELS:
                     xml_writer.require_path(xml_element_path[:-1])
-                xml_writer.append_text(pending_text)
-                pending_text = ''
+                xml_writer.append_text(pending_whitespace)
+                pending_whitespace = ''
                 xml_writer.require_path(xml_element_path)
                 xml_writer.append_text(layout_token.text)
-                pending_text = layout_token.whitespace
+                pending_whitespace = layout_token.whitespace
                 prev_label = label
             xml_writer.append(TEI_E('lb'))
-            pending_text = '\n'
+            pending_whitespace = '\n'
         xml_writer.require_path(default_path)
-        xml_writer.append_text(pending_text)
+        xml_writer.append_text(pending_whitespace)
 
     def _get_xml_writer(self) -> XmlTreeWriter:
         return XmlTreeWriter(
