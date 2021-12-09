@@ -94,6 +94,7 @@ def get_labeled_model_data_list_list(
     LOGGER.debug('tag_result: %r', tag_result)
     LOGGER.debug('model_data_list_list[0]: %d', len(model_data_list_list[0]))
     LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+    assert len(tag_result) == len(model_data_list_list)
     assert len(tag_result[0]) == len(model_data_list_list[0])
     labeled_model_data_list_list = [
         [
@@ -101,9 +102,9 @@ def get_labeled_model_data_list_list(
                 model_data,
                 label=label
             )
-            for model_data, (_, label) in zip(model_data_list, tag_result[0])
+            for model_data, (_, label) in zip(model_data_list, doc_tag_result)
         ]
-        for model_data_list in model_data_list_list
+        for model_data_list, doc_tag_result in zip(model_data_list_list, tag_result)
     ]
     return labeled_model_data_list_list
 
