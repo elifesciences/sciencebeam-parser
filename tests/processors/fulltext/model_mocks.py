@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Iterable, Mapping, Union
+from typing import Callable, Dict, Iterable, Mapping, Sequence, TypeVar, Union
 from unittest.mock import MagicMock
 
 from sciencebeam_parser.document.layout_document import (
@@ -8,7 +8,8 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
-    DocumentFeaturesContext
+    DocumentFeaturesContext,
+    LayoutModelData
 )
 from sciencebeam_parser.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
 from sciencebeam_parser.models.model import LayoutModelLabel, Model
@@ -27,6 +28,9 @@ from sciencebeam_parser.processors.fulltext.models import (
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+T = TypeVar('T')
 
 
 LayoutTokenId = int
@@ -50,6 +54,9 @@ class MockDelftModelWrapper:
         model_wrapper._lazy_model_impl._value = MagicMock(name='model_impl')
         model_wrapper._iter_label_layout_documents = (  # type: ignore
             self._iter_label_layout_documents
+        )
+        model_wrapper._iter_flat_label_model_data_lists_to = (  # type: ignore
+            self._iter_flat_label_model_data_lists_to
         )
 
     def update_label_by_layout_tokens(
@@ -112,6 +119,38 @@ class MockDelftModelWrapper:
                 layout_line=model_data.layout_line,
                 layout_token=model_data.layout_token
             )
+
+    def _iter_flat_label_model_data_lists_to(  # pylint: disable=too-many-locals
+        self,
+        model_data_list_iterable: Iterable[Sequence[LayoutModelData]],
+        item_factory: Callable[[str, LayoutModelData], T]
+    ) -> Iterable[Union[T, NewDocumentMarker]]:
+        for index, model_data_list in enumerate(model_data_list_iterable):
+            if index > 0:
+                yield NEW_DOCUMENT_MARKER
+            for model_data in model_data_list:
+                if model_data.layout_token:
+                    label = self._label_by_layout_token.get(
+                        id(model_data.layout_token),
+                        self._default_label
+                    )
+                    LOGGER.debug(
+                        'id(layout_token)=%r, label=%r', id(model_data.layout_token), label
+                    )
+                else:
+                    assert model_data.layout_line
+                    first_layout_token = model_data.layout_line.tokens[0]
+                    label = self._label_by_layout_token.get(
+                        id(first_layout_token),
+                        self._default_label
+                    )
+                    LOGGER.debug(
+                        'id(first_layout_token)=%r, label=%r', id(first_layout_token), label
+                    )
+                yield item_factory(
+                    label,
+                    model_data
+                )
 
 
 class MockFullTextModels(FullTextModels):
