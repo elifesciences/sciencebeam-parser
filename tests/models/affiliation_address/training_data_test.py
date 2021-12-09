@@ -9,6 +9,7 @@ from sciencebeam_parser.document.layout_document import (
     LayoutLine,
     LayoutLineDescriptor
 )
+from sciencebeam_parser.document.tei.common import get_tei_xpath_text_content_list, tei_xpath
 from sciencebeam_parser.models.data import (
     DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     LabeledLayoutModelData,
@@ -18,7 +19,7 @@ from sciencebeam_parser.models.affiliation_address.data import AffiliationAddres
 from sciencebeam_parser.models.affiliation_address.training_data import (
     AffiliationAddressTeiTrainingDataGenerator
 )
-from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
+from sciencebeam_parser.utils.xml import get_text_content
 
 
 LOGGER = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ TEXT_2 = 'this is text 2'
 
 
 AFFILIATION_XPATH = (
-    'teiHeader/fileDesc/sourceDesc/biblStruct/analytic/author/affiliation'
+    'tei:teiHeader/tei:fileDesc/tei:sourceDesc/tei:biblStruct'
+    '/tei:analytic/tei:author/tei:affiliation'
 )
 
 
@@ -102,7 +104,7 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             get_model_data_list_for_layout_document(layout_document)
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
         assert get_text_content(aff_nodes[0]).rstrip() == TEXT_1
 
@@ -115,7 +117,7 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             get_model_data_list_for_layout_document(layout_document)
         )
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
         assert get_text_content(aff_nodes[0]).rstrip() == '\n'.join([TEXT_1, TEXT_2])
 
@@ -128,9 +130,9 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             get_model_data_list_for_layout_document(layout_document)
         )
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        lb_nodes = aff_nodes[0].xpath('lb')
+        lb_nodes = tei_xpath(aff_nodes[0], 'tei:lb')
         assert len(lb_nodes) == 2
         assert lb_nodes[0].getparent().text == TEXT_1
         assert lb_nodes[0].tail == '\n' + TEXT_2
@@ -149,9 +151,9 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             model_data_iterable
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        lb_nodes = aff_nodes[0].xpath('lb')
+        lb_nodes = tei_xpath(aff_nodes[0], 'tei:lb')
         assert len(lb_nodes) == 2
         assert lb_nodes[0].getparent().text == TEXT_1
         assert lb_nodes[0].tail == '\n' + TEXT_2
@@ -169,13 +171,13 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             labeled_model_data_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./marker')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:marker'
         ) == [TEXT_1]
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="institution"]'
         ) == [TEXT_2]
         assert get_text_content(aff_nodes[0]) == f'{TEXT_1}\n{TEXT_2}\n'
 
@@ -205,40 +207,40 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             labeled_model_data_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./marker')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:marker'
         ) == ['Marker 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="institution"]'
         ) == ['Institution 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="department"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="department"]'
         ) == ['Department 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="laboratory"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="laboratory"]'
         ) == ['Laboratory 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/addrLine')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:addrLine'
         ) == ['AddrLine 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/postCode')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:postCode'
         ) == ['PostCode 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/postBox')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:postBox'
         ) == ['PostBox 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/region')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:region'
         ) == ['Region 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/settlement')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:settlement'
         ) == ['Settlement 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address/country')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address/tei:country'
         ) == ['Country 1']
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./address')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:address'
         ) == ['\n,\n'.join([
             'AddrLine 1', 'PostCode 1', 'PostBox 1', 'Region 1', 'Settlement 1', 'Country 1'
         ])]
@@ -255,10 +257,10 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             labeled_model_data_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./note[@type="unknown"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:note[@type="unknown"]'
         ) == [TEXT_1]
         assert get_text_content(aff_nodes[0]) == f'{TEXT_1}\n'
 
@@ -275,10 +277,10 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             labeled_model_data_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 1
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="institution"]'
         ) == [TEXT_1, TEXT_2]
         assert get_text_content(aff_nodes[0]) == f'{TEXT_1}\n{TEXT_2}\n'
 
@@ -298,11 +300,11 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
             labeled_model_data_list_list
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        aff_nodes = xml_root.xpath(AFFILIATION_XPATH)
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
         assert len(aff_nodes) == 2
-        assert get_text_content_list(
-            aff_nodes[0].xpath('./orgName[@type="institution"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:orgName[@type="institution"]'
         ) == [TEXT_1]
-        assert get_text_content_list(
-            aff_nodes[1].xpath('./orgName[@type="institution"]')
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[1], './tei:orgName[@type="institution"]'
         ) == [TEXT_2]

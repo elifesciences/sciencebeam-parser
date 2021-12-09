@@ -2,8 +2,6 @@ import logging
 from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
-from lxml.builder import ElementMaker
-from sciencebeam_parser.models.model import get_split_prefix_label
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
@@ -11,13 +9,12 @@ from sciencebeam_parser.document.layout_document import (
     LayoutToken,
     join_layout_tokens
 )
+from sciencebeam_parser.document.tei.common import TEI_E
+from sciencebeam_parser.models.model import get_split_prefix_label
 from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-TEI_E = ElementMaker()
 
 
 # based on:
