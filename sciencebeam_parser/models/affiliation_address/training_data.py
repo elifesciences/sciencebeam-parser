@@ -152,7 +152,7 @@ class AffiliationAddressTeiTrainingDataGenerator:
                 pending_text = ''
                 xml_writer.require_path(xml_element_path)
                 xml_writer.append_text(layout_token.text)
-                pending_text = ' '
+                pending_text = layout_token.whitespace
                 prev_label = label
             xml_writer.append(TEI_E('lb'))
             pending_text = '\n'

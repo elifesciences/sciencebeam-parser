@@ -108,6 +108,19 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
         assert len(aff_nodes) == 1
         assert get_text_content(aff_nodes[0]).rstrip() == TEXT_1
 
+    def test_should_keep_original_whitespace(self):
+        training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
+        text = 'Token1, Token2  ,Token3'
+        layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
+            LayoutLine.for_text(text, tail_whitespace='\n')
+        ])])
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            get_model_data_list_for_layout_document(layout_document)
+        )
+        aff_nodes = tei_xpath(xml_root, AFFILIATION_XPATH)
+        assert len(aff_nodes) == 1
+        assert get_text_content(aff_nodes[0]).rstrip() == text
+
     def test_should_add_line_feeds(self):
         training_data_generator = AffiliationAddressTeiTrainingDataGenerator()
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
