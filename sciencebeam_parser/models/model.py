@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
@@ -16,6 +16,7 @@ from sciencebeam_parser.document.layout_document import (
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
     DocumentFeaturesContext,
+    LabeledLayoutModelData,
     LayoutModelData,
     ModelDataGenerator
 )
@@ -367,6 +368,38 @@ class Model(ABC, Preloadable):
                     layout_line=token_model_data.layout_line,
                     layout_token=token_model_data.layout_token
                 )
+
+    def iter_labeled_model_data_list_for_model_data_list_iterable(
+        self,
+        model_data_list_iterable: Iterable[Sequence[LayoutModelData]]
+    ) -> Iterable[Sequence[LabeledLayoutModelData]]:
+        # Note: currently we do need a list
+        model_data_list_list = list(model_data_list_iterable)
+        if not model_data_list_list:
+            return
+        data_lines = list(iter_data_lines_for_model_data_iterables(
+            model_data_list_list
+        ))
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = self.predict_labels(
+            texts=texts, features=features, output_format=None
+        )
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('data_lines: %r', data_lines)
+        LOGGER.debug('tag_result: %r', tag_result)
+        LOGGER.debug('model_data_list_list[0]: %d', len(model_data_list_list[0]))
+        LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
+        assert len(tag_result) == len(model_data_list_list)
+        assert len(tag_result[0]) == len(model_data_list_list[0])
+        for model_data_list, doc_tag_result in zip(model_data_list_list, tag_result):
+            yield [
+                LabeledLayoutModelData.from_model_data(
+                    model_data,
+                    label=label
+                )
+                for model_data, (_, label) in zip(model_data_list, doc_tag_result)
+            ]
 
     def get_label_layout_document_result(
         self,
