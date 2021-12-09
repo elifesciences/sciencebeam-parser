@@ -5,9 +5,7 @@ from lxml import etree
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
-    LayoutLine,
-    LayoutToken,
-    join_layout_tokens
+    LayoutLine
 )
 from sciencebeam_parser.document.tei.common import TEI_E
 from sciencebeam_parser.models.model import get_split_prefix_label
@@ -112,14 +110,6 @@ def get_training_xml_path_for_label(
 class AffiliationAddressTeiTrainingDataGenerator:
     DEFAULT_TEI_FILENAME_SUFFIX = '.affiliation.tei.xml'
     DEFAULT_DATA_FILENAME_SUFFIX = '.affiliation'
-
-    def write_xml_line_for_layout_tokens(
-        self,
-        xml_writer: XmlTreeWriter,
-        layout_tokens: Iterable[LayoutToken]
-    ):
-        xml_writer.append_text(join_layout_tokens(layout_tokens))
-        xml_writer.append(TEI_E('lb'))
 
     def write_xml_for_model_data_iterable(
         self,
