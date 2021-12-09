@@ -16,6 +16,7 @@ from sciencebeam_parser.document.layout_document import (
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
     DocumentFeaturesContext,
+    LayoutModelData,
     ModelDataGenerator
 )
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
@@ -208,6 +209,16 @@ def iter_labeled_layout_token_for_layout_model_label(
         )
 
 
+def iter_data_lines_for_model_data_iterables(
+    model_data_iterables: Iterable[Iterable[LayoutModelData]]
+) -> Iterable[str]:
+    for index, model_data_list in enumerate(model_data_iterables):
+        if index > 0:
+            yield ''
+        for model_data in model_data_list:
+            yield model_data.data_line
+
+
 class Model(ABC, Preloadable):
     def __init__(
         self,
@@ -320,13 +331,9 @@ class Model(ABC, Preloadable):
             ))
             for layout_document in layout_documents
         ]
-        data_lines = []
-        for index, model_data_list in enumerate(model_data_lists):
-            if index > 0:
-                data_lines.append('')
-            data_lines.extend(
-                (model_data.data_line for model_data in model_data_list)
-            )
+        data_lines = list(iter_data_lines_for_model_data_iterables(
+            model_data_lists
+        ))
         texts, features = load_data_crf_lines(data_lines)
         texts = texts.tolist()
         tag_result = self.predict_labels(
