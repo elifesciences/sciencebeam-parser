@@ -1,9 +1,7 @@
 import logging
-from typing import Iterable, List, Optional, Sequence, Union
+from typing import Iterable, List
 
-from lxml import etree
 from lxml.builder import ElementMaker
-from sciencebeam_parser.models.model import get_split_prefix_label
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.document.layout_document import (
@@ -11,7 +9,12 @@ from sciencebeam_parser.document.layout_document import (
     LayoutToken,
     join_layout_tokens
 )
-from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
+from sciencebeam_parser.models.data import LayoutModelData
+from sciencebeam_parser.models.model import get_split_prefix_label
+from sciencebeam_parser.models.training_data import (
+    AbstractTeiTrainingDataGenerator,
+    get_model_data_label
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -48,12 +51,6 @@ def iter_tokens_from_model_data(model_data: LayoutModelData) -> Iterable[LayoutT
     yield from model_data.layout_line.tokens
 
 
-def get_model_data_label(model_data: LayoutModelData) -> Optional[str]:
-    if isinstance(model_data, LabeledLayoutModelData):
-        return model_data.label
-    return None
-
-
 def iter_layout_lines_from_layout_tokens(
     layout_tokens: Iterable[LayoutToken]
 ) -> Iterable[LayoutLine]:
@@ -75,24 +72,16 @@ def iter_layout_lines_from_layout_tokens(
         yield LayoutLine(tokens=line_layout_tokens)
 
 
-def get_default_note_type_for_label(label: str) -> str:
-    return label.strip('<>')
-
-
-def get_training_xml_path_for_label(label: Optional[str]) -> Sequence[str]:
-    if not label:
-        return ROOT_TRAINING_XML_ELEMENT_PATH
-    training_xml_path = TRAINING_XML_ELEMENT_PATH_BY_LABEL.get(label or '')
-    if not training_xml_path:
-        note_type = get_default_note_type_for_label(label)
-        LOGGER.info('label not mapped, creating note: %r', label)
-        training_xml_path = ROOT_TRAINING_XML_ELEMENT_PATH + [f'note[@type="{note_type}"]']
-    return training_xml_path
-
-
-class SegmentationTeiTrainingDataGenerator:
+class SegmentationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
     DEFAULT_TEI_FILENAME_SUFFIX = '.segmentation.tei.xml'
     DEFAULT_DATA_FILENAME_SUFFIX = '.segmentation'
+
+    def __init__(self):
+        super().__init__(
+            root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
+            training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
+            element_maker=TEI_E
+        )
 
     def write_xml_line_for_layout_tokens(
         self,
@@ -112,7 +101,10 @@ class SegmentationTeiTrainingDataGenerator:
         for model_data in model_data_iterable:
             prefixed_label = get_model_data_label(model_data)
             _prefix, label = get_split_prefix_label(prefixed_label or '')
-            xml_element_path = get_training_xml_path_for_label(label)
+            xml_element_path = self.get_training_xml_path_for_label(
+                label,
+                current_path=xml_writer.current_path
+            )
             LOGGER.debug('label: %r (%r)', label, xml_element_path)
             if xml_writer.current_path != xml_element_path:
                 xml_writer.require_path(default_path)
@@ -129,33 +121,3 @@ class SegmentationTeiTrainingDataGenerator:
                 pending_whitespace = '\n'
         xml_writer.require_path(default_path)
         xml_writer.append_text(pending_whitespace)
-
-    def _get_training_tei_xml_for_children(
-        self,
-        children: Iterable[Union[str, etree.ElementBase]]
-    ) -> etree.ElementBase:
-        return TEI_E(
-            'tei',
-            TEI_E(
-                'text',
-                *list(children)
-            )
-        )
-
-    def _get_xml_writer(self) -> XmlTreeWriter:
-        return XmlTreeWriter(
-            TEI_E('tei'),
-            element_maker=TEI_E
-        )
-
-    def get_training_tei_xml_for_model_data_iterable(
-        self,
-        model_data_iterable: Iterable[LayoutModelData]
-    ) -> etree.ElementBase:
-        xml_writer = self._get_xml_writer()
-        xml_writer.require_path(['text'])
-        self.write_xml_for_model_data_iterable(
-            xml_writer,
-            model_data_iterable=model_data_iterable
-        )
-        return xml_writer.root
