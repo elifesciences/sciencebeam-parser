@@ -300,64 +300,6 @@ class Model(ABC, Preloadable):
     ) -> List[List[Tuple[str, str]]]:
         return self.model_impl.predict_labels(texts, features, output_format)
 
-    def iter_label_layout_documents(
-        self,
-        layout_documents: List[LayoutDocument],
-        app_features_context: AppFeaturesContext
-    ) -> Iterable[List[LayoutModelLabel]]:
-        doc_layout_model_labels: List[LayoutModelLabel] = []
-        result_doc_count = 0
-        for layout_model_label in self._iter_label_layout_documents(
-            layout_documents,
-            app_features_context=app_features_context
-        ):
-            if isinstance(layout_model_label, NewDocumentMarker):
-                yield doc_layout_model_labels
-                doc_layout_model_labels = []
-                result_doc_count += 1
-                continue
-            doc_layout_model_labels.append(layout_model_label)
-        if result_doc_count < len(layout_documents):
-            yield doc_layout_model_labels
-
-    def iter_label_layout_document(
-        self,
-        layout_document: LayoutDocument,
-        app_features_context: AppFeaturesContext
-    ) -> Iterable[LayoutModelLabel]:
-        for layout_model_label in self._iter_label_layout_documents(
-            [layout_document],
-            app_features_context=app_features_context
-        ):
-            assert isinstance(layout_model_label, LayoutModelLabel)
-            yield layout_model_label
-
-    def _iter_label_layout_documents(  # pylint: disable=too-many-locals
-        self,
-        layout_documents: Iterable[LayoutDocument],
-        app_features_context: AppFeaturesContext
-    ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
-        data_generator = self.get_data_generator(
-            document_features_context=DocumentFeaturesContext(
-                app_features_context=app_features_context
-            )
-        )
-        model_data_lists = [
-            list(data_generator.iter_model_data_for_layout_document(
-                layout_document
-            ))
-            for layout_document in layout_documents
-        ]
-        return self._iter_flat_label_model_data_lists_to(
-            model_data_lists,
-            lambda label, model_data: LayoutModelLabel(
-                label=label,
-                label_token_text=model_data.label_token_text,
-                layout_line=model_data.layout_line,
-                layout_token=model_data.layout_token
-            )
-        )
-
     def _iter_flat_label_model_data_lists_to(  # pylint: disable=too-many-locals
         self,
         model_data_list_iterable: Iterable[Sequence[LayoutModelData]],
@@ -425,6 +367,64 @@ class Model(ABC, Preloadable):
             doc_items.append(item)
         if result_doc_count < len(model_data_lists):
             yield doc_items
+
+    def iter_label_layout_documents(
+        self,
+        layout_documents: List[LayoutDocument],
+        app_features_context: AppFeaturesContext
+    ) -> Iterable[List[LayoutModelLabel]]:
+        doc_layout_model_labels: List[LayoutModelLabel] = []
+        result_doc_count = 0
+        for layout_model_label in self._iter_label_layout_documents(
+            layout_documents,
+            app_features_context=app_features_context
+        ):
+            if isinstance(layout_model_label, NewDocumentMarker):
+                yield doc_layout_model_labels
+                doc_layout_model_labels = []
+                result_doc_count += 1
+                continue
+            doc_layout_model_labels.append(layout_model_label)
+        if result_doc_count < len(layout_documents):
+            yield doc_layout_model_labels
+
+    def iter_label_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        app_features_context: AppFeaturesContext
+    ) -> Iterable[LayoutModelLabel]:
+        for layout_model_label in self._iter_label_layout_documents(
+            [layout_document],
+            app_features_context=app_features_context
+        ):
+            assert isinstance(layout_model_label, LayoutModelLabel)
+            yield layout_model_label
+
+    def _iter_label_layout_documents(  # pylint: disable=too-many-locals
+        self,
+        layout_documents: Iterable[LayoutDocument],
+        app_features_context: AppFeaturesContext
+    ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
+        data_generator = self.get_data_generator(
+            document_features_context=DocumentFeaturesContext(
+                app_features_context=app_features_context
+            )
+        )
+        model_data_lists = [
+            list(data_generator.iter_model_data_for_layout_document(
+                layout_document
+            ))
+            for layout_document in layout_documents
+        ]
+        return self._iter_flat_label_model_data_lists_to(
+            model_data_lists,
+            lambda label, model_data: LayoutModelLabel(
+                label=label,
+                label_token_text=model_data.label_token_text,
+                layout_line=model_data.layout_line,
+                layout_token=model_data.layout_token
+            )
+        )
 
     def iter_labeled_model_data_list_for_model_data_list_iterable(
         self,
