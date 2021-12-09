@@ -212,14 +212,11 @@ def iter_labeled_layout_token_for_layout_model_label(
 def iter_data_lines_for_model_data_iterables(
     model_data_iterables: Iterable[Iterable[LayoutModelData]]
 ) -> Iterable[str]:
-    data_lines = []
     for index, model_data_list in enumerate(model_data_iterables):
         if index > 0:
-            data_lines.append('')
-        data_lines.extend(
-            (model_data.data_line for model_data in model_data_list)
-        )
-    return data_lines
+            yield ''
+        for model_data in model_data_list:
+            yield model_data.data_line
 
 
 class Model(ABC, Preloadable):
