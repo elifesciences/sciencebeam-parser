@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List
 
 import pytest
 
@@ -35,7 +34,6 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
-from sciencebeam_parser.models.model import LayoutModelLabel
 from sciencebeam_parser.processors.fulltext.processor import (
     FullTextProcessor,
     FullTextProcessorConfig
@@ -49,22 +47,6 @@ LOGGER = logging.getLogger(__name__)
 @pytest.fixture(name='fulltext_models_mock')
 def _fulltext_models() -> MockFullTextModels:
     return MockFullTextModels()
-
-
-def _get_layout_model_labels_for_block(
-    layout_block: LayoutBlock,
-    label: str
-) -> List[LayoutModelLabel]:
-    return [
-        LayoutModelLabel(
-            label=label,
-            label_token_text=layout_token.text,
-            layout_line=layout_line,
-            layout_token=layout_token
-        )
-        for layout_line in layout_block.lines
-        for layout_token in layout_line.tokens
-    ]
 
 
 class TestFullTextProcessor:
