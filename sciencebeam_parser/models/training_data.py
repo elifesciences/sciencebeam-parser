@@ -77,9 +77,12 @@ class AbstractTeiTrainingDataGenerator:
         self.root_parent_training_xml_element_path = root_training_xml_element_path[:-1]
         self.training_xml_element_path_by_label = training_xml_element_path_by_label
         self._training_xml_element_paths = {
-            tuple(value)
-            for label, value in training_xml_element_path_by_label.items()
-            if label not in OTHER_LABELS
+            tuple(element_path)
+            for label, element_path in training_xml_element_path_by_label.items()
+            if (
+                label not in OTHER_LABELS
+                and tuple(element_path) != tuple(root_training_xml_element_path)
+            )
         }
         self.element_maker = element_maker
 
@@ -90,7 +93,13 @@ class AbstractTeiTrainingDataGenerator:
     ) -> Sequence[str]:
         if not label or label in OTHER_LABELS:
             if tuple(current_path) in self._training_xml_element_paths:
+                LOGGER.debug(
+                    'found current path in element paths, returning parent: %r', current_path
+                )
                 return current_path[:-1]
+            LOGGER.debug(
+                'not found current path in element paths, returning current: %r', current_path
+            )
             return current_path
         training_xml_path = self.training_xml_element_path_by_label.get(label or '')
         if not training_xml_path:
@@ -107,6 +116,7 @@ class AbstractTeiTrainingDataGenerator:
         model_data_iterable: Iterable[LayoutModelData]
     ):
         default_path = xml_writer.current_path
+        LOGGER.debug('default_path: %r', default_path)
         pending_whitespace = ''
         prev_label: str = ''
         for line_model_data_list in iter_group_model_data_by_line(model_data_iterable):
