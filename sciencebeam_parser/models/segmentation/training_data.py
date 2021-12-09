@@ -108,7 +108,7 @@ class SegmentationTeiTrainingDataGenerator:
         model_data_iterable: Iterable[LayoutModelData]
     ):
         default_path = xml_writer.current_path
-        pending_text = ''
+        pending_whitespace = ''
         for model_data in model_data_iterable:
             prefixed_label = get_model_data_label(model_data)
             _prefix, label = get_split_prefix_label(prefixed_label or '')
@@ -116,8 +116,8 @@ class SegmentationTeiTrainingDataGenerator:
             LOGGER.debug('label: %r (%r)', label, xml_element_path)
             if xml_writer.current_path != xml_element_path:
                 xml_writer.require_path(default_path)
-            xml_writer.append_text(pending_text)
-            pending_text = ''
+            xml_writer.append_text(pending_whitespace)
+            pending_whitespace = ''
             xml_writer.require_path(xml_element_path)
             for layout_line in iter_layout_lines_from_layout_tokens(
                 iter_tokens_from_model_data(model_data)
@@ -126,9 +126,9 @@ class SegmentationTeiTrainingDataGenerator:
                     xml_writer,
                     layout_line.tokens
                 )
-                pending_text = '\n'
+                pending_whitespace = '\n'
         xml_writer.require_path(default_path)
-        xml_writer.append_text(pending_text)
+        xml_writer.append_text(pending_whitespace)
 
     def _get_training_tei_xml_for_children(
         self,
