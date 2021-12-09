@@ -67,6 +67,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action='store_true',
         help='Use configured models to pre-annotate training data'
     )
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug logging'
+    )
     return parser.parse_args(argv)
 
 
@@ -494,6 +499,9 @@ def run(args: argparse.Namespace):
 def main(argv: Optional[List[str]] = None):
     LOGGER.debug('argv: %r', argv)
     args = parse_args(argv)
+    if args.debug:
+        for name in [__name__, 'sciencebeam_parser', 'sciencebeam_trainer_delft']:
+            logging.getLogger(name).setLevel('DEBUG')
     run(args)
 
 
