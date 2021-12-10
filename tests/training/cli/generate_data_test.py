@@ -30,6 +30,7 @@ from sciencebeam_parser.training.cli.generate_data import (
 )
 
 from tests.processors.fulltext.model_mocks import MockFullTextModels
+from tests.test_utils import log_on_exception
 
 
 LOGGER = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ def normalize_whitespace_list(text_iterable: Iterable[str]) -> Sequence[str]:
     ]
 
 
+@log_on_exception
 class TestGenerateTrainingDataForLayoutDocument:
     def test_should_generate_data_using_mock_models(  # pylint: disable=too-many-locals
         self,
@@ -155,6 +157,7 @@ class TestGenerateTrainingDataForLayoutDocument:
 
 # Note: tests are currently using actual model and are therefore slow
 @pytest.mark.slow
+@log_on_exception
 class TestMain:
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
