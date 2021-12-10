@@ -130,6 +130,7 @@ class TestFullTextTeiTrainingDataGenerator:
             ('<paragraph>', get_next_layout_line_for_text('Paragraph 1')),
             ('<citation_marker>', get_next_layout_line_for_text('See Citation 1')),
             ('<table_marker>', get_next_layout_line_for_text('See Table 1')),
+            ('<figure_marker>', get_next_layout_line_for_text('See Figure 1')),
             ('<equation_marker>', get_next_layout_line_for_text('See Eq 1')),
             ('<equation>', get_next_layout_line_for_text('Eq 1'))
         ]
@@ -151,6 +152,9 @@ class TestFullTextTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/p/ref[@type="table"]')
         ) == ['See Table 1']
+        assert get_text_content_list(
+            xml_root.xpath('./text/p/ref[@type="figure"]')
+        ) == ['See Figure 1']
         assert get_text_content_list(
             xml_root.xpath('./text/p/ref[@type="formula"]')
         ) == ['See Eq 1']
