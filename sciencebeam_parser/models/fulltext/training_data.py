@@ -17,7 +17,8 @@ ROOT_TRAINING_XML_ELEMENT_PATH = ['text']
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<section>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head'],
     '<paragraph>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p'],
-    '<citation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="biblio"]']
+    '<citation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="biblio"]'],
+    '<table_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="table"]']
 }
 
 
