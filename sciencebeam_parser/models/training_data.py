@@ -69,6 +69,25 @@ def get_default_note_type_for_label(label: str) -> str:
     return label.strip('<>')
 
 
+def is_parent_path_of(
+    parent_path: Sequence[str],
+    child_path: Sequence[str]
+) -> bool:
+    if len(parent_path) >= len(child_path):
+        return False
+    return tuple(child_path[:len(parent_path)]) == tuple(parent_path)
+
+
+def is_same_or_parent_path_of(
+    parent_path: Sequence[str],
+    child_path: Sequence[str]
+) -> bool:
+    return (
+        tuple(parent_path) == tuple(child_path)
+        or is_parent_path_of(parent_path, child_path)
+    )
+
+
 class AbstractTeiTrainingDataGenerator:
     def __init__(
         self,
@@ -136,8 +155,12 @@ class AbstractTeiTrainingDataGenerator:
                 if (
                     prev_label not in OTHER_LABELS
                     and pending_whitespace
-                    and xml_writer.current_path != xml_element_path
+                    and not is_same_or_parent_path_of(xml_writer.current_path, xml_element_path)
                 ):
+                    LOGGER.debug(
+                        'closing element before adding whitespace, %r -> %r',
+                        xml_writer.current_path, xml_element_path
+                    )
                     xml_writer.require_path(xml_writer.current_path[:-1])
                 elif prefix == 'B' and label not in OTHER_LABELS:
                     xml_writer.require_path(xml_element_path[:-1])
