@@ -2,7 +2,19 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union
+)
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
@@ -16,6 +28,7 @@ from sciencebeam_parser.document.layout_document import (
 from sciencebeam_parser.models.data import (
     AppFeaturesContext,
     DocumentFeaturesContext,
+    LabeledLayoutModelData,
     LayoutModelData,
     ModelDataGenerator
 )
@@ -26,6 +39,10 @@ from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+T = TypeVar('T')
+U = TypeVar('U')
 
 
 @dataclass
@@ -283,6 +300,74 @@ class Model(ABC, Preloadable):
     ) -> List[List[Tuple[str, str]]]:
         return self.model_impl.predict_labels(texts, features, output_format)
 
+    def _iter_flat_label_model_data_lists_to(  # pylint: disable=too-many-locals
+        self,
+        model_data_list_iterable: Iterable[Sequence[LayoutModelData]],
+        item_factory: Callable[[str, LayoutModelData], T]
+    ) -> Iterable[Union[T, NewDocumentMarker]]:
+        # Note: currently we do need a list
+        model_data_lists = list(model_data_list_iterable)
+        if not model_data_lists:
+            return
+        data_lines = list(iter_data_lines_for_model_data_iterables(
+            model_data_lists
+        ))
+        texts, features = load_data_crf_lines(data_lines)
+        texts = texts.tolist()
+        tag_result = self.predict_labels(
+            texts=texts, features=features, output_format=None
+        )
+        if not tag_result:
+            return
+        if len(tag_result) != len(model_data_lists):
+            raise AssertionError('tag result does not match number of docs: %d != %d' % (
+                len(tag_result), len(model_data_lists)
+            ))
+        for index, (doc_tag_result, model_data_list) in enumerate(
+            zip(tag_result, model_data_lists)
+        ):
+            if index > 0:
+                yield NEW_DOCUMENT_MARKER
+            if len(doc_tag_result) != len(model_data_list):
+                raise AssertionError('doc tag result does not match data: %d != %d' % (
+                    len(doc_tag_result), len(model_data_list)
+                ))
+            for token_tag_result, token_model_data in zip(doc_tag_result, model_data_list):
+                label_token_text, token_label = token_tag_result
+                if label_token_text != token_model_data.label_token_text:
+                    raise AssertionError(
+                        f'actual: {repr(label_token_text)}'
+                        f', expected: {repr(token_model_data.label_token_text)}'
+                    )
+                yield item_factory(
+                    token_label,
+                    token_model_data
+                )
+
+    def _iter_stacked_label_model_data_lists_to(
+        self,
+        model_data_list_iterable: Iterable[Sequence[LayoutModelData]],
+        item_factory: Callable[[str, LayoutModelData], T]
+    ) -> Iterable[Sequence[T]]:
+        # Note: currently we do need a list
+        model_data_lists = list(model_data_list_iterable)
+        if not model_data_lists:
+            return
+        doc_items: List[T] = []
+        result_doc_count = 0
+        for item in self._iter_flat_label_model_data_lists_to(
+            model_data_lists,
+            item_factory=item_factory
+        ):
+            if isinstance(item, NewDocumentMarker):
+                yield doc_items
+                doc_items = []
+                result_doc_count += 1
+                continue
+            doc_items.append(item)
+        if result_doc_count < len(model_data_lists):
+            yield doc_items
+
     def iter_label_layout_documents(
         self,
         layout_documents: List[LayoutDocument],
@@ -331,42 +416,27 @@ class Model(ABC, Preloadable):
             ))
             for layout_document in layout_documents
         ]
-        data_lines = list(iter_data_lines_for_model_data_iterables(
-            model_data_lists
-        ))
-        texts, features = load_data_crf_lines(data_lines)
-        texts = texts.tolist()
-        tag_result = self.predict_labels(
-            texts=texts, features=features, output_format=None
+        return self._iter_flat_label_model_data_lists_to(
+            model_data_lists,
+            lambda label, model_data: LayoutModelLabel(
+                label=label,
+                label_token_text=model_data.label_token_text,
+                layout_line=model_data.layout_line,
+                layout_token=model_data.layout_token
+            )
         )
-        if not tag_result:
-            return
-        if len(tag_result) != len(model_data_lists):
-            raise AssertionError('tag result does not match number of docs: %d != %d' % (
-                len(tag_result), len(model_data_lists)
-            ))
-        for index, (doc_tag_result, model_data_list) in enumerate(
-            zip(tag_result, model_data_lists)
-        ):
-            if index > 0:
-                yield NEW_DOCUMENT_MARKER
-            if len(doc_tag_result) != len(model_data_list):
-                raise AssertionError('doc tag result does not match data: %d != %d' % (
-                    len(doc_tag_result), len(model_data_list)
-                ))
-            for token_tag_result, token_model_data in zip(doc_tag_result, model_data_list):
-                label_token_text, token_label = token_tag_result
-                if label_token_text != token_model_data.label_token_text:
-                    raise AssertionError(
-                        f'actual: {repr(label_token_text)}'
-                        f', expected: {repr(token_model_data.label_token_text)}'
-                    )
-                yield LayoutModelLabel(
-                    label=token_label,
-                    label_token_text=label_token_text,
-                    layout_line=token_model_data.layout_line,
-                    layout_token=token_model_data.layout_token
-                )
+
+    def iter_labeled_model_data_list_for_model_data_list_iterable(
+        self,
+        model_data_list_iterable: Iterable[Sequence[LayoutModelData]]
+    ) -> Iterable[Sequence[LabeledLayoutModelData]]:
+        return self._iter_stacked_label_model_data_lists_to(
+            model_data_list_iterable,
+            lambda label, model_data: LabeledLayoutModelData.from_model_data(
+                model_data,
+                label=label
+            )
+        )
 
     def get_label_layout_document_result(
         self,

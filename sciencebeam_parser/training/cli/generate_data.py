@@ -7,7 +7,6 @@ from glob import glob
 from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
-from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
@@ -22,7 +21,6 @@ from sciencebeam_parser.models.model import (
     LayoutDocumentLabelResult,
     LayoutModelLabel,
     Model,
-    iter_data_lines_for_model_data_iterables,
     iter_labeled_layout_token_for_layout_model_label
 )
 from sciencebeam_parser.models.segmentation.training_data import (
@@ -79,34 +77,11 @@ def get_labeled_model_data_list_list(
     model_data_list_list: Sequence[Sequence[LayoutModelData]],
     model: Model
 ) -> Sequence[Sequence[LabeledLayoutModelData]]:
-    if not model_data_list_list:
-        return []
-    data_lines = list(iter_data_lines_for_model_data_iterables(
-        model_data_list_list
-    ))
-    texts, features = load_data_crf_lines(data_lines)
-    texts = texts.tolist()
-    tag_result = model.predict_labels(
-        texts=texts, features=features, output_format=None
+    return list(
+        model.iter_labeled_model_data_list_for_model_data_list_iterable(
+            model_data_list_list
+        )
     )
-    LOGGER.debug('texts: %r', texts)
-    LOGGER.debug('data_lines: %r', data_lines)
-    LOGGER.debug('tag_result: %r', tag_result)
-    LOGGER.debug('model_data_list_list[0]: %d', len(model_data_list_list[0]))
-    LOGGER.debug('tag_result[0]: %d', len(tag_result[0]))
-    assert len(tag_result) == len(model_data_list_list)
-    assert len(tag_result[0]) == len(model_data_list_list[0])
-    labeled_model_data_list_list = [
-        [
-            LabeledLayoutModelData.from_model_data(
-                model_data,
-                label=label
-            )
-            for model_data, (_, label) in zip(model_data_list, doc_tag_result)
-        ]
-        for model_data_list, doc_tag_result in zip(model_data_list_list, tag_result)
-    ]
-    return labeled_model_data_list_list
 
 
 def get_labeled_model_data_list(
