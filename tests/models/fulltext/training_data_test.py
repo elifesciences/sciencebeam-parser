@@ -134,7 +134,8 @@ class TestFullTextTeiTrainingDataGenerator:
             ('<equation_marker>', get_next_layout_line_for_text('See Eq 1')),
             ('<figure>', get_next_layout_line_for_text('Figure 1')),
             ('<table>', get_next_layout_line_for_text('Table 1')),
-            ('<equation>', get_next_layout_line_for_text('Eq 1'))
+            ('<equation>', get_next_layout_line_for_text('Eq 1')),
+            ('<item>', get_next_layout_line_for_text('Item 1')),
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -169,6 +170,9 @@ class TestFullTextTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/formula')
         ) == ['Eq 1']
+        assert get_text_content_list(
+            xml_root.xpath('./text/item')
+        ) == ['Item 1']
 
     def test_should_generate_tei_from_model_data_using_model_labels(self):
         label_and_layout_line_list = [
