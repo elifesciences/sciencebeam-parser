@@ -16,6 +16,8 @@ from sciencebeam_parser.models.fulltext.training_data import (
     FullTextTeiTrainingDataGenerator
 )
 from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
+
+from tests.test_utils import log_on_exception
 from tests.models.training_data_test_utils import (
     get_labeled_model_data_list,
     get_model_data_list_for_layout_document,
@@ -34,6 +36,7 @@ def get_data_generator() -> FullTextDataGenerator:
     return FullTextDataGenerator(DEFAULT_DOCUMENT_FEATURES_CONTEXT)
 
 
+@log_on_exception
 class TestFullTextTeiTrainingDataGenerator:
     def test_should_include_layout_document_text_in_tei_output(self):
         training_data_generator = FullTextTeiTrainingDataGenerator()
@@ -125,9 +128,10 @@ class TestFullTextTeiTrainingDataGenerator:
         label_and_layout_line_list = [
             ('<section>', get_next_layout_line_for_text('Section Title 1')),
             ('<paragraph>', get_next_layout_line_for_text('Paragraph 1')),
-            ('<citation_marker>', get_next_layout_line_for_text('Citation 1')),
-            ('<table_marker>', get_next_layout_line_for_text('Table 1')),
-            ('<equation_marker>', get_next_layout_line_for_text('Eq 1'))
+            ('<citation_marker>', get_next_layout_line_for_text('See Citation 1')),
+            ('<table_marker>', get_next_layout_line_for_text('See Table 1')),
+            ('<equation_marker>', get_next_layout_line_for_text('See Eq 1')),
+            ('<equation>', get_next_layout_line_for_text('Eq 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -143,12 +147,15 @@ class TestFullTextTeiTrainingDataGenerator:
         ) == ['Section Title 1']
         assert get_text_content_list(
             xml_root.xpath('./text/p/ref[@type="biblio"]')
-        ) == ['Citation 1']
+        ) == ['See Citation 1']
         assert get_text_content_list(
             xml_root.xpath('./text/p/ref[@type="table"]')
-        ) == ['Table 1']
+        ) == ['See Table 1']
         assert get_text_content_list(
             xml_root.xpath('./text/p/ref[@type="formula"]')
+        ) == ['See Eq 1']
+        assert get_text_content_list(
+            xml_root.xpath('./text/formula')
         ) == ['Eq 1']
 
     def test_should_generate_tei_from_model_data_using_model_labels(self):

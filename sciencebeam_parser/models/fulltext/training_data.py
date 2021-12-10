@@ -19,7 +19,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<paragraph>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p'],
     '<citation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="biblio"]'],
     '<table_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="table"]'],
-    '<equation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="formula"]']
+    '<equation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="formula"]'],
+    '<equation>': ROOT_TRAINING_XML_ELEMENT_PATH + ['formula']
 }
 
 
