@@ -129,10 +129,11 @@ class TestFullTextTeiTrainingDataGenerator:
             ('<section>', get_next_layout_line_for_text('Section Title 1')),
             ('<paragraph>', get_next_layout_line_for_text('Paragraph 1')),
             ('<citation_marker>', get_next_layout_line_for_text('See Citation 1')),
-            ('<table_marker>', get_next_layout_line_for_text('See Table 1')),
             ('<figure_marker>', get_next_layout_line_for_text('See Figure 1')),
+            ('<table_marker>', get_next_layout_line_for_text('See Table 1')),
             ('<equation_marker>', get_next_layout_line_for_text('See Eq 1')),
             ('<figure>', get_next_layout_line_for_text('Figure 1')),
+            ('<table>', get_next_layout_line_for_text('Table 1')),
             ('<equation>', get_next_layout_line_for_text('Eq 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
@@ -160,8 +161,11 @@ class TestFullTextTeiTrainingDataGenerator:
             xml_root.xpath('./text/p/ref[@type="formula"]')
         ) == ['See Eq 1']
         assert get_text_content_list(
-            xml_root.xpath('./text/figure')
+            xml_root.xpath('./text/figure[not(@type="table")]')
         ) == ['Figure 1']
+        assert get_text_content_list(
+            xml_root.xpath('./text/figure[@type="table"]')
+        ) == ['Table 1']
         assert get_text_content_list(
             xml_root.xpath('./text/formula')
         ) == ['Eq 1']
