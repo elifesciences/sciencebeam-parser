@@ -149,45 +149,18 @@ class TestGenerateTrainingDataForLayoutDocument:
     def test_should_generate_data_using_mock_models(  # pylint: disable=too-many-locals
         self,
         tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
         fulltext_models_mock: MockFullTextModels
     ):
-        title_block = LayoutBlock.for_text('This is the title')
-        institution_block = LayoutBlock.for_text('Institution 1')
-        affiliation_block = LayoutBlock.merge_blocks([institution_block])
-        header_block = LayoutBlock.merge_blocks([title_block, affiliation_block])
-        body_block = LayoutBlock.for_text('This is the body')
-
-        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
-        header_model_mock = fulltext_models_mock.header_model_mock
-        affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
-
-        segmentation_model_mock.update_label_by_layout_block(
-            header_block, '<header>'
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
         )
-        segmentation_model_mock.update_label_by_layout_block(
-            body_block, '<body>'
-        )
-
-        header_model_mock.update_label_by_layout_block(
-            title_block, '<title>'
-        )
-        header_model_mock.update_label_by_layout_block(
-            affiliation_block, '<affiliation>'
-        )
-
-        affiliation_address_model_mock.update_label_by_layout_block(
-            institution_block, '<institution>'
-        )
-
-        layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
-            header_block,
-            body_block
-        ])])
 
         output_path = tmp_path / 'output'
         output_path.mkdir()
         generate_training_data_for_layout_document(
-            layout_document=layout_document,
+            layout_document=sample_layout_document.layout_document,
             output_path=str(output_path),
             source_filename=SOURCE_FILENAME_1,
             document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
@@ -209,7 +182,7 @@ class TestGenerateTrainingDataForLayoutDocument:
         assert normalize_whitespace_list(
             get_text_content_list(xml_root.xpath('text/front'))
         ) == [
-            normalize_whitespace(header_block.text)
+            normalize_whitespace(sample_layout_document.header_block.text)
         ]
 
         expected_header_tei_path = output_path.joinpath(
@@ -225,7 +198,7 @@ class TestGenerateTrainingDataForLayoutDocument:
         assert normalize_whitespace_list(get_text_content_list(
             xml_root.xpath('text/front/docTitle/titlePart')
         )) == [
-            normalize_whitespace(title_block.text)
+            normalize_whitespace(sample_layout_document.title_block.text)
         ]
 
         expected_aff_tei_path = output_path.joinpath(
@@ -237,7 +210,7 @@ class TestGenerateTrainingDataForLayoutDocument:
         assert normalize_whitespace_list(get_text_content_list(
             tei_xpath(xml_root, '//tei:affiliation/tei:orgName[@type="institution"]')
         )) == [
-            normalize_whitespace(institution_block.text)
+            normalize_whitespace(sample_layout_document.institution_block.text)
         ]
 
 
