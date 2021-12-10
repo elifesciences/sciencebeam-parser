@@ -3,16 +3,13 @@ from typing import Callable, Dict, Iterable, Mapping, Sequence, TypeVar, Union
 from unittest.mock import MagicMock
 
 from sciencebeam_parser.document.layout_document import (
-    LayoutBlock,
-    LayoutDocument
+    LayoutBlock
 )
 from sciencebeam_parser.models.data import (
-    AppFeaturesContext,
-    DocumentFeaturesContext,
     LayoutModelData
 )
 from sciencebeam_parser.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
-from sciencebeam_parser.models.model import LayoutModelLabel, Model
+from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.models.segmentation.model import SegmentationModel
 from sciencebeam_parser.models.header.model import HeaderModel
 from sciencebeam_parser.models.affiliation_address.model import AffiliationAddressModel
@@ -52,9 +49,6 @@ class MockDelftModelWrapper:
         self._label_by_layout_token: Dict[LayoutTokenId, str] = {}
         self._default_label = 'O'
         model_wrapper._lazy_model_impl._value = MagicMock(name='model_impl')
-        model_wrapper._iter_label_layout_documents = (  # type: ignore
-            self._iter_label_layout_documents
-        )
         model_wrapper._iter_flat_label_model_data_lists_to = (  # type: ignore
             self._iter_flat_label_model_data_lists_to
         )
@@ -73,52 +67,6 @@ class MockDelftModelWrapper:
         self.update_label_by_layout_tokens(
             get_label_by_layout_token_for_block(layout_block, label)
         )
-
-    def _iter_label_layout_documents(
-        self,
-        layout_documents: Iterable[LayoutDocument],
-        app_features_context: AppFeaturesContext
-    ) -> Iterable[Union[LayoutModelLabel, NewDocumentMarker]]:
-        for index, layout_document in enumerate(layout_documents):
-            if index > 0:
-                yield NEW_DOCUMENT_MARKER
-            yield from self._iter_label_layout_document(
-                layout_document,
-                app_features_context=app_features_context
-            )
-
-    def _iter_label_layout_document(
-        self,
-        layout_document: LayoutDocument,
-        app_features_context: AppFeaturesContext
-    ) -> Iterable[LayoutModelLabel]:
-        data_generator = self._model_wrapper.get_data_generator(
-            document_features_context=DocumentFeaturesContext(
-                app_features_context=app_features_context
-            )
-        )
-        LOGGER.debug('_label_by_layout_token.keys: %s', self._label_by_layout_token.keys())
-        for model_data in data_generator.iter_model_data_for_layout_document(layout_document):
-            if model_data.layout_token:
-                label = self._label_by_layout_token.get(
-                    id(model_data.layout_token),
-                    self._default_label
-                )
-                LOGGER.debug('id(layout_token)=%r, label=%r', id(model_data.layout_token), label)
-            else:
-                assert model_data.layout_line
-                first_layout_token = model_data.layout_line.tokens[0]
-                label = self._label_by_layout_token.get(
-                    id(first_layout_token),
-                    self._default_label
-                )
-                LOGGER.debug('id(first_layout_token)=%r, label=%r', id(first_layout_token), label)
-            yield LayoutModelLabel(
-                label=label,
-                label_token_text='dummy',
-                layout_line=model_data.layout_line,
-                layout_token=model_data.layout_token
-            )
 
     def _iter_flat_label_model_data_lists_to(  # pylint: disable=too-many-locals
         self,
