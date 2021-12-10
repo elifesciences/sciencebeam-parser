@@ -195,6 +195,28 @@ class TestFullTextTeiTrainingDataGenerator:
             xml_root.xpath('./text/formula')
         ) == ['Eq 1\nEq Label 1']
 
+    def test_should_add_equation_label_to_the_middle_of_formula_element(self):
+        label_and_layout_line_list = [
+            ('<equation>', get_next_layout_line_for_text('Eq 1')),
+            ('<equation_label>', get_next_layout_line_for_text('Eq Label 1')),
+            ('I-<equation>', get_next_layout_line_for_text('Continued Eq 1'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = FullTextTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(
+            xml_root.xpath('./text/formula/label')
+        ) == ['Eq Label 1']
+        assert get_text_content_list(
+            xml_root.xpath('./text/formula')
+        ) == ['\n'.join(['Eq 1', 'Eq Label 1', 'Continued Eq 1'])]
+
     def test_should_generate_tei_from_model_data_using_model_labels(self):
         label_and_layout_line_list = [
             ('<section>', get_next_layout_line_for_text(TEXT_1)),

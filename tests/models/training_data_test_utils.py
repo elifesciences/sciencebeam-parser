@@ -22,6 +22,14 @@ def get_model_data_list_for_layout_document(
     ))
 
 
+def get_label_with_prefix(label: str, index: int) -> str:
+    if label[:2] in {'B-', 'I-'} or label == 'O':
+        return label
+    if index == 0:
+        return 'B-' + label
+    return 'I-' + label
+
+
 def get_labeled_model_data_list(
     label_and_layout_line_list: Sequence[Tuple[str, LayoutLine]],
     data_generator: ModelDataGenerator
@@ -32,7 +40,7 @@ def get_labeled_model_data_list(
         labeled_model_data_list.extend([
             LabeledLayoutModelData.from_model_data(
                 model_data,
-                label=('B-' if index == 0 else 'I-') + label
+                label=get_label_with_prefix(label, index=index)
             )
             for index, model_data in enumerate(
                 data_generator.iter_model_data_for_layout_document(
