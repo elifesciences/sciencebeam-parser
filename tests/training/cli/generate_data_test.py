@@ -2,7 +2,8 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Iterator, Sequence
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -24,6 +25,7 @@ from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingData
 from sciencebeam_parser.models.affiliation_address.training_data import (
     AffiliationAddressTeiTrainingDataGenerator
 )
+import sciencebeam_parser.training.cli.generate_data as generate_data_module
 from sciencebeam_parser.training.cli.generate_data import (
     generate_training_data_for_layout_document,
     main
@@ -42,9 +44,93 @@ MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
 SOURCE_FILENAME_1 = 'test1.pdf'
 
 
+class SampleLayoutDocument:
+    def __init__(self) -> None:
+        self.title_block = LayoutBlock.for_text('This is the title')
+        self.institution_block = LayoutBlock.for_text('Institution 1')
+        self.affiliation_block = LayoutBlock.merge_blocks([self.institution_block])
+        self.header_block = LayoutBlock.merge_blocks([self.title_block, self.affiliation_block])
+        self.body_block = LayoutBlock.for_text('This is the body')
+
+        self.layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
+            self.header_block,
+            self.body_block
+        ])])
+
+
+def configure_fulltext_models_mock_with_sample_document(
+    fulltext_models_mock: MockFullTextModels,
+    sample_layout_document: SampleLayoutDocument
+):
+    doc = sample_layout_document
+    segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+    header_model_mock = fulltext_models_mock.header_model_mock
+    affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
+
+    segmentation_model_mock.update_label_by_layout_block(
+        doc.header_block, '<header>'
+    )
+    segmentation_model_mock.update_label_by_layout_block(
+        doc.body_block, '<body>'
+    )
+
+    header_model_mock.update_label_by_layout_block(
+        doc.title_block, '<title>'
+    )
+    header_model_mock.update_label_by_layout_block(
+        doc.affiliation_block, '<affiliation>'
+    )
+
+    affiliation_address_model_mock.update_label_by_layout_block(
+        doc.institution_block, '<institution>'
+    )
+
+
 @pytest.fixture(name='fulltext_models_mock')
-def _fulltext_models() -> MockFullTextModels:
+def _fulltext_models_mock() -> MockFullTextModels:
     return MockFullTextModels()
+
+
+@pytest.fixture(name='sciencebeam_parser_class_mock', autouse=True)
+def _sciencebeam_parser_class_mock() -> Iterator[MockFullTextModels]:
+    with patch.object(generate_data_module, 'ScienceBeamParser') as mock:
+        yield mock
+
+
+@pytest.fixture(name='sciencebeam_parser_mock', autouse=True)
+def _sciencebeam_parser_mock(
+    sciencebeam_parser_class_mock: MagicMock,
+    fulltext_models_mock: MockFullTextModels
+) -> MockFullTextModels:
+    mock = MagicMock(name='ScienceBeamParser')
+    mock.fulltext_models = fulltext_models_mock
+    sciencebeam_parser_class_mock.from_config.return_value = mock
+    return mock
+
+
+@pytest.fixture(name='sample_layout_document')
+def _sample_layout_document() -> SampleLayoutDocument:
+    return SampleLayoutDocument()
+
+
+@pytest.fixture(name='sciencebeam_parser_session_mock', autouse=True)
+def _sciencebeam_parser_session_mock(
+    sciencebeam_parser_mock: MagicMock
+) -> MockFullTextModels:
+    mock = MagicMock(name='ScienceBeamParserSession')
+    sciencebeam_parser_mock.get_new_session.return_value.__enter__.return_value = mock
+    return mock
+
+
+@pytest.fixture(name='sciencebeam_parser_source_mock', autouse=True)
+def _sciencebeam_parser_source_mock(
+    sciencebeam_parser_session_mock: MagicMock,
+    sample_layout_document: SampleLayoutDocument
+) -> MockFullTextModels:
+    mock = MagicMock(name='ScienceBeamParserSource')
+    mock.get_layout_document.return_value = sample_layout_document.layout_document
+    sciencebeam_parser_session_mock.get_source.return_value = mock
+    return mock
 
 
 def normalize_whitespace(text: str) -> str:
@@ -155,14 +241,18 @@ class TestGenerateTrainingDataForLayoutDocument:
         ]
 
 
-# Note: tests are currently using actual model and are therefore slow
-@pytest.mark.slow
 @log_on_exception
 class TestMain:
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
-        tmp_path: Path
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
     ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
         output_path = tmp_path / 'generated-data'
         main([
             f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
@@ -197,8 +287,14 @@ class TestMain:
 
     def test_should_be_able_to_generate_segmentation_training_data_using_model(
         self,
-        tmp_path: Path
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
     ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
         output_path = tmp_path / 'generated-data'
         main([
             f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
