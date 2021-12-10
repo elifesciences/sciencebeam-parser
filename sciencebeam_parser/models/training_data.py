@@ -15,6 +15,9 @@ from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelDa
 LOGGER = logging.getLogger(__name__)
 
 
+NO_NS_TEI_E = ElementMaker()
+
+
 OTHER_LABELS = {'<other>', 'O'}
 
 
