@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # based on:
-# https://github.com/kermitt2/grobid/blob/0.7.0/grobid-core/src/main/java/org/grobid/core/engines/AffiliationAddressParser.java
+# https://github.com/kermitt2/grobid/blob/0.7.0/grobid-core/src/main/java/org/grobid/core/engines/FullTextParser.java
 
 ROOT_TRAINING_XML_ELEMENT_PATH = ['text']
 
