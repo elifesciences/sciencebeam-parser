@@ -93,11 +93,15 @@ class AbstractTeiTrainingDataGenerator:
         self,
         root_training_xml_element_path: Sequence[str],
         training_xml_element_path_by_label: Mapping[str, Sequence[str]],
-        element_maker: ElementMaker
+        element_maker: ElementMaker,
+        reset_training_xml_element_path_by_label: Optional[Mapping[str, Sequence[str]]] = None
     ):
         self.root_training_xml_element_path = root_training_xml_element_path
         self.root_parent_training_xml_element_path = root_training_xml_element_path[:-1]
         self.training_xml_element_path_by_label = training_xml_element_path_by_label
+        self.reset_training_xml_element_path_by_label = (
+            reset_training_xml_element_path_by_label or {}
+        )
         self._training_xml_element_paths = {
             tuple(element_path)
             for label, element_path in training_xml_element_path_by_label.items()
@@ -135,6 +139,15 @@ class AbstractTeiTrainingDataGenerator:
             )
         return training_xml_path
 
+    def get_reset_training_xml_path_for_label(
+        self,
+        label: Optional[str],
+        prefix: Optional[str]
+    ) -> Optional[Sequence[str]]:
+        if prefix != 'B' or not label:
+            return None
+        return self.reset_training_xml_element_path_by_label.get(label)
+
     def write_xml_for_model_data_iterable(
         self,
         xml_writer: XmlTreeWriter,
@@ -154,8 +167,17 @@ class AbstractTeiTrainingDataGenerator:
                     label,
                     current_path=xml_writer.current_path
                 )
-                LOGGER.debug('label: %r (%r: %r)', label, prefix, xml_element_path)
-                if (
+                reset_path = self.get_reset_training_xml_path_for_label(
+                    label=label,
+                    prefix=prefix
+                )
+                LOGGER.debug(
+                    'label: %r (%r: %r; reset_path=%r)',
+                    label, prefix, xml_element_path, reset_path
+                )
+                if reset_path is not None:
+                    xml_writer.require_path(reset_path)
+                elif (
                     prev_label not in OTHER_LABELS
                     and pending_whitespace
                     and not is_same_or_parent_path_of(xml_writer.current_path, xml_element_path)

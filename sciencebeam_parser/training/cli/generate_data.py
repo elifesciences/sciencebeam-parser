@@ -24,6 +24,9 @@ from sciencebeam_parser.models.model import (
     Model,
     iter_labeled_layout_token_for_layout_model_label
 )
+from sciencebeam_parser.models.reference_segmenter.training_data import (
+    ReferenceSegmenterTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
@@ -466,6 +469,76 @@ def generate_fulltext_training_data_for_layout_document(  # pylint: disable=too-
     ), encoding='utf-8')
 
 
+def generate_ref_segmenter_training_data_for_layout_document(  # pylint: disable=too-many-locals
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool,
+    model_result_cache: ModelResultCache
+):
+    segmentation_model = fulltext_models.segmentation_model
+    reference_segmenter_model = fulltext_models.reference_segmenter_model
+    data_generator = reference_segmenter_model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    training_data_generator = ReferenceSegmenterTeiTrainingDataGenerator()
+    source_basename = os.path.basename(source_filename)
+    source_name = os.path.splitext(source_basename)[0]
+    tei_file_path = os.path.join(
+        output_path,
+        source_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+    )
+    data_file_path = os.path.join(
+        output_path,
+        source_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+    )
+    segmentation_label_model_data_list = (
+        get_segmentation_label_model_data_list_for_layout_document(
+            layout_document,
+            segmentation_model=segmentation_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
+    )
+    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_list,
+        layout_document=layout_document
+    )
+    ref_layout_document = segmentation_label_result.get_filtered_document_by_label(
+        '<references>'
+    ).remove_empty_blocks()
+    model_data_list: Sequence[LayoutModelData]
+    if use_model:
+        model_data_list = (
+            get_labeled_model_data_list_for_layout_document(
+                ref_layout_document,
+                model=reference_segmenter_model,
+                document_features_context=document_features_context
+            )
+        )
+    else:
+        model_data_list = list(
+            data_generator.iter_model_data_for_layout_document(ref_layout_document)
+        )
+    training_tei_root = (
+        training_data_generator
+        .get_training_tei_xml_for_model_data_iterable(
+            model_data_list
+        )
+    )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
+    Path(tei_file_path).write_bytes(
+        etree.tostring(training_tei_root, pretty_print=True)
+    )
+    LOGGER.info('writing training raw data to: %r', data_file_path)
+    Path(data_file_path).write_text('\n'.join(
+        model_data.data_line
+        for model_data in model_data_list
+    ), encoding='utf-8')
+
+
 def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
     output_path: str,
@@ -503,6 +576,15 @@ def generate_training_data_for_layout_document(
         model_result_cache=model_result_cache
     )
     generate_fulltext_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    )
+    generate_ref_segmenter_training_data_for_layout_document(
         layout_document=layout_document,
         output_path=output_path,
         source_filename=source_filename,

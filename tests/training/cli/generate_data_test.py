@@ -9,6 +9,9 @@ import pytest
 
 from lxml import etree
 from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
+from sciencebeam_parser.models.reference_segmenter.training_data import (
+    ReferenceSegmenterTeiTrainingDataGenerator
+)
 
 
 from sciencebeam_parser.utils.xml import get_text_content_list
@@ -57,10 +60,17 @@ class SampleLayoutDocument:
             self.body_section_title_block,
             self.body_section_paragraph_block
         ])
+        self.ref_label_block = LayoutBlock.for_text('1')
+        self.ref_text_block = LayoutBlock.for_text('Reference 1')
+        self.ref_ref_block = LayoutBlock.merge_blocks([
+            self.ref_label_block,
+            self.ref_text_block
+        ])
 
         self.layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
             self.header_block,
-            self.body_block
+            self.body_block,
+            self.ref_ref_block
         ])])
 
 
@@ -73,12 +83,16 @@ def configure_fulltext_models_mock_with_sample_document(
     header_model_mock = fulltext_models_mock.header_model_mock
     affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
     fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+    reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
 
     segmentation_model_mock.update_label_by_layout_block(
         doc.header_block, '<header>'
     )
     segmentation_model_mock.update_label_by_layout_block(
         doc.body_block, '<body>'
+    )
+    segmentation_model_mock.update_label_by_layout_block(
+        doc.ref_ref_block, '<references>'
     )
 
     header_model_mock.update_label_by_layout_block(
@@ -97,6 +111,13 @@ def configure_fulltext_models_mock_with_sample_document(
     )
     fulltext_model_mock.update_label_by_layout_block(
         doc.body_section_paragraph_block, '<paragraph>'
+    )
+
+    reference_segmenter_model_mock.update_label_by_layout_block(
+        doc.ref_label_block, '<label>'
+    )
+    reference_segmenter_model_mock.update_label_by_layout_block(
+        doc.ref_text_block, '<reference>'
     )
 
 
@@ -241,6 +262,22 @@ class TestGenerateTrainingDataForLayoutDocument:
             tei_xpath(xml_root, '//head')
         )) == [
             normalize_whitespace(sample_layout_document.body_section_title_block.text)
+        ]
+
+        expected_ref_seg_tei_path = output_path.joinpath(
+            example_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_ref_seg_data_path = output_path.joinpath(
+            example_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert expected_ref_seg_tei_path.exists()
+        assert expected_ref_seg_data_path.exists()
+        xml_root = etree.parse(str(expected_ref_seg_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert normalize_whitespace_list(get_text_content_list(
+            tei_xpath(xml_root, '//bibl')
+        )) == [
+            normalize_whitespace(sample_layout_document.ref_ref_block.text)
         ]
 
 
