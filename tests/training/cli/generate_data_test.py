@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from lxml import etree
+from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
 
 
 from sciencebeam_parser.utils.xml import get_text_content_list
@@ -50,7 +51,12 @@ class SampleLayoutDocument:
         self.institution_block = LayoutBlock.for_text('Institution 1')
         self.affiliation_block = LayoutBlock.merge_blocks([self.institution_block])
         self.header_block = LayoutBlock.merge_blocks([self.title_block, self.affiliation_block])
-        self.body_block = LayoutBlock.for_text('This is the body')
+        self.body_section_title_block = LayoutBlock.for_text('Section 1')
+        self.body_section_paragraph_block = LayoutBlock.for_text('Paragraph 1')
+        self.body_block = LayoutBlock.merge_blocks([
+            self.body_section_title_block,
+            self.body_section_paragraph_block
+        ])
 
         self.layout_document = LayoutDocument(pages=[LayoutPage(blocks=[
             self.header_block,
@@ -66,6 +72,7 @@ def configure_fulltext_models_mock_with_sample_document(
     segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
     header_model_mock = fulltext_models_mock.header_model_mock
     affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
+    fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
 
     segmentation_model_mock.update_label_by_layout_block(
         doc.header_block, '<header>'
@@ -83,6 +90,13 @@ def configure_fulltext_models_mock_with_sample_document(
 
     affiliation_address_model_mock.update_label_by_layout_block(
         doc.institution_block, '<institution>'
+    )
+
+    fulltext_model_mock.update_label_by_layout_block(
+        doc.body_section_title_block, '<section>'
+    )
+    fulltext_model_mock.update_label_by_layout_block(
+        doc.body_section_paragraph_block, '<paragraph>'
     )
 
 
@@ -211,6 +225,22 @@ class TestGenerateTrainingDataForLayoutDocument:
             tei_xpath(xml_root, '//tei:affiliation/tei:orgName[@type="institution"]')
         )) == [
             normalize_whitespace(sample_layout_document.institution_block.text)
+        ]
+
+        expected_fulltext_tei_path = output_path.joinpath(
+            example_name + FullTextTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_fulltext_data_path = output_path.joinpath(
+            example_name + FullTextTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert expected_fulltext_tei_path.exists()
+        assert expected_fulltext_data_path.exists()
+        xml_root = etree.parse(str(expected_fulltext_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert normalize_whitespace_list(get_text_content_list(
+            tei_xpath(xml_root, '//head')
+        )) == [
+            normalize_whitespace(sample_layout_document.body_section_title_block.text)
         ]
 
 

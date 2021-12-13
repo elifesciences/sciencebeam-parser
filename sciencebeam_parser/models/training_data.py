@@ -15,6 +15,9 @@ from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelDa
 LOGGER = logging.getLogger(__name__)
 
 
+NO_NS_TEI_E = ElementMaker()
+
+
 OTHER_LABELS = {'<other>', 'O'}
 
 
@@ -66,6 +69,25 @@ def get_default_note_type_for_label(label: str) -> str:
     return label.strip('<>')
 
 
+def is_parent_path_of(
+    parent_path: Sequence[str],
+    child_path: Sequence[str]
+) -> bool:
+    if len(parent_path) >= len(child_path):
+        return False
+    return tuple(child_path[:len(parent_path)]) == tuple(parent_path)
+
+
+def is_same_or_parent_path_of(
+    parent_path: Sequence[str],
+    child_path: Sequence[str]
+) -> bool:
+    return (
+        tuple(parent_path) == tuple(child_path)
+        or is_parent_path_of(parent_path, child_path)
+    )
+
+
 class AbstractTeiTrainingDataGenerator:
     def __init__(
         self,
@@ -84,6 +106,7 @@ class AbstractTeiTrainingDataGenerator:
                 and tuple(element_path) != tuple(root_training_xml_element_path)
             )
         }
+        self.other_element_path = training_xml_element_path_by_label.get('<other>')
         self.element_maker = element_maker
 
     def get_training_xml_path_for_label(
@@ -92,6 +115,8 @@ class AbstractTeiTrainingDataGenerator:
         current_path: Sequence[str]
     ) -> Sequence[str]:
         if not label or label in OTHER_LABELS:
+            if label and self.other_element_path is not None:
+                return self.other_element_path
             if tuple(current_path) in self._training_xml_element_paths:
                 LOGGER.debug(
                     'found current path in element paths, returning parent: %r', current_path
@@ -133,8 +158,12 @@ class AbstractTeiTrainingDataGenerator:
                 if (
                     prev_label not in OTHER_LABELS
                     and pending_whitespace
-                    and xml_writer.current_path != xml_element_path
+                    and not is_same_or_parent_path_of(xml_writer.current_path, xml_element_path)
                 ):
+                    LOGGER.debug(
+                        'closing element before adding whitespace, %r -> %r',
+                        xml_writer.current_path, xml_element_path
+                    )
                     xml_writer.require_path(xml_writer.current_path[:-1])
                 elif prefix == 'B' and label not in OTHER_LABELS:
                     xml_writer.require_path(xml_element_path[:-1])
