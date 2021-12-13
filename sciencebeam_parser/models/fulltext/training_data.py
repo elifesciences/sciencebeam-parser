@@ -22,6 +22,7 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<figure_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="figure"]'],
     '<table_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="table"]'],
     '<equation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="formula"]'],
+    '<section_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="section"]'],
     '<figure>': ROOT_TRAINING_XML_ELEMENT_PATH + ['figure'],
     '<table>': ROOT_TRAINING_XML_ELEMENT_PATH + ['figure[@type="table"]'],
     '<equation>': ROOT_TRAINING_XML_ELEMENT_PATH + ['formula'],
