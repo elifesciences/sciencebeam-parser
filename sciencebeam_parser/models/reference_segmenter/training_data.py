@@ -21,8 +21,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
 
 
 class ReferenceSegmenterTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
-    DEFAULT_TEI_FILENAME_SUFFIX = '.referenceSegmenter.tei.xml'
-    DEFAULT_DATA_FILENAME_SUFFIX = '.referenceSegmenter'
+    DEFAULT_TEI_FILENAME_SUFFIX = '.references.referenceSegmenter.tei.xml'
+    DEFAULT_DATA_FILENAME_SUFFIX = '.references.referenceSegmenter'
 
     def __init__(self):
         super().__init__(
