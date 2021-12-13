@@ -712,6 +712,9 @@ class ContextAwareLayoutTokenModelDataGenerator(ModelDataGenerator):
             for block in layout_document.iter_all_blocks()
             for line in block.lines
         }
+        if not concatenated_line_tokens_length_by_line_id:
+            LOGGER.debug('empty layout document')
+            return
         max_concatenated_line_tokens_length = max(
             concatenated_line_tokens_length_by_line_id.values()
         )
