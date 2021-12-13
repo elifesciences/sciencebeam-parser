@@ -106,6 +106,7 @@ class AbstractTeiTrainingDataGenerator:
                 and tuple(element_path) != tuple(root_training_xml_element_path)
             )
         }
+        self.other_element_path = training_xml_element_path_by_label.get('<other>')
         self.element_maker = element_maker
 
     def get_training_xml_path_for_label(
@@ -114,6 +115,8 @@ class AbstractTeiTrainingDataGenerator:
         current_path: Sequence[str]
     ) -> Sequence[str]:
         if not label or label in OTHER_LABELS:
+            if label and self.other_element_path is not None:
+                return self.other_element_path
             if tuple(current_path) in self._training_xml_element_paths:
                 LOGGER.debug(
                     'found current path in element paths, returning parent: %r', current_path

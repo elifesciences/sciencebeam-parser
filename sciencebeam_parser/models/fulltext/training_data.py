@@ -15,6 +15,7 @@ LOGGER = logging.getLogger(__name__)
 ROOT_TRAINING_XML_ELEMENT_PATH = ['text']
 
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
+    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="other"]'],
     '<section>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head'],
     '<paragraph>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p'],
     '<citation_marker>': ROOT_TRAINING_XML_ELEMENT_PATH + ['p', 'ref[@type="biblio"]'],

@@ -241,6 +241,26 @@ class TestFullTextTeiTrainingDataGenerator:
             xml_root.xpath('./text')
         ) == [f'{TEXT_1}\n{TEXT_2}\n']
 
+    def test_should_map_other_label_to_note(self):
+        label_and_layout_line_list = [
+            ('<other>', get_next_layout_line_for_text(TEXT_1))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = FullTextTeiTrainingDataGenerator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(
+            xml_root.xpath('./text/note[@type="other"]')
+        ) == [TEXT_1]
+        assert get_text_content_list(
+            xml_root.xpath('./text')
+        ) == [f'{TEXT_1}\n']
+
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
             ('<unknown>', get_next_layout_line_for_text(TEXT_1))
