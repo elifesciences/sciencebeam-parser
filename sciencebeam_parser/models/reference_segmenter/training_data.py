@@ -19,6 +19,10 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<label>': ROOT_TRAINING_XML_ELEMENT_PATH + ['bibl', 'label']
 }
 
+RESET_TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
+    '<label>': ROOT_TRAINING_XML_ELEMENT_PATH
+}
+
 
 class ReferenceSegmenterTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
     DEFAULT_TEI_FILENAME_SUFFIX = '.references.referenceSegmenter.tei.xml'
@@ -28,5 +32,6 @@ class ReferenceSegmenterTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerato
         super().__init__(
             root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
             training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
+            reset_training_xml_element_path_by_label=RESET_TRAINING_XML_ELEMENT_PATH_BY_LABEL,
             element_maker=NO_NS_TEI_E
         )

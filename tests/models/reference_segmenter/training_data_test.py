@@ -145,7 +145,7 @@ class TestReferenceSegmenterTeiTrainingDataGenerator:
             xml_root.xpath('./text/listBibl/bibl')
         ) == ['Ref 1']
 
-    def test_should_generate_tei_single_bibl_element_with_label_at_the_beginning(self):
+    def test_should_generate_single_tei_bibl_element_with_label_at_the_beginning(self):
         label_and_layout_line_list = [
             ('<label>', get_next_layout_line_for_text('Label 1')),
             ('<reference>', get_next_layout_line_for_text('Ref 1'))
@@ -165,6 +165,50 @@ class TestReferenceSegmenterTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/listBibl/bibl')
         ) == ['Label 1\nRef 1']
+
+    def test_should_generate_multiple_tei_bibl_elements_with_label(self):
+        label_and_layout_line_list = [
+            ('<label>', get_next_layout_line_for_text('Label 1')),
+            ('<reference>', get_next_layout_line_for_text('Ref 1')),
+            ('<label>', get_next_layout_line_for_text('Label 2')),
+            ('<reference>', get_next_layout_line_for_text('Ref 2'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(
+            xml_root.xpath('./text/listBibl/bibl/label')
+        ) == ['Label 1', 'Label 2']
+        assert get_text_content_list(
+            xml_root.xpath('./text/listBibl/bibl')
+        ) == ['Label 1\nRef 1', 'Label 2\nRef 2']
+
+    def test_should_generate_multiple_tei_bibl_elements_without_label(self):
+        label_and_layout_line_list = [
+            ('<reference>', get_next_layout_line_for_text(TEXT_1)),
+            ('<reference>', get_next_layout_line_for_text(TEXT_2))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert get_text_content_list(
+            xml_root.xpath('./text/listBibl/bibl')
+        ) == [TEXT_1, TEXT_2]
+        assert get_text_content_list(
+            xml_root.xpath('./text/listBibl')
+        ) == [f'{TEXT_1}\n{TEXT_2}\n']
 
     def test_should_map_other_label_as_text_without_note(self):
         label_and_layout_line_list = [
@@ -203,24 +247,3 @@ class TestReferenceSegmenterTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/listBibl')
         ) == [f'{TEXT_1}\n']
-
-    def test_should_not_join_separate_labels(self):
-        label_and_layout_line_list = [
-            ('<reference>', get_next_layout_line_for_text(TEXT_1)),
-            ('<reference>', get_next_layout_line_for_text(TEXT_2))
-        ]
-        labeled_model_data_list = get_labeled_model_data_list(
-            label_and_layout_line_list,
-            data_generator=get_data_generator()
-        )
-        training_data_generator = get_tei_training_data_generator()
-        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
-            labeled_model_data_list
-        )
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert get_text_content_list(
-            xml_root.xpath('./text/listBibl/bibl')
-        ) == [TEXT_1, TEXT_2]
-        assert get_text_content_list(
-            xml_root.xpath('./text/listBibl')
-        ) == [f'{TEXT_1}\n{TEXT_2}\n']
