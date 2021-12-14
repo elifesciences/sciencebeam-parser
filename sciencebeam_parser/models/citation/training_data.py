@@ -18,7 +18,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<author>': ROOT_TRAINING_XML_ELEMENT_PATH + ['author'],
     '<journal>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="j"]'],
     '<series>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="s"]'],
-    '<booktitle>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="m"]']
+    '<booktitle>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="m"]'],
+    '<date>': ROOT_TRAINING_XML_ELEMENT_PATH + ['date']
 }
 
 

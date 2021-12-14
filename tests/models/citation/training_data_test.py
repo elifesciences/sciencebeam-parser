@@ -138,7 +138,8 @@ class TestCitationTeiTrainingDataGenerator:
             ('<author>', get_next_layout_line_for_text('Author 1')),
             ('<journal>', get_next_layout_line_for_text('Journal 1')),
             ('<series>', get_next_layout_line_for_text('Series 1')),
-            ('<booktitle>', get_next_layout_line_for_text('Book Title 1'))
+            ('<booktitle>', get_next_layout_line_for_text('Book Title 1')),
+            ('<date>', get_next_layout_line_for_text('Date 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -162,6 +163,9 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:title[@level="m"]'
         ) == ['Book Title 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:date'
+        ) == ['Date 1']
 
     def test_should_map_other_label_as_text_without_note(self):
         label_and_layout_line_list = [
