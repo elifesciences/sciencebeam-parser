@@ -16,7 +16,8 @@ ROOT_TRAINING_XML_ELEMENT_PATH = ['text', 'back', 'listBibl', 'bibl']
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<title>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="a"]'],
     '<author>': ROOT_TRAINING_XML_ELEMENT_PATH + ['author'],
-    '<journal>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="j"]']
+    '<journal>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="j"]'],
+    '<series>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="s"]']
 }
 
 
