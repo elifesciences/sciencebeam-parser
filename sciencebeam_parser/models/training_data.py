@@ -5,6 +5,7 @@ from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
+from sciencebeam_parser.document.tei.common import TEI_E
 from sciencebeam_parser.document.layout_document import (
     LayoutLine
 )
@@ -93,7 +94,9 @@ class AbstractTeiTrainingDataGenerator:
         self,
         root_training_xml_element_path: Sequence[str],
         training_xml_element_path_by_label: Mapping[str, Sequence[str]],
-        element_maker: ElementMaker,
+        root_tag: str = 'tei',
+        use_tei_namespace: bool = True,
+        element_maker: Optional[ElementMaker] = None,
         reset_training_xml_element_path_by_label: Optional[Mapping[str, Sequence[str]]] = None
     ):
         self.root_training_xml_element_path = root_training_xml_element_path
@@ -111,7 +114,10 @@ class AbstractTeiTrainingDataGenerator:
             )
         }
         self.other_element_path = training_xml_element_path_by_label.get('<other>')
+        if element_maker is None:
+            element_maker = TEI_E if use_tei_namespace else NO_NS_TEI_E
         self.element_maker = element_maker
+        self.root_tag = root_tag
 
     def get_training_xml_path_for_label(
         self,
@@ -202,7 +208,7 @@ class AbstractTeiTrainingDataGenerator:
 
     def _get_xml_writer(self) -> XmlTreeWriter:
         return XmlTreeWriter(
-            self.element_maker('tei'),
+            self.element_maker(self.root_tag),
             element_maker=self.element_maker
         )
 
