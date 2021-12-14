@@ -1,5 +1,5 @@
 Flask==2.0.2
-lxml==4.6.5
+lxml==4.7.1
 pdf2image==1.16.0
 PyYAML==6.0
 sciencebeam-trainer-delft==0.0.31
