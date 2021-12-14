@@ -8,7 +8,11 @@ from sciencebeam_parser.document.layout_document import (
     LayoutDocument,
     LayoutLine
 )
-from sciencebeam_parser.document.tei.common import tei_xpath, TEI_NS_PREFIX
+from sciencebeam_parser.document.tei.common import (
+    get_tei_xpath_text_content_list,
+    tei_xpath,
+    TEI_NS_PREFIX
+)
 from sciencebeam_parser.models.data import (
     DEFAULT_DOCUMENT_FEATURES_CONTEXT,
     LayoutModelData
@@ -22,6 +26,7 @@ from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
 from tests.test_utils import log_on_exception
 from tests.models.training_data_test_utils import (
     get_labeled_model_data_list,
+    get_labeled_model_data_list_list,
     get_model_data_list_for_layout_document,
     get_next_layout_line_for_text
 )
@@ -149,3 +154,62 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_text_content_list(
             tei_xpath(xml_root, f'{BIBL_XPATH}/tei:title[@level="j"]')
         ) == ['Journal 1']
+
+    def test_should_map_other_label_as_text_without_note(self):
+        label_and_layout_line_list = [
+            ('<other>', get_next_layout_line_for_text(TEXT_1))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert not tei_xpath(xml_root, f'{BIBL_XPATH}//tei:note')
+        assert get_text_content_list(
+            tei_xpath(xml_root, BIBL_XPATH)
+        ) == [f'{TEXT_1}\n']
+
+    def test_should_map_unknown_label_to_note(self):
+        label_and_layout_line_list = [
+            ('<unknown>', get_next_layout_line_for_text(TEXT_1))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        xml_root = get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        assert get_text_content_list(
+            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:note[@type="unknown"]')
+        ) == [TEXT_1]
+
+    def test_should_generate_tei_from_multiple_model_data_lists_using_model_labels(self):
+        label_and_layout_line_list_list = [
+            [
+                ('<title>', get_next_layout_line_for_text(TEXT_1))
+            ], [
+                ('<title>', get_next_layout_line_for_text(TEXT_2))
+            ]
+        ]
+        labeled_model_data_list_list = get_labeled_model_data_list_list(
+            label_and_layout_line_list_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_multiple_model_data_iterables(
+            labeled_model_data_list_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        aff_nodes = tei_xpath(xml_root, BIBL_XPATH)
+        assert len(aff_nodes) == 2
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[0], './tei:title[@level="a"]'
+        ) == [TEXT_1]
+        assert get_tei_xpath_text_content_list(
+            aff_nodes[1], './tei:title[@level="a"]'
+        ) == [TEXT_2]
