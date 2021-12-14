@@ -21,7 +21,7 @@ from sciencebeam_parser.models.citation.data import CitationDataGenerator
 from sciencebeam_parser.models.citation.training_data import (
     CitationTeiTrainingDataGenerator
 )
-from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
+from sciencebeam_parser.utils.xml import get_text_content
 
 from tests.test_utils import log_on_exception
 from tests.models.training_data_test_utils import (
@@ -147,17 +147,17 @@ class TestCitationTeiTrainingDataGenerator:
         xml_root = get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
         )
-        assert get_text_content_list(
-            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:title[@level="a"]')
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:title[@level="a"]'
         ) == ['Title 1']
-        assert get_text_content_list(
-            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:author')
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:author'
         ) == ['Author 1']
-        assert get_text_content_list(
-            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:title[@level="j"]')
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:title[@level="j"]'
         ) == ['Journal 1']
-        assert get_text_content_list(
-            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:title[@level="s"]')
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:title[@level="s"]'
         ) == ['Series 1']
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:title[@level="m"]'
@@ -177,8 +177,8 @@ class TestCitationTeiTrainingDataGenerator:
         )
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert not tei_xpath(xml_root, f'{BIBL_XPATH}//tei:note')
-        assert get_text_content_list(
-            tei_xpath(xml_root, BIBL_XPATH)
+        assert get_tei_xpath_text_content_list(
+            xml_root, BIBL_XPATH
         ) == [f'{TEXT_1}\n']
 
     def test_should_map_unknown_label_to_note(self):
@@ -192,8 +192,8 @@ class TestCitationTeiTrainingDataGenerator:
         xml_root = get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
         )
-        assert get_text_content_list(
-            tei_xpath(xml_root, f'{BIBL_XPATH}/tei:note[@type="unknown"]')
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:note[@type="unknown"]'
         ) == [TEXT_1]
 
     def test_should_generate_tei_from_multiple_model_data_lists_using_model_labels(self):
