@@ -8,10 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from lxml import etree
-from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
-from sciencebeam_parser.models.reference_segmenter.training_data import (
-    ReferenceSegmenterTeiTrainingDataGenerator
-)
 
 
 from sciencebeam_parser.utils.xml import get_text_content_list
@@ -22,12 +18,19 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.document.tei.common import tei_xpath
 from sciencebeam_parser.models.data import DEFAULT_DOCUMENT_FEATURES_CONTEXT
+from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
+from sciencebeam_parser.models.reference_segmenter.training_data import (
+    ReferenceSegmenterTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
 )
 from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
 from sciencebeam_parser.models.affiliation_address.training_data import (
     AffiliationAddressTeiTrainingDataGenerator
+)
+from sciencebeam_parser.models.citation.training_data import (
+    CitationTeiTrainingDataGenerator
 )
 import sciencebeam_parser.training.cli.generate_data as generate_data_module
 from sciencebeam_parser.training.cli.generate_data import (
@@ -61,7 +64,8 @@ class SampleLayoutDocument:
             self.body_section_paragraph_block
         ])
         self.ref_label_block = LayoutBlock.for_text('1')
-        self.ref_text_block = LayoutBlock.for_text('Reference 1')
+        self.ref_title_block = LayoutBlock.for_text('Reference 1')
+        self.ref_text_block = LayoutBlock.merge_blocks([self.ref_title_block])
         self.ref_ref_block = LayoutBlock.merge_blocks([
             self.ref_label_block,
             self.ref_text_block
@@ -84,6 +88,7 @@ def configure_fulltext_models_mock_with_sample_document(
     affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
     fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
     reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
+    citation_model_mock = fulltext_models_mock.citation_model_mock
 
     segmentation_model_mock.update_label_by_layout_block(
         doc.header_block, '<header>'
@@ -118,6 +123,10 @@ def configure_fulltext_models_mock_with_sample_document(
     )
     reference_segmenter_model_mock.update_label_by_layout_block(
         doc.ref_text_block, '<reference>'
+    )
+
+    citation_model_mock.update_label_by_layout_block(
+        doc.ref_title_block, '<title>'
     )
 
 
@@ -278,6 +287,18 @@ class TestGenerateTrainingDataForLayoutDocument:
             tei_xpath(xml_root, '//bibl')
         )) == [
             normalize_whitespace(sample_layout_document.ref_ref_block.text)
+        ]
+
+        expected_citation_tei_path = output_path.joinpath(
+            example_name + CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        assert expected_citation_tei_path.exists()
+        xml_root = etree.parse(str(expected_citation_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert normalize_whitespace_list(get_text_content_list(
+            tei_xpath(xml_root, '//tei:bibl/tei:title[@level="a"]')
+        )) == [
+            normalize_whitespace(sample_layout_document.ref_title_block.text)
         ]
 
 
