@@ -149,6 +149,7 @@ class TestCitationTeiTrainingDataGenerator:
             ('<publisher>', get_next_layout_line_for_text('Publisher 1')),
             ('<location>', get_next_layout_line_for_text('Location 1')),
             ('<tech>', get_next_layout_line_for_text('Tech 1')),
+            ('<pubnum>', get_next_layout_line_for_text('Pubnum 1')),
             ('<web>', get_next_layout_line_for_text('Web 1')),
             ('<note>', get_next_layout_line_for_text('Note 1'))
         ]
@@ -204,6 +205,9 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:note[@type="report"]'
         ) == ['Tech 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:idno'
+        ) == ['Pubnum 1']
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:ptr[@type="web"]'
         ) == ['Web 1']
