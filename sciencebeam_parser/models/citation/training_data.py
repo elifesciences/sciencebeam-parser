@@ -51,7 +51,13 @@ class CitationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
             training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
             use_tei_namespace=True,
-            root_tag='TEI'
+            root_tag='TEI',
+            default_tei_filename_suffix=(
+                CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+            ),
+            default_data_filename_suffix=(
+                CitationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+            )
         )
 
     def get_post_processed_xml_root(self, xml_root: etree.ElementBase):
