@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from glob import glob
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, NamedTuple, Optional, Sequence
 
 from lxml import etree
 
@@ -239,24 +239,28 @@ def get_reference_segmenter_label_model_data_list_for_layout_document(
     return reference_segmenter_label_model_data_list
 
 
+class TrainingDataDocumentContext(NamedTuple):
+    output_path: str
+    source_filename: str
+    document_features_context: DocumentFeaturesContext
+    fulltext_models: FullTextModels
+    use_model: bool
+    model_result_cache: ModelResultCache
+
+
 class AbstractModelTrainingDataGenerator(ABC):
     def __init__(
         self,
-        output_path: str,
-        source_filename: str,
-        document_features_context: DocumentFeaturesContext,
-        fulltext_models: FullTextModels,
-        use_model: bool,
-        model_result_cache: ModelResultCache,
+        document_context: TrainingDataDocumentContext,
         training_data_generator: AbstractTeiTrainingDataGenerator
     ):
-        self.output_path = output_path
-        self.source_filename = source_filename
-        self.document_features_context = document_features_context
-        self.fulltext_models = fulltext_models
-        self.use_model = use_model
-        self.model_result_cache = model_result_cache
-        self.source_basename = os.path.basename(source_filename)
+        self.output_path = document_context.output_path
+        self.source_filename = document_context.source_filename
+        self.document_features_context = document_context.document_features_context
+        self.fulltext_models = document_context.fulltext_models
+        self.use_model = document_context.use_model
+        self.model_result_cache = document_context.model_result_cache
+        self.source_basename = os.path.basename(document_context.source_filename)
         self.source_name = os.path.splitext(self.source_basename)[0]
         self.training_data_generator = training_data_generator
         self.tei_file_path = self._get_file_path_with_suffix(
@@ -804,61 +808,34 @@ def generate_training_data_for_layout_document(
     use_model: bool
 ):
     model_result_cache = ModelResultCache()
-    SegmentationModelTrainingDataGenerator(
+    document_context = TrainingDataDocumentContext(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
+    )
+    SegmentationModelTrainingDataGenerator(
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     HeaderModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     AffiliationAddressModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     FullTextModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     FigureModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     ReferenceSegmenterModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
     CitationModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
+        document_context=document_context
     ).generate_data_for_layout_document(layout_document)
 
 
