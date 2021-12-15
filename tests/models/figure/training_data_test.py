@@ -188,6 +188,28 @@ class TestFigureTeiTrainingDataGenerator:
             xml_root, f'{FIGURE_XPATH}/head'
         ) == ['\n'.join(['Figure Head 1', 'Figure Label 1', 'Continued Figure Head 1'])]
 
+    def test_should_add_label_to_head_element_without_additional_text(self):
+        label_and_layout_line_list = [
+            ('<label>', get_next_layout_line_for_text('Figure Label 1')),
+            ('<figDesc>', get_next_layout_line_for_text('Figure Desc 1'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        xml_root = get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/head/label'
+        ) == ['Figure Label 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/head'
+        ) == ['Figure Label 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/figDesc'
+        ) == ['Figure Desc 1']
+
     def test_should_map_other_label_as_text_without_note(self):
         label_and_layout_line_list = [
             ('<other>', get_next_layout_line_for_text(TEXT_1))

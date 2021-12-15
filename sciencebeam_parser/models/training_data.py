@@ -195,6 +195,7 @@ class AbstractTeiTrainingDataGenerator:
                     xml_writer.require_path(xml_writer.current_path[:-1])
                 elif prefix == 'B' and label not in OTHER_LABELS:
                     xml_writer.require_path(xml_element_path[:-1])
+                xml_writer.require_path_or_below(xml_element_path)
                 xml_writer.append_text(pending_whitespace)
                 pending_whitespace = ''
                 xml_writer.require_path(xml_element_path)
