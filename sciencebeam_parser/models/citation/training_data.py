@@ -2,13 +2,12 @@ import logging
 
 from lxml import etree
 
-from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.document.tei.common import tei_xpath
 from sciencebeam_parser.models.training_data import (
     AbstractTeiTrainingDataGenerator
 )
 from sciencebeam_parser.models.citation.extract import (
-    parse_pubnum
+    get_detected_external_identifier_type_for_text
 )
 from sciencebeam_parser.utils.xml import get_text_content
 
@@ -57,10 +56,9 @@ class CitationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
 
     def get_post_processed_xml_root(self, xml_root: etree.ElementBase):
         for idno_element in tei_xpath(xml_root, '//tei:idno'):
-            semantic_external_identifier = parse_pubnum(LayoutBlock.for_text(
+            external_identifier_type = get_detected_external_identifier_type_for_text(
                 get_text_content(idno_element)
-            ))
-            external_identifier_type = semantic_external_identifier.external_identifier_type
+            )
             if not external_identifier_type:
                 continue
             idno_element.attrib['type'] = external_identifier_type

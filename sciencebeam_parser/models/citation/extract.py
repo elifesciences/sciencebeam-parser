@@ -105,33 +105,44 @@ def parse_web(layout_block: LayoutBlock) -> Union[SemanticExternalUrl, SemanticE
     )
 
 
-def parse_pubnum(layout_block: LayoutBlock) -> SemanticExternalIdentifier:
-    value = re.sub(r'\s', '', layout_block.text)
-    external_identifier_type: Optional[str] = None
+def get_detected_external_identifier_type_and_value_for_text(
+    text: str
+) -> Tuple[Optional[str], str]:
+    value = re.sub(r'\s', '', text)
     m = re.search(DOI_PATTERN, value)
     if m:
         value = m.group(1)
-        external_identifier_type = SemanticExternalIdentifierTypes.DOI
-    if not external_identifier_type:
-        m = re.search(PMCID_PATTERN, value)
-        if m:
-            value = 'PMC' + m.group(1)
-            external_identifier_type = SemanticExternalIdentifierTypes.PMCID
-    if not external_identifier_type:
-        m = re.search(ARXIV_PATTERN, value)
-        if m:
-            value = m.group(1) or m.group(2)
-            external_identifier_type = SemanticExternalIdentifierTypes.ARXIV
-    if not external_identifier_type:
-        m = re.match(PMID_PATTERN, value)
-        if m:
-            value = m.group(1)
-            external_identifier_type = SemanticExternalIdentifierTypes.PMID
-    if not external_identifier_type:
-        m = re.search(PII_PATTERN, value)
-        if m:
-            value = m.group(1)
-            external_identifier_type = SemanticExternalIdentifierTypes.PII
+        return SemanticExternalIdentifierTypes.DOI, value
+    m = re.search(PMCID_PATTERN, value)
+    if m:
+        value = 'PMC' + m.group(1)
+        return SemanticExternalIdentifierTypes.PMCID, value
+    m = re.search(ARXIV_PATTERN, value)
+    if m:
+        value = m.group(1) or m.group(2)
+        return SemanticExternalIdentifierTypes.ARXIV, value
+    m = re.match(PMID_PATTERN, value)
+    if m:
+        value = m.group(1)
+        return SemanticExternalIdentifierTypes.PMID, value
+    m = re.search(PII_PATTERN, value)
+    if m:
+        value = m.group(1)
+        return SemanticExternalIdentifierTypes.PII, value
+    return None, value
+
+
+def get_detected_external_identifier_type_for_text(text: str) -> Optional[str]:
+    external_identifier_type, _ = get_detected_external_identifier_type_and_value_for_text(
+        text
+    )
+    return external_identifier_type
+
+
+def parse_pubnum(layout_block: LayoutBlock) -> SemanticExternalIdentifier:
+    external_identifier_type, value = get_detected_external_identifier_type_and_value_for_text(
+        layout_block.text
+    )
     return SemanticExternalIdentifier(
         layout_block=layout_block,
         value=value,
