@@ -142,6 +142,7 @@ class TestCitationTeiTrainingDataGenerator:
             ('<booktitle>', get_next_layout_line_for_text('Book Title 1')),
             ('<date>', get_next_layout_line_for_text('Date 1')),
             ('<volume>', get_next_layout_line_for_text('Volume 1')),
+            ('<issue>', get_next_layout_line_for_text('Issue 1')),
             ('<pages>', get_next_layout_line_for_text('Pages 1')),
             ('<publisher>', get_next_layout_line_for_text('Publisher 1')),
             ('<location>', get_next_layout_line_for_text('Location 1')),
@@ -178,6 +179,9 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:biblScope[@unit="volume"]'
         ) == ['Volume 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:biblScope[@unit="issue"]'
+        ) == ['Issue 1']
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:biblScope[@unit="page"]'
         ) == ['Pages 1']
