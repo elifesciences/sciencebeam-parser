@@ -254,6 +254,7 @@ class AbstractModelTrainingDataGenerator(ABC):
         document_context: TrainingDataDocumentContext,
         training_data_generator: AbstractTeiTrainingDataGenerator
     ):
+        self.document_context = document_context
         self.output_path = document_context.output_path
         self.source_filename = document_context.source_filename
         self.document_features_context = document_context.document_features_context
@@ -555,18 +556,16 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             training_data_generator=FigureTeiTrainingDataGenerator()
         )
 
-    def generate_data_for_layout_document(  # pylint: disable=too-many-locals
+    def iter_model_data_list(
         self,
         layout_document: LayoutDocument
-    ):
-        assert self.tei_file_path
+    ) -> Iterable[Sequence[LayoutModelData]]:
         segmentation_model = self.fulltext_models.segmentation_model
         fulltext_model = self.fulltext_models.fulltext_model
         figure_model = self.fulltext_models.figure_model
         data_generator = figure_model.get_data_generator(
             document_features_context=self.document_features_context
         )
-        training_data_generator = FigureTeiTrainingDataGenerator()
         segmentation_label_model_data_list = (
             get_segmentation_label_model_data_list_for_layout_document(
                 layout_document,
@@ -608,8 +607,7 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
 
         model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
         if not raw_figure_list:
-            LOGGER.info('no figures found')
-            return
+            return []
         figure_documents = [
             LayoutDocument.for_blocks(
                 list(raw_figure.iter_blocks())
@@ -627,8 +625,21 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
                 model_data_list_list,
                 model=figure_model
             )
+        return model_data_list_list
+
+    def generate_data_for_layout_document(  # pylint: disable=too-many-locals
+        self,
+        layout_document: LayoutDocument
+    ):
+        assert self.tei_file_path
+        model_data_list_list = list(self.iter_model_data_list(
+            layout_document=layout_document
+        ))
+        if not model_data_list_list:
+            LOGGER.info('no figures found')
+            return
         training_tei_root = (
-            training_data_generator
+            self.training_data_generator
             .get_training_tei_xml_for_multiple_model_data_iterables(
                 model_data_list_list
             )
