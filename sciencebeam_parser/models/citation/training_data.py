@@ -22,6 +22,7 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<booktitle>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="m"]'],
     '<date>': ROOT_TRAINING_XML_ELEMENT_PATH + ['date'],
     '<volume>': ROOT_TRAINING_XML_ELEMENT_PATH + ['biblScope[@unit="volume"]'],
+    '<pages>': ROOT_TRAINING_XML_ELEMENT_PATH + ['biblScope[@unit="page"]'],
     '<publisher>': ROOT_TRAINING_XML_ELEMENT_PATH + ['publisher'],
     '<location>': ROOT_TRAINING_XML_ELEMENT_PATH + ['pubPlace']
 }
