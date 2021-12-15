@@ -27,6 +27,8 @@ Currently training data will be generated for the following models:
 - `header`
 - `affiliation_address`
 - `fulltext`
+- `reference_segmenter`
+- `citation`
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \
