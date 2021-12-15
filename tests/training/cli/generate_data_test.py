@@ -339,6 +339,42 @@ class TestGenerateTrainingDataForLayoutDocument:
             normalize_whitespace(sample_layout_document.ref_title_block.text)
         ]
 
+    def test_not_should_generate_figure_data_if_not_present(  # noqa pylint: disable=too-many-locals, too-many-statements
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        fulltext_models_mock.fulltext_model_mock.update_label_by_layout_block(
+            sample_layout_document.figure_block, '<paragraph>'
+        )
+
+        output_path = tmp_path / 'output'
+        output_path.mkdir()
+        generate_training_data_for_layout_document(
+            layout_document=sample_layout_document.layout_document,
+            output_path=str(output_path),
+            source_filename=SOURCE_FILENAME_1,
+            document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
+            fulltext_models=fulltext_models_mock,
+            use_model=True
+        )
+
+        example_name = os.path.splitext(os.path.basename(SOURCE_FILENAME_1))[0]
+
+        expected_figure_tei_path = output_path.joinpath(
+            example_name + FigureTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_figure_data_path = output_path.joinpath(
+            example_name + FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert not expected_figure_tei_path.exists()
+        assert not expected_figure_data_path.exists()
+
 
 @log_on_exception
 class TestMain:

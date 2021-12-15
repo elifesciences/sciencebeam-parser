@@ -588,24 +588,26 @@ def generate_figure_training_data_for_layout_document(  # pylint: disable=too-ma
     LOGGER.info('raw_figure_list count: %d', len(raw_figure_list))
 
     model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
-    if raw_figure_list:
-        figure_documents = [
-            LayoutDocument.for_blocks(
-                list(raw_figure.iter_blocks())
-            )
-            for raw_figure in raw_figure_list
-        ]
-        model_data_list_list = [
-            list(
-                data_generator.iter_model_data_for_layout_document(figure_document)
-            )
-            for figure_document in figure_documents
-        ]
-        if use_model:
-            model_data_list_list = get_labeled_model_data_list_list(
-                model_data_list_list,
-                model=figure_model
-            )
+    if not raw_figure_list:
+        LOGGER.info('no figures found')
+        return
+    figure_documents = [
+        LayoutDocument.for_blocks(
+            list(raw_figure.iter_blocks())
+        )
+        for raw_figure in raw_figure_list
+    ]
+    model_data_list_list = [
+        list(
+            data_generator.iter_model_data_for_layout_document(figure_document)
+        )
+        for figure_document in figure_documents
+    ]
+    if use_model:
+        model_data_list_list = get_labeled_model_data_list_list(
+            model_data_list_list,
+            model=figure_model
+        )
     training_tei_root = (
         training_data_generator
         .get_training_tei_xml_for_multiple_model_data_iterables(
