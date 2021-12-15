@@ -1,5 +1,4 @@
-# pylint: disable=too-many-lines
-from abc import ABC, abstractmethod
+from abc import ABC
 import argparse
 import logging
 import os
@@ -276,12 +275,40 @@ class AbstractModelTrainingDataGenerator(ABC):
             return None
         return os.path.join(self.output_path, self.source_name + suffix)
 
-    @abstractmethod
+    def iter_model_data_list(
+        self,
+        layout_document: LayoutDocument,  # pylint: disable=unused-argument
+        document_context: TrainingDataDocumentContext  # pylint: disable=unused-argument
+    ) -> Iterable[Sequence[LayoutModelData]]:
+        return []
+
     def generate_data_for_layout_document(
         self,
         layout_document: LayoutDocument
     ):
-        pass
+        assert self.tei_file_path
+        model_data_list_list = list(self.iter_model_data_list(
+            layout_document=layout_document,
+            document_context=self.document_context
+        ))
+        if not model_data_list_list:
+            LOGGER.info('no figures found')
+            return
+        training_tei_root = (
+            self.training_data_generator
+            .get_training_tei_xml_for_multiple_model_data_iterables(
+                model_data_list_list
+            )
+        )
+        LOGGER.info('writing training tei to: %r', self.tei_file_path)
+        Path(self.tei_file_path).write_bytes(
+            etree.tostring(training_tei_root, pretty_print=True)
+        )
+        if self.data_file_path:
+            LOGGER.info('writing training raw data to: %r', self.data_file_path)
+            Path(self.data_file_path).write_text('\n'.join(
+                iter_data_lines_for_model_data_iterables(model_data_list_list)
+            ), encoding='utf-8')
 
 
 class SegmentationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
@@ -627,34 +654,6 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
                 model=figure_model
             )
         return model_data_list_list
-
-    def generate_data_for_layout_document(
-        self,
-        layout_document: LayoutDocument
-    ):
-        assert self.tei_file_path
-        model_data_list_list = list(self.iter_model_data_list(
-            layout_document=layout_document,
-            document_context=self.document_context
-        ))
-        if not model_data_list_list:
-            LOGGER.info('no figures found')
-            return
-        training_tei_root = (
-            self.training_data_generator
-            .get_training_tei_xml_for_multiple_model_data_iterables(
-                model_data_list_list
-            )
-        )
-        LOGGER.info('writing training tei to: %r', self.tei_file_path)
-        Path(self.tei_file_path).write_bytes(
-            etree.tostring(training_tei_root, pretty_print=True)
-        )
-        if self.data_file_path:
-            LOGGER.info('writing training raw data to: %r', self.data_file_path)
-            Path(self.data_file_path).write_text('\n'.join(
-                iter_data_lines_for_model_data_iterables(model_data_list_list)
-            ), encoding='utf-8')
 
 
 class ReferenceSegmenterModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
