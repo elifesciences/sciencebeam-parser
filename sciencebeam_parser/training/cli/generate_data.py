@@ -518,23 +518,22 @@ class FullTextModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             training_data_generator=FullTextTeiTrainingDataGenerator()
         )
 
-    def generate_data_for_layout_document(
+    def iter_model_data_list(
         self,
-        layout_document: LayoutDocument
-    ):
-        assert self.tei_file_path
-        segmentation_model = self.fulltext_models.segmentation_model
-        fulltext_model = self.fulltext_models.fulltext_model
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
+    ) -> Iterable[Sequence[LayoutModelData]]:
+        segmentation_model = document_context.fulltext_models.segmentation_model
+        fulltext_model = document_context.fulltext_models.fulltext_model
         data_generator = fulltext_model.get_data_generator(
-            document_features_context=self.document_features_context
+            document_features_context=document_context.document_features_context
         )
-        training_data_generator = FullTextTeiTrainingDataGenerator()
         segmentation_label_model_data_list = (
             get_segmentation_label_model_data_list_for_layout_document(
                 layout_document,
                 segmentation_model=segmentation_model,
-                document_features_context=self.document_features_context,
-                model_result_cache=self.model_result_cache
+                document_features_context=document_context.document_features_context,
+                model_result_cache=document_context.model_result_cache
             )
         )
         segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
@@ -545,35 +544,20 @@ class FullTextModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             '<body>'
         ).remove_empty_blocks()
         model_data_list: Sequence[LayoutModelData]
-        if self.use_model:
+        if document_context.use_model:
             model_data_list = (
                 get_fulltext_label_model_data_list_for_layout_document(
                     body_layout_document,
                     fulltext_model=fulltext_model,
-                    document_features_context=self.document_features_context,
-                    model_result_cache=self.model_result_cache
+                    document_features_context=document_context.document_features_context,
+                    model_result_cache=document_context.model_result_cache
                 )
             )
         else:
             model_data_list = list(
                 data_generator.iter_model_data_for_layout_document(body_layout_document)
             )
-        training_tei_root = (
-            training_data_generator
-            .get_training_tei_xml_for_model_data_iterable(
-                model_data_list
-            )
-        )
-        LOGGER.info('writing training tei to: %r', self.tei_file_path)
-        Path(self.tei_file_path).write_bytes(
-            etree.tostring(training_tei_root, pretty_print=True)
-        )
-        if self.data_file_path:
-            LOGGER.info('writing training raw data to: %r', self.data_file_path)
-            Path(self.data_file_path).write_text('\n'.join(
-                model_data.data_line
-                for model_data in model_data_list
-            ), encoding='utf-8')
+        return [model_data_list]
 
 
 class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
