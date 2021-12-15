@@ -1,6 +1,7 @@
 import logging
-from typing import Iterable
+from typing import Iterable, Optional
 
+import pytest
 from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
@@ -8,6 +9,7 @@ from sciencebeam_parser.document.layout_document import (
     LayoutDocument,
     LayoutLine
 )
+from sciencebeam_parser.document.semantic_document import SemanticExternalIdentifierTypes
 from sciencebeam_parser.document.tei.common import (
     get_tei_xpath_text_content_list,
     tei_xpath,
@@ -247,6 +249,39 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:note[@type="unknown"]'
         ) == [TEXT_1]
+
+    @pytest.mark.parametrize(
+        "test_input,expected_type",
+        [
+            ('10.1234/test', SemanticExternalIdentifierTypes.DOI),
+            ('PMID: 1234567', SemanticExternalIdentifierTypes.PMID),
+            ('arXiv: 0706.0001', SemanticExternalIdentifierTypes.ARXIV),
+            ('xyz', None)
+        ]
+    )
+    def test_should_map_pubnum_to_idno_with_type_if_detected(
+        self,
+        test_input: str,
+        expected_type: Optional[str]
+    ):
+        label_and_layout_line_list = [
+            ('<pubnum>', get_next_layout_line_for_text(test_input))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        xml_root = get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        if expected_type:
+            assert get_tei_xpath_text_content_list(
+                xml_root, f'{BIBL_XPATH}/tei:idno[@type="{expected_type}"]'
+            ) == [test_input]
+        else:
+            assert get_tei_xpath_text_content_list(
+                xml_root, f'{BIBL_XPATH}/tei:idno[not(@type)]'
+            ) == [test_input]
 
     def test_should_generate_tei_from_multiple_model_data_lists_using_model_labels(self):
         label_and_layout_line_list_list = [

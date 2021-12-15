@@ -212,6 +212,9 @@ class AbstractTeiTrainingDataGenerator:
             element_maker=self.element_maker
         )
 
+    def get_post_processed_xml_root(self, xml_root: etree.ElementBase):
+        return xml_root
+
     def get_training_tei_xml_for_multiple_model_data_iterables(
         self,
         model_data_iterables: Iterable[Iterable[LayoutModelData]]
@@ -225,7 +228,7 @@ class AbstractTeiTrainingDataGenerator:
                 xml_writer,
                 model_data_iterable=model_data_iterable
             )
-        return xml_writer.root
+        return self.get_post_processed_xml_root(xml_writer.root)
 
     def get_training_tei_xml_for_model_data_iterable(
         self,
