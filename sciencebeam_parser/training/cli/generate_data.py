@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from abc import ABC, abstractmethod
 import argparse
 import logging
@@ -398,7 +399,7 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractModelTrainingDataGene
             training_data_generator=AffiliationAddressTeiTrainingDataGenerator()
         )
 
-    def generate_data_for_layout_document(
+    def generate_data_for_layout_document(   # pylint: disable=too-many-locals
         self,
         layout_document: LayoutDocument
     ):
@@ -478,6 +479,71 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractModelTrainingDataGene
         )
 
 
+class FullTextModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
+    def __init__(self, **kwargs):
+        super().__init__(
+            **kwargs,
+            training_data_generator=FullTextTeiTrainingDataGenerator()
+        )
+
+    def generate_data_for_layout_document(
+        self,
+        layout_document: LayoutDocument
+    ):
+        assert self.tei_file_path
+        segmentation_model = self.fulltext_models.segmentation_model
+        fulltext_model = self.fulltext_models.fulltext_model
+        data_generator = fulltext_model.get_data_generator(
+            document_features_context=self.document_features_context
+        )
+        training_data_generator = FullTextTeiTrainingDataGenerator()
+        segmentation_label_model_data_list = (
+            get_segmentation_label_model_data_list_for_layout_document(
+                layout_document,
+                segmentation_model=segmentation_model,
+                document_features_context=self.document_features_context,
+                model_result_cache=self.model_result_cache
+            )
+        )
+        segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+            labeled_model_data_iterable=segmentation_label_model_data_list,
+            layout_document=layout_document
+        )
+        body_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<body>'
+        ).remove_empty_blocks()
+        model_data_list: Sequence[LayoutModelData]
+        if self.use_model:
+            model_data_list = (
+                get_fulltext_label_model_data_list_for_layout_document(
+                    body_layout_document,
+                    fulltext_model=fulltext_model,
+                    document_features_context=self.document_features_context,
+                    model_result_cache=self.model_result_cache
+                )
+            )
+        else:
+            model_data_list = list(
+                data_generator.iter_model_data_for_layout_document(body_layout_document)
+            )
+        training_tei_root = (
+            training_data_generator
+            .get_training_tei_xml_for_model_data_iterable(
+                model_data_list
+            )
+        )
+        LOGGER.info('writing training tei to: %r', self.tei_file_path)
+        Path(self.tei_file_path).write_bytes(
+            etree.tostring(training_tei_root, pretty_print=True)
+        )
+        if self.data_file_path:
+            LOGGER.info('writing training raw data to: %r', self.data_file_path)
+            Path(self.data_file_path).write_text('\n'.join(
+                model_data.data_line
+                for model_data in model_data_list
+            ), encoding='utf-8')
+
+
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
@@ -544,66 +610,14 @@ def generate_fulltext_training_data_for_layout_document(  # pylint: disable=too-
     use_model: bool,
     model_result_cache: ModelResultCache
 ):
-    segmentation_model = fulltext_models.segmentation_model
-    fulltext_model = fulltext_models.fulltext_model
-    data_generator = fulltext_model.get_data_generator(
-        document_features_context=document_features_context
-    )
-    training_data_generator = FullTextTeiTrainingDataGenerator()
-    source_basename = os.path.basename(source_filename)
-    source_name = os.path.splitext(source_basename)[0]
-    tei_file_path = os.path.join(
-        output_path,
-        source_name + FullTextTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
-    )
-    data_file_path = os.path.join(
-        output_path,
-        source_name + FullTextTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-    )
-    segmentation_label_model_data_list = (
-        get_segmentation_label_model_data_list_for_layout_document(
-            layout_document,
-            segmentation_model=segmentation_model,
-            document_features_context=document_features_context,
-            model_result_cache=model_result_cache
-        )
-    )
-    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
-        labeled_model_data_iterable=segmentation_label_model_data_list,
-        layout_document=layout_document
-    )
-    body_layout_document = segmentation_label_result.get_filtered_document_by_label(
-        '<body>'
-    ).remove_empty_blocks()
-    model_data_list: Sequence[LayoutModelData]
-    if use_model:
-        model_data_list = (
-            get_fulltext_label_model_data_list_for_layout_document(
-                body_layout_document,
-                fulltext_model=fulltext_model,
-                document_features_context=document_features_context,
-                model_result_cache=model_result_cache
-            )
-        )
-    else:
-        model_data_list = list(
-            data_generator.iter_model_data_for_layout_document(body_layout_document)
-        )
-    training_tei_root = (
-        training_data_generator
-        .get_training_tei_xml_for_model_data_iterable(
-            model_data_list
-        )
-    )
-    LOGGER.info('writing training tei to: %r', tei_file_path)
-    Path(tei_file_path).write_bytes(
-        etree.tostring(training_tei_root, pretty_print=True)
-    )
-    LOGGER.info('writing training raw data to: %r', data_file_path)
-    Path(data_file_path).write_text('\n'.join(
-        model_data.data_line
-        for model_data in model_data_list
-    ), encoding='utf-8')
+    FullTextModelTrainingDataGenerator(
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    ).generate_data_for_layout_document(layout_document)
 
 
 def generate_figure_training_data_for_layout_document(  # pylint: disable=too-many-locals
