@@ -300,6 +300,11 @@ class TestGenerateTrainingDataForLayoutDocument:
         )) == [
             normalize_whitespace(sample_layout_document.ref_title_block.text)
         ]
+        assert normalize_whitespace_list(get_text_content_list(
+            tei_xpath(xml_root, '//tei:bibl')
+        )) == [
+            normalize_whitespace(sample_layout_document.ref_title_block.text)
+        ]
 
 
 @log_on_exception

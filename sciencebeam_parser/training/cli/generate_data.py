@@ -12,7 +12,8 @@ from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
-    SemanticRawReference
+    SemanticRawReference,
+    SemanticRawReferenceText
 )
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext,
@@ -619,28 +620,30 @@ def generate_citation_training_data_for_layout_document(  # pylint: disable=too-
             )
         )
     )
-    raw_reference_list = list(
-        SemanticMixedContentWrapper(list(
+    raw_reference_text_list = [
+        raw_reference_text
+        for raw_reference in SemanticMixedContentWrapper(list(
             reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
                 reference_segmenter_labeled_layout_tokens
             )
         )).iter_by_type(SemanticRawReference)
-    )
-    LOGGER.info('raw_reference_list count: %d', len(raw_reference_list))
+        for raw_reference_text in raw_reference.iter_by_type(SemanticRawReferenceText)
+    ]
+    LOGGER.info('raw_reference_text_list count: %d', len(raw_reference_text_list))
 
     model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
-    if raw_reference_list:
-        aff_layout_documents = [
+    if raw_reference_text_list:
+        references_documents = [
             LayoutDocument.for_blocks(
-                list(semantic_raw_reference.iter_blocks())
+                list(semantic_raw_reference_text.iter_blocks())
             )
-            for semantic_raw_reference in raw_reference_list
+            for semantic_raw_reference_text in raw_reference_text_list
         ]
         model_data_list_list = [
             list(
-                data_generator.iter_model_data_for_layout_document(aff_layout_document)
+                data_generator.iter_model_data_for_layout_document(references_document)
             )
-            for aff_layout_document in aff_layout_documents
+            for references_document in references_documents
         ]
         if use_model:
             model_data_list_list = get_labeled_model_data_list_list(
