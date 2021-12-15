@@ -544,6 +544,102 @@ class FullTextModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             ), encoding='utf-8')
 
 
+class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
+    def __init__(self, **kwargs):
+        super().__init__(
+            **kwargs,
+            training_data_generator=FigureTeiTrainingDataGenerator()
+        )
+
+    def generate_data_for_layout_document(  # pylint: disable=too-many-locals
+        self,
+        layout_document: LayoutDocument
+    ):
+        assert self.tei_file_path
+        segmentation_model = self.fulltext_models.segmentation_model
+        fulltext_model = self.fulltext_models.fulltext_model
+        figure_model = self.fulltext_models.figure_model
+        data_generator = figure_model.get_data_generator(
+            document_features_context=self.document_features_context
+        )
+        training_data_generator = FigureTeiTrainingDataGenerator()
+        segmentation_label_model_data_list = (
+            get_segmentation_label_model_data_list_for_layout_document(
+                layout_document,
+                segmentation_model=segmentation_model,
+                document_features_context=self.document_features_context,
+                model_result_cache=self.model_result_cache
+            )
+        )
+        segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+            labeled_model_data_iterable=segmentation_label_model_data_list,
+            layout_document=layout_document
+        )
+        body_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<body>'
+        ).remove_empty_blocks()
+        fulltext_model_data_list = (
+            get_fulltext_label_model_data_list_for_layout_document(
+                body_layout_document,
+                fulltext_model=fulltext_model,
+                document_features_context=self.document_features_context,
+                model_result_cache=self.model_result_cache
+            )
+        )
+        fulltext_labeled_layout_tokens = list(
+            iter_labeled_layout_token_for_layout_model_label(
+                iter_layout_model_label_for_labeled_model_data_list(
+                    fulltext_model_data_list
+                )
+            )
+        )
+        raw_figure_list = list(
+            SemanticMixedContentWrapper(list(
+                fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
+                    fulltext_labeled_layout_tokens
+                )
+            )).iter_by_type_recursively(SemanticRawFigure)
+        )
+        LOGGER.info('raw_figure_list count: %d', len(raw_figure_list))
+
+        model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
+        if not raw_figure_list:
+            LOGGER.info('no figures found')
+            return
+        figure_documents = [
+            LayoutDocument.for_blocks(
+                list(raw_figure.iter_blocks())
+            )
+            for raw_figure in raw_figure_list
+        ]
+        model_data_list_list = [
+            list(
+                data_generator.iter_model_data_for_layout_document(figure_document)
+            )
+            for figure_document in figure_documents
+        ]
+        if self.use_model:
+            model_data_list_list = get_labeled_model_data_list_list(
+                model_data_list_list,
+                model=figure_model
+            )
+        training_tei_root = (
+            training_data_generator
+            .get_training_tei_xml_for_multiple_model_data_iterables(
+                model_data_list_list
+            )
+        )
+        LOGGER.info('writing training tei to: %r', self.tei_file_path)
+        Path(self.tei_file_path).write_bytes(
+            etree.tostring(training_tei_root, pretty_print=True)
+        )
+        if self.data_file_path:
+            LOGGER.info('writing training raw data to: %r', self.data_file_path)
+            Path(self.data_file_path).write_text('\n'.join(
+                iter_data_lines_for_model_data_iterables(model_data_list_list)
+            ), encoding='utf-8')
+
+
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
     layout_document: LayoutDocument,
     output_path: str,
@@ -629,97 +725,14 @@ def generate_figure_training_data_for_layout_document(  # pylint: disable=too-ma
     use_model: bool,
     model_result_cache: ModelResultCache
 ):
-    segmentation_model = fulltext_models.segmentation_model
-    fulltext_model = fulltext_models.fulltext_model
-    figure_model = fulltext_models.figure_model
-    data_generator = figure_model.get_data_generator(
-        document_features_context=document_features_context
-    )
-    training_data_generator = FigureTeiTrainingDataGenerator()
-    source_basename = os.path.basename(source_filename)
-    source_name = os.path.splitext(source_basename)[0]
-    tei_file_path = os.path.join(
-        output_path,
-        source_name + FigureTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
-    )
-    data_file_path = os.path.join(
-        output_path,
-        source_name + FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-    )
-    segmentation_label_model_data_list = (
-        get_segmentation_label_model_data_list_for_layout_document(
-            layout_document,
-            segmentation_model=segmentation_model,
-            document_features_context=document_features_context,
-            model_result_cache=model_result_cache
-        )
-    )
-    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
-        labeled_model_data_iterable=segmentation_label_model_data_list,
-        layout_document=layout_document
-    )
-    body_layout_document = segmentation_label_result.get_filtered_document_by_label(
-        '<body>'
-    ).remove_empty_blocks()
-    fulltext_model_data_list = (
-        get_fulltext_label_model_data_list_for_layout_document(
-            body_layout_document,
-            fulltext_model=fulltext_model,
-            document_features_context=document_features_context,
-            model_result_cache=model_result_cache
-        )
-    )
-    fulltext_labeled_layout_tokens = list(
-        iter_labeled_layout_token_for_layout_model_label(
-            iter_layout_model_label_for_labeled_model_data_list(
-                fulltext_model_data_list
-            )
-        )
-    )
-    raw_figure_list = list(
-        SemanticMixedContentWrapper(list(
-            fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
-                fulltext_labeled_layout_tokens
-            )
-        )).iter_by_type_recursively(SemanticRawFigure)
-    )
-    LOGGER.info('raw_figure_list count: %d', len(raw_figure_list))
-
-    model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
-    if not raw_figure_list:
-        LOGGER.info('no figures found')
-        return
-    figure_documents = [
-        LayoutDocument.for_blocks(
-            list(raw_figure.iter_blocks())
-        )
-        for raw_figure in raw_figure_list
-    ]
-    model_data_list_list = [
-        list(
-            data_generator.iter_model_data_for_layout_document(figure_document)
-        )
-        for figure_document in figure_documents
-    ]
-    if use_model:
-        model_data_list_list = get_labeled_model_data_list_list(
-            model_data_list_list,
-            model=figure_model
-        )
-    training_tei_root = (
-        training_data_generator
-        .get_training_tei_xml_for_multiple_model_data_iterables(
-            model_data_list_list
-        )
-    )
-    LOGGER.info('writing training tei to: %r', tei_file_path)
-    Path(tei_file_path).write_bytes(
-        etree.tostring(training_tei_root, pretty_print=True)
-    )
-    LOGGER.info('writing training raw data to: %r', data_file_path)
-    Path(data_file_path).write_text('\n'.join(
-        iter_data_lines_for_model_data_iterables(model_data_list_list)
-    ), encoding='utf-8')
+    FigureModelTrainingDataGenerator(
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    ).generate_data_for_layout_document(layout_document)
 
 
 def generate_ref_segmenter_training_data_for_layout_document(  # pylint: disable=too-many-locals
