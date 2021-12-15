@@ -18,6 +18,7 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<author>': ROOT_TRAINING_XML_ELEMENT_PATH + ['author'],
     '<editor>': ROOT_TRAINING_XML_ELEMENT_PATH + ['editor'],
     '<institution>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName'],
+    '<collaboration>': ROOT_TRAINING_XML_ELEMENT_PATH + ['orgName[@type="collaboration"]'],
     '<journal>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="j"]'],
     '<series>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="s"]'],
     '<booktitle>': ROOT_TRAINING_XML_ELEMENT_PATH + ['title[@level="m"]'],
