@@ -134,7 +134,6 @@ class TestFigureTeiTrainingDataGenerator:
         label_and_layout_line_list = [
             ('<figure_head>', get_next_layout_line_for_text('Figure Head 1')),
             ('<figDesc>', get_next_layout_line_for_text('Figure Desc 1')),
-            ('<label>', get_next_layout_line_for_text('Figure Label 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -149,9 +148,45 @@ class TestFigureTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{FIGURE_XPATH}/figDesc'
         ) == ['Figure Desc 1']
+
+    def test_should_add_label_at_the_end_inside_head_element(self):
+        label_and_layout_line_list = [
+            ('<figure_head>', get_next_layout_line_for_text('Figure Head 1')),
+            ('<label>', get_next_layout_line_for_text('Figure Label 1'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        xml_root = get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
         assert get_tei_xpath_text_content_list(
-            xml_root, f'{FIGURE_XPATH}/label'
+            xml_root, f'{FIGURE_XPATH}/head/label'
         ) == ['Figure Label 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/head'
+        ) == ['\n'.join(['Figure Head 1', 'Figure Label 1'])]
+
+    def test_should_add_label_in_the_middle_inside_head_element(self):
+        label_and_layout_line_list = [
+            ('<figure_head>', get_next_layout_line_for_text('Figure Head 1')),
+            ('<label>', get_next_layout_line_for_text('Figure Label 1')),
+            ('I-<figure_head>', get_next_layout_line_for_text('Continued Figure Head 1'))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        xml_root = get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/head/label'
+        ) == ['Figure Label 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{FIGURE_XPATH}/head'
+        ) == ['\n'.join(['Figure Head 1', 'Figure Label 1', 'Continued Figure Head 1'])]
 
     def test_should_map_other_label_as_text_without_note(self):
         label_and_layout_line_list = [

@@ -15,7 +15,7 @@ ROOT_TRAINING_XML_ELEMENT_PATH = ['text', 'figure']
 
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<figure_head>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head'],
-    '<label>': ROOT_TRAINING_XML_ELEMENT_PATH + ['label'],
+    '<label>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head', 'label'],
     '<figDesc>': ROOT_TRAINING_XML_ELEMENT_PATH + ['figDesc']
 }
 
