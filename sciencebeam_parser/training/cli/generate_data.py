@@ -7,10 +7,13 @@ from glob import glob
 from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
+
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
-    SemanticRawAffiliationAddress
+    SemanticRawAffiliationAddress,
+    SemanticRawReference,
+    SemanticRawReferenceText
 )
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext,
@@ -26,6 +29,9 @@ from sciencebeam_parser.models.model import (
 )
 from sciencebeam_parser.models.reference_segmenter.training_data import (
     ReferenceSegmenterTeiTrainingDataGenerator
+)
+from sciencebeam_parser.models.citation.training_data import (
+    CitationTeiTrainingDataGenerator
 )
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTeiTrainingDataGenerator
@@ -48,6 +54,7 @@ LOGGER = logging.getLogger(__name__)
 class ModelResultCache:
     segmentation_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
     header_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
+    reference_segmenter_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -181,6 +188,28 @@ def get_header_label_model_data_list_for_layout_document(
     )
     model_result_cache.header_label_model_data_list = header_label_model_data_list
     return header_label_model_data_list
+
+
+def get_reference_segmenter_label_model_data_list_for_layout_document(
+    layout_document: LayoutDocument,
+    reference_segmenter_model: Model,
+    document_features_context: DocumentFeaturesContext,
+    model_result_cache: ModelResultCache
+) -> Sequence[LabeledLayoutModelData]:
+    reference_segmenter_label_model_data_list = (
+        model_result_cache.reference_segmenter_label_model_data_list
+    )
+    if reference_segmenter_label_model_data_list is not None:
+        return reference_segmenter_label_model_data_list
+    reference_segmenter_label_model_data_list = get_labeled_model_data_list_for_layout_document(
+        layout_document,
+        model=reference_segmenter_model,
+        document_features_context=document_features_context
+    )
+    model_result_cache.reference_segmenter_label_model_data_list = (
+        reference_segmenter_label_model_data_list
+    )
+    return reference_segmenter_label_model_data_list
 
 
 def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
@@ -539,6 +568,100 @@ def generate_ref_segmenter_training_data_for_layout_document(  # pylint: disable
     ), encoding='utf-8')
 
 
+def generate_citation_training_data_for_layout_document(  # pylint: disable=too-many-locals
+    layout_document: LayoutDocument,
+    output_path: str,
+    source_filename: str,
+    document_features_context: DocumentFeaturesContext,
+    fulltext_models: FullTextModels,
+    use_model: bool,
+    model_result_cache: ModelResultCache
+):
+    segmentation_model = fulltext_models.segmentation_model
+    reference_segmenter_model = fulltext_models.reference_segmenter_model
+    citation_model = fulltext_models.citation_model
+    data_generator = citation_model.get_data_generator(
+        document_features_context=document_features_context
+    )
+    training_data_generator = CitationTeiTrainingDataGenerator()
+    source_basename = os.path.basename(source_filename)
+    source_name = os.path.splitext(source_basename)[0]
+    tei_file_path = os.path.join(
+        output_path,
+        source_name + CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+    )
+    segmentation_label_model_data_list = (
+        get_segmentation_label_model_data_list_for_layout_document(
+            layout_document,
+            segmentation_model=segmentation_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
+    )
+    segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_list,
+        layout_document=layout_document
+    )
+    references_layout_document = segmentation_label_result.get_filtered_document_by_label(
+        '<references>'
+    ).remove_empty_blocks()
+    reference_segmenter_model_data_list = (
+        get_reference_segmenter_label_model_data_list_for_layout_document(
+            references_layout_document,
+            reference_segmenter_model=reference_segmenter_model,
+            document_features_context=document_features_context,
+            model_result_cache=model_result_cache
+        )
+    )
+    reference_segmenter_labeled_layout_tokens = list(
+        iter_labeled_layout_token_for_layout_model_label(
+            iter_layout_model_label_for_labeled_model_data_list(
+                reference_segmenter_model_data_list
+            )
+        )
+    )
+    raw_reference_text_list = [
+        raw_reference_text
+        for raw_reference in SemanticMixedContentWrapper(list(
+            reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                reference_segmenter_labeled_layout_tokens
+            )
+        )).iter_by_type(SemanticRawReference)
+        for raw_reference_text in raw_reference.iter_by_type(SemanticRawReferenceText)
+    ]
+    LOGGER.info('raw_reference_text_list count: %d', len(raw_reference_text_list))
+
+    model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
+    if raw_reference_text_list:
+        references_documents = [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_reference_text.iter_blocks())
+            )
+            for semantic_raw_reference_text in raw_reference_text_list
+        ]
+        model_data_list_list = [
+            list(
+                data_generator.iter_model_data_for_layout_document(references_document)
+            )
+            for references_document in references_documents
+        ]
+        if use_model:
+            model_data_list_list = get_labeled_model_data_list_list(
+                model_data_list_list,
+                model=citation_model
+            )
+    training_tei_root = (
+        training_data_generator
+        .get_training_tei_xml_for_multiple_model_data_iterables(
+            model_data_list_list
+        )
+    )
+    LOGGER.info('writing training tei to: %r', tei_file_path)
+    Path(tei_file_path).write_bytes(
+        etree.tostring(training_tei_root, pretty_print=True)
+    )
+
+
 def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
     output_path: str,
@@ -585,6 +708,15 @@ def generate_training_data_for_layout_document(
         model_result_cache=model_result_cache
     )
     generate_ref_segmenter_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=document_features_context,
+        fulltext_models=fulltext_models,
+        use_model=use_model,
+        model_result_cache=model_result_cache
+    )
+    generate_citation_training_data_for_layout_document(
         layout_document=layout_document,
         output_path=output_path,
         source_filename=source_filename,
