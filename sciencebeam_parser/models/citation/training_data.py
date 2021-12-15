@@ -27,7 +27,8 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<publisher>': ROOT_TRAINING_XML_ELEMENT_PATH + ['publisher'],
     '<location>': ROOT_TRAINING_XML_ELEMENT_PATH + ['pubPlace'],
     '<tech>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note[@type="report"]'],
-    '<web>': ROOT_TRAINING_XML_ELEMENT_PATH + ['ptr[@type="web"]']
+    '<web>': ROOT_TRAINING_XML_ELEMENT_PATH + ['ptr[@type="web"]'],
+    '<note>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note']
 }
 
 
