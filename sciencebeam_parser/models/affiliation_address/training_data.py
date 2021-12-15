@@ -33,7 +33,6 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
 
 class AffiliationAddressTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
     DEFAULT_TEI_FILENAME_SUFFIX = '.affiliation.tei.xml'
-    DEFAULT_DATA_FILENAME_SUFFIX = '.affiliation'
 
     def __init__(self):
         super().__init__(
@@ -43,7 +42,5 @@ class AffiliationAddressTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerato
             default_tei_filename_suffix=(
                 AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
             ),
-            default_data_filename_suffix=(
-                AffiliationAddressTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
+            default_data_filename_suffix=None
         )
