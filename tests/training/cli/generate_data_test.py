@@ -29,6 +29,9 @@ from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingData
 from sciencebeam_parser.models.affiliation_address.training_data import (
     AffiliationAddressTeiTrainingDataGenerator
 )
+from sciencebeam_parser.models.figure.training_data import (
+    FigureTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.citation.training_data import (
     CitationTeiTrainingDataGenerator
 )
@@ -57,12 +60,18 @@ class SampleLayoutDocument:
         self.institution_block = LayoutBlock.for_text('Institution 1')
         self.affiliation_block = LayoutBlock.merge_blocks([self.institution_block])
         self.header_block = LayoutBlock.merge_blocks([self.title_block, self.affiliation_block])
+
+        self.figure_head_block = LayoutBlock.for_text('Figure 1')
+        self.figure_block = LayoutBlock.merge_blocks([self.figure_head_block])
+
         self.body_section_title_block = LayoutBlock.for_text('Section 1')
         self.body_section_paragraph_block = LayoutBlock.for_text('Paragraph 1')
         self.body_block = LayoutBlock.merge_blocks([
             self.body_section_title_block,
-            self.body_section_paragraph_block
+            self.body_section_paragraph_block,
+            self.figure_block
         ])
+
         self.ref_label_block = LayoutBlock.for_text('1')
         self.ref_title_block = LayoutBlock.for_text('Reference 1')
         self.ref_text_block = LayoutBlock.merge_blocks([self.ref_title_block])
@@ -89,6 +98,7 @@ def configure_fulltext_models_mock_with_sample_document(
     fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
     reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
     citation_model_mock = fulltext_models_mock.citation_model_mock
+    figure_model_mock = fulltext_models_mock.figure_model_mock
 
     segmentation_model_mock.update_label_by_layout_block(
         doc.header_block, '<header>'
@@ -116,6 +126,13 @@ def configure_fulltext_models_mock_with_sample_document(
     )
     fulltext_model_mock.update_label_by_layout_block(
         doc.body_section_paragraph_block, '<paragraph>'
+    )
+    fulltext_model_mock.update_label_by_layout_block(
+        doc.figure_block, '<figure>'
+    )
+
+    figure_model_mock.update_label_by_layout_block(
+        doc.figure_head_block, '<figure_head>'
     )
 
     reference_segmenter_model_mock.update_label_by_layout_block(
@@ -190,7 +207,7 @@ def normalize_whitespace_list(text_iterable: Iterable[str]) -> Sequence[str]:
 
 @log_on_exception
 class TestGenerateTrainingDataForLayoutDocument:
-    def test_should_generate_data_using_mock_models(  # pylint: disable=too-many-locals
+    def test_should_generate_data_using_mock_models(  # noqa pylint: disable=too-many-locals, too-many-statements
         self,
         tmp_path: Path,
         sample_layout_document: SampleLayoutDocument,
@@ -271,6 +288,22 @@ class TestGenerateTrainingDataForLayoutDocument:
             tei_xpath(xml_root, '//head')
         )) == [
             normalize_whitespace(sample_layout_document.body_section_title_block.text)
+        ]
+
+        expected_figure_tei_path = output_path.joinpath(
+            example_name + FigureTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        expected_figure_data_path = output_path.joinpath(
+            example_name + FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+        )
+        assert expected_figure_tei_path.exists()
+        assert expected_figure_data_path.exists()
+        xml_root = etree.parse(str(expected_figure_tei_path)).getroot()
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert normalize_whitespace_list(get_text_content_list(
+            tei_xpath(xml_root, '//head')
+        )) == [
+            normalize_whitespace(sample_layout_document.figure_head_block.text)
         ]
 
         expected_ref_seg_tei_path = output_path.joinpath(
