@@ -558,20 +558,21 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
 
     def iter_model_data_list(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
     ) -> Iterable[Sequence[LayoutModelData]]:
-        segmentation_model = self.fulltext_models.segmentation_model
-        fulltext_model = self.fulltext_models.fulltext_model
-        figure_model = self.fulltext_models.figure_model
+        segmentation_model = document_context.fulltext_models.segmentation_model
+        fulltext_model = document_context.fulltext_models.fulltext_model
+        figure_model = document_context.fulltext_models.figure_model
         data_generator = figure_model.get_data_generator(
-            document_features_context=self.document_features_context
+            document_features_context=document_context.document_features_context
         )
         segmentation_label_model_data_list = (
             get_segmentation_label_model_data_list_for_layout_document(
                 layout_document,
                 segmentation_model=segmentation_model,
-                document_features_context=self.document_features_context,
-                model_result_cache=self.model_result_cache
+                document_features_context=document_context.document_features_context,
+                model_result_cache=document_context.model_result_cache
             )
         )
         segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
@@ -585,8 +586,8 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             get_fulltext_label_model_data_list_for_layout_document(
                 body_layout_document,
                 fulltext_model=fulltext_model,
-                document_features_context=self.document_features_context,
-                model_result_cache=self.model_result_cache
+                document_features_context=document_context.document_features_context,
+                model_result_cache=document_context.model_result_cache
             )
         )
         fulltext_labeled_layout_tokens = list(
@@ -620,20 +621,21 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             )
             for figure_document in figure_documents
         ]
-        if self.use_model:
+        if document_context.use_model:
             model_data_list_list = get_labeled_model_data_list_list(
                 model_data_list_list,
                 model=figure_model
             )
         return model_data_list_list
 
-    def generate_data_for_layout_document(  # pylint: disable=too-many-locals
+    def generate_data_for_layout_document(
         self,
         layout_document: LayoutDocument
     ):
         assert self.tei_file_path
         model_data_list_list = list(self.iter_model_data_list(
-            layout_document=layout_document
+            layout_document=layout_document,
+            document_context=self.document_context
         ))
         if not model_data_list_list:
             LOGGER.info('no figures found')
