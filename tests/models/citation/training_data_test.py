@@ -137,6 +137,7 @@ class TestCitationTeiTrainingDataGenerator:
             ('<title>', get_next_layout_line_for_text('Title 1')),
             ('<author>', get_next_layout_line_for_text('Author 1')),
             ('<editor>', get_next_layout_line_for_text('Editor 1')),
+            ('<institution>', get_next_layout_line_for_text('Institution 1')),
             ('<journal>', get_next_layout_line_for_text('Journal 1')),
             ('<series>', get_next_layout_line_for_text('Series 1')),
             ('<booktitle>', get_next_layout_line_for_text('Book Title 1')),
@@ -166,6 +167,9 @@ class TestCitationTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:editor'
         ) == ['Editor 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{BIBL_XPATH}/tei:orgName'
+        ) == ['Institution 1']
         assert get_tei_xpath_text_content_list(
             xml_root, f'{BIBL_XPATH}/tei:title[@level="j"]'
         ) == ['Journal 1']
