@@ -29,6 +29,7 @@ Currently training data will be generated for the following models:
 - `fulltext`
 - `reference_segmenter`
 - `citation` (references)
+- `figure`
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \
