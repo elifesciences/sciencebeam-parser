@@ -711,24 +711,23 @@ class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             training_data_generator=CitationTeiTrainingDataGenerator()
         )
 
-    def generate_data_for_layout_document(  # pylint: disable=too-many-locals
+    def iter_model_data_list(
         self,
-        layout_document: LayoutDocument
-    ):
-        assert self.tei_file_path
-        segmentation_model = self.fulltext_models.segmentation_model
-        reference_segmenter_model = self.fulltext_models.reference_segmenter_model
-        citation_model = self.fulltext_models.citation_model
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
+    ) -> Iterable[Sequence[LayoutModelData]]:
+        segmentation_model = document_context.fulltext_models.segmentation_model
+        reference_segmenter_model = document_context.fulltext_models.reference_segmenter_model
+        citation_model = document_context.fulltext_models.citation_model
         data_generator = citation_model.get_data_generator(
-            document_features_context=self.document_features_context
+            document_features_context=document_context.document_features_context
         )
-        training_data_generator = CitationTeiTrainingDataGenerator()
         segmentation_label_model_data_list = (
             get_segmentation_label_model_data_list_for_layout_document(
                 layout_document,
                 segmentation_model=segmentation_model,
-                document_features_context=self.document_features_context,
-                model_result_cache=self.model_result_cache
+                document_features_context=document_context.document_features_context,
+                model_result_cache=document_context.model_result_cache
             )
         )
         segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
@@ -742,8 +741,8 @@ class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             get_reference_segmenter_label_model_data_list_for_layout_document(
                 references_layout_document,
                 reference_segmenter_model=reference_segmenter_model,
-                document_features_context=self.document_features_context,
-                model_result_cache=self.model_result_cache
+                document_features_context=document_context.document_features_context,
+                model_result_cache=document_context.model_result_cache
             )
         )
         reference_segmenter_labeled_layout_tokens = list(
@@ -778,21 +777,12 @@ class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
                 )
                 for references_document in references_documents
             ]
-            if self.use_model:
+            if document_context.use_model:
                 model_data_list_list = get_labeled_model_data_list_list(
                     model_data_list_list,
                     model=citation_model
                 )
-        training_tei_root = (
-            training_data_generator
-            .get_training_tei_xml_for_multiple_model_data_iterables(
-                model_data_list_list
-            )
-        )
-        LOGGER.info('writing training tei to: %r', self.tei_file_path)
-        Path(self.tei_file_path).write_bytes(
-            etree.tostring(training_tei_root, pretty_print=True)
-        )
+        return model_data_list_list
 
 
 def generate_training_data_for_layout_document(
