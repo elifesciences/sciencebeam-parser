@@ -246,34 +246,30 @@ class TrainingDataDocumentContext(NamedTuple):
     use_model: bool
     model_result_cache: ModelResultCache
 
+    @property
+    def source_name(self) -> str:
+        source_basename = os.path.basename(self.source_filename)
+        return os.path.splitext(source_basename)[0]
+
 
 class AbstractModelTrainingDataGenerator(ABC):
     def __init__(
         self,
-        document_context: TrainingDataDocumentContext,
         training_data_generator: AbstractTeiTrainingDataGenerator
     ):
-        self.document_context = document_context
-        self.output_path = document_context.output_path
-        self.source_filename = document_context.source_filename
-        self.document_features_context = document_context.document_features_context
-        self.fulltext_models = document_context.fulltext_models
-        self.use_model = document_context.use_model
-        self.model_result_cache = document_context.model_result_cache
-        self.source_basename = os.path.basename(document_context.source_filename)
-        self.source_name = os.path.splitext(self.source_basename)[0]
         self.training_data_generator = training_data_generator
-        self.tei_file_path = self._get_file_path_with_suffix(
-            self.training_data_generator.get_default_tei_filename_suffix()
-        )
-        self.data_file_path = self._get_file_path_with_suffix(
-            self.training_data_generator.get_default_data_filename_suffix()
-        )
 
-    def _get_file_path_with_suffix(self, suffix: Optional[str]) -> Optional[str]:
+    def _get_file_path_with_suffix(
+        self,
+        suffix: Optional[str],
+        document_context: TrainingDataDocumentContext
+    ) -> Optional[str]:
         if not suffix:
             return None
-        return os.path.join(self.output_path, self.source_name + suffix)
+        return os.path.join(
+            document_context.output_path,
+            document_context.source_name + suffix
+        )
 
     @abstractmethod
     def iter_model_data_list(
@@ -285,12 +281,21 @@ class AbstractModelTrainingDataGenerator(ABC):
 
     def generate_data_for_layout_document(
         self,
-        layout_document: LayoutDocument
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
     ):
-        assert self.tei_file_path
+        tei_file_path = self._get_file_path_with_suffix(
+            self.training_data_generator.get_default_tei_filename_suffix(),
+            document_context=document_context
+        )
+        data_file_path = self._get_file_path_with_suffix(
+            self.training_data_generator.get_default_data_filename_suffix(),
+            document_context=document_context
+        )
+        assert tei_file_path
         model_data_list_list = list(self.iter_model_data_list(
             layout_document=layout_document,
-            document_context=self.document_context
+            document_context=document_context
         ))
         if not model_data_list_list:
             LOGGER.info('no figures found')
@@ -301,13 +306,13 @@ class AbstractModelTrainingDataGenerator(ABC):
                 model_data_list_list
             )
         )
-        LOGGER.info('writing training tei to: %r', self.tei_file_path)
-        Path(self.tei_file_path).write_bytes(
+        LOGGER.info('writing training tei to: %r', tei_file_path)
+        Path(tei_file_path).write_bytes(
             etree.tostring(training_tei_root, pretty_print=True)
         )
-        if self.data_file_path:
-            LOGGER.info('writing training raw data to: %r', self.data_file_path)
-            Path(self.data_file_path).write_text('\n'.join(
+        if data_file_path:
+            LOGGER.info('writing training raw data to: %r', data_file_path)
+            Path(data_file_path).write_text('\n'.join(
                 iter_data_lines_for_model_data_iterables(model_data_list_list)
             ), encoding='utf-8')
 
@@ -746,27 +751,20 @@ def generate_training_data_for_layout_document(
         use_model=use_model,
         model_result_cache=model_result_cache
     )
-    SegmentationModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    HeaderModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    AffiliationAddressModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    FullTextModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    FigureModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    ReferenceSegmenterModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
-    CitationModelTrainingDataGenerator(
-        document_context=document_context
-    ).generate_data_for_layout_document(layout_document)
+    training_data_generators = [
+        SegmentationModelTrainingDataGenerator(),
+        HeaderModelTrainingDataGenerator(),
+        AffiliationAddressModelTrainingDataGenerator(),
+        FullTextModelTrainingDataGenerator(),
+        FigureModelTrainingDataGenerator(),
+        ReferenceSegmenterModelTrainingDataGenerator(),
+        CitationModelTrainingDataGenerator()
+    ]
+    for training_data_generator in training_data_generators:
+        training_data_generator.generate_data_for_layout_document(
+            layout_document=layout_document,
+            document_context=document_context
+        )
 
 
 def generate_training_data_for_source_filename(
