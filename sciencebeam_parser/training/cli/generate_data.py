@@ -495,10 +495,11 @@ def generate_fulltext_training_data_for_layout_document(  # pylint: disable=too-
     model_data_list: Sequence[LayoutModelData]
     if use_model:
         model_data_list = (
-            get_labeled_model_data_list_for_layout_document(
+            get_fulltext_label_model_data_list_for_layout_document(
                 body_layout_document,
-                model=fulltext_model,
-                document_features_context=document_features_context
+                fulltext_model=fulltext_model,
+                document_features_context=document_features_context,
+                model_result_cache=model_result_cache
             )
         )
     else:
