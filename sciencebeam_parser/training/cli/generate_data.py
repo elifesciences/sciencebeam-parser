@@ -795,139 +795,6 @@ class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
         )
 
 
-def generate_segmentation_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    SegmentationModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_header_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    HeaderModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_aff_address_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    AffiliationAddressModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_fulltext_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    FullTextModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_figure_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    FigureModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_ref_segmenter_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    ReferenceSegmenterModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
-def generate_citation_training_data_for_layout_document(  # pylint: disable=too-many-locals
-    layout_document: LayoutDocument,
-    output_path: str,
-    source_filename: str,
-    document_features_context: DocumentFeaturesContext,
-    fulltext_models: FullTextModels,
-    use_model: bool,
-    model_result_cache: ModelResultCache
-):
-    CitationModelTrainingDataGenerator(
-        output_path=output_path,
-        source_filename=source_filename,
-        document_features_context=document_features_context,
-        fulltext_models=fulltext_models,
-        use_model=use_model,
-        model_result_cache=model_result_cache
-    ).generate_data_for_layout_document(layout_document)
-
-
 def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
     output_path: str,
@@ -937,69 +804,62 @@ def generate_training_data_for_layout_document(
     use_model: bool
 ):
     model_result_cache = ModelResultCache()
-    generate_segmentation_training_data_for_layout_document(
-        layout_document=layout_document,
+    SegmentationModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_header_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    HeaderModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_aff_address_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    AffiliationAddressModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_fulltext_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    FullTextModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_figure_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    FigureModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_ref_segmenter_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    ReferenceSegmenterModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
-    generate_citation_training_data_for_layout_document(
-        layout_document=layout_document,
+    ).generate_data_for_layout_document(layout_document)
+    CitationModelTrainingDataGenerator(
         output_path=output_path,
         source_filename=source_filename,
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
         model_result_cache=model_result_cache
-    )
+    ).generate_data_for_layout_document(layout_document)
 
 
 def generate_training_data_for_source_filename(
