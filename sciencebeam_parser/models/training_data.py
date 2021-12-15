@@ -97,7 +97,9 @@ class AbstractTeiTrainingDataGenerator:
         root_tag: str = 'tei',
         use_tei_namespace: bool = True,
         element_maker: Optional[ElementMaker] = None,
-        reset_training_xml_element_path_by_label: Optional[Mapping[str, Sequence[str]]] = None
+        reset_training_xml_element_path_by_label: Optional[Mapping[str, Sequence[str]]] = None,
+        default_tei_filename_suffix: Optional[str] = None,
+        default_data_filename_suffix: Optional[str] = None
     ):
         self.root_training_xml_element_path = root_training_xml_element_path
         self.root_parent_training_xml_element_path = root_training_xml_element_path[:-1]
@@ -118,6 +120,14 @@ class AbstractTeiTrainingDataGenerator:
             element_maker = TEI_E if use_tei_namespace else NO_NS_TEI_E
         self.element_maker = element_maker
         self.root_tag = root_tag
+        self.default_tei_filename_suffix = default_tei_filename_suffix
+        self.default_data_filename_suffix = default_data_filename_suffix
+
+    def get_default_tei_filename_suffix(self) -> Optional[str]:
+        return self.default_tei_filename_suffix
+
+    def get_default_data_filename_suffix(self) -> Optional[str]:
+        return self.default_data_filename_suffix
 
     def get_training_xml_path_for_label(
         self,
