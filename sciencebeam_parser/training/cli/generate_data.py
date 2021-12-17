@@ -60,10 +60,6 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ModelResultCache:
-    segmentation_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
-    header_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
-    fulltext_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
-    reference_segmenter_label_model_data_list: Optional[Sequence[LabeledLayoutModelData]] = None
     model_data_lists_by_key_map: Dict[
         str, Sequence[Sequence[LabeledLayoutModelData]]
     ] = field(default_factory=dict)
@@ -164,82 +160,6 @@ def get_layout_document_label_result_for_labeled_model_data_list(
             labeled_model_data_iterable
         )
     )
-
-
-def get_segmentation_label_model_data_list_for_layout_document(
-    layout_document: LayoutDocument,
-    segmentation_model: Model,
-    document_features_context: DocumentFeaturesContext,
-    model_result_cache: ModelResultCache
-) -> Sequence[LabeledLayoutModelData]:
-    segmentation_label_model_data_list = model_result_cache.segmentation_label_model_data_list
-    if segmentation_label_model_data_list is not None:
-        return segmentation_label_model_data_list
-    segmentation_label_model_data_list = get_labeled_model_data_list_for_layout_document(
-        layout_document,
-        model=segmentation_model,
-        document_features_context=document_features_context
-    )
-    model_result_cache.segmentation_label_model_data_list = segmentation_label_model_data_list
-    return segmentation_label_model_data_list
-
-
-def get_header_label_model_data_list_for_layout_document(
-    layout_document: LayoutDocument,
-    header_model: Model,
-    document_features_context: DocumentFeaturesContext,
-    model_result_cache: ModelResultCache
-) -> Sequence[LabeledLayoutModelData]:
-    header_label_model_data_list = model_result_cache.header_label_model_data_list
-    if header_label_model_data_list is not None:
-        return header_label_model_data_list
-    header_label_model_data_list = get_labeled_model_data_list_for_layout_document(
-        layout_document,
-        model=header_model,
-        document_features_context=document_features_context
-    )
-    model_result_cache.header_label_model_data_list = header_label_model_data_list
-    return header_label_model_data_list
-
-
-def get_fulltext_label_model_data_list_for_layout_document(
-    layout_document: LayoutDocument,
-    fulltext_model: Model,
-    document_features_context: DocumentFeaturesContext,
-    model_result_cache: ModelResultCache
-) -> Sequence[LabeledLayoutModelData]:
-    fulltext_label_model_data_list = model_result_cache.fulltext_label_model_data_list
-    if fulltext_label_model_data_list is not None:
-        return fulltext_label_model_data_list
-    fulltext_label_model_data_list = get_labeled_model_data_list_for_layout_document(
-        layout_document,
-        model=fulltext_model,
-        document_features_context=document_features_context
-    )
-    model_result_cache.fulltext_label_model_data_list = fulltext_label_model_data_list
-    return fulltext_label_model_data_list
-
-
-def get_reference_segmenter_label_model_data_list_for_layout_document(
-    layout_document: LayoutDocument,
-    reference_segmenter_model: Model,
-    document_features_context: DocumentFeaturesContext,
-    model_result_cache: ModelResultCache
-) -> Sequence[LabeledLayoutModelData]:
-    reference_segmenter_label_model_data_list = (
-        model_result_cache.reference_segmenter_label_model_data_list
-    )
-    if reference_segmenter_label_model_data_list is not None:
-        return reference_segmenter_label_model_data_list
-    reference_segmenter_label_model_data_list = get_labeled_model_data_list_for_layout_document(
-        layout_document,
-        model=reference_segmenter_model,
-        document_features_context=document_features_context
-    )
-    model_result_cache.reference_segmenter_label_model_data_list = (
-        reference_segmenter_label_model_data_list
-    )
-    return reference_segmenter_label_model_data_list
 
 
 class TrainingDataDocumentContext(NamedTuple):
