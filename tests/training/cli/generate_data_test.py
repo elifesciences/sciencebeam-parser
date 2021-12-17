@@ -33,6 +33,9 @@ from sciencebeam_parser.models.affiliation_address.training_data import (
 from sciencebeam_parser.models.figure.training_data import (
     FigureTeiTrainingDataGenerator
 )
+from sciencebeam_parser.models.table.training_data import (
+    TableTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.citation.training_data import (
     CitationTeiTrainingDataGenerator
 )
@@ -65,12 +68,16 @@ class SampleLayoutDocument:
         self.figure_head_block = LayoutBlock.for_text('Figure 1')
         self.figure_block = LayoutBlock.merge_blocks([self.figure_head_block])
 
+        self.table_head_block = LayoutBlock.for_text('Table 1')
+        self.table_block = LayoutBlock.merge_blocks([self.table_head_block])
+
         self.body_section_title_block = LayoutBlock.for_text('Section 1')
         self.body_section_paragraph_block = LayoutBlock.for_text('Paragraph 1')
         self.body_block = LayoutBlock.merge_blocks([
             self.body_section_title_block,
             self.body_section_paragraph_block,
-            self.figure_block
+            self.figure_block,
+            self.table_block
         ])
 
         self.ref_label_block = LayoutBlock.for_text('1')
@@ -100,6 +107,7 @@ def configure_fulltext_models_mock_with_sample_document(
     reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
     citation_model_mock = fulltext_models_mock.citation_model_mock
     figure_model_mock = fulltext_models_mock.figure_model_mock
+    table_model_mock = fulltext_models_mock.table_model_mock
 
     segmentation_model_mock.update_label_by_layout_block(
         doc.header_block, '<header>'
@@ -131,9 +139,16 @@ def configure_fulltext_models_mock_with_sample_document(
     fulltext_model_mock.update_label_by_layout_block(
         doc.figure_block, '<figure>'
     )
+    fulltext_model_mock.update_label_by_layout_block(
+        doc.table_block, '<table>'
+    )
 
     figure_model_mock.update_label_by_layout_block(
         doc.figure_head_block, '<figure_head>'
+    )
+
+    table_model_mock.update_label_by_layout_block(
+        doc.table_head_block, '<figure_head>'
     )
 
     reference_segmenter_model_mock.update_label_by_layout_block(
@@ -324,6 +339,14 @@ class TestGenerateTrainingDataForLayoutDocument:
             expect_raw_data=True,
             tei_xml_xpath='//head',
             tei_expected_values=[sample_layout_document.figure_head_block.text]
+        )
+
+        _check_tei_training_data_generator_output(
+            TableTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='//head',
+            tei_expected_values=[sample_layout_document.table_head_block.text]
         )
 
         _check_tei_training_data_generator_output(

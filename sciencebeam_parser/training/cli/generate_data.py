@@ -15,7 +15,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticRawAffiliationAddress,
     SemanticRawFigure,
     SemanticRawReference,
-    SemanticRawReferenceText
+    SemanticRawReferenceText,
+    SemanticRawTable
 )
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext,
@@ -504,10 +505,49 @@ class FigureModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
         if not raw_figure_list:
             return []
         return [
-            LayoutDocument.for_blocks(
-                list(raw_figure.iter_blocks())
-            )
+            LayoutDocument.for_blocks(list(raw_figure.iter_blocks()))
             for raw_figure in raw_figure_list
+        ]
+
+
+class TableModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.table_model
+
+    def iter_model_layout_documents(
+        self,
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
+    ) -> Iterable[LayoutDocument]:
+        fulltext_model = document_context.fulltext_models.fulltext_model
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
+        )
+        body_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<body>'
+        ).remove_empty_blocks()
+        if not body_layout_document.pages:
+            return []
+        fulltext_labeled_layout_tokens = get_labeled_layout_tokens_for_model_and_layout_document(
+            model=fulltext_model,
+            layout_document=body_layout_document,
+            document_context=document_context
+        )
+        raw_table_list = list(
+            SemanticMixedContentWrapper(list(
+                fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
+                    fulltext_labeled_layout_tokens
+                )
+            )).iter_by_type_recursively(SemanticRawTable)
+        )
+        LOGGER.info('raw_table_list count: %d', len(raw_table_list))
+
+        if not raw_table_list:
+            return []
+        return [
+            LayoutDocument.for_blocks(list(raw_table.iter_blocks()))
+            for raw_table in raw_table_list
         ]
 
 
@@ -599,6 +639,7 @@ def generate_training_data_for_layout_document(
         AffiliationAddressModelTrainingDataGenerator(),
         FullTextModelTrainingDataGenerator(),
         FigureModelTrainingDataGenerator(),
+        TableModelTrainingDataGenerator(),
         ReferenceSegmenterModelTrainingDataGenerator(),
         CitationModelTrainingDataGenerator()
     ]
