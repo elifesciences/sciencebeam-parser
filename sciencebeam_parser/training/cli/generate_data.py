@@ -24,6 +24,7 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
 from sciencebeam_parser.models.model import (
+    LabeledLayoutToken,
     LayoutDocumentLabelResult,
     LayoutModelLabel,
     Model,
@@ -322,6 +323,26 @@ def iter_model_data_list_for_model_and_layout_documents(
     )
 
 
+def get_labeled_layout_tokens_for_model_and_layout_document(
+    model: Model,
+    layout_document: LayoutDocument,
+    document_context: TrainingDataDocumentContext
+) -> Sequence[LabeledLayoutToken]:
+    model_data_lists = list(
+        iter_labeled_model_data_list_for_model_and_layout_documents(
+            model=model,
+            model_layout_documents=[layout_document],
+            document_context=document_context
+        )
+    )
+    assert len(model_data_lists) == 1
+    return list(iter_labeled_layout_token_for_layout_model_label(
+        iter_layout_model_label_for_labeled_model_data_list(
+            model_data_lists[0]
+        )
+    ))
+
+
 def get_segmentation_label_result(
     layout_document: LayoutDocument,
     document_context: TrainingDataDocumentContext
@@ -509,18 +530,11 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTraining
         LOGGER.debug('header_layout_document: %r', header_layout_document)
         if not header_layout_document.pages:
             return []
-        header_model_data_list = list(
-            iter_labeled_model_data_list_for_model_and_layout_documents(
-                model=header_model,
-                model_layout_documents=[header_layout_document],
-                document_context=document_context
-            )
-        )[0]
-        header_labeled_layout_tokens = list(iter_labeled_layout_token_for_layout_model_label(
-            iter_layout_model_label_for_labeled_model_data_list(
-                header_model_data_list
-            )
-        ))
+        header_labeled_layout_tokens = get_labeled_layout_tokens_for_model_and_layout_document(
+            model=header_model,
+            layout_document=header_layout_document,
+            document_context=document_context
+        )
         semantic_raw_aff_address_list = list(
             SemanticMixedContentWrapper(list(
                 header_model.iter_semantic_content_for_labeled_layout_tokens(
@@ -592,19 +606,10 @@ class FigureModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
         ).remove_empty_blocks()
         if not body_layout_document.pages:
             return []
-        fulltext_model_data_list = list(
-            iter_labeled_model_data_list_for_model_and_layout_documents(
-                model=fulltext_model,
-                model_layout_documents=[body_layout_document],
-                document_context=document_context
-            )
-        )[0]
-        fulltext_labeled_layout_tokens = list(
-            iter_labeled_layout_token_for_layout_model_label(
-                iter_layout_model_label_for_labeled_model_data_list(
-                    fulltext_model_data_list
-                )
-            )
+        fulltext_labeled_layout_tokens = get_labeled_layout_tokens_for_model_and_layout_document(
+            model=fulltext_model,
+            layout_document=body_layout_document,
+            document_context=document_context
         )
         raw_figure_list = list(
             SemanticMixedContentWrapper(list(
@@ -675,18 +680,11 @@ class CitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenera
         references_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<references>'
         ).remove_empty_blocks()
-        reference_segmenter_model_data_list = list(
-            iter_labeled_model_data_list_for_model_and_layout_documents(
+        reference_segmenter_labeled_layout_tokens = (
+            get_labeled_layout_tokens_for_model_and_layout_document(
                 model=reference_segmenter_model,
-                model_layout_documents=[references_layout_document],
+                layout_document=references_layout_document,
                 document_context=document_context
-            )
-        )[0]
-        reference_segmenter_labeled_layout_tokens = list(
-            iter_labeled_layout_token_for_layout_model_label(
-                iter_layout_model_label_for_labeled_model_data_list(
-                    reference_segmenter_model_data_list
-                )
             )
         )
         raw_reference_text_list = [
