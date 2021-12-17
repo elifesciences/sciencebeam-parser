@@ -22,7 +22,6 @@ from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
     LayoutModelData
 )
-from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
 from sciencebeam_parser.models.model import (
     LabeledLayoutToken,
     LayoutDocumentLabelResult,
@@ -31,23 +30,7 @@ from sciencebeam_parser.models.model import (
     iter_data_lines_for_model_data_iterables,
     iter_labeled_layout_token_for_layout_model_label
 )
-from sciencebeam_parser.models.reference_segmenter.training_data import (
-    ReferenceSegmenterTeiTrainingDataGenerator
-)
-from sciencebeam_parser.models.citation.training_data import (
-    CitationTeiTrainingDataGenerator
-)
-from sciencebeam_parser.models.segmentation.training_data import (
-    SegmentationTeiTrainingDataGenerator
-)
-from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
-from sciencebeam_parser.models.affiliation_address.training_data import (
-    AffiliationAddressTeiTrainingDataGenerator
-)
-from sciencebeam_parser.models.figure.training_data import (
-    FigureTeiTrainingDataGenerator
-)
-from sciencebeam_parser.models.training_data import AbstractTeiTrainingDataGenerator
+from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
 from sciencebeam_parser.processors.fulltext.models import FullTextModels
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 from sciencebeam_parser.config.config import AppConfig
@@ -283,12 +266,6 @@ def get_segmentation_label_result(
 
 
 class AbstractModelTrainingDataGenerator(ABC):
-    def __init__(
-        self,
-        training_data_generator: AbstractTeiTrainingDataGenerator
-    ):
-        self.training_data_generator = training_data_generator
-
     def _get_file_path_with_suffix(
         self,
         suffix: Optional[str],
@@ -300,6 +277,13 @@ class AbstractModelTrainingDataGenerator(ABC):
             document_context.output_path,
             document_context.source_name + suffix
         )
+
+    @abstractmethod
+    def get_tei_training_data_generator(
+        self,
+        document_context: TrainingDataDocumentContext
+    ) -> TeiTrainingDataGenerator:
+        pass
 
     @abstractmethod
     def iter_model_data_list(
@@ -314,12 +298,13 @@ class AbstractModelTrainingDataGenerator(ABC):
         layout_document: LayoutDocument,
         document_context: TrainingDataDocumentContext
     ):
+        tei_training_data_generator = self.get_tei_training_data_generator(document_context)
         tei_file_path = self._get_file_path_with_suffix(
-            self.training_data_generator.get_default_tei_filename_suffix(),
+            tei_training_data_generator.get_default_tei_filename_suffix(),
             document_context=document_context
         )
         data_file_path = self._get_file_path_with_suffix(
-            self.training_data_generator.get_default_data_filename_suffix(),
+            tei_training_data_generator.get_default_data_filename_suffix(),
             document_context=document_context
         )
         assert tei_file_path
@@ -331,7 +316,7 @@ class AbstractModelTrainingDataGenerator(ABC):
             LOGGER.info('no figures found')
             return
         training_tei_root = (
-            self.training_data_generator
+            tei_training_data_generator
             .get_training_tei_xml_for_multiple_model_data_iterables(
                 model_data_list_list
             )
@@ -351,6 +336,12 @@ class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenera
     @abstractmethod
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         pass
+
+    def get_tei_training_data_generator(
+        self,
+        document_context: TrainingDataDocumentContext
+    ) -> TeiTrainingDataGenerator:
+        return self.get_main_model(document_context).get_tei_training_data_generator()
 
     @abstractmethod
     def iter_model_layout_documents(
@@ -378,12 +369,6 @@ class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenera
 
 
 class SegmentationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=SegmentationTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.segmentation_model
 
@@ -396,12 +381,6 @@ class SegmentationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGe
 
 
 class HeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=HeaderTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.header_model
 
@@ -425,12 +404,6 @@ class HeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
 
 
 class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=AffiliationAddressTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.affiliation_address_model
 
@@ -475,12 +448,6 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTraining
 
 
 class FullTextModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=FullTextTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.fulltext_model
 
@@ -502,12 +469,6 @@ class FullTextModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenera
 
 
 class FigureModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=FigureTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.figure_model
 
@@ -551,12 +512,6 @@ class FigureModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
 
 
 class ReferenceSegmenterModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=ReferenceSegmenterTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.reference_segmenter_model
 
@@ -578,12 +533,6 @@ class ReferenceSegmenterModelTrainingDataGenerator(AbstractDocumentModelTraining
 
 
 class CitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(
-            **kwargs,
-            training_data_generator=CitationTeiTrainingDataGenerator()
-        )
-
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.citation_model
 

@@ -8,6 +8,7 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.header.data import HeaderDataGenerator
 from sciencebeam_parser.models.header.extract import HeaderSemanticExtractor
+from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingDataGenerator
 from sciencebeam_parser.models.model import Model
 
 
@@ -25,6 +26,9 @@ class HeaderModel(Model):
 
     def get_semantic_extractor(self) -> HeaderSemanticExtractor:
         return HeaderSemanticExtractor()
+
+    def get_tei_training_data_generator(self) -> HeaderTeiTrainingDataGenerator:
+        return HeaderTeiTrainingDataGenerator()
 
     def update_semantic_document_with_entity_blocks(
         self,
