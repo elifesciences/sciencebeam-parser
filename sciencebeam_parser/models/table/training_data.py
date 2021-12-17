@@ -13,10 +13,16 @@ LOGGER = logging.getLogger(__name__)
 
 ROOT_TRAINING_XML_ELEMENT_PATH = ['text', 'figure[@type="table"]']
 
+# Note:
+#   The table training data generation is different to figures in
+#   how the following labels are mapped: `content`, `other`, `note`
 TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<figure_head>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head'],
     '<label>': ROOT_TRAINING_XML_ELEMENT_PATH + ['head', 'label'],
-    '<figDesc>': ROOT_TRAINING_XML_ELEMENT_PATH + ['figDesc']
+    '<figDesc>': ROOT_TRAINING_XML_ELEMENT_PATH + ['figDesc'],
+    '<content>': ROOT_TRAINING_XML_ELEMENT_PATH + ['table'],
+    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH + ['other'],
+    '<note>': ROOT_TRAINING_XML_ELEMENT_PATH + ['note']
 }
 
 

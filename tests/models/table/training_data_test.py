@@ -191,7 +191,10 @@ class TestFigureTeiTrainingDataGenerator:
     def test_should_add_label_to_head_element_without_additional_text(self):
         label_and_layout_line_list = [
             ('<label>', get_next_layout_line_for_text('Table Label 1')),
-            ('<figDesc>', get_next_layout_line_for_text('Table Desc 1'))
+            ('<figDesc>', get_next_layout_line_for_text('Table Desc 1')),
+            ('<content>', get_next_layout_line_for_text('Content 1')),
+            ('<other>', get_next_layout_line_for_text('Other 1')),
+            ('<note>', get_next_layout_line_for_text('Note 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -209,24 +212,15 @@ class TestFigureTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{TABLE_XPATH}/figDesc'
         ) == ['Table Desc 1']
-
-    def test_should_map_other_label_as_text_without_note(self):
-        label_and_layout_line_list = [
-            ('<other>', get_next_layout_line_for_text(TEXT_1))
-        ]
-        labeled_model_data_list = get_labeled_model_data_list(
-            label_and_layout_line_list,
-            data_generator=get_data_generator()
-        )
-        training_data_generator = get_tei_training_data_generator()
-        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
-            labeled_model_data_list
-        )
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert not tei_xpath(xml_root, f'{TABLE_XPATH}//note')
         assert get_tei_xpath_text_content_list(
-            xml_root, TABLE_XPATH
-        ) == [f'{TEXT_1}\n']
+            xml_root, f'{TABLE_XPATH}/table'
+        ) == ['Content 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{TABLE_XPATH}/other'
+        ) == ['Other 1']
+        assert get_tei_xpath_text_content_list(
+            xml_root, f'{TABLE_XPATH}/note'
+        ) == ['Note 1']
 
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
