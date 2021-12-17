@@ -5,6 +5,9 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.name.data import NameDataGenerator
 from sciencebeam_parser.models.name.extract import NameSemanticExtractor
+from sciencebeam_parser.models.name.training_data import (
+    NameTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.model import Model
 
 
@@ -22,3 +25,6 @@ class NameModel(Model):
 
     def get_semantic_extractor(self) -> NameSemanticExtractor:
         return NameSemanticExtractor()
+
+    def get_tei_training_data_generator(self) -> NameTeiTrainingDataGenerator:
+        return NameTeiTrainingDataGenerator()
