@@ -483,47 +483,40 @@ class HeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
         return [header_layout_document]
 
 
-class AffiliationAddressModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
+class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def __init__(self, **kwargs):
         super().__init__(
             **kwargs,
             training_data_generator=AffiliationAddressTeiTrainingDataGenerator()
         )
 
-    def iter_model_data_list(
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.affiliation_address_model
+
+    def iter_model_layout_documents(
         self,
         layout_document: LayoutDocument,
         document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LayoutModelData]]:
-        segmentation_model = document_context.fulltext_models.segmentation_model
+    ) -> Iterable[LayoutDocument]:
         header_model = document_context.fulltext_models.header_model
-        affiliation_address_model = document_context.fulltext_models.affiliation_address_model
-        data_generator = affiliation_address_model.get_data_generator(
-            document_features_context=document_context.document_features_context
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
         )
-        segmentation_label_model_data_list = (
-            get_segmentation_label_model_data_list_for_layout_document(
-                layout_document,
-                segmentation_model=segmentation_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
-            )
-        )
-        segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
-            labeled_model_data_iterable=segmentation_label_model_data_list,
-            layout_document=layout_document
-        )
+        LOGGER.debug('segmentation_label_result: %r', segmentation_label_result)
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
         ).remove_empty_blocks()
-        header_model_data_list = (
-            get_header_label_model_data_list_for_layout_document(
-                header_layout_document,
-                header_model=header_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
+        LOGGER.debug('header_layout_document: %r', header_layout_document)
+        if not header_layout_document.pages:
+            return []
+        header_model_data_list = list(
+            iter_labeled_model_data_list_for_model_and_layout_documents(
+                model=header_model,
+                model_layout_documents=[header_layout_document],
+                document_context=document_context
             )
-        )
+        )[0]
         header_labeled_layout_tokens = list(iter_labeled_layout_token_for_layout_model_label(
             iter_layout_model_label_for_labeled_model_data_list(
                 header_model_data_list
@@ -537,27 +530,15 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractModelTrainingDataGene
             )).iter_by_type(SemanticRawAffiliationAddress)
         )
         LOGGER.info('semantic_raw_aff_address_list count: %d', len(semantic_raw_aff_address_list))
+        if not semantic_raw_aff_address_list:
+            return []
 
-        model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
-        if semantic_raw_aff_address_list:
-            aff_layout_documents = [
-                LayoutDocument.for_blocks(
-                    list(semantic_raw_aff_address.iter_blocks())
-                )
-                for semantic_raw_aff_address in semantic_raw_aff_address_list
-            ]
-            model_data_list_list = [
-                list(
-                    data_generator.iter_model_data_for_layout_document(aff_layout_document)
-                )
-                for aff_layout_document in aff_layout_documents
-            ]
-            if document_context.use_model:
-                model_data_list_list = get_labeled_model_data_list_list(
-                    model_data_list_list,
-                    model=affiliation_address_model
-                )
-        return model_data_list_list
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_aff_address.iter_blocks())
+            )
+            for semantic_raw_aff_address in semantic_raw_aff_address_list
+        ]
 
 
 class FullTextModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
