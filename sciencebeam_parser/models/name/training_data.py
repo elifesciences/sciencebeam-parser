@@ -27,7 +27,7 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
 
 
 class NameTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
-    DEFAULT_TEI_FILENAME_SUFFIX = '.headers.authors.tei.xml'
+    DEFAULT_TEI_FILENAME_SUFFIX = '.header.authors.tei.xml'
 
     def __init__(self):
         super().__init__(
