@@ -2,7 +2,7 @@ import logging
 import math
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable, List, NamedTuple, Optional
 
 from lxml import etree
@@ -34,8 +34,8 @@ DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
 @dataclass
 class LayoutModelData:
     data_line: str
-    layout_line: Optional[LayoutLine] = None
-    layout_token: Optional[LayoutToken] = None
+    layout_line: Optional[LayoutLine] = field(repr=False, default=None)
+    layout_token: Optional[LayoutToken] = field(repr=False, default=None)
 
     @property
     def label_token_text(self):

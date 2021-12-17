@@ -5,6 +5,9 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.segmentation.data import SegmentationDataGenerator
 from sciencebeam_parser.models.model import Model
+from sciencebeam_parser.models.segmentation.training_data import (
+    SegmentationTeiTrainingDataGenerator
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -21,3 +24,6 @@ class SegmentationModel(Model):
                 self.model_config.get('use_first_token_of_block', True)
             )
         )
+
+    def get_tei_training_data_generator(self) -> SegmentationTeiTrainingDataGenerator:
+        return SegmentationTeiTrainingDataGenerator()

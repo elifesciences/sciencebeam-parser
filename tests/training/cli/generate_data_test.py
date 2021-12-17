@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
+from typing import Iterable, Iterator, Optional, Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,8 +16,9 @@ from sciencebeam_parser.document.layout_document import (
     LayoutDocument,
     LayoutPage
 )
-from sciencebeam_parser.document.tei.common import tei_xpath
+from sciencebeam_parser.document.tei.common import get_tei_xpath_text_content_list
 from sciencebeam_parser.models.data import DEFAULT_DOCUMENT_FEATURES_CONTEXT
+from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
 from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
 from sciencebeam_parser.models.reference_segmenter.training_data import (
     ReferenceSegmenterTeiTrainingDataGenerator
@@ -205,6 +206,62 @@ def normalize_whitespace_list(text_iterable: Iterable[str]) -> Sequence[str]:
     ]
 
 
+def _get_expected_file_path_with_suffix(
+    output_path: Path,
+    source_filename: str,
+    suffix: Optional[str]
+) -> Path:
+    assert suffix
+    source_name = os.path.splitext(os.path.basename(source_filename))[0]
+    return output_path.joinpath(source_name + suffix)
+
+
+def _check_tei_training_data_generator_output_and_return_xml_root(
+    tei_training_data_generator: TeiTrainingDataGenerator,
+    output_path: Path,
+    expect_raw_data: bool,
+    source_filename: str = SOURCE_FILENAME_1
+) -> etree.ElementBase:
+    expected_segmentation_tei_path = _get_expected_file_path_with_suffix(
+        output_path,
+        source_filename,
+        tei_training_data_generator.get_default_tei_filename_suffix()
+    )
+    assert expected_segmentation_tei_path.exists()
+    if expect_raw_data:
+        expected_segmentation_data_path = _get_expected_file_path_with_suffix(
+            output_path,
+            source_filename,
+            tei_training_data_generator.get_default_data_filename_suffix()
+        )
+        assert expected_segmentation_data_path.exists()
+    xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+    LOGGER.debug('xml: %r', etree.tostring(xml_root))
+    return xml_root
+
+
+def _check_tei_training_data_generator_output(
+    tei_training_data_generator: TeiTrainingDataGenerator,
+    output_path: Path,
+    expect_raw_data: bool,
+    tei_xml_xpath: str,
+    tei_expected_values: Sequence[str],
+    **kwargs
+):
+    xml_root = _check_tei_training_data_generator_output_and_return_xml_root(
+        tei_training_data_generator=tei_training_data_generator,
+        output_path=output_path,
+        expect_raw_data=expect_raw_data,
+        **kwargs
+    )
+    assert normalize_whitespace_list(
+        get_tei_xpath_text_content_list(xml_root, tei_xml_xpath)
+    ) == [
+        normalize_whitespace(tei_expected_value)
+        for tei_expected_value in tei_expected_values
+    ]
+
+
 @log_on_exception
 class TestGenerateTrainingDataForLayoutDocument:
     def test_should_generate_data_using_mock_models(  # noqa pylint: disable=too-many-locals, too-many-statements
@@ -229,115 +286,61 @@ class TestGenerateTrainingDataForLayoutDocument:
             use_model=True
         )
 
-        example_name = os.path.splitext(os.path.basename(SOURCE_FILENAME_1))[0]
-        expected_segmentation_tei_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            SegmentationTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='text/front',
+            tei_expected_values=[sample_layout_document.header_block.text]
         )
-        expected_segmentation_data_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_segmentation_tei_path.exists()
-        assert expected_segmentation_data_path.exists()
-        xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(
-            get_text_content_list(xml_root.xpath('text/front'))
-        ) == [
-            normalize_whitespace(sample_layout_document.header_block.text)
-        ]
 
-        expected_header_tei_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            HeaderTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='text/front/docTitle/titlePart',
+            tei_expected_values=[sample_layout_document.title_block.text]
         )
-        expected_header_data_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_header_tei_path.exists()
-        assert expected_header_data_path.exists()
-        xml_root = etree.parse(str(expected_header_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            xml_root.xpath('text/front/docTitle/titlePart')
-        )) == [
-            normalize_whitespace(sample_layout_document.title_block.text)
-        ]
 
-        expected_aff_tei_path = output_path.joinpath(
-            example_name + AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            AffiliationAddressTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=False,
+            tei_xml_xpath='//tei:affiliation/tei:orgName[@type="institution"]',
+            tei_expected_values=[sample_layout_document.institution_block.text]
         )
-        assert expected_aff_tei_path.exists()
-        xml_root = etree.parse(str(expected_aff_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//tei:affiliation/tei:orgName[@type="institution"]')
-        )) == [
-            normalize_whitespace(sample_layout_document.institution_block.text)
-        ]
 
-        expected_fulltext_tei_path = output_path.joinpath(
-            example_name + FullTextTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            FullTextTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='//head',
+            tei_expected_values=[sample_layout_document.body_section_title_block.text]
         )
-        expected_fulltext_data_path = output_path.joinpath(
-            example_name + FullTextTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_fulltext_tei_path.exists()
-        assert expected_fulltext_data_path.exists()
-        xml_root = etree.parse(str(expected_fulltext_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//head')
-        )) == [
-            normalize_whitespace(sample_layout_document.body_section_title_block.text)
-        ]
 
-        expected_figure_tei_path = output_path.joinpath(
-            example_name + FigureTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            FigureTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='//head',
+            tei_expected_values=[sample_layout_document.figure_head_block.text]
         )
-        expected_figure_data_path = output_path.joinpath(
-            example_name + FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_figure_tei_path.exists()
-        assert expected_figure_data_path.exists()
-        xml_root = etree.parse(str(expected_figure_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//head')
-        )) == [
-            normalize_whitespace(sample_layout_document.figure_head_block.text)
-        ]
 
-        expected_ref_seg_tei_path = output_path.joinpath(
-            example_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            ReferenceSegmenterTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            tei_xml_xpath='//bibl',
+            tei_expected_values=[sample_layout_document.ref_ref_block.text]
         )
-        expected_ref_seg_data_path = output_path.joinpath(
-            example_name + ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_ref_seg_tei_path.exists()
-        assert expected_ref_seg_data_path.exists()
-        xml_root = etree.parse(str(expected_ref_seg_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//bibl')
-        )) == [
-            normalize_whitespace(sample_layout_document.ref_ref_block.text)
-        ]
 
-        expected_citation_tei_path = output_path.joinpath(
-            example_name + CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        _check_tei_training_data_generator_output(
+            CitationTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=False,
+            tei_xml_xpath='//tei:bibl/tei:title[@level="a"]',
+            tei_expected_values=[sample_layout_document.ref_title_block.text]
         )
-        assert expected_citation_tei_path.exists()
-        xml_root = etree.parse(str(expected_citation_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//tei:bibl/tei:title[@level="a"]')
-        )) == [
-            normalize_whitespace(sample_layout_document.ref_title_block.text)
-        ]
-        assert normalize_whitespace_list(get_text_content_list(
-            tei_xpath(xml_root, '//tei:bibl')
-        )) == [
-            normalize_whitespace(sample_layout_document.ref_title_block.text)
-        ]
 
     def test_not_should_generate_figure_data_if_not_present(  # noqa pylint: disable=too-many-locals, too-many-statements
         self,
@@ -394,30 +397,22 @@ class TestMain:
             f'--output-path={output_path}'
         ])
         assert output_path.exists()
-        example_name = os.path.splitext(os.path.basename(MINIMAL_EXAMPLE_PDF))[0]
-        expected_segmentation_tei_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+
+        xml_root = _check_tei_training_data_generator_output_and_return_xml_root(
+            SegmentationTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            source_filename=MINIMAL_EXAMPLE_PDF
         )
-        expected_segmentation_data_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_segmentation_tei_path.exists()
-        assert expected_segmentation_data_path.exists()
-        xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('text'))
         assert not get_text_content_list(xml_root.xpath('text/front'))
 
-        expected_header_tei_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        xml_root = _check_tei_training_data_generator_output_and_return_xml_root(
+            HeaderTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            source_filename=MINIMAL_EXAMPLE_PDF
         )
-        expected_header_data_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_header_tei_path.exists()
-        assert expected_header_data_path.exists()
-        xml_root = etree.parse(str(expected_header_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('text/front'))
 
     def test_should_be_able_to_generate_segmentation_training_data_using_model(
@@ -437,34 +432,19 @@ class TestMain:
             '--use-model'
         ])
         assert output_path.exists()
-        example_name = os.path.splitext(os.path.basename(MINIMAL_EXAMPLE_PDF))[0]
-        expected_segmentation_tei_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+
+        xml_root = _check_tei_training_data_generator_output_and_return_xml_root(
+            SegmentationTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            source_filename=MINIMAL_EXAMPLE_PDF
         )
-        expected_segmentation_data_path = output_path.joinpath(
-            example_name + SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_segmentation_tei_path.exists()
-        assert expected_segmentation_data_path.exists()
-        xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('text/front'))
 
-        expected_header_tei_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        xml_root = _check_tei_training_data_generator_output_and_return_xml_root(
+            HeaderTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=True,
+            source_filename=MINIMAL_EXAMPLE_PDF
         )
-        expected_header_data_path = output_path.joinpath(
-            example_name + HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-        )
-        assert expected_header_tei_path.exists()
-        assert expected_header_data_path.exists()
-        xml_root = etree.parse(str(expected_header_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('text/front'))
-
-        expected_aff_tei_path = output_path.joinpath(
-            example_name + AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
-        )
-        assert expected_aff_tei_path.exists()
-        xml_root = etree.parse(str(expected_aff_tei_path)).getroot()
-        LOGGER.debug('xml: %r', etree.tostring(xml_root))

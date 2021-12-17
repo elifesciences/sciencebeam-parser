@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Callable,
     Dict,
@@ -18,6 +18,8 @@ from typing import (
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import load_data_crf_lines
 
+from sciencebeam_parser.utils.labels import get_split_prefix_label, strip_tag_prefix
+
 from sciencebeam_parser.document.layout_document import (
     LayoutToken,
     LayoutLine,
@@ -33,6 +35,7 @@ from sciencebeam_parser.models.data import (
     ModelDataGenerator
 )
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
+from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
 from sciencebeam_parser.document.semantic_document import SemanticContentWrapper
 from sciencebeam_parser.models.model_impl import ModelImpl, T_ModelImplFactory
 from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
@@ -49,8 +52,8 @@ U = TypeVar('U')
 class LayoutModelLabel:
     label: str
     label_token_text: str
-    layout_line: Optional[LayoutLine] = None
-    layout_token: Optional[LayoutToken] = None
+    layout_line: Optional[LayoutLine] = field(repr=False, default=None)
+    layout_token: Optional[LayoutToken] = field(repr=False, default=None)
 
 
 class LabeledLayoutToken(NamedTuple):
@@ -63,15 +66,6 @@ class NewDocumentMarker:
 
 
 NEW_DOCUMENT_MARKER = NewDocumentMarker()
-
-
-def get_split_prefix_label(prefixed_tag: str) -> Tuple[str, str]:
-    if '-' in prefixed_tag:
-        prefix, tag = prefixed_tag.split('-', maxsplit=1)
-    else:
-        prefix = ''
-        tag = prefixed_tag
-    return prefix, tag
 
 
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
@@ -93,12 +87,6 @@ def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, in
 
 def get_entities_including_other(seq: List[str]) -> List[Tuple[str, int, int]]:
     return list(iter_entities_including_other(seq))
-
-
-def strip_tag_prefix(tag: str) -> str:
-    if tag and (tag.startswith('B-') or tag.startswith('I-')):
-        return tag[2:]
-    return tag
 
 
 class LayoutDocumentLabelResult:
@@ -260,6 +248,10 @@ class Model(ABC, Preloadable):
 
     # @abstractmethod
     def get_semantic_extractor(self) -> ModelSemanticExtractor:
+        raise NotImplementedError()
+
+    # @abstractmethod
+    def get_tei_training_data_generator(self) -> TeiTrainingDataGenerator:
         raise NotImplementedError()
 
     def _load_model_impl(self) -> ModelImpl:

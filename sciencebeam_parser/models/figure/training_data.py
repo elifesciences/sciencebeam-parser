@@ -29,5 +29,11 @@ class FigureTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
             training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
             use_tei_namespace=False,
-            root_tag='tei'
+            root_tag='tei',
+            default_tei_filename_suffix=(
+                FigureTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+            ),
+            default_data_filename_suffix=(
+                FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+            )
         )

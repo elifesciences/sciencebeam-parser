@@ -8,6 +8,9 @@ from sciencebeam_parser.models.affiliation_address.data import AffiliationAddres
 from sciencebeam_parser.models.affiliation_address.extract import (
     AffiliationAddressSemanticExtractor
 )
+from sciencebeam_parser.models.affiliation_address.training_data import (
+    AffiliationAddressTeiTrainingDataGenerator
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -24,3 +27,6 @@ class AffiliationAddressModel(Model):
 
     def get_semantic_extractor(self) -> AffiliationAddressSemanticExtractor:
         return AffiliationAddressSemanticExtractor()
+
+    def get_tei_training_data_generator(self) -> AffiliationAddressTeiTrainingDataGenerator:
+        return AffiliationAddressTeiTrainingDataGenerator()

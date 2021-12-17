@@ -8,6 +8,9 @@ from sciencebeam_parser.models.reference_segmenter.data import ReferenceSegmente
 from sciencebeam_parser.models.reference_segmenter.extract import (
     ReferenceSegmenterSemanticExtractor
 )
+from sciencebeam_parser.models.reference_segmenter.training_data import (
+    ReferenceSegmenterTeiTrainingDataGenerator
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -24,3 +27,6 @@ class ReferenceSegmenterModel(Model):
 
     def get_semantic_extractor(self) -> ReferenceSegmenterSemanticExtractor:
         return ReferenceSegmenterSemanticExtractor()
+
+    def get_tei_training_data_generator(self) -> ReferenceSegmenterTeiTrainingDataGenerator:
+        return ReferenceSegmenterTeiTrainingDataGenerator()

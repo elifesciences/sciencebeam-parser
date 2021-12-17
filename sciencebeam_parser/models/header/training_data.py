@@ -53,5 +53,11 @@ class HeaderTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
         super().__init__(
             root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
             training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
-            element_maker=TEI_E
+            element_maker=TEI_E,
+            default_tei_filename_suffix=(
+                HeaderTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+            ),
+            default_data_filename_suffix=(
+                HeaderTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
+            )
         )

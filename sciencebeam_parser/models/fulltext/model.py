@@ -8,6 +8,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticSection,
     SemanticSectionTypes
 )
+from sciencebeam_parser.models.fulltext.training_data import FullTextTeiTrainingDataGenerator
 from sciencebeam_parser.models.model import Model
 
 from sciencebeam_parser.models.data import (
@@ -31,6 +32,9 @@ class FullTextModel(Model):
 
     def get_semantic_extractor(self) -> FullTextSemanticExtractor:
         return FullTextSemanticExtractor()
+
+    def get_tei_training_data_generator(self) -> FullTextTeiTrainingDataGenerator:
+        return FullTextTeiTrainingDataGenerator()
 
     def update_section_with_entity_blocks(
         self,
