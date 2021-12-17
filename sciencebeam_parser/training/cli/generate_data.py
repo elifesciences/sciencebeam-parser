@@ -652,47 +652,36 @@ class ReferenceSegmenterModelTrainingDataGenerator(AbstractDocumentModelTraining
         return [ref_layout_document]
 
 
-class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
+class CitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def __init__(self, **kwargs):
         super().__init__(
             **kwargs,
             training_data_generator=CitationTeiTrainingDataGenerator()
         )
 
-    def iter_model_data_list(
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.citation_model
+
+    def iter_model_layout_documents(
         self,
         layout_document: LayoutDocument,
         document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LayoutModelData]]:
-        segmentation_model = document_context.fulltext_models.segmentation_model
+    ) -> Iterable[LayoutDocument]:
         reference_segmenter_model = document_context.fulltext_models.reference_segmenter_model
-        citation_model = document_context.fulltext_models.citation_model
-        data_generator = citation_model.get_data_generator(
-            document_features_context=document_context.document_features_context
-        )
-        segmentation_label_model_data_list = (
-            get_segmentation_label_model_data_list_for_layout_document(
-                layout_document,
-                segmentation_model=segmentation_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
-            )
-        )
-        segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
-            labeled_model_data_iterable=segmentation_label_model_data_list,
-            layout_document=layout_document
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
         )
         references_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<references>'
         ).remove_empty_blocks()
-        reference_segmenter_model_data_list = (
-            get_reference_segmenter_label_model_data_list_for_layout_document(
-                references_layout_document,
-                reference_segmenter_model=reference_segmenter_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
+        reference_segmenter_model_data_list = list(
+            iter_labeled_model_data_list_for_model_and_layout_documents(
+                model=reference_segmenter_model,
+                model_layout_documents=[references_layout_document],
+                document_context=document_context
             )
-        )
+        )[0]
         reference_segmenter_labeled_layout_tokens = list(
             iter_labeled_layout_token_for_layout_model_label(
                 iter_layout_model_label_for_labeled_model_data_list(
@@ -710,27 +699,14 @@ class CitationModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
             for raw_reference_text in raw_reference.iter_by_type(SemanticRawReferenceText)
         ]
         LOGGER.info('raw_reference_text_list count: %d', len(raw_reference_text_list))
-
-        model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
-        if raw_reference_text_list:
-            references_documents = [
-                LayoutDocument.for_blocks(
-                    list(semantic_raw_reference_text.iter_blocks())
-                )
-                for semantic_raw_reference_text in raw_reference_text_list
-            ]
-            model_data_list_list = [
-                list(
-                    data_generator.iter_model_data_for_layout_document(references_document)
-                )
-                for references_document in references_documents
-            ]
-            if document_context.use_model:
-                model_data_list_list = get_labeled_model_data_list_list(
-                    model_data_list_list,
-                    model=citation_model
-                )
-        return model_data_list_list
+        if not raw_reference_text_list:
+            return []
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_reference_text.iter_blocks())
+            )
+            for semantic_raw_reference_text in raw_reference_text_list
+        ]
 
 
 def generate_training_data_for_layout_document(
