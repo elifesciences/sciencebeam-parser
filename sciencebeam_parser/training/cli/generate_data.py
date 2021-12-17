@@ -503,7 +503,6 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTraining
             layout_document,
             document_context=document_context
         )
-        LOGGER.debug('segmentation_label_result: %r', segmentation_label_result)
         header_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<header>'
         ).remove_empty_blocks()
@@ -560,7 +559,6 @@ class FullTextModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenera
             layout_document,
             document_context=document_context
         )
-        LOGGER.debug('segmentation_label_result: %r', segmentation_label_result)
         body_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<body>'
         ).remove_empty_blocks()
@@ -569,47 +567,38 @@ class FullTextModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenera
         return [body_layout_document]
 
 
-class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
+class FigureModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def __init__(self, **kwargs):
         super().__init__(
             **kwargs,
             training_data_generator=FigureTeiTrainingDataGenerator()
         )
 
-    def iter_model_data_list(
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.figure_model
+
+    def iter_model_layout_documents(
         self,
         layout_document: LayoutDocument,
         document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LayoutModelData]]:
-        segmentation_model = document_context.fulltext_models.segmentation_model
+    ) -> Iterable[LayoutDocument]:
         fulltext_model = document_context.fulltext_models.fulltext_model
-        figure_model = document_context.fulltext_models.figure_model
-        data_generator = figure_model.get_data_generator(
-            document_features_context=document_context.document_features_context
-        )
-        segmentation_label_model_data_list = (
-            get_segmentation_label_model_data_list_for_layout_document(
-                layout_document,
-                segmentation_model=segmentation_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
-            )
-        )
-        segmentation_label_result = get_layout_document_label_result_for_labeled_model_data_list(
-            labeled_model_data_iterable=segmentation_label_model_data_list,
-            layout_document=layout_document
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
         )
         body_layout_document = segmentation_label_result.get_filtered_document_by_label(
             '<body>'
         ).remove_empty_blocks()
-        fulltext_model_data_list = (
-            get_fulltext_label_model_data_list_for_layout_document(
-                body_layout_document,
-                fulltext_model=fulltext_model,
-                document_features_context=document_context.document_features_context,
-                model_result_cache=document_context.model_result_cache
+        if not body_layout_document.pages:
+            return []
+        fulltext_model_data_list = list(
+            iter_labeled_model_data_list_for_model_and_layout_documents(
+                model=fulltext_model,
+                model_layout_documents=[body_layout_document],
+                document_context=document_context
             )
-        )
+        )[0]
         fulltext_labeled_layout_tokens = list(
             iter_labeled_layout_token_for_layout_model_label(
                 iter_layout_model_label_for_labeled_model_data_list(
@@ -626,27 +615,14 @@ class FigureModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
         )
         LOGGER.info('raw_figure_list count: %d', len(raw_figure_list))
 
-        model_data_list_list: Sequence[Sequence[LayoutModelData]] = []
         if not raw_figure_list:
             return []
-        figure_documents = [
+        return [
             LayoutDocument.for_blocks(
                 list(raw_figure.iter_blocks())
             )
             for raw_figure in raw_figure_list
         ]
-        model_data_list_list = [
-            list(
-                data_generator.iter_model_data_for_layout_document(figure_document)
-            )
-            for figure_document in figure_documents
-        ]
-        if document_context.use_model:
-            model_data_list_list = get_labeled_model_data_list_list(
-                model_data_list_list,
-                model=figure_model
-            )
-        return model_data_list_list
 
 
 class ReferenceSegmenterModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
