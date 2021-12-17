@@ -255,6 +255,92 @@ class TrainingDataDocumentContext(NamedTuple):
         return os.path.splitext(source_basename)[0]
 
 
+def iter_unlabeled_model_data_list_for_model_and_layout_documents(
+    model: Model,
+    model_layout_documents: Sequence[LayoutDocument],
+    document_context: TrainingDataDocumentContext
+) -> Iterable[Sequence[LayoutModelData]]:
+    if not model_layout_documents:
+        return []
+    data_generator = model.get_data_generator(
+        document_features_context=document_context.document_features_context
+    )
+    return [
+        list(
+            data_generator.iter_model_data_for_layout_document(model_layout_document)
+        )
+        for model_layout_document in model_layout_documents
+    ]
+
+
+def iter_labeled_model_data_list_for_model_and_layout_documents(
+    model: Model,
+    model_layout_documents: Sequence[LayoutDocument],
+    document_context: TrainingDataDocumentContext
+) -> Iterable[Sequence[LabeledLayoutModelData]]:
+    if not model_layout_documents:
+        return []
+    cache_key = type(model).__name__
+    LOGGER.debug('cache_key: %r', cache_key)
+    model_data_lists = document_context.model_result_cache.model_data_lists_by_key_map.get(
+        cache_key
+    )
+    if model_data_lists is not None:
+        return model_data_lists
+    unlabeled_model_data_lists = list(
+        iter_unlabeled_model_data_list_for_model_and_layout_documents(
+            model=model,
+            model_layout_documents=model_layout_documents,
+            document_context=document_context
+        )
+    )
+    model_data_lists = get_labeled_model_data_list_list(
+        unlabeled_model_data_lists,
+        model=model
+    )
+    document_context.model_result_cache.model_data_lists_by_key_map[cache_key] = (
+        model_data_lists
+    )
+    return model_data_lists
+
+
+def iter_model_data_list_for_model_and_layout_documents(
+    model: Model,
+    model_layout_documents: Sequence[LayoutDocument],
+    document_context: TrainingDataDocumentContext
+) -> Iterable[Sequence[LayoutModelData]]:
+    if not document_context.use_model:
+        return iter_unlabeled_model_data_list_for_model_and_layout_documents(
+            model=model,
+            model_layout_documents=model_layout_documents,
+            document_context=document_context
+        )
+    return iter_labeled_model_data_list_for_model_and_layout_documents(
+        model=model,
+        model_layout_documents=model_layout_documents,
+        document_context=document_context
+    )
+
+
+def get_segmentation_label_result(
+    layout_document: LayoutDocument,
+    document_context: TrainingDataDocumentContext
+) -> LayoutDocumentLabelResult:
+    segmentation_label_model_data_lists = list(
+        iter_labeled_model_data_list_for_model_and_layout_documents(
+            model=document_context.fulltext_models.segmentation_model,
+            model_layout_documents=[layout_document],
+            document_context=document_context
+        )
+    )
+    assert len(segmentation_label_model_data_lists) == 1
+    LOGGER.debug('segmentation_label_model_data_lists: %r', segmentation_label_model_data_lists)
+    return get_layout_document_label_result_for_labeled_model_data_list(
+        labeled_model_data_iterable=segmentation_label_model_data_lists[0],
+        layout_document=layout_document
+    )
+
+
 class AbstractModelTrainingDataGenerator(ABC):
     def __init__(
         self,
@@ -333,71 +419,6 @@ class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenera
     ) -> Iterable[LayoutDocument]:
         pass
 
-    def iter_unlabeled_model_data_list_for_model(
-        self,
-        model: Model,
-        model_layout_documents: Sequence[LayoutDocument],
-        document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LayoutModelData]]:
-        if not model_layout_documents:
-            return []
-        data_generator = model.get_data_generator(
-            document_features_context=document_context.document_features_context
-        )
-        return [
-            list(
-                data_generator.iter_model_data_for_layout_document(model_layout_document)
-            )
-            for model_layout_document in model_layout_documents
-        ]
-
-    def iter_labeled_model_data_list_for_model(
-        self,
-        model: Model,
-        model_layout_documents: Sequence[LayoutDocument],
-        document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LabeledLayoutModelData]]:
-        if not model_layout_documents:
-            return []
-        cache_key = type(model).__name__
-        LOGGER.debug('cache_key: %r', cache_key)
-        model_data_lists = document_context.model_result_cache.model_data_lists_by_key_map.get(
-            cache_key
-        )
-        if model_data_lists is not None:
-            return model_data_lists
-        unlabeled_model_data_lists = list(self.iter_unlabeled_model_data_list_for_model(
-            model=model,
-            model_layout_documents=model_layout_documents,
-            document_context=document_context
-        ))
-        model_data_lists = get_labeled_model_data_list_list(
-            unlabeled_model_data_lists,
-            model=model
-        )
-        document_context.model_result_cache.model_data_lists_by_key_map[cache_key] = (
-            model_data_lists
-        )
-        return model_data_lists
-
-    def iter_model_data_list_for_model(
-        self,
-        model: Model,
-        model_layout_documents: Sequence[LayoutDocument],
-        document_context: TrainingDataDocumentContext
-    ) -> Iterable[Sequence[LayoutModelData]]:
-        if not document_context.use_model:
-            return self.iter_unlabeled_model_data_list_for_model(
-                model=model,
-                model_layout_documents=model_layout_documents,
-                document_context=document_context
-            )
-        return self.iter_labeled_model_data_list_for_model(
-            model=model,
-            model_layout_documents=model_layout_documents,
-            document_context=document_context
-        )
-
     def iter_model_data_list(
         self,
         layout_document: LayoutDocument,
@@ -408,7 +429,7 @@ class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenera
             layout_document,
             document_context=document_context
         ))
-        return self.iter_model_data_list_for_model(
+        return iter_model_data_list_for_model_and_layout_documents(
             model=model,
             model_layout_documents=model_layout_documents,
             document_context=document_context
@@ -443,31 +464,12 @@ class HeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerato
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.header_model
 
-    def get_segmentation_label_result(
-        self,
-        layout_document: LayoutDocument,
-        document_context: TrainingDataDocumentContext
-    ) -> LayoutDocumentLabelResult:
-        segmentation_label_model_data_lists = list(
-            self.iter_labeled_model_data_list_for_model(
-                model=document_context.fulltext_models.segmentation_model,
-                model_layout_documents=[layout_document],
-                document_context=document_context
-            )
-        )
-        assert len(segmentation_label_model_data_lists) == 1
-        LOGGER.debug('segmentation_label_model_data_lists: %r', segmentation_label_model_data_lists)
-        return get_layout_document_label_result_for_labeled_model_data_list(
-            labeled_model_data_iterable=segmentation_label_model_data_lists[0],
-            layout_document=layout_document
-        )
-
     def iter_model_layout_documents(
         self,
         layout_document: LayoutDocument,
         document_context: TrainingDataDocumentContext
     ) -> Iterable[LayoutDocument]:
-        segmentation_label_result = self.get_segmentation_label_result(
+        segmentation_label_result = get_segmentation_label_result(
             layout_document,
             document_context=document_context
         )
@@ -855,6 +857,7 @@ def generate_training_data_for_source_filename(
     sciencebeam_parser: ScienceBeamParser,
     use_model: bool
 ):
+    LOGGER.debug('use_model: %r', use_model)
     with sciencebeam_parser.get_new_session() as session:
         source = session.get_source(source_filename, MediaTypes.PDF)
         layout_document = source.get_layout_document()
