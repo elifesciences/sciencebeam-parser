@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Callable,
     Dict,
@@ -49,8 +49,8 @@ U = TypeVar('U')
 class LayoutModelLabel:
     label: str
     label_token_text: str
-    layout_line: Optional[LayoutLine] = None
-    layout_token: Optional[LayoutToken] = None
+    layout_line: Optional[LayoutLine] = field(repr=False, default=None)
+    layout_token: Optional[LayoutToken] = field(repr=False, default=None)
 
 
 class LabeledLayoutToken(NamedTuple):
