@@ -13,6 +13,7 @@ from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
+    SemanticRawAuthors,
     SemanticRawFigure,
     SemanticRawReference,
     SemanticRawReferenceText,
@@ -448,6 +449,51 @@ class AffiliationAddressModelTrainingDataGenerator(AbstractDocumentModelTraining
         ]
 
 
+class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.name_header_model
+
+    def iter_model_layout_documents(
+        self,
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
+    ) -> Iterable[LayoutDocument]:
+        header_model = document_context.fulltext_models.header_model
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
+        )
+        header_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<header>'
+        ).remove_empty_blocks()
+        LOGGER.debug('header_layout_document: %r', header_layout_document)
+        if not header_layout_document.pages:
+            return []
+        header_labeled_layout_tokens = get_labeled_layout_tokens_for_model_and_layout_document(
+            model=header_model,
+            layout_document=header_layout_document,
+            document_context=document_context
+        )
+        semantic_raw_author_list = list(
+            SemanticMixedContentWrapper(list(
+                header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    header_labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawAuthors)
+        )
+        LOGGER.info('semantic_raw_author_list count: %d', len(semantic_raw_author_list))
+        if not semantic_raw_author_list:
+            return []
+
+        return [
+            LayoutDocument.for_blocks([
+                block
+                for semantic_raw_author in semantic_raw_author_list
+                for block in semantic_raw_author.iter_blocks()
+            ])
+        ]
+
+
 class FullTextModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.fulltext_model
@@ -637,6 +683,7 @@ def generate_training_data_for_layout_document(
         SegmentationModelTrainingDataGenerator(),
         HeaderModelTrainingDataGenerator(),
         AffiliationAddressModelTrainingDataGenerator(),
+        NameHeaderModelTrainingDataGenerator(),
         FullTextModelTrainingDataGenerator(),
         FigureModelTrainingDataGenerator(),
         TableModelTrainingDataGenerator(),

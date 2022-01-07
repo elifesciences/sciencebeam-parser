@@ -30,6 +30,9 @@ from sciencebeam_parser.models.header.training_data import HeaderTeiTrainingData
 from sciencebeam_parser.models.affiliation_address.training_data import (
     AffiliationAddressTeiTrainingDataGenerator
 )
+from sciencebeam_parser.models.name.training_data import (
+    NameTeiTrainingDataGenerator
+)
 from sciencebeam_parser.models.figure.training_data import (
     FigureTeiTrainingDataGenerator
 )
@@ -61,9 +64,18 @@ SOURCE_FILENAME_1 = 'test1.pdf'
 class SampleLayoutDocument:
     def __init__(self) -> None:
         self.title_block = LayoutBlock.for_text('This is the title')
+
+        self.author_surname_block = LayoutBlock.for_text('Author Surname 1')
+        self.author_block = LayoutBlock.merge_blocks([self.author_surname_block])
+
         self.institution_block = LayoutBlock.for_text('Institution 1')
         self.affiliation_block = LayoutBlock.merge_blocks([self.institution_block])
-        self.header_block = LayoutBlock.merge_blocks([self.title_block, self.affiliation_block])
+
+        self.header_block = LayoutBlock.merge_blocks([
+            self.title_block,
+            self.author_block,
+            self.affiliation_block
+        ])
 
         self.figure_head_block = LayoutBlock.for_text('Figure 1')
         self.figure_block = LayoutBlock.merge_blocks([self.figure_head_block])
@@ -102,6 +114,7 @@ def configure_fulltext_models_mock_with_sample_document(
     doc = sample_layout_document
     segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
     header_model_mock = fulltext_models_mock.header_model_mock
+    name_header_model_mock = fulltext_models_mock.name_header_model_mock
     affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
     fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
     reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
@@ -123,11 +136,18 @@ def configure_fulltext_models_mock_with_sample_document(
         doc.title_block, '<title>'
     )
     header_model_mock.update_label_by_layout_block(
+        doc.author_block, '<author>'
+    )
+    header_model_mock.update_label_by_layout_block(
         doc.affiliation_block, '<affiliation>'
     )
 
     affiliation_address_model_mock.update_label_by_layout_block(
         doc.institution_block, '<institution>'
+    )
+
+    name_header_model_mock.update_label_by_layout_block(
+        doc.author_surname_block, '<surname>'
     )
 
     fulltext_model_mock.update_label_by_layout_block(
@@ -315,6 +335,14 @@ class TestGenerateTrainingDataForLayoutDocument:
             expect_raw_data=True,
             tei_xml_xpath='text/front/docTitle/titlePart',
             tei_expected_values=[sample_layout_document.title_block.text]
+        )
+
+        _check_tei_training_data_generator_output(
+            NameTeiTrainingDataGenerator(),
+            output_path=output_path,
+            expect_raw_data=False,
+            tei_xml_xpath='//tei:author//tei:surname',
+            tei_expected_values=[sample_layout_document.author_surname_block.text]
         )
 
         _check_tei_training_data_generator_output(

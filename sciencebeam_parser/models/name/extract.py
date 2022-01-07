@@ -166,9 +166,6 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                 append_semantic_markers_for_layout_block(semantic_name, layout_block)
                 has_tail_marker = True
                 continue
-            semantic_content = self.get_semantic_content_for_entity_name(
-                name, layout_block
-            )
             if semantic_name and name in SPLIT_ON_SECOND_ENTIY_NAME and name in seen_name_labels:
                 LOGGER.debug(
                     'starting new semantic_name after having seen name part again, name=%r',
@@ -178,6 +175,9 @@ class NameSemanticExtractor(SimpleModelSemanticExtractor):
                 seen_name_labels = []
                 has_tail_marker = False
                 semantic_name = None
+            semantic_content = self.get_semantic_content_for_entity_name(
+                name, layout_block
+            )
             if not isinstance(semantic_content, SemanticNote):
                 if has_tail_marker and semantic_name:
                     LOGGER.debug('starting new semantic_name after tail markers, name=%r', name)
