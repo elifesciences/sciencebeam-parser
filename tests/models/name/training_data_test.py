@@ -214,3 +214,91 @@ class TestFigureTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             nodes[1], './tei:forename'
         ) == [TEXT_2]
+
+    def test_should_split_on_comma_before_marker(self):
+        label_and_layout_line_list_list = [
+            [
+                ('<marker>', get_next_layout_line_for_text('1')),
+                ('<forename>', get_next_layout_line_for_text('John')),
+                ('<surname>', get_next_layout_line_for_text('Smith')),
+                ('O', get_next_layout_line_for_text(',')),
+                ('<forename>', get_next_layout_line_for_text('Maria')),
+                ('<surname>', get_next_layout_line_for_text('Madison'))
+            ]
+        ]
+        labeled_model_data_list_list = get_labeled_model_data_list_list(
+            label_and_layout_line_list_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_multiple_model_data_iterables(
+            labeled_model_data_list_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        nodes = tei_xpath(xml_root, AUTHOR_XPATH)
+        assert len(nodes) == 2
+        assert get_tei_xpath_text_content_list(
+            nodes[0], './tei:forename'
+        ) == ['John']
+        assert get_tei_xpath_text_content_list(
+            nodes[1], './tei:forename'
+        ) == ['Maria']
+
+    def test_should_split_on_second_firstname(self):
+        label_and_layout_line_list_list = [
+            [
+                ('<forename>', get_next_layout_line_for_text('John')),
+                ('<surname>', get_next_layout_line_for_text('Smith')),
+                ('<forename>', get_next_layout_line_for_text('Maria')),
+                ('<surname>', get_next_layout_line_for_text('Madison'))
+            ]
+        ]
+        labeled_model_data_list_list = get_labeled_model_data_list_list(
+            label_and_layout_line_list_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_multiple_model_data_iterables(
+            labeled_model_data_list_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        nodes = tei_xpath(xml_root, AUTHOR_XPATH)
+        assert len(nodes) == 2
+        assert get_tei_xpath_text_content_list(
+            nodes[0], './tei:forename'
+        ) == ['John']
+        assert get_tei_xpath_text_content_list(
+            nodes[1], './tei:forename'
+        ) == ['Maria']
+
+    def test_should_not_create_person_name_for_note(self):
+        label_and_layout_line_list_list = [
+            [
+                ('O', get_next_layout_line_for_text('before')),
+                ('<forename>', get_next_layout_line_for_text('John')),
+                ('<surname>', get_next_layout_line_for_text('Smith')),
+                ('<marker>', get_next_layout_line_for_text('1')),
+                ('O', get_next_layout_line_for_text(',')),
+                ('<forename>', get_next_layout_line_for_text('Maria')),
+                ('<surname>', get_next_layout_line_for_text('Madison')),
+                ('<marker>', get_next_layout_line_for_text('2')),
+                ('O', get_next_layout_line_for_text('after')),
+            ]
+        ]
+        labeled_model_data_list_list = get_labeled_model_data_list_list(
+            label_and_layout_line_list_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_multiple_model_data_iterables(
+            labeled_model_data_list_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        nodes = tei_xpath(xml_root, AUTHOR_XPATH)
+        assert len(nodes) == 2
+        assert get_tei_xpath_text_content_list(
+            nodes[0], './tei:forename'
+        ) == ['John']
+        assert get_tei_xpath_text_content_list(
+            nodes[1], './tei:forename'
+        ) == ['Maria']

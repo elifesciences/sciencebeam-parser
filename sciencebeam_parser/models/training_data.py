@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import logging
-from typing import Iterable, List, Mapping, Optional, Sequence
+from typing import Iterable, List, Mapping, Optional, Sequence, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -21,6 +22,19 @@ NO_NS_TEI_E = ElementMaker()
 
 
 OTHER_LABELS = {'<other>', 'O'}
+
+
+class ExtractInstruction:
+    pass
+
+
+class NewLineExtractInstruction(ExtractInstruction):
+    pass
+
+
+@dataclass
+class ResetExtractInstruction(ExtractInstruction):
+    reset_element_path: List[str]
 
 
 def get_model_data_label(model_data: LayoutModelData) -> Optional[str]:
@@ -65,6 +79,30 @@ def iter_group_model_data_by_line(
         line_model_data_list = [model_data]
     if line_model_data_list:
         yield line_model_data_list
+
+
+def iter_model_data_with_new_line_instruction(
+    model_data_iterable: Iterable[LayoutModelData]
+) -> Iterable[Union[LayoutModelData, ExtractInstruction]]:
+    line_model_data_list: List[LayoutModelData] = []
+    for model_data in model_data_iterable:
+        if not line_model_data_list:
+            line_model_data_list.append(model_data)
+            continue
+        previous_model_data = line_model_data_list[-1]
+        if is_same_model_data_layout_line(
+            model_data,
+            previous_model_data
+        ):
+            LOGGER.debug('same line: %r - %r', model_data, previous_model_data)
+            line_model_data_list.append(model_data)
+            continue
+        yield from line_model_data_list
+        yield NewLineExtractInstruction()
+        line_model_data_list = [model_data]
+    if line_model_data_list:
+        yield from line_model_data_list
+        yield NewLineExtractInstruction()
 
 
 def get_default_note_type_for_label(label: str) -> str:
@@ -188,17 +226,19 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
             return None
         return self.reset_training_xml_element_path_by_label.get(label)
 
-    def write_xml_for_model_data_iterable(
+    def write_xml_for_model_data_with_instructions_iterable(
         self,
         xml_writer: XmlTreeWriter,
-        model_data_iterable: Iterable[LayoutModelData]
+        model_data_or_instruction_iterable: Iterable[Union[LayoutModelData, ExtractInstruction]]
     ):
         default_path = xml_writer.current_path
         LOGGER.debug('default_path: %r', default_path)
         pending_whitespace = ''
         prev_label: str = ''
-        for line_model_data_list in iter_group_model_data_by_line(model_data_iterable):
-            for model_data in line_model_data_list:
+        pending_reset_path: Optional[List[str]] = None
+        for model_data_or_instruction in model_data_or_instruction_iterable:
+            if isinstance(model_data_or_instruction, LayoutModelData):
+                model_data = model_data_or_instruction
                 layout_token = model_data.layout_token
                 assert layout_token is not None
                 prefixed_label = get_model_data_label(model_data)
@@ -211,6 +251,9 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
                     label=label,
                     prefix=prefix
                 )
+                if pending_reset_path is not None:
+                    reset_path = pending_reset_path
+                    pending_reset_path = None
                 LOGGER.debug(
                     'label: %r (%r: %r; reset_path=%r)',
                     label, prefix, xml_element_path, reset_path
@@ -236,10 +279,33 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
                 xml_writer.append_text(layout_token.text)
                 pending_whitespace = layout_token.whitespace
                 prev_label = label
-            xml_writer.append(self.element_maker('lb'))
-            pending_whitespace = '\n'
+            elif isinstance(model_data_or_instruction, ResetExtractInstruction):
+                pending_reset_path = model_data_or_instruction.reset_element_path
+            elif isinstance(model_data_or_instruction, NewLineExtractInstruction):
+                xml_writer.append(self.element_maker('lb'))
+                pending_whitespace = '\n'
         xml_writer.require_path(default_path)
         xml_writer.append_text(pending_whitespace)
+
+    def iter_model_data_or_instruction_for_model_data_iterable(
+        self,
+        model_data_iterable: Iterable[LayoutModelData]
+    ) -> Iterable[Union[LayoutModelData, ExtractInstruction]]:
+        return iter_model_data_with_new_line_instruction(
+            model_data_iterable
+        )
+
+    def write_xml_for_model_data_iterable(
+        self,
+        xml_writer: XmlTreeWriter,
+        model_data_iterable: Iterable[LayoutModelData]
+    ):
+        self.write_xml_for_model_data_with_instructions_iterable(
+            xml_writer,
+            self.iter_model_data_or_instruction_for_model_data_iterable(
+                model_data_iterable
+            )
+        )
 
     def _get_xml_writer(self) -> XmlTreeWriter:
         return XmlTreeWriter(
