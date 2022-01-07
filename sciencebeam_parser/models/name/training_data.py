@@ -32,8 +32,7 @@ TRAINING_XML_ELEMENT_PATH_BY_LABEL = {
     '<forename>': ROOT_TRAINING_XML_ELEMENT_PATH + ['forename'],
     '<middlename>': ROOT_TRAINING_XML_ELEMENT_PATH + ['middlename'],
     '<surname>': ROOT_TRAINING_XML_ELEMENT_PATH + ['surname'],
-    '<suffix>': ROOT_TRAINING_XML_ELEMENT_PATH + ['suffix'],
-    '<other>': ROOT_TRAINING_XML_ELEMENT_PATH + ['other']
+    '<suffix>': ROOT_TRAINING_XML_ELEMENT_PATH + ['suffix']
 }
 
 

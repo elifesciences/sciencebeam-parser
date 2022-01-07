@@ -142,8 +142,7 @@ class TestFigureTeiTrainingDataGenerator:
             ('<forename>', get_next_layout_line_for_text('Forename 1')),
             ('<middlename>', get_next_layout_line_for_text('Middlename 1')),
             ('<surname>', get_next_layout_line_for_text('Surname 1')),
-            ('<suffix>', get_next_layout_line_for_text('Suffix 1')),
-            ('<other>', get_next_layout_line_for_text('Other 1')),
+            ('<suffix>', get_next_layout_line_for_text('Suffix 1'))
         ]
         labeled_model_data_list = get_labeled_model_data_list(
             label_and_layout_line_list,
@@ -170,9 +169,25 @@ class TestFigureTeiTrainingDataGenerator:
         assert get_tei_xpath_text_content_list(
             xml_root, f'{AUTHOR_XPATH}/tei:suffix'
         ) == ['Suffix 1']
+
+    def test_should_map_other_label_as_text_without_note(self):
+        label_and_layout_line_list = [
+            ('<other>', get_next_layout_line_for_text(TEXT_1))
+        ]
+        labeled_model_data_list = get_labeled_model_data_list(
+            label_and_layout_line_list,
+            data_generator=get_data_generator()
+        )
+        training_data_generator = get_tei_training_data_generator()
+        xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
+            labeled_model_data_list
+        )
+        LOGGER.debug('xml: %r', etree.tostring(xml_root))
+        assert not tei_xpath(xml_root, f'{AUTHOR_XPATH}//tei:note')
+        assert not tei_xpath(xml_root, f'{AUTHOR_XPATH}//tei:other')
         assert get_tei_xpath_text_content_list(
-            xml_root, f'{AUTHOR_XPATH}/tei:other'
-        ) == ['Other 1']
+            xml_root, AUTHOR_XPATH
+        ) == [f'{TEXT_1}\n']
 
     def test_should_map_unknown_label_to_note(self):
         label_and_layout_line_list = [
