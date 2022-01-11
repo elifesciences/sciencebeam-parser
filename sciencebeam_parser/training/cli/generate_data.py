@@ -325,6 +325,12 @@ class AbstractModelTrainingDataGenerator(ABC):
     ) -> Iterable[Sequence[LayoutModelData]]:
         return []
 
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> Optional[str]:
+        return tei_training_data_generator.get_default_tei_sub_directory()
+
     def generate_data_for_layout_document(
         self,
         layout_document: LayoutDocument,
@@ -334,7 +340,7 @@ class AbstractModelTrainingDataGenerator(ABC):
         tei_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_tei_filename_suffix(),
             document_context=document_context,
-            sub_directory=tei_training_data_generator.get_default_tei_sub_directory()
+            sub_directory=self.get_default_tei_sub_directory(tei_training_data_generator)
         )
         data_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_data_filename_suffix(),
@@ -487,6 +493,12 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.name_header_model
 
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> str:
+        return 'name/header/corpus'
+
     def get_pre_file_path_suffix(self) -> str:
         return '.header'
 
@@ -534,6 +546,12 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
 class NameCitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.name_citation_model
+
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> str:
+        return 'name/citation/corpus'
 
     def get_pre_file_path_suffix(self) -> str:
         return '.citations'

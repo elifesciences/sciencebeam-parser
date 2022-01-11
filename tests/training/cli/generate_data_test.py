@@ -561,3 +561,17 @@ class TestMain:
             SegmentationTeiTrainingDataGenerator().get_default_data_filename_suffix()
         )
         assert expected_segmentation_data_path.exists()
+
+        expected_name_header_tei_path = _get_expected_file_path_with_suffix(
+            output_path / 'name' / 'header' / 'corpus',
+            MINIMAL_EXAMPLE_PDF,
+            '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        assert expected_name_header_tei_path.exists()
+
+        expected_name_citation_tei_path = _get_expected_file_path_with_suffix(
+            output_path / 'name' / 'citation' / 'corpus',
+            MINIMAL_EXAMPLE_PDF,
+            '.citations' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )
+        assert expected_name_citation_tei_path.exists()
