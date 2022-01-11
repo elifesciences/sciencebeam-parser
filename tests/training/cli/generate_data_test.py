@@ -588,6 +588,9 @@ class TestMain:
             output_path / 'affiliation-address' / 'corpus',
             AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (
+            output_path / 'citation' / 'corpus',
+            CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (
