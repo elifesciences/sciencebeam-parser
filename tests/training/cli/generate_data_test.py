@@ -585,6 +585,9 @@ class TestMain:
             output_path / 'reference-segmenter' / 'corpus' / 'raw',
             ReferenceSegmenterTeiTrainingDataGenerator().get_default_data_filename_suffix()
         ), (
+            output_path / 'affiliation-address' / 'corpus',
+            AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (
