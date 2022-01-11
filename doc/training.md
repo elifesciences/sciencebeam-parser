@@ -31,7 +31,7 @@ Currently training data will be generated for the following models:
 - `citation` (references)
 - `figure`
 - `table`
-- `name` (author names for `header`)
+- `name` (author names for `header` and `citations`)
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_data \

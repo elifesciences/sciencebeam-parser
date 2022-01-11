@@ -92,9 +92,15 @@ class SampleLayoutDocument:
             self.table_block
         ])
 
+        self.ref_author_surname_block = LayoutBlock.for_text('Ref Author Surname 1')
+        self.ref_author_block = LayoutBlock.merge_blocks([self.ref_author_surname_block])
+
         self.ref_label_block = LayoutBlock.for_text('1')
         self.ref_title_block = LayoutBlock.for_text('Reference 1')
-        self.ref_text_block = LayoutBlock.merge_blocks([self.ref_title_block])
+        self.ref_text_block = LayoutBlock.merge_blocks([
+            self.ref_title_block,
+            self.ref_author_block
+        ])
         self.ref_ref_block = LayoutBlock.merge_blocks([
             self.ref_label_block,
             self.ref_text_block
@@ -115,6 +121,7 @@ def configure_fulltext_models_mock_with_sample_document(
     segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
     header_model_mock = fulltext_models_mock.header_model_mock
     name_header_model_mock = fulltext_models_mock.name_header_model_mock
+    name_citation_model_mock = fulltext_models_mock.name_citation_model_mock
     affiliation_address_model_mock = fulltext_models_mock.affiliation_address_model_mock
     fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
     reference_segmenter_model_mock = fulltext_models_mock.reference_segmenter_model_mock
@@ -181,6 +188,13 @@ def configure_fulltext_models_mock_with_sample_document(
     citation_model_mock.update_label_by_layout_block(
         doc.ref_title_block, '<title>'
     )
+    citation_model_mock.update_label_by_layout_block(
+        doc.ref_author_block, '<author>'
+    )
+
+    name_citation_model_mock.update_label_by_layout_block(
+        doc.ref_author_surname_block, '<surname>'
+    )
 
 
 @pytest.fixture(name='fulltext_models_mock')
@@ -244,30 +258,34 @@ def normalize_whitespace_list(text_iterable: Iterable[str]) -> Sequence[str]:
 def _get_expected_file_path_with_suffix(
     output_path: Path,
     source_filename: str,
-    suffix: Optional[str]
+    suffix: Optional[str],
+    pre_file_path_suffix: str = ''
 ) -> Path:
     assert suffix
     source_name = os.path.splitext(os.path.basename(source_filename))[0]
-    return output_path.joinpath(source_name + suffix)
+    return output_path.joinpath(source_name + pre_file_path_suffix + suffix)
 
 
 def _check_tei_training_data_generator_output_and_return_xml_root(
     tei_training_data_generator: TeiTrainingDataGenerator,
     output_path: Path,
     expect_raw_data: bool,
-    source_filename: str = SOURCE_FILENAME_1
+    source_filename: str = SOURCE_FILENAME_1,
+    pre_file_path_suffix: str = ''
 ) -> etree.ElementBase:
     expected_segmentation_tei_path = _get_expected_file_path_with_suffix(
         output_path,
         source_filename,
-        tei_training_data_generator.get_default_tei_filename_suffix()
+        tei_training_data_generator.get_default_tei_filename_suffix(),
+        pre_file_path_suffix=pre_file_path_suffix
     )
     assert expected_segmentation_tei_path.exists()
     if expect_raw_data:
         expected_segmentation_data_path = _get_expected_file_path_with_suffix(
             output_path,
             source_filename,
-            tei_training_data_generator.get_default_data_filename_suffix()
+            tei_training_data_generator.get_default_data_filename_suffix(),
+            pre_file_path_suffix=pre_file_path_suffix
         )
         assert expected_segmentation_data_path.exists()
     xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
@@ -339,10 +357,20 @@ class TestGenerateTrainingDataForLayoutDocument:
 
         _check_tei_training_data_generator_output(
             NameTeiTrainingDataGenerator(),
+            pre_file_path_suffix='.header',
             output_path=output_path,
             expect_raw_data=False,
             tei_xml_xpath='//tei:author//tei:surname',
             tei_expected_values=[sample_layout_document.author_surname_block.text]
+        )
+
+        _check_tei_training_data_generator_output(
+            NameTeiTrainingDataGenerator(),
+            pre_file_path_suffix='.citations',
+            output_path=output_path,
+            expect_raw_data=False,
+            tei_xml_xpath='//tei:author//tei:surname',
+            tei_expected_values=[sample_layout_document.ref_author_surname_block.text]
         )
 
         _check_tei_training_data_generator_output(

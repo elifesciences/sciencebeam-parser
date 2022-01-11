@@ -78,7 +78,7 @@ def iter_model_data_with_reset_instruction_iterable(
 
 
 class NameTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
-    DEFAULT_TEI_FILENAME_SUFFIX = '.header.authors.tei.xml'
+    DEFAULT_TEI_FILENAME_SUFFIX = '.authors.tei.xml'
 
     def __init__(self):
         super().__init__(
