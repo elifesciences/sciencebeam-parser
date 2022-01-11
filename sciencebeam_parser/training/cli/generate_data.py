@@ -256,19 +256,13 @@ def get_labeled_layout_tokens_for_model_and_layout_document(
     layout_document: LayoutDocument,
     document_context: TrainingDataDocumentContext
 ) -> Sequence[LabeledLayoutToken]:
-    model_data_lists = list(
-        iter_labeled_model_data_list_for_model_and_layout_documents(
-            model=model,
-            model_layout_documents=[layout_document],
-            document_context=document_context
-        )
+    labeled_layout_tokens_list = get_labeled_layout_tokens_list_for_model_and_layout_documents(
+        model,
+        [layout_document],
+        document_context
     )
-    assert len(model_data_lists) == 1
-    return list(iter_labeled_layout_token_for_layout_model_label(
-        iter_layout_model_label_for_labeled_model_data_list(
-            model_data_lists[0]
-        )
-    ))
+    assert len(labeled_layout_tokens_list) == 1
+    return labeled_layout_tokens_list[0]
 
 
 def get_segmentation_label_result(
