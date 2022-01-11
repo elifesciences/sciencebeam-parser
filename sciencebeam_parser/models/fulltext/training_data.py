@@ -45,5 +45,7 @@ class FullTextTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             ),
             default_data_filename_suffix=(
                 FullTextTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
+            ),
+            default_tei_sub_directory='fulltext/corpus/tei',
+            default_data_sub_directory='fulltext/corpus/raw'
         )
