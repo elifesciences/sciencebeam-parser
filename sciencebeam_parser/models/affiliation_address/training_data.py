@@ -42,5 +42,6 @@ class AffiliationAddressTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerato
             default_tei_filename_suffix=(
                 AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
             ),
-            default_data_filename_suffix=None
+            default_data_filename_suffix=None,
+            default_tei_sub_directory='affiliation-address/corpus'
         )

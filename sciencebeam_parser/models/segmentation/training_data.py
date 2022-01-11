@@ -86,7 +86,9 @@ class SegmentationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             ),
             default_data_filename_suffix=(
                 SegmentationTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
+            ),
+            default_tei_sub_directory='segmentation/corpus/tei',
+            default_data_sub_directory='segmentation/corpus/raw'
         )
 
     def write_xml_line_for_layout_tokens(

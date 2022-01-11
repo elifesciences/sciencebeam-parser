@@ -54,7 +54,8 @@ class CitationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             default_tei_filename_suffix=(
                 CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
             ),
-            default_data_filename_suffix=None
+            default_data_filename_suffix=None,
+            default_tei_sub_directory='citation/corpus'
         )
 
     def get_post_processed_xml_root(self, xml_root: etree.ElementBase):

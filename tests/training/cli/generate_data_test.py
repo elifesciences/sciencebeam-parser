@@ -336,7 +336,8 @@ class TestGenerateTrainingDataForLayoutDocument:
             source_filename=SOURCE_FILENAME_1,
             document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
             fulltext_models=fulltext_models_mock,
-            use_model=True
+            use_model=True,
+            use_directory_structure=False
         )
 
         _check_tei_training_data_generator_output(
@@ -443,7 +444,8 @@ class TestGenerateTrainingDataForLayoutDocument:
             source_filename=SOURCE_FILENAME_1,
             document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
             fulltext_models=fulltext_models_mock,
-            use_model=True
+            use_model=True,
+            use_directory_structure=False
         )
 
         example_name = os.path.splitext(os.path.basename(SOURCE_FILENAME_1))[0]
@@ -527,3 +529,79 @@ class TestMain:
             source_filename=MINIMAL_EXAMPLE_PDF
         )
         assert get_text_content_list(xml_root.xpath('text/front'))
+
+    def test_should_allow_to_use_directory_structure(
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        output_path = tmp_path / 'generated-data'
+        main([
+            '--use-directory-structure',
+            f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
+            f'--output-path={output_path}'
+        ])
+        assert output_path.exists()
+
+        expected_output_path_and_suffix_list = [(
+            output_path / 'segmentation' / 'corpus' / 'tei',
+            SegmentationTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'segmentation' / 'corpus' / 'raw',
+            SegmentationTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'header' / 'corpus' / 'tei',
+            HeaderTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'header' / 'corpus' / 'raw',
+            HeaderTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'fulltext' / 'corpus' / 'tei',
+            FullTextTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'fulltext' / 'corpus' / 'raw',
+            FullTextTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'figure' / 'corpus' / 'tei',
+            FigureTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'figure' / 'corpus' / 'raw',
+            FigureTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'table' / 'corpus' / 'tei',
+            TableTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'table' / 'corpus' / 'raw',
+            TableTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'reference-segmenter' / 'corpus' / 'tei',
+            ReferenceSegmenterTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'reference-segmenter' / 'corpus' / 'raw',
+            ReferenceSegmenterTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
+            output_path / 'affiliation-address' / 'corpus',
+            AffiliationAddressTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        ), (
+            output_path / 'citation' / 'corpus',
+            CitationTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        ), (
+            output_path / 'name' / 'header' / 'corpus',
+            '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        ), (
+            output_path / 'name' / 'citation' / 'corpus',
+            '.citations' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
+        )]
+
+        for model_output_path, suffix in expected_output_path_and_suffix_list:
+            file_path = _get_expected_file_path_with_suffix(
+                model_output_path,
+                MINIMAL_EXAMPLE_PDF,
+                suffix
+            )
+            assert file_path.exists()

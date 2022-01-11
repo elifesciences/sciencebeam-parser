@@ -70,6 +70,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help='Use configured models to pre-annotate training data'
     )
     parser.add_argument(
+        '--use-directory-structure',
+        action='store_true',
+        help='Output training data to a directory structure'
+    )
+    parser.add_argument(
         '--debug',
         action='store_true',
         help='Enable debug logging'
@@ -153,6 +158,7 @@ class TrainingDataDocumentContext(NamedTuple):
     document_features_context: DocumentFeaturesContext
     fulltext_models: FullTextModels
     use_model: bool
+    use_directory_structure: bool
     model_result_cache: ModelResultCache
 
     @property
@@ -291,12 +297,16 @@ class AbstractModelTrainingDataGenerator(ABC):
     def _get_file_path_with_suffix(
         self,
         suffix: Optional[str],
-        document_context: TrainingDataDocumentContext
+        document_context: TrainingDataDocumentContext,
+        sub_directory: Optional[str] = None
     ) -> Optional[str]:
         if not suffix:
             return None
+        output_path = document_context.output_path
+        if sub_directory and document_context.use_directory_structure:
+            output_path = os.path.join(output_path, sub_directory)
         return os.path.join(
-            document_context.output_path,
+            output_path,
             document_context.source_name + self.get_pre_file_path_suffix() + suffix
         )
 
@@ -315,6 +325,12 @@ class AbstractModelTrainingDataGenerator(ABC):
     ) -> Iterable[Sequence[LayoutModelData]]:
         return []
 
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> Optional[str]:
+        return tei_training_data_generator.get_default_tei_sub_directory()
+
     def generate_data_for_layout_document(
         self,
         layout_document: LayoutDocument,
@@ -323,11 +339,13 @@ class AbstractModelTrainingDataGenerator(ABC):
         tei_training_data_generator = self.get_tei_training_data_generator(document_context)
         tei_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_tei_filename_suffix(),
-            document_context=document_context
+            document_context=document_context,
+            sub_directory=self.get_default_tei_sub_directory(tei_training_data_generator)
         )
         data_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_data_filename_suffix(),
-            document_context=document_context
+            document_context=document_context,
+            sub_directory=tei_training_data_generator.get_default_data_sub_directory()
         )
         assert tei_file_path
         model_data_list_list = list(self.iter_model_data_list(
@@ -344,11 +362,13 @@ class AbstractModelTrainingDataGenerator(ABC):
             )
         )
         LOGGER.info('writing training tei to: %r', tei_file_path)
+        Path(tei_file_path).parent.mkdir(parents=True, exist_ok=True)
         Path(tei_file_path).write_bytes(
             etree.tostring(training_tei_root, pretty_print=True)
         )
         if data_file_path:
             LOGGER.info('writing training raw data to: %r', data_file_path)
+            Path(data_file_path).parent.mkdir(parents=True, exist_ok=True)
             Path(data_file_path).write_text('\n'.join(
                 iter_data_lines_for_model_data_iterables(model_data_list_list)
             ), encoding='utf-8')
@@ -473,6 +493,12 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.name_header_model
 
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> str:
+        return 'name/header/corpus'
+
     def get_pre_file_path_suffix(self) -> str:
         return '.header'
 
@@ -520,6 +546,12 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
 class NameCitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.name_citation_model
+
+    def get_default_tei_sub_directory(
+        self,
+        tei_training_data_generator: TeiTrainingDataGenerator
+    ) -> str:
+        return 'name/citation/corpus'
 
     def get_pre_file_path_suffix(self) -> str:
         return '.citations'
@@ -766,7 +798,8 @@ def generate_training_data_for_layout_document(
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
-    use_model: bool
+    use_model: bool,
+    use_directory_structure: bool
 ):
     model_result_cache = ModelResultCache()
     document_context = TrainingDataDocumentContext(
@@ -775,6 +808,7 @@ def generate_training_data_for_layout_document(
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
+        use_directory_structure=use_directory_structure,
         model_result_cache=model_result_cache
     )
     training_data_generators = [
@@ -800,7 +834,8 @@ def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
     sciencebeam_parser: ScienceBeamParser,
-    use_model: bool
+    use_model: bool,
+    use_directory_structure: bool
 ):
     LOGGER.debug('use_model: %r', use_model)
     with sciencebeam_parser.get_new_session() as session:
@@ -814,7 +849,8 @@ def generate_training_data_for_source_filename(
                 sciencebeam_parser.app_features_context
             ),
             fulltext_models=sciencebeam_parser.fulltext_models,
-            use_model=use_model
+            use_model=use_model,
+            use_directory_structure=use_directory_structure
         )
 
 
@@ -832,7 +868,8 @@ def run(args: argparse.Namespace):
             source_filename,
             output_path=output_path,
             sciencebeam_parser=sciencebeam_parser,
-            use_model=args.use_model
+            use_model=args.use_model,
+            use_directory_structure=args.use_directory_structure
         )
 
 
