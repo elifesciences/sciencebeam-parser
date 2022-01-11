@@ -186,7 +186,7 @@ def iter_labeled_model_data_list_for_model_and_layout_documents(
 ) -> Iterable[Sequence[LabeledLayoutModelData]]:
     if not model_layout_documents:
         return []
-    cache_key = type(model).__name__
+    cache_key = f'{type(model).__name__}_{id(model)}'
     LOGGER.debug('cache_key: %r', cache_key)
     model_data_lists = document_context.model_result_cache.model_data_lists_by_key_map.get(
         cache_key
@@ -226,6 +226,29 @@ def iter_model_data_list_for_model_and_layout_documents(
         model_layout_documents=model_layout_documents,
         document_context=document_context
     )
+
+
+def get_labeled_layout_tokens_list_for_model_and_layout_documents(
+    model: Model,
+    layout_documents: Sequence[LayoutDocument],
+    document_context: TrainingDataDocumentContext
+) -> Sequence[Sequence[LabeledLayoutToken]]:
+    model_data_lists = list(
+        iter_labeled_model_data_list_for_model_and_layout_documents(
+            model=model,
+            model_layout_documents=layout_documents,
+            document_context=document_context
+        )
+    )
+    assert len(model_data_lists) == len(layout_documents)
+    return [
+        list(iter_labeled_layout_token_for_layout_model_label(
+            iter_layout_model_label_for_labeled_model_data_list(
+                model_data_list
+            )
+        ))
+        for model_data_list in model_data_lists
+    ]
 
 
 def get_labeled_layout_tokens_for_model_and_layout_document(
@@ -268,6 +291,9 @@ def get_segmentation_label_result(
 
 
 class AbstractModelTrainingDataGenerator(ABC):
+    def get_pre_file_path_suffix(self) -> str:
+        return ''
+
     def _get_file_path_with_suffix(
         self,
         suffix: Optional[str],
@@ -277,7 +303,7 @@ class AbstractModelTrainingDataGenerator(ABC):
             return None
         return os.path.join(
             document_context.output_path,
-            document_context.source_name + suffix
+            document_context.source_name + self.get_pre_file_path_suffix() + suffix
         )
 
     @abstractmethod
@@ -315,7 +341,7 @@ class AbstractModelTrainingDataGenerator(ABC):
             document_context=document_context
         ))
         if not model_data_list_list:
-            LOGGER.info('no figures found')
+            LOGGER.info('no entities found, skipping (%r)', tei_file_path)
             return
         training_tei_root = (
             tei_training_data_generator
@@ -453,6 +479,9 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
     def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
         return document_context.fulltext_models.name_header_model
 
+    def get_pre_file_path_suffix(self) -> str:
+        return '.header'
+
     def iter_model_layout_documents(
         self,
         layout_document: LayoutDocument,
@@ -481,6 +510,81 @@ class NameHeaderModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGene
                 )
             )).iter_by_type(SemanticRawAuthors)
         )
+        LOGGER.info('semantic_raw_author_list count: %d', len(semantic_raw_author_list))
+        if not semantic_raw_author_list:
+            return []
+
+        return [
+            LayoutDocument.for_blocks([
+                block
+                for semantic_raw_author in semantic_raw_author_list
+                for block in semantic_raw_author.iter_blocks()
+            ])
+        ]
+
+
+class NameCitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenerator):
+    def get_main_model(self, document_context: TrainingDataDocumentContext) -> Model:
+        return document_context.fulltext_models.name_citation_model
+
+    def get_pre_file_path_suffix(self) -> str:
+        return '.citations'
+
+    def iter_model_layout_documents(
+        self,
+        layout_document: LayoutDocument,
+        document_context: TrainingDataDocumentContext
+    ) -> Iterable[LayoutDocument]:
+        reference_segmenter_model = document_context.fulltext_models.reference_segmenter_model
+        citation_model = document_context.fulltext_models.citation_model
+        segmentation_label_result = get_segmentation_label_result(
+            layout_document,
+            document_context=document_context
+        )
+        references_layout_document = segmentation_label_result.get_filtered_document_by_label(
+            '<references>'
+        ).remove_empty_blocks()
+        reference_segmenter_labeled_layout_tokens = (
+            get_labeled_layout_tokens_for_model_and_layout_document(
+                model=reference_segmenter_model,
+                layout_document=references_layout_document,
+                document_context=document_context
+            )
+        )
+        raw_reference_text_list = [
+            raw_reference_text
+            for raw_reference in SemanticMixedContentWrapper(list(
+                reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                    reference_segmenter_labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawReference)
+            for raw_reference_text in raw_reference.iter_by_type(SemanticRawReferenceText)
+        ]
+        LOGGER.info('raw_reference_text_list count: %d', len(raw_reference_text_list))
+        if not raw_reference_text_list:
+            return []
+        citation_layout_documents = [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_reference_text.iter_blocks())
+            )
+            for semantic_raw_reference_text in raw_reference_text_list
+        ]
+        citation_labeled_layout_tokens_list = (
+            get_labeled_layout_tokens_list_for_model_and_layout_documents(
+                model=citation_model,
+                layout_documents=citation_layout_documents,
+                document_context=document_context
+            )
+        )
+        semantic_raw_author_list = [
+            raw_author
+            for citation_labeled_layout_tokens in citation_labeled_layout_tokens_list
+            for raw_author in SemanticMixedContentWrapper(list(
+                citation_model.iter_semantic_content_for_labeled_layout_tokens(
+                    citation_labeled_layout_tokens
+                )
+            )).iter_by_type_recursively(SemanticRawAuthors)
+        ]
         LOGGER.info('semantic_raw_author_list count: %d', len(semantic_raw_author_list))
         if not semantic_raw_author_list:
             return []
@@ -688,7 +792,8 @@ def generate_training_data_for_layout_document(
         FigureModelTrainingDataGenerator(),
         TableModelTrainingDataGenerator(),
         ReferenceSegmenterModelTrainingDataGenerator(),
-        CitationModelTrainingDataGenerator()
+        CitationModelTrainingDataGenerator(),
+        NameCitationModelTrainingDataGenerator()
     ]
     for training_data_generator in training_data_generators:
         training_data_generator.generate_data_for_layout_document(
