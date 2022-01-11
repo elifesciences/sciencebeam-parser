@@ -51,3 +51,13 @@ python -m sciencebeam_parser.training.cli.generate_data \
 Note: as the models are hierachical, the parent model needs to be used
   in order to generate data for the child model.
   For example the `segmentation` model will be required for the `header` model.
+
+The output could also be organised into a folder structure by model and type of file:
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_data \
+    --use-model \
+    --use-directory-structure \
+    --source-path="test-data/*.pdf" \
+    --output-path="./data/generated-training-data"
+```
