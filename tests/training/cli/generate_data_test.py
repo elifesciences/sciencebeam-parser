@@ -555,6 +555,12 @@ class TestMain:
             output_path / 'segmentation' / 'corpus' / 'raw',
             SegmentationTeiTrainingDataGenerator().get_default_data_filename_suffix()
         ), (
+            output_path / 'header' / 'corpus' / 'tei',
+            HeaderTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'header' / 'corpus' / 'raw',
+            HeaderTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (
