@@ -338,7 +338,8 @@ class AbstractModelTrainingDataGenerator(ABC):
         )
         data_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_data_filename_suffix(),
-            document_context=document_context
+            document_context=document_context,
+            sub_directory=tei_training_data_generator.get_default_data_sub_directory()
         )
         assert tei_file_path
         model_data_list_list = list(self.iter_model_data_list(
@@ -361,6 +362,7 @@ class AbstractModelTrainingDataGenerator(ABC):
         )
         if data_file_path:
             LOGGER.info('writing training raw data to: %r', data_file_path)
+            Path(data_file_path).parent.mkdir(parents=True, exist_ok=True)
             Path(data_file_path).write_text('\n'.join(
                 iter_data_lines_for_model_data_iterables(model_data_list_list)
             ), encoding='utf-8')

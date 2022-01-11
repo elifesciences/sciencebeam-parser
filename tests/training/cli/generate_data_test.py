@@ -554,3 +554,10 @@ class TestMain:
             SegmentationTeiTrainingDataGenerator().get_default_tei_filename_suffix()
         )
         assert expected_segmentation_tei_path.exists()
+
+        expected_segmentation_data_path = _get_expected_file_path_with_suffix(
+            output_path / 'segmentation' / 'corpus' / 'raw',
+            MINIMAL_EXAMPLE_PDF,
+            SegmentationTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        )
+        assert expected_segmentation_data_path.exists()

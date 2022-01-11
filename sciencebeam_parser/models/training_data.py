@@ -153,6 +153,9 @@ class TeiTrainingDataGenerator(ABC):
     def get_default_tei_sub_directory(self) -> Optional[str]:
         pass
 
+    def get_default_data_sub_directory(self) -> Optional[str]:
+        pass
+
 
 class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
     def __init__(
@@ -165,7 +168,8 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
         reset_training_xml_element_path_by_label: Optional[Mapping[str, Sequence[str]]] = None,
         default_tei_filename_suffix: Optional[str] = None,
         default_data_filename_suffix: Optional[str] = None,
-        default_tei_sub_directory: Optional[str] = None
+        default_tei_sub_directory: Optional[str] = None,
+        default_data_sub_directory: Optional[str] = None
     ):
         self.root_training_xml_element_path = root_training_xml_element_path
         self.root_parent_training_xml_element_path = root_training_xml_element_path[:-1]
@@ -189,6 +193,7 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
         self.default_tei_filename_suffix = default_tei_filename_suffix
         self.default_data_filename_suffix = default_data_filename_suffix
         self.default_tei_sub_directory = default_tei_sub_directory
+        self.default_data_sub_directory = default_data_sub_directory
 
     def get_default_tei_filename_suffix(self) -> Optional[str]:
         return self.default_tei_filename_suffix
@@ -198,6 +203,9 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
 
     def get_default_tei_sub_directory(self) -> Optional[str]:
         return self.default_tei_sub_directory
+
+    def get_default_data_sub_directory(self) -> Optional[str]:
+        return self.default_data_sub_directory
 
     def get_training_xml_path_for_label(
         self,
