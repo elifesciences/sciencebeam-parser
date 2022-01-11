@@ -567,6 +567,12 @@ class TestMain:
             output_path / 'fulltext' / 'corpus' / 'raw',
             FullTextTeiTrainingDataGenerator().get_default_data_filename_suffix()
         ), (
+            output_path / 'figure' / 'corpus' / 'tei',
+            FigureTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'figure' / 'corpus' / 'raw',
+            FigureTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (

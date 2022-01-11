@@ -35,5 +35,7 @@ class FigureTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             ),
             default_data_filename_suffix=(
                 FigureTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
+            ),
+            default_tei_sub_directory='figure/corpus/tei',
+            default_data_sub_directory='figure/corpus/raw'
         )
