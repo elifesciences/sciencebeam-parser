@@ -579,6 +579,12 @@ class TestMain:
             output_path / 'table' / 'corpus' / 'raw',
             TableTeiTrainingDataGenerator().get_default_data_filename_suffix()
         ), (
+            output_path / 'reference-segmenter' / 'corpus' / 'tei',
+            ReferenceSegmenterTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'reference-segmenter' / 'corpus' / 'raw',
+            ReferenceSegmenterTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (

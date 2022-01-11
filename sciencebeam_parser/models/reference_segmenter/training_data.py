@@ -39,5 +39,7 @@ class ReferenceSegmenterTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerato
             ),
             default_data_filename_suffix=(
                 ReferenceSegmenterTeiTrainingDataGenerator.DEFAULT_DATA_FILENAME_SUFFIX
-            )
+            ),
+            default_tei_sub_directory='reference-segmenter/corpus/tei',
+            default_data_sub_directory='reference-segmenter/corpus/raw'
         )
