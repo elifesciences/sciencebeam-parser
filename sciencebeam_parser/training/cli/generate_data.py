@@ -158,6 +158,7 @@ class TrainingDataDocumentContext(NamedTuple):
     document_features_context: DocumentFeaturesContext
     fulltext_models: FullTextModels
     use_model: bool
+    use_directory_structure: bool
     model_result_cache: ModelResultCache
 
     @property
@@ -296,12 +297,16 @@ class AbstractModelTrainingDataGenerator(ABC):
     def _get_file_path_with_suffix(
         self,
         suffix: Optional[str],
-        document_context: TrainingDataDocumentContext
+        document_context: TrainingDataDocumentContext,
+        sub_directory: Optional[str] = None
     ) -> Optional[str]:
         if not suffix:
             return None
+        output_path = document_context.output_path
+        if sub_directory and document_context.use_directory_structure:
+            output_path = os.path.join(output_path, sub_directory)
         return os.path.join(
-            document_context.output_path,
+            output_path,
             document_context.source_name + self.get_pre_file_path_suffix() + suffix
         )
 
@@ -328,7 +333,8 @@ class AbstractModelTrainingDataGenerator(ABC):
         tei_training_data_generator = self.get_tei_training_data_generator(document_context)
         tei_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_tei_filename_suffix(),
-            document_context=document_context
+            document_context=document_context,
+            sub_directory=tei_training_data_generator.get_default_tei_sub_directory()
         )
         data_file_path = self._get_file_path_with_suffix(
             tei_training_data_generator.get_default_data_filename_suffix(),
@@ -349,6 +355,7 @@ class AbstractModelTrainingDataGenerator(ABC):
             )
         )
         LOGGER.info('writing training tei to: %r', tei_file_path)
+        Path(tei_file_path).parent.mkdir(parents=True, exist_ok=True)
         Path(tei_file_path).write_bytes(
             etree.tostring(training_tei_root, pretty_print=True)
         )
@@ -771,7 +778,8 @@ def generate_training_data_for_layout_document(
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
-    use_model: bool
+    use_model: bool,
+    use_directory_structure: bool
 ):
     model_result_cache = ModelResultCache()
     document_context = TrainingDataDocumentContext(
@@ -780,6 +788,7 @@ def generate_training_data_for_layout_document(
         document_features_context=document_features_context,
         fulltext_models=fulltext_models,
         use_model=use_model,
+        use_directory_structure=use_directory_structure,
         model_result_cache=model_result_cache
     )
     training_data_generators = [
@@ -805,7 +814,8 @@ def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
     sciencebeam_parser: ScienceBeamParser,
-    use_model: bool
+    use_model: bool,
+    use_directory_structure: bool
 ):
     LOGGER.debug('use_model: %r', use_model)
     with sciencebeam_parser.get_new_session() as session:
@@ -819,7 +829,8 @@ def generate_training_data_for_source_filename(
                 sciencebeam_parser.app_features_context
             ),
             fulltext_models=sciencebeam_parser.fulltext_models,
-            use_model=use_model
+            use_model=use_model,
+            use_directory_structure=use_directory_structure
         )
 
 
@@ -837,7 +848,8 @@ def run(args: argparse.Namespace):
             source_filename,
             output_path=output_path,
             sciencebeam_parser=sciencebeam_parser,
-            use_model=args.use_model
+            use_model=args.use_model,
+            use_directory_structure=args.use_directory_structure
         )
 
 

@@ -336,7 +336,8 @@ class TestGenerateTrainingDataForLayoutDocument:
             source_filename=SOURCE_FILENAME_1,
             document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
             fulltext_models=fulltext_models_mock,
-            use_model=True
+            use_model=True,
+            use_directory_structure=False
         )
 
         _check_tei_training_data_generator_output(
@@ -443,7 +444,8 @@ class TestGenerateTrainingDataForLayoutDocument:
             source_filename=SOURCE_FILENAME_1,
             document_features_context=DEFAULT_DOCUMENT_FEATURES_CONTEXT,
             fulltext_models=fulltext_models_mock,
-            use_model=True
+            use_model=True,
+            use_directory_structure=False
         )
 
         example_name = os.path.splitext(os.path.basename(SOURCE_FILENAME_1))[0]
@@ -545,3 +547,10 @@ class TestMain:
             f'--output-path={output_path}'
         ])
         assert output_path.exists()
+
+        expected_segmentation_tei_path = _get_expected_file_path_with_suffix(
+            output_path / 'segmentation' / 'corpus' / 'tei',
+            MINIMAL_EXAMPLE_PDF,
+            SegmentationTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        )
+        assert expected_segmentation_tei_path.exists()
