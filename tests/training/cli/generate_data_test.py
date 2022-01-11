@@ -527,3 +527,21 @@ class TestMain:
             source_filename=MINIMAL_EXAMPLE_PDF
         )
         assert get_text_content_list(xml_root.xpath('text/front'))
+
+    def test_should_allow_to_use_directory_structure(
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        output_path = tmp_path / 'generated-data'
+        main([
+            '--use-directory-structure',
+            f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
+            f'--output-path={output_path}'
+        ])
+        assert output_path.exists()

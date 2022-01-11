@@ -70,6 +70,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help='Use configured models to pre-annotate training data'
     )
     parser.add_argument(
+        '--use-directory-structure',
+        action='store_true',
+        help='Output training data to a directory structure'
+    )
+    parser.add_argument(
         '--debug',
         action='store_true',
         help='Enable debug logging'
