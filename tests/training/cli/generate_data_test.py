@@ -573,6 +573,12 @@ class TestMain:
             output_path / 'figure' / 'corpus' / 'raw',
             FigureTeiTrainingDataGenerator().get_default_data_filename_suffix()
         ), (
+            output_path / 'table' / 'corpus' / 'tei',
+            TableTeiTrainingDataGenerator().get_default_tei_filename_suffix()
+        ), (
+            output_path / 'table' / 'corpus' / 'raw',
+            TableTeiTrainingDataGenerator().get_default_data_filename_suffix()
+        ), (
             output_path / 'name' / 'header' / 'corpus',
             '.header' + NameTeiTrainingDataGenerator.DEFAULT_TEI_FILENAME_SUFFIX
         ), (
