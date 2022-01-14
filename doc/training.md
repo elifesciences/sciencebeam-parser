@@ -19,7 +19,7 @@ For the sequence model (`delft` etc) the general workflow looks like:
 
 The training data for the sequential models follows the GROBID training data format.
 
-### Generate training data for the sequence models
+### Generate `tei` training data for the sequence models
 
 Currently training data will be generated for the following models:
 
@@ -60,4 +60,26 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --use-directory-structure \
     --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
+```
+
+### Annotating `tei` training data for the sequence models
+
+After the `tei` training data has been generated, it should get reviewed and manually annotated.
+Alternatively it can auto-annotated using [sciencebeam-trainer-grobid-tools](https://gitlab.coko.foundation/sciencebeam/sciencebeam-trainer-grobid-tools).
+
+### Generate `delft` training data for the sequence models
+
+From the annotated `tei` training data, we can generate the `delft` training data used for training.
+
+It will do one of the following:
+
+- For models with only `tei` XML files (no layout feature), it will parse the `tei` and generate data using the data generator.
+- For models with additional layout data files, it will align the parsed `tei` with the layout data file and add the label to it.
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="segmentation" \
+    --tei-source-path="data/generated-training-data/segmentation/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/segmentation/corpus/raw/*.segmentation" \
+    --delft-output-path="./data/generated-training-data/delft/segmentation/corpus/segmentation.data"
 ```
