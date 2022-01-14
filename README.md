@@ -1,5 +1,9 @@
 # ScienceBeam Parser
 
+> ScienceBeam has now been adopted by the Coko Foundation and the main code repository is available on their GitLab servers: https://gitlab.coko.foundation/sciencebeam/sciencebeam-parser
+>
+> eLife continue to support ScienceBeam and Coko so please get in touch with any questions.
+
 [![PyPi version](https://img.shields.io/pypi/v/sciencebeam-parser)](https://pypi.org/project/sciencebeam-parser/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
