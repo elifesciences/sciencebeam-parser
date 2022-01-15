@@ -2,7 +2,7 @@ import argparse
 import logging
 from glob import glob
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 from lxml import etree
 
@@ -10,9 +10,9 @@ import numpy as np
 
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
-    format_tag_result,
-    get_tag_result
+    format_tag_result
 )
+from sciencebeam_parser.models.model import NEW_DOCUMENT_MARKER, NewDocumentMarker
 
 from sciencebeam_parser.utils.xml import get_text_content
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
@@ -21,18 +21,29 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 LOGGER = logging.getLogger(__name__)
 
 
+def iter_parse_segmentation_training_tei_to_tag_result(
+    tei_root: etree.ElementBase
+) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+    for token_text in get_tokenized_tokens(get_text_content(tei_root)):
+        yield token_text, 'O'
+    yield NEW_DOCUMENT_MARKER
+
+
 def parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> List[List[Tuple[str, str]]]:
-    token_texts = np.asarray(
-        [get_tokenized_tokens(get_text_content(tei_root))],
-        dtype='object'
+    token_tag_result_iterable = iter_parse_segmentation_training_tei_to_tag_result(
+        tei_root
     )
-    token_labels = np.asarray(
-        [['O'] * len(token_texts[0])],
-        dtype='object'
-    )
-    return get_tag_result(texts=token_texts, labels=token_labels)
+    tag_result = []
+    doc_tag_result: List[Tuple[str, str]] = []
+    for token_tag_result in token_tag_result_iterable:
+        if isinstance(token_tag_result, NewDocumentMarker):
+            tag_result.append(doc_tag_result)
+            doc_tag_result = []
+            continue
+        doc_tag_result.append(token_tag_result)
+    return tag_result
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
