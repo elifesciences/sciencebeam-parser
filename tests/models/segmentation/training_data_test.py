@@ -1,6 +1,8 @@
+# pylint: disable=not-callable
 import logging
 
 from lxml import etree
+from lxml.builder import E
 
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
@@ -12,7 +14,8 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.segmentation.data import SegmentationDataGenerator
 from sciencebeam_parser.models.segmentation.training_data import (
-    SegmentationTeiTrainingDataGenerator
+    SegmentationTeiTrainingDataGenerator,
+    SegmentationTrainingTeiParser
 )
 from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
 
@@ -28,6 +31,9 @@ LOGGER = logging.getLogger(__name__)
 
 TEXT_1 = 'this is text 1'
 TEXT_2 = 'this is text 2'
+
+TOKEN_1 = 'token1'
+TOKEN_2 = 'token2'
 
 
 def get_data_generator() -> SegmentationDataGenerator:
@@ -159,3 +165,20 @@ class TestSegmentationTeiTrainingDataGenerator:
         LOGGER.debug('xml: %r', etree.tostring(xml_root))
         assert get_text_content_list(xml_root.xpath('./text/note[@type="unknown"]')) == [TEXT_1]
         assert get_text_content_list(xml_root.xpath('./text')) == [f'{TEXT_1}\n']
+
+
+class TestSegmentationTrainingTeiParser:
+    def test_should_parse_single_token_labelled_training_tei_lines(self):
+        tei_root = E('tei', E('text', *[
+            E('front', TOKEN_1, E('lb')),
+            '\n',
+            E('back', TOKEN_2, E('lb')),
+            '\n'
+        ]))
+        tag_result = SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        assert tag_result == [[
+            (TOKEN_1, 'B-<front>'),
+            (TOKEN_2, 'B-<back>')
+        ]]
