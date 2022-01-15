@@ -38,7 +38,7 @@ def iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result
         yield NEW_DOCUMENT_MARKER
 
 
-def iter_flat_tag_result_to_tag_result(
+def iter_tag_result_for_flat_tag_result(
     flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
 ) -> Iterable[List[Tuple[str, str]]]:
     doc_tag_result: List[Tuple[str, str]] = []
@@ -53,7 +53,7 @@ def iter_flat_tag_result_to_tag_result(
 def parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> List[List[Tuple[str, str]]]:
-    return list(iter_flat_tag_result_to_tag_result(
+    return list(iter_tag_result_for_flat_tag_result(
         iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
             tei_root
         )
