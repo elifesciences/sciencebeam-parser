@@ -24,9 +24,18 @@ LOGGER = logging.getLogger(__name__)
 def iter_parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
-    for token_text in get_tokenized_tokens(get_text_content(tei_root)):
-        yield token_text, 'O'
-    yield NEW_DOCUMENT_MARKER
+    for text_node in tei_root.xpath('./text'):
+        if text_node.text:
+            for token_text in get_tokenized_tokens(text_node.text):
+                yield token_text, 'O'
+        for child_node in text_node:
+            label = '<' + child_node.tag + '>'
+            for token_index, token_text in enumerate(
+                get_tokenized_tokens(get_text_content(child_node))
+            ):
+                prefix = 'B-' if token_index == 0 else 'I-'
+                yield token_text, prefix + label
+        yield NEW_DOCUMENT_MARKER
 
 
 def parse_segmentation_training_tei_to_tag_result(

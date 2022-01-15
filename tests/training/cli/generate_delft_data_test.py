@@ -41,11 +41,10 @@ class TestMain:
         tei_source_path.mkdir(parents=True, exist_ok=True)
         (tei_source_path / 'sample.tei.xml').write_bytes(etree.tostring(
             E('tei', E('text', *[
-                TOKEN_1,
-                ' ',
-                TOKEN_2,
-                ' ',
-                TOKEN_3
+                E('front', TOKEN_1, E('lb')),
+                '\n',
+                E('back', TOKEN_2, E('lb')),
+                '\n'
             ]))
         ))
         main([
@@ -60,5 +59,5 @@ class TestMain:
         )
         LOGGER.debug('texts: %r', texts)
         assert len(texts) == 1
-        assert list(texts[0]) == [TOKEN_1, TOKEN_2, TOKEN_3]
-        assert list(_labels[0]) == ['O'] * 3
+        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+        assert list(_labels[0]) == ['B-<front>', 'B-<back>']
