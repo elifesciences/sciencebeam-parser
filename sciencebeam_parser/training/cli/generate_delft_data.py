@@ -21,7 +21,7 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 LOGGER = logging.getLogger(__name__)
 
 
-def iter_parse_segmentation_training_tei_to_flat_tag_result(
+def iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
     tei_root: etree.ElementBase
 ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
     for text_node in tei_root.xpath('./text'):
@@ -54,7 +54,7 @@ def parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> List[List[Tuple[str, str]]]:
     return list(iter_flat_tag_result_to_tag_result(
-        iter_parse_segmentation_training_tei_to_flat_tag_result(
+        iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
             tei_root
         )
     ))
