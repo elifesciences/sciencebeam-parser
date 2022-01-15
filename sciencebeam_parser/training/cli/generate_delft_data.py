@@ -21,23 +21,6 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 LOGGER = logging.getLogger(__name__)
 
 
-def iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
-    tei_root: etree.ElementBase
-) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
-    for text_node in tei_root.xpath('./text'):
-        if text_node.text:
-            for token_text in get_tokenized_tokens(text_node.text):
-                yield token_text, 'O'
-        for child_node in text_node:
-            label = '<' + child_node.tag + '>'
-            for token_index, token_text in enumerate(
-                get_tokenized_tokens(get_text_content(child_node))
-            ):
-                prefix = 'B-' if token_index == 0 else 'I-'
-                yield token_text, prefix + label
-        yield NEW_DOCUMENT_MARKER
-
-
 def iter_tag_result_for_flat_tag_result(
     flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
 ) -> Iterable[List[Tuple[str, str]]]:
@@ -56,14 +39,39 @@ def get_tag_result_for_flat_tag_result(
     return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
 
 
+class SegmentationTrainingTeiParser:
+    def iter_parse_training_tei_to_flat_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+        for text_node in tei_root.xpath('./text'):
+            if text_node.text:
+                for token_text in get_tokenized_tokens(text_node.text):
+                    yield token_text, 'O'
+            for child_node in text_node:
+                label = '<' + child_node.tag + '>'
+                for token_index, token_text in enumerate(
+                    get_tokenized_tokens(get_text_content(child_node))
+                ):
+                    prefix = 'B-' if token_index == 0 else 'I-'
+                    yield token_text, prefix + label
+            yield NEW_DOCUMENT_MARKER
+
+    def parse_training_tei_to_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ):
+        return get_tag_result_for_flat_tag_result(
+            self.iter_parse_training_tei_to_flat_tag_result(
+                tei_root
+            )
+        )
+
+
 def parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> List[List[Tuple[str, str]]]:
-    return get_tag_result_for_flat_tag_result(
-        iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
-            tei_root
-        )
-    )
+    return SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(tei_root)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
