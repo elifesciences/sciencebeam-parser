@@ -38,7 +38,8 @@ class TestMain:
         tei_source_path = tmp_path / 'tei'
         raw_source_path = tmp_path / 'raw'
         output_path = tmp_path / 'output.data'
-        tei_source_path.write_bytes(etree.tostring(
+        tei_source_path.mkdir(parents=True, exist_ok=True)
+        (tei_source_path / 'sample.tei.xml').write_bytes(etree.tostring(
             E('tei', E('text', *[
                 TOKEN_1,
                 ' ',
@@ -49,7 +50,7 @@ class TestMain:
         ))
         main([
             '--model-name=segmentation',
-            f'--tei-source-path={tei_source_path}',
+            f'--tei-source-path={tei_source_path}/*.tei.xml',
             f'--raw-source-path={raw_source_path}',
             f'--delft-output-path={output_path}'
         ])
