@@ -21,7 +21,7 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 LOGGER = logging.getLogger(__name__)
 
 
-def iter_parse_segmentation_training_tei_to_tag_result(
+def iter_parse_segmentation_training_tei_to_flat_tag_result(
     tei_root: etree.ElementBase
 ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
     for text_node in tei_root.xpath('./text'):
@@ -38,21 +38,26 @@ def iter_parse_segmentation_training_tei_to_tag_result(
         yield NEW_DOCUMENT_MARKER
 
 
-def parse_segmentation_training_tei_to_tag_result(
-    tei_root: etree.ElementBase
-) -> List[List[Tuple[str, str]]]:
-    token_tag_result_iterable = iter_parse_segmentation_training_tei_to_tag_result(
-        tei_root
-    )
-    tag_result = []
+def iter_flat_tag_result_to_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> Iterable[List[Tuple[str, str]]]:
     doc_tag_result: List[Tuple[str, str]] = []
-    for token_tag_result in token_tag_result_iterable:
+    for token_tag_result in flat_tag_result_iterable:
         if isinstance(token_tag_result, NewDocumentMarker):
-            tag_result.append(doc_tag_result)
+            yield doc_tag_result
             doc_tag_result = []
             continue
         doc_tag_result.append(token_tag_result)
-    return tag_result
+
+
+def parse_segmentation_training_tei_to_tag_result(
+    tei_root: etree.ElementBase
+) -> List[List[Tuple[str, str]]]:
+    return list(iter_flat_tag_result_to_tag_result(
+        iter_parse_segmentation_training_tei_to_flat_tag_result(
+            tei_root
+        )
+    ))
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
