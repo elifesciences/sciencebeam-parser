@@ -50,14 +50,20 @@ def iter_tag_result_for_flat_tag_result(
         doc_tag_result.append(token_tag_result)
 
 
+def get_tag_result_for_flat_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> List[List[Tuple[str, str]]]:
+    return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
+
+
 def parse_segmentation_training_tei_to_tag_result(
     tei_root: etree.ElementBase
 ) -> List[List[Tuple[str, str]]]:
-    return list(iter_tag_result_for_flat_tag_result(
+    return get_tag_result_for_flat_tag_result(
         iter_flat_tag_result_for_parsed_segmentation_training_tei_to_flat_tag_result(
             tei_root
         )
-    ))
+    )
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
