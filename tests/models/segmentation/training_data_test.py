@@ -182,3 +182,16 @@ class TestSegmentationTrainingTeiParser:
             (TOKEN_1, 'B-<front>'),
             (TOKEN_2, 'B-<back>')
         ]]
+
+    def test_should_parse_single_label_with_multiple_lines(self):
+        tei_root = E('tei', E('text', *[
+            E('front', TOKEN_1, E('lb'), '\n', TOKEN_2, E('lb')),
+            '\n'
+        ]))
+        tag_result = SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        assert tag_result == [[
+            (TOKEN_1, 'B-<front>'),
+            (TOKEN_2, 'I-<front>')
+        ]]
