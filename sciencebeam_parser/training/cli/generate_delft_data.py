@@ -2,7 +2,7 @@ import argparse
 import logging
 from glob import glob
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from lxml import etree
 
@@ -19,6 +19,20 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def parse_segmentation_training_tei_to_tag_result(
+    tei_root: etree.ElementBase
+) -> List[List[Tuple[str, str]]]:
+    token_texts = np.asarray(
+        [get_tokenized_tokens(get_text_content(tei_root))],
+        dtype='object'
+    )
+    token_labels = np.asarray(
+        [['O'] * len(token_texts[0])],
+        dtype='object'
+    )
+    return get_tag_result(texts=token_texts, labels=token_labels)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -67,17 +81,11 @@ def generate_delft_training_data(
     with Path(delft_output_path).open('w', encoding='utf-8') as data_fp:
         for document_index, tei_file in enumerate(tei_file_list):
             tei_root = etree.parse(tei_file).getroot()
-            token_texts = np.asarray(
-                [get_tokenized_tokens(get_text_content(tei_root))],
-                dtype='object'
+            tag_result = parse_segmentation_training_tei_to_tag_result(
+                tei_root
             )
-            token_labels = np.asarray(
-                [['O'] * len(token_texts[0])],
-                dtype='object'
-            )
-            features = np.full(shape=(1, len(token_texts[0]), 1), fill_value='0')
-            tag_result = get_tag_result(texts=token_texts, labels=token_labels)
             LOGGER.debug('tag_result: %r', tag_result)
+            features = np.full(shape=(1, len(tag_result[0]), 1), fill_value='0')
             LOGGER.debug('features: %r', features)
             if document_index > 0:
                 data_fp.write('\n\n')
@@ -85,7 +93,7 @@ def generate_delft_training_data(
                 format_tag_result(
                     tag_result=tag_result,
                     output_format=TagOutputFormats.DATA,
-                    texts=token_texts,
+                    texts=None,
                     features=features
                 )
             )
