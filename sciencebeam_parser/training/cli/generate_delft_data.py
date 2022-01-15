@@ -1,5 +1,6 @@
 import argparse
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 
@@ -38,8 +39,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def generate_delft_training_data(
+    delft_output_path: str
+):
+    LOGGER.debug('delft_output_path: %r', delft_output_path)
+    Path(delft_output_path).write_text('', encoding='utf-8')
+
+
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
+    generate_delft_training_data(
+        delft_output_path=args.delft_output_path
+    )
 
 
 def main(argv: Optional[List[str]] = None):

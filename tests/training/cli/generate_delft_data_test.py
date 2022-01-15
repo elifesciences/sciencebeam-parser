@@ -32,4 +32,4 @@ class TestMain:
             f'--raw-source-path={raw_source_path}',
             f'--delft-output-path={output_path}'
         ])
-        # assert output_path.exists()
+        assert output_path.exists()
