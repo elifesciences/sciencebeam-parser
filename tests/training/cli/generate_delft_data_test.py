@@ -39,7 +39,7 @@ class TestMain:
         raw_source_path = tmp_path / 'raw'
         output_path = tmp_path / 'output.data'
         tei_source_path.mkdir(parents=True, exist_ok=True)
-        (tei_source_path / 'sample.tei.xml').write_bytes(etree.tostring(
+        (tei_source_path / 'sample.segmentation.tei.xml').write_bytes(etree.tostring(
             E('tei', E('text', *[
                 E('front', TOKEN_1, E('lb')),
                 '\n',
@@ -47,6 +47,11 @@ class TestMain:
                 '\n'
             ]))
         ))
+        raw_source_path.mkdir(parents=True, exist_ok=True)
+        (raw_source_path / 'sample.segmentation').write_text('\n'.join([
+            '{TOKEN_1} 1.1 1.2 1.3',
+            '{TOKEN_2} 2.1 2.2 2.3'
+        ]))
         main([
             '--model-name=segmentation',
             f'--tei-source-path={tei_source_path}/*.tei.xml',
@@ -61,3 +66,7 @@ class TestMain:
         assert len(texts) == 1
         assert list(texts[0]) == [TOKEN_1, TOKEN_2]
         assert list(_labels[0]) == ['B-<front>', 'B-<back>']
+        assert _features.tolist() == [[
+            ['1.1', '1.2', '1.3'],
+            ['2.1', '2.2', '2.3']
+        ]]

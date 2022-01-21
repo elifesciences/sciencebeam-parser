@@ -80,6 +80,6 @@ It will do one of the following:
 python -m sciencebeam_parser.training.cli.generate_delft_data \
     --model-name="segmentation" \
     --tei-source-path="data/generated-training-data/segmentation/corpus/tei/*.tei.xml" \
-    --raw-source-path="data/generated-training-data/segmentation/corpus/raw/*.segmentation" \
+    --raw-source-path="data/generated-training-data/segmentation/corpus/raw/" \
     --delft-output-path="./data/generated-training-data/delft/segmentation/corpus/segmentation.data"
 ```
