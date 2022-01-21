@@ -34,6 +34,8 @@ TEXT_2 = 'this is text 2'
 
 TOKEN_1 = 'token1'
 TOKEN_2 = 'token2'
+TOKEN_3 = 'token3'
+TOKEN_4 = 'token4'
 
 
 def get_data_generator() -> SegmentationDataGenerator:
@@ -194,4 +196,29 @@ class TestSegmentationTrainingTeiParser:
         assert tag_result == [[
             (TOKEN_1, 'B-<front>'),
             (TOKEN_2, 'I-<front>')
+        ]]
+
+    def test_should_parse_single_label_with_multiple_tokens_on_multiple_lines(self):
+        tei_root = E('tei', E('text', *[
+            E(
+                'front',
+                TOKEN_1,
+                ' ',
+                TOKEN_2,
+                E('lb'),
+                '\n',
+                TOKEN_3,
+                ' ',
+                TOKEN_4,
+                E('lb')
+            ),
+            '\n'
+        ]))
+        tag_result = SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        LOGGER.debug('tag_result: %r', tag_result)
+        assert tag_result == [[
+            (TOKEN_1, 'B-<front>'),
+            (TOKEN_3, 'I-<front>')
         ]]

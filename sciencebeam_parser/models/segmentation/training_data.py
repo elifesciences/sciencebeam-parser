@@ -1,11 +1,10 @@
 import logging
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Sequence, Tuple, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
-from sciencebeam_parser.utils.xml import get_text_content
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.document.layout_document import (
     LayoutLine,
@@ -156,6 +155,39 @@ def get_tag_result_for_flat_tag_result(
     return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
 
 
+def replace_line_feed_with_space(text: str) -> str:
+    return text.replace('\n', ' ').replace('\r', '')
+
+
+def iter_text_content_with_lb_as_regular_line_feed(
+    element: etree.ElementBase
+) -> Iterable[str]:
+    if element.text is not None:
+        yield replace_line_feed_with_space(element.text)
+    for child in element.iterchildren():
+        if child.tag == 'lb':
+            yield '\n'
+        yield from iter_text_content_with_lb_as_regular_line_feed(
+            child
+        )
+        if child.tail is not None:
+            yield replace_line_feed_with_space(child.tail)
+
+
+def get_text_content_with_lb_as_regular_line_feed(
+    element: etree.ElementBase
+) -> str:
+    return ''.join(iter_text_content_with_lb_as_regular_line_feed(element))
+
+
+def get_tei_text_lines(
+    element: Union[str, etree.ElementBase]
+) -> Sequence[str]:
+    return get_text_content_with_lb_as_regular_line_feed(
+        element
+    ).splitlines(keepends=False)
+
+
 class SegmentationTrainingTeiParser:
     def iter_parse_training_tei_to_flat_tag_result(
         self,
@@ -165,13 +197,15 @@ class SegmentationTrainingTeiParser:
             if text_node.text:
                 for token_text in get_tokenized_tokens(text_node.text):
                     yield token_text, 'O'
+                    break
             for child_node in text_node:
                 label = '<' + child_node.tag + '>'
-                for token_index, token_text in enumerate(
-                    get_tokenized_tokens(get_text_content(child_node))
-                ):
-                    prefix = 'B-' if token_index == 0 else 'I-'
-                    yield token_text, prefix + label
+                prefix = 'B-'
+                for line in get_tei_text_lines(child_node):
+                    for token_text in get_tokenized_tokens(line):
+                        yield token_text, prefix + label
+                        prefix = 'I-'
+                        break
             yield NEW_DOCUMENT_MARKER
 
     def parse_training_tei_to_tag_result(
