@@ -3,7 +3,7 @@ import logging
 import os
 from glob import glob
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
 
@@ -18,15 +18,13 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 from sciencebeam_parser.models.segmentation.training_data import (
     SegmentationTrainingTeiParser
 )
+from sciencebeam_parser.models.header.training_data import (
+    HeaderTrainingTeiParser
+)
+from sciencebeam_parser.models.training_data import TrainingTeiParser
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-def parse_segmentation_training_tei_to_tag_result(
-    tei_root: etree.ElementBase
-) -> List[List[Tuple[str, str]]]:
-    return SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(tei_root)
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -80,11 +78,21 @@ def get_raw_file_list_for_tei_file_list(
     ]
 
 
+def get_training_tei_parser_for_model_name(model_name: str) -> TrainingTeiParser:
+    if model_name == 'segmentation':
+        return SegmentationTrainingTeiParser()
+    if model_name == 'header':
+        return HeaderTrainingTeiParser()
+    raise RuntimeError('unsupported model: %r' % model_name)
+
+
 def generate_delft_training_data(  # pylint: disable=too-many-locals
+    model_name: str,
     tei_source_path: str,
     raw_source_path: str,
     delft_output_path: str
 ):
+    training_tei_parser = get_training_tei_parser_for_model_name(model_name)
     LOGGER.debug('tei_source_path: %r', tei_source_path)
     tei_file_list = glob(tei_source_path)
     if not tei_file_list:
@@ -100,7 +108,7 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
     with Path(delft_output_path).open('w', encoding='utf-8') as data_fp:
         for document_index, (tei_file, raw_file) in enumerate(zip(tei_file_list, raw_file_list)):
             tei_root = etree.parse(tei_file).getroot()
-            tag_result = parse_segmentation_training_tei_to_tag_result(
+            tag_result = training_tei_parser.parse_training_tei_to_tag_result(
                 tei_root
             )
             LOGGER.debug('tag_result: %r', tag_result)
@@ -127,6 +135,7 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
     generate_delft_training_data(
+        model_name=args.model_name,
         tei_source_path=args.tei_source_path,
         raw_source_path=args.raw_source_path,
         delft_output_path=args.delft_output_path

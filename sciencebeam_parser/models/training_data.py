@@ -1,18 +1,24 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
-from typing import Iterable, List, Mapping, Optional, Sequence, Union
+from typing import Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.utils.labels import get_split_prefix_label
+from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.document.tei.common import TEI_E
 from sciencebeam_parser.document.layout_document import (
     LayoutLine
 )
-from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
+from sciencebeam_parser.models.data import (
+    NEW_DOCUMENT_MARKER,
+    LabeledLayoutModelData,
+    LayoutModelData,
+    NewDocumentMarker
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -353,4 +359,206 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
     ) -> etree.ElementBase:
         return self.get_training_tei_xml_for_multiple_model_data_iterables(
             [model_data_iterable]
+        )
+
+
+TEI_LB = 'lb'
+
+
+def _get_tag_expression_for_element(element: etree.ElementBase) -> str:
+    if not element.attrib:
+        return element.tag
+    if len(element.attrib) > 1:
+        raise ValueError('only supporting up to one attribute')
+    key, value = list(element.attrib.items())[0]
+    return '{tag}[@{key}="{value}"]'.format(tag=element.tag, key=key, value=value)
+
+
+class TeiTrainingElementPath(NamedTuple):
+    element_list: Sequence[etree.ElementBase] = tuple([])
+
+    def get_path(self) -> Sequence[str]:
+        return [
+            _get_tag_expression_for_element(element)
+            for element in self.element_list
+        ]
+
+    def append(self, element: etree.ElementBase) -> 'TeiTrainingElementPath':
+        return TeiTrainingElementPath(
+            list(self.element_list) + [element]
+        )
+
+
+EMPTY_TEI_TRAINING_ELEMENT_PATH = TeiTrainingElementPath()
+
+
+class TeiTrainingText(NamedTuple):
+    text: str
+    path: TeiTrainingElementPath
+
+
+class TeiTrainingLine(NamedTuple):
+    text_list: Sequence[TeiTrainingText]
+
+
+def _iter_flat_tei_training_text_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[Union[TeiTrainingText, ExtractInstruction]]:
+    LOGGER.debug('current_path: %s', current_path)
+    if parent_element.text:
+        yield TeiTrainingText(
+            text=parent_element.text,
+            path=current_path
+        )
+
+    for child_element in parent_element:
+        if child_element.tag == TEI_LB:
+            yield NewLineExtractInstruction()
+        else:
+            child_path = current_path.append(child_element)
+            yield from _iter_flat_tei_training_text_from_element(
+                child_element,
+                child_path
+            )
+
+        if child_element.tail:
+            yield TeiTrainingText(
+                text=child_element.tail,
+                path=current_path
+            )
+
+
+def _iter_tei_training_lines_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[TeiTrainingLine]:
+    line_text_list = []
+    for item in _iter_flat_tei_training_text_from_element(
+        parent_element,
+        current_path
+    ):
+        if isinstance(item, TeiTrainingText):
+            line_text_list.append(item)
+        elif isinstance(item, NewLineExtractInstruction):
+            yield TeiTrainingLine(line_text_list)
+            line_text_list = []
+        else:
+            raise RuntimeError('unrecognised item: %r' % item)
+    if line_text_list:
+        yield TeiTrainingLine(line_text_list)
+
+
+def iter_tag_result_for_flat_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> Iterable[List[Tuple[str, str]]]:
+    doc_tag_result: List[Tuple[str, str]] = []
+    for token_tag_result in flat_tag_result_iterable:
+        if isinstance(token_tag_result, NewDocumentMarker):
+            yield doc_tag_result
+            doc_tag_result = []
+            continue
+        doc_tag_result.append(token_tag_result)
+
+
+def get_tag_result_for_flat_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> List[List[Tuple[str, str]]]:
+    return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
+
+
+class TrainingTeiParser(ABC):
+    @abstractmethod
+    def parse_training_tei_to_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> List[List[Tuple[str, str]]]:
+        pass
+
+
+class AbstractTrainingTeiParser(TrainingTeiParser):
+    def __init__(
+        self,
+        root_training_xml_element_path: Sequence[str],
+        training_xml_element_path_by_label: Mapping[str, Sequence[str]],
+        line_as_token: bool = False
+    ) -> None:
+        self.label_by_relative_element_path_map = {
+            tuple(element_path[len(root_training_xml_element_path):]): label
+            for label, element_path in training_xml_element_path_by_label.items()
+        }
+        for element_path in list(self.label_by_relative_element_path_map.keys()):
+            if len(element_path) < 2:
+                continue
+            parent_element_path = element_path[:-1]
+            if parent_element_path not in self.label_by_relative_element_path_map:
+                self.label_by_relative_element_path_map[parent_element_path] = 'O'
+        self.root_training_xml_xpath = './' + '/'.join(root_training_xml_element_path)
+        self.line_as_token = line_as_token
+
+    def _get_label_for_element_path(
+        self,
+        tei_training_element_path: TeiTrainingElementPath,
+        text: str
+    ) -> str:
+        element_path = tei_training_element_path.get_path()
+        label = self.label_by_relative_element_path_map.get(tuple(element_path))
+        if not label:
+            raise RuntimeError(
+                'label not found for %r (available: %r; for text: %r)' % (
+                    element_path,
+                    self.label_by_relative_element_path_map.keys(),
+                    text
+                )
+            )
+        return label
+
+    def iter_parse_training_tei_to_flat_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+        for text_node in tei_root.xpath(self.root_training_xml_xpath):
+            tei_training_lines = list(
+                _iter_tei_training_lines_from_element(
+                    text_node, EMPTY_TEI_TRAINING_ELEMENT_PATH
+                )
+            )
+            LOGGER.debug('tei_training_lines: %r', tei_training_lines)
+            prefix = ''
+            prev_label = ''
+            for line in tei_training_lines:
+                for text in line.text_list:
+                    if text.text.isspace():
+                        continue
+                    token_count = 0
+                    if text.path.element_list:
+                        label = self._get_label_for_element_path(text.path, text=text.text)
+                        if prev_label != label:
+                            prefix = 'B-'
+                    else:
+                        label = 'O'
+                        prefix = ''
+                    if label in OTHER_LABELS:
+                        prefix = ''
+                    prev_label = label
+                    for token_text in get_tokenized_tokens(text.text):
+                        yield token_text, prefix + label
+                        token_count += 1
+                        if prefix:
+                            prefix = 'I-'
+                        if self.line_as_token:
+                            break
+                    if token_count and self.line_as_token:
+                        # we are only outputting the first token of each line
+                        break
+            yield NEW_DOCUMENT_MARKER
+
+    def parse_training_tei_to_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> List[List[Tuple[str, str]]]:
+        return get_tag_result_for_flat_tag_result(
+            self.iter_parse_training_tei_to_flat_tag_result(
+                tei_root
+            )
         )

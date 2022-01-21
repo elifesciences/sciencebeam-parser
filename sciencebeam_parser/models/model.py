@@ -28,11 +28,13 @@ from sciencebeam_parser.document.layout_document import (
     LayoutDocument
 )
 from sciencebeam_parser.models.data import (
+    NEW_DOCUMENT_MARKER,
     AppFeaturesContext,
     DocumentFeaturesContext,
     LabeledLayoutModelData,
     LayoutModelData,
-    ModelDataGenerator
+    ModelDataGenerator,
+    NewDocumentMarker
 )
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
 from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
@@ -59,13 +61,6 @@ class LayoutModelLabel:
 class LabeledLayoutToken(NamedTuple):
     label: str
     layout_token: LayoutToken
-
-
-class NewDocumentMarker:
-    pass
-
-
-NEW_DOCUMENT_MARKER = NewDocumentMarker()
 
 
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:

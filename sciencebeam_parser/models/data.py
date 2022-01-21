@@ -31,6 +31,13 @@ class DocumentFeaturesContext(NamedTuple):
 DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
 
 
+class NewDocumentMarker:
+    pass
+
+
+NEW_DOCUMENT_MARKER = NewDocumentMarker()
+
+
 @dataclass
 class LayoutModelData:
     data_line: str
