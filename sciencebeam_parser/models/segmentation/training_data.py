@@ -1,5 +1,5 @@
 import logging
-from typing import Iterable, List, Sequence, Tuple, Union
+from typing import Iterable, List, NamedTuple, Sequence, Tuple, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -19,6 +19,8 @@ from sciencebeam_parser.models.model import (
 )
 from sciencebeam_parser.models.training_data import (
     AbstractTeiTrainingDataGenerator,
+    ExtractInstruction,
+    NewLineExtractInstruction,
     get_model_data_label
 )
 
@@ -155,37 +157,76 @@ def get_tag_result_for_flat_tag_result(
     return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
 
 
-def replace_line_feed_with_space(text: str) -> str:
-    return text.replace('\n', ' ').replace('\r', '')
+TEI_LB = 'lb'
 
 
-def iter_text_content_with_lb_as_regular_line_feed(
-    element: etree.ElementBase
-) -> Iterable[str]:
-    if element.text is not None:
-        yield replace_line_feed_with_space(element.text)
-    for child in element.iterchildren():
-        if child.tag == 'lb':
-            yield '\n'
-        yield from iter_text_content_with_lb_as_regular_line_feed(
-            child
+class TeiTrainingElementPath(NamedTuple):
+    element_list: Sequence[etree.ElementBase] = tuple([])
+
+    def append(self, element: etree.ElementBase) -> 'TeiTrainingElementPath':
+        return TeiTrainingElementPath(
+            list(self.element_list) + [element]
         )
-        if child.tail is not None:
-            yield replace_line_feed_with_space(child.tail)
 
 
-def get_text_content_with_lb_as_regular_line_feed(
-    element: etree.ElementBase
-) -> str:
-    return ''.join(iter_text_content_with_lb_as_regular_line_feed(element))
+EMPTY_TEI_TRAINING_ELEMENT_PATH = TeiTrainingElementPath()
 
 
-def get_tei_text_lines(
-    element: Union[str, etree.ElementBase]
-) -> Sequence[str]:
-    return get_text_content_with_lb_as_regular_line_feed(
-        element
-    ).splitlines(keepends=False)
+class TeiTrainingText(NamedTuple):
+    text: str
+    path: TeiTrainingElementPath
+
+
+class TeiTrainingLine(NamedTuple):
+    text_list: Sequence[TeiTrainingText]
+
+
+def _iter_flat_tei_training_text_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[Union[TeiTrainingText, ExtractInstruction]]:
+    LOGGER.debug('current_path: %s', current_path)
+    if parent_element.text:
+        yield TeiTrainingText(
+            text=parent_element.text,
+            path=current_path
+        )
+
+    for child_element in parent_element:
+        if child_element.tag == TEI_LB:
+            yield NewLineExtractInstruction()
+        else:
+            child_path = current_path.append(child_element)
+            yield from _iter_flat_tei_training_text_from_element(
+                child_element,
+                child_path
+            )
+
+        if child_element.tail:
+            yield TeiTrainingText(
+                text=child_element.tail,
+                path=current_path
+            )
+
+
+def _iter_tei_training_lines_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[TeiTrainingLine]:
+    line_text_list = []
+    for item in _iter_flat_tei_training_text_from_element(
+        parent_element,
+        current_path
+    ):
+        if isinstance(item, TeiTrainingText):
+            line_text_list.append(item)
+        elif isinstance(item, NewLineExtractInstruction):
+            yield TeiTrainingLine(line_text_list)
+            line_text_list = []
+        else:
+            raise RuntimeError('unrecognised item: %r' % item)
+    if line_text_list:
+        yield TeiTrainingLine(line_text_list)
 
 
 class SegmentationTrainingTeiParser:
@@ -194,17 +235,33 @@ class SegmentationTrainingTeiParser:
         tei_root: etree.ElementBase
     ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
         for text_node in tei_root.xpath('./text'):
-            if text_node.text:
-                for token_text in get_tokenized_tokens(text_node.text):
-                    yield token_text, 'O'
-                    break
-            for child_node in text_node:
-                label = '<' + child_node.tag + '>'
-                prefix = 'B-'
-                for line in get_tei_text_lines(child_node):
-                    for token_text in get_tokenized_tokens(line):
+            tei_training_lines = list(
+                _iter_tei_training_lines_from_element(
+                    text_node, EMPTY_TEI_TRAINING_ELEMENT_PATH
+                )
+            )
+            LOGGER.debug('tei_training_lines: %r', tei_training_lines)
+            prefix = ''
+            prev_label = ''
+            for line in tei_training_lines:
+                for text in line.text_list:
+                    token_count = 0
+                    if text.path.element_list:
+                        label = '<' + text.path.element_list[-1].tag + '>'
+                        if prev_label != label:
+                            prefix = 'B-'
+                    else:
+                        label = 'O'
+                        prefix = ''
+                    prev_label = label
+                    for token_text in get_tokenized_tokens(text.text):
                         yield token_text, prefix + label
-                        prefix = 'I-'
+                        token_count += 1
+                        if prefix:
+                            prefix = 'I-'
+                        break
+                    if token_count:
+                        # we are only outputting the first token of each line
                         break
             yield NEW_DOCUMENT_MARKER
 
