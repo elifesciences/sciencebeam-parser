@@ -18,6 +18,7 @@ from sciencebeam_parser.models.model import (
     get_split_prefix_label
 )
 from sciencebeam_parser.models.training_data import (
+    OTHER_LABELS,
     AbstractTeiTrainingDataGenerator,
     ExtractInstruction,
     NewLineExtractInstruction,
@@ -160,8 +161,23 @@ def get_tag_result_for_flat_tag_result(
 TEI_LB = 'lb'
 
 
+def _get_tag_expression_for_element(element: etree.ElementBase) -> str:
+    if not element.attrib:
+        return element.tag
+    if len(element.attrib) > 1:
+        raise ValueError('only supporting up to one attribute')
+    key, value = list(element.attrib.items())[0]
+    return '{tag}[@{key}="{value}"]'.format(tag=element.tag, key=key, value=value)
+
+
 class TeiTrainingElementPath(NamedTuple):
     element_list: Sequence[etree.ElementBase] = tuple([])
+
+    def get_path(self) -> Sequence[str]:
+        return [
+            _get_tag_expression_for_element(element)
+            for element in self.element_list
+        ]
 
     def append(self, element: etree.ElementBase) -> 'TeiTrainingElementPath':
         return TeiTrainingElementPath(
@@ -230,6 +246,22 @@ def _iter_tei_training_lines_from_element(
 
 
 class SegmentationTrainingTeiParser:
+    def __init__(self) -> None:
+        self.label_by_relative_element_path_map = {
+            tuple(element_path[len(ROOT_TRAINING_XML_ELEMENT_PATH):]): label
+            for label, element_path in TRAINING_XML_ELEMENT_PATH_BY_LABEL.items()
+        }
+
+    def _get_label_for_element_path(
+        self,
+        tei_training_element_path: TeiTrainingElementPath
+    ) -> str:
+        element_path = tei_training_element_path.get_path()
+        label = self.label_by_relative_element_path_map.get(tuple(element_path))
+        if not label:
+            raise RuntimeError('label not found for %r' % element_path)
+        return label
+
     def iter_parse_training_tei_to_flat_tag_result(
         self,
         tei_root: etree.ElementBase
@@ -247,11 +279,13 @@ class SegmentationTrainingTeiParser:
                 for text in line.text_list:
                     token_count = 0
                     if text.path.element_list:
-                        label = '<' + text.path.element_list[-1].tag + '>'
+                        label = self._get_label_for_element_path(text.path)
                         if prev_label != label:
                             prefix = 'B-'
                     else:
                         label = 'O'
+                        prefix = ''
+                    if label in OTHER_LABELS:
                         prefix = ''
                     prev_label = label
                     for token_text in get_tokenized_tokens(text.text):

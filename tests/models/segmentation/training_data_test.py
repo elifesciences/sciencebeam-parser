@@ -1,5 +1,8 @@
 # pylint: disable=not-callable
 import logging
+from typing import Sequence
+
+import pytest
 
 from lxml import etree
 from lxml.builder import E
@@ -12,11 +15,16 @@ from sciencebeam_parser.document.layout_document import (
 from sciencebeam_parser.models.data import (
     DEFAULT_DOCUMENT_FEATURES_CONTEXT
 )
+from sciencebeam_parser.models.training_data import (
+    OTHER_LABELS
+)
 from sciencebeam_parser.models.segmentation.data import SegmentationDataGenerator
 from sciencebeam_parser.models.segmentation.training_data import (
+    TRAINING_XML_ELEMENT_PATH_BY_LABEL,
     SegmentationTeiTrainingDataGenerator,
     SegmentationTrainingTeiParser
 )
+from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
 
 from tests.models.training_data_test_utils import (
@@ -174,15 +182,15 @@ class TestSegmentationTrainingTeiParser:
         tei_root = E('tei', E('text', *[
             E('front', TOKEN_1, E('lb')),
             '\n',
-            E('back', TOKEN_2, E('lb')),
+            E('body', TOKEN_2, E('lb')),
             '\n'
         ]))
         tag_result = SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(
             tei_root
         )
         assert tag_result == [[
-            (TOKEN_1, 'B-<front>'),
-            (TOKEN_2, 'B-<back>')
+            (TOKEN_1, 'B-<header>'),
+            (TOKEN_2, 'B-<body>')
         ]]
 
     def test_should_parse_single_label_with_multiple_lines(self):
@@ -194,8 +202,8 @@ class TestSegmentationTrainingTeiParser:
             tei_root
         )
         assert tag_result == [[
-            (TOKEN_1, 'B-<front>'),
-            (TOKEN_2, 'I-<front>')
+            (TOKEN_1, 'B-<header>'),
+            (TOKEN_2, 'I-<header>')
         ]]
 
     def test_should_only_output_first_token_of_unlabelled_lines(self):
@@ -241,6 +249,44 @@ class TestSegmentationTrainingTeiParser:
         )
         LOGGER.debug('tag_result: %r', tag_result)
         assert tag_result == [[
-            (TOKEN_1, 'B-<front>'),
-            (TOKEN_3, 'I-<front>')
+            (TOKEN_1, 'B-<header>'),
+            (TOKEN_3, 'I-<header>')
         ]]
+
+    @pytest.mark.parametrize(
+        "tei_label,element_path", list(TRAINING_XML_ELEMENT_PATH_BY_LABEL.items())
+    )
+    def test_should_parse_all_supported_labels(
+        self,
+        tei_label: str,
+        element_path: Sequence[str]
+    ):
+        xml_writer = XmlTreeWriter(E('tei'), element_maker=E)
+        xml_writer.require_path(element_path)
+        xml_writer.append_all(
+            TOKEN_1,
+            ' ',
+            TOKEN_2,
+            E('lb'),
+            '\n',
+            TOKEN_3,
+            ' ',
+            TOKEN_4,
+            E('lb')
+        )
+        tei_root = xml_writer.root
+        LOGGER.debug('tei_root: %r', etree.tostring(tei_root))
+        tag_result = SegmentationTrainingTeiParser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        LOGGER.debug('tag_result: %r', tag_result)
+        if tei_label in OTHER_LABELS:
+            assert tag_result == [[
+                (TOKEN_1, 'O'),
+                (TOKEN_3, 'O')
+            ]]
+        else:
+            assert tag_result == [[
+                (TOKEN_1, f'B-{tei_label}'),
+                (TOKEN_3, f'I-{tei_label}')
+            ]]

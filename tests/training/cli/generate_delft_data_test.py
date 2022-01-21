@@ -43,7 +43,7 @@ class TestMain:
             E('tei', E('text', *[
                 E('front', TOKEN_1, E('lb')),
                 '\n',
-                E('back', TOKEN_2, E('lb')),
+                E('body', TOKEN_2, E('lb')),
                 '\n'
             ]))
         ))
@@ -65,7 +65,7 @@ class TestMain:
         LOGGER.debug('texts: %r', texts)
         assert len(texts) == 1
         assert list(texts[0]) == [TOKEN_1, TOKEN_2]
-        assert list(_labels[0]) == ['B-<front>', 'B-<back>']
+        assert list(_labels[0]) == ['B-<header>', 'B-<body>']
         assert _features.tolist() == [[
             ['1.1', '1.2', '1.3'],
             ['2.1', '2.2', '2.3']

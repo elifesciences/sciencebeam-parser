@@ -1,7 +1,7 @@
 import logging
 import re
 from itertools import zip_longest
-from typing import Mapping, NamedTuple, Optional, Sequence, Tuple
+from typing import Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -115,11 +115,18 @@ class XmlTreeWriter:
     def root(self) -> etree.ElementBase:
         return self.current_element.getroottree().getroot()
 
-    def append(self, element: etree.ElementBase):
-        self.current_element.append(element)
-
     def append_text(self, text: str):
         _append_text(self.current_element, text)
+
+    def append(self, element_or_text: Union[etree.ElementBase, str]):
+        if isinstance(element_or_text, str):
+            self.append_text(element_or_text)
+        else:
+            self.current_element.append(element_or_text)
+
+    def append_all(self, *element_or_text_list: Sequence[Union[etree.ElementBase, str]]):
+        for element_or_text in element_or_text_list:
+            self.append(element_or_text)
 
     def require_path(self, required_path: Sequence[str]):
         self.current_element, self.current_path = _get_element_at_path(
