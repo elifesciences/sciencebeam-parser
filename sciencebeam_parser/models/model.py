@@ -37,7 +37,7 @@ from sciencebeam_parser.models.data import (
     NewDocumentMarker
 )
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
-from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
+from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator, TrainingTeiParser
 from sciencebeam_parser.document.semantic_document import SemanticContentWrapper
 from sciencebeam_parser.models.model_impl import ModelImpl, T_ModelImplFactory
 from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
@@ -247,6 +247,10 @@ class Model(ABC, Preloadable):
 
     # @abstractmethod
     def get_tei_training_data_generator(self) -> TeiTrainingDataGenerator:
+        raise NotImplementedError()
+
+    # @abstractmethod
+    def get_training_tei_parser(self) -> TrainingTeiParser:
         raise NotImplementedError()
 
     def _load_model_impl(self) -> ModelImpl:

@@ -15,13 +15,11 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     format_tag_result
 )
 
-from sciencebeam_parser.models.segmentation.training_data import (
-    SegmentationTrainingTeiParser
-)
-from sciencebeam_parser.models.header.training_data import (
-    HeaderTrainingTeiParser
-)
 from sciencebeam_parser.models.training_data import TrainingTeiParser
+
+from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
+from sciencebeam_parser.config.config import AppConfig
+from sciencebeam_parser.app.parser import ScienceBeamParser
 
 
 LOGGER = logging.getLogger(__name__)
@@ -78,21 +76,31 @@ def get_raw_file_list_for_tei_file_list(
     ]
 
 
-def get_training_tei_parser_for_model_name(model_name: str) -> TrainingTeiParser:
-    if model_name == 'segmentation':
-        return SegmentationTrainingTeiParser()
-    if model_name == 'header':
-        return HeaderTrainingTeiParser()
-    raise RuntimeError('unsupported model: %r' % model_name)
+def get_training_tei_parser_for_model_name(
+    model_name: str,
+    sciencebeam_parser: ScienceBeamParser
+) -> TrainingTeiParser:
+    model = sciencebeam_parser.fulltext_models.get_sequence_model_by_name(model_name)
+    try:
+        training_tei_parser = model.get_training_tei_parser()
+        assert training_tei_parser is not None
+        return training_tei_parser
+    except NotImplementedError as exc:
+        training_tei_parser = None
+        raise RuntimeError('unsupported model: %r' % model_name) from exc
 
 
 def generate_delft_training_data(  # pylint: disable=too-many-locals
     model_name: str,
     tei_source_path: str,
     raw_source_path: str,
-    delft_output_path: str
+    delft_output_path: str,
+    sciencebeam_parser: ScienceBeamParser
 ):
-    training_tei_parser = get_training_tei_parser_for_model_name(model_name)
+    training_tei_parser = get_training_tei_parser_for_model_name(
+        model_name,
+        sciencebeam_parser=sciencebeam_parser
+    )
     LOGGER.debug('tei_source_path: %r', tei_source_path)
     tei_file_list = glob(tei_source_path)
     if not tei_file_list:
@@ -134,11 +142,16 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
 
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
+    config = AppConfig.load_yaml(
+        DEFAULT_CONFIG_FILE
+    )
+    sciencebeam_parser = ScienceBeamParser.from_config(config)
     generate_delft_training_data(
         model_name=args.model_name,
         tei_source_path=args.tei_source_path,
         raw_source_path=args.raw_source_path,
-        delft_output_path=args.delft_output_path
+        delft_output_path=args.delft_output_path,
+        sciencebeam_parser=sciencebeam_parser
     )
 
 
