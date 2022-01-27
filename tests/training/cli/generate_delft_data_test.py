@@ -1,6 +1,10 @@
 # pylint: disable=not-callable
 import logging
 from pathlib import Path
+from typing import Iterator
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from lxml import etree
 from lxml.builder import E
@@ -10,6 +14,8 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import (
 )
 
 from sciencebeam_parser.document.tei.common import TEI_E
+
+import sciencebeam_parser.training.cli.generate_delft_data as generate_delft_data_module
 from sciencebeam_parser.training.cli.generate_delft_data import (
     main
 )
@@ -30,6 +36,16 @@ SOURCE_FILENAME_1 = 'test1.pdf'
 TOKEN_1 = 'token1'
 TOKEN_2 = 'token2'
 TOKEN_3 = 'token3'
+
+
+@pytest.fixture(autouse=True)
+def _patch_sciencebeam_parser_class_mock(
+    sciencebeam_parser_class_mock: MagicMock
+) -> Iterator[MagicMock]:
+    with patch.object(
+        generate_delft_data_module, 'ScienceBeamParser', sciencebeam_parser_class_mock
+    ) as mock:
+        yield mock
 
 
 @log_on_exception
