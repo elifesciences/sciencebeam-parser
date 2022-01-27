@@ -151,11 +151,6 @@ class TestMain:
             'affiliation', 'orgName[@type="institution"]'
         ])
         xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
-        # xml_writer.require_path([
-        #     'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
-        #     'affiliation', 'address', 'country'
-        # ])
-        # xml_writer.append_text(TOKEN_2)
         (tei_source_path / 'sample.affiliation.tei.xml').write_bytes(etree.tostring(
             xml_writer.root
         ))
@@ -183,4 +178,48 @@ class TestMain:
         assert len(texts) == 1
         assert list(texts[0]) == [TOKEN_1, TOKEN_2]
         assert list(labels[0]) == ['B-<institution>', 'I-<institution>']
+        assert features.tolist() == expected_features.tolist()
+
+    def test_should_be_able_to_generate_citation_training_data(
+        self,
+        tmp_path: Path,
+        fulltext_models_mock: MockFullTextModels,
+        sciencebeam_parser_mock: MagicMock
+    ):
+        data_generator = fulltext_models_mock.citation_model.get_data_generator(
+            document_features_context=sciencebeam_parser_mock.document_features_context
+        )
+        tei_source_path = tmp_path / 'tei'
+        output_path = tmp_path / 'output.data'
+        tei_source_path.mkdir(parents=True, exist_ok=True)
+        xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
+        xml_writer.require_path(['text', 'back', 'listBibl', 'bibl', 'author'])
+        xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
+        (tei_source_path / 'sample.references.tei.xml').write_bytes(etree.tostring(
+            xml_writer.root
+        ))
+        main([
+            '--model-name=citation',
+            f'--tei-source-path={tei_source_path}/*.tei.xml',
+            f'--delft-output-path={output_path}'
+        ])
+        assert output_path.exists()
+        layout_document = LayoutDocument.for_blocks([
+            LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
+        ])
+        expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
+            layout_document
+        ))
+        _expected_texts, expected_features = load_data_crf_lines(expected_data_lines)
+        LOGGER.debug('expected_features: %r', expected_features)
+        texts, labels, features = load_data_and_labels_crf_file(
+            str(output_path)
+        )
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('labels: %r', labels)
+        LOGGER.debug('features: %r', features)
+        LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
+        assert len(texts) == 1
+        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+        assert list(labels[0]) == ['B-<author>', 'I-<author>']
         assert features.tolist() == expected_features.tolist()

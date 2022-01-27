@@ -1,5 +1,8 @@
 import logging
-from sciencebeam_parser.models.citation.training_data import CitationTeiTrainingDataGenerator
+from sciencebeam_parser.models.citation.training_data import (
+    CitationTeiTrainingDataGenerator,
+    CitationTrainingTeiParser
+)
 
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext
@@ -26,3 +29,6 @@ class CitationModel(Model):
 
     def get_tei_training_data_generator(self) -> CitationTeiTrainingDataGenerator:
         return CitationTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> CitationTrainingTeiParser:
+        return CitationTrainingTeiParser()
