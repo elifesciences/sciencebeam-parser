@@ -351,6 +351,28 @@ class TestFigureTrainingTeiParser:
             (TOKEN_2, 'B-<label>')
         ]]
 
+    def test_should_parse_figure_head_with_label_and_continued_head(self):
+        tei_root = _get_training_tei_with_figures([E(
+            'figure',
+            E(
+                'head',
+                TOKEN_1,
+                ' ',
+                E('label', TOKEN_2, E('lb')),
+                ' ',
+                TOKEN_3
+            ),
+            '\n'
+        )])
+        tag_result = get_training_tei_parser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        assert tag_result == [[
+            (TOKEN_1, 'B-<figure_head>'),
+            (TOKEN_2, 'B-<label>'),
+            (TOKEN_3, 'I-<figure_head>')
+        ]]
+
     def test_should_interpret_text_in_figure_as_unlabelled(self):
         tei_root = _get_training_tei_with_figures([E(
             'figure', TOKEN_1, E('lb'), '\n'

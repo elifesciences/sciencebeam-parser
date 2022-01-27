@@ -395,6 +395,7 @@ EMPTY_TEI_TRAINING_ELEMENT_PATH = TeiTrainingElementPath()
 class TeiTrainingText(NamedTuple):
     text: str
     path: TeiTrainingElementPath
+    is_start: bool
 
 
 class TeiTrainingLine(NamedTuple):
@@ -406,11 +407,14 @@ def _iter_flat_tei_training_text_from_element(
     current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
 ) -> Iterable[Union[TeiTrainingText, ExtractInstruction]]:
     LOGGER.debug('current_path: %s', current_path)
+    is_start = True
     if parent_element.text:
         yield TeiTrainingText(
             text=parent_element.text,
-            path=current_path
+            path=current_path,
+            is_start=is_start
         )
+        is_start = False
 
     for child_element in parent_element:
         if child_element.tag == TEI_LB:
@@ -425,8 +429,10 @@ def _iter_flat_tei_training_text_from_element(
         if child_element.tail:
             yield TeiTrainingText(
                 text=child_element.tail,
-                path=current_path
+                path=current_path,
+                is_start=is_start
             )
+            is_start = False
 
 
 def _iter_tei_training_lines_from_element(
@@ -556,7 +562,7 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
                     if text.path.element_list:
                         label = self._get_label_for_element_path(text.path, text=text.text)
                         if prev_label != label:
-                            prefix = 'B-'
+                            prefix = 'B-' if text.is_start else 'I-'
                     else:
                         label = 'O'
                         prefix = ''
