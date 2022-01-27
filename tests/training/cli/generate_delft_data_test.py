@@ -10,8 +10,10 @@ from lxml import etree
 from lxml.builder import E
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
+    load_data_crf_lines,
     load_data_and_labels_crf_file
 )
+from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument
 
 from sciencebeam_parser.document.tei.common import TEI_E
 
@@ -20,6 +22,7 @@ from sciencebeam_parser.training.cli.generate_delft_data import (
     main
 )
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
+from tests.processors.fulltext.model_mocks import MockFullTextModels
 
 from tests.test_utils import log_on_exception
 
@@ -132,8 +135,13 @@ class TestMain:
 
     def test_should_be_able_to_generate_affiliation_address_training_data(
         self,
-        tmp_path: Path
+        tmp_path: Path,
+        fulltext_models_mock: MockFullTextModels,
+        sciencebeam_parser_mock: MagicMock
     ):
+        data_generator = fulltext_models_mock.affiliation_address_model.get_data_generator(
+            document_features_context=sciencebeam_parser_mock.document_features_context
+        )
         tei_source_path = tmp_path / 'tei'
         output_path = tmp_path / 'output.data'
         tei_source_path.mkdir(parents=True, exist_ok=True)
@@ -157,12 +165,22 @@ class TestMain:
             f'--delft-output-path={output_path}'
         ])
         assert output_path.exists()
-        texts, labels, _features = load_data_and_labels_crf_file(
+        layout_document = LayoutDocument.for_blocks([
+            LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
+        ])
+        expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
+            layout_document
+        ))
+        _expected_texts, expected_features = load_data_crf_lines(expected_data_lines)
+        LOGGER.debug('expected_features: %r', expected_features)
+        texts, labels, features = load_data_and_labels_crf_file(
             str(output_path)
         )
         LOGGER.debug('texts: %r', texts)
         LOGGER.debug('labels: %r', labels)
+        LOGGER.debug('features: %r', features)
         LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
         assert len(texts) == 1
         assert list(texts[0]) == [TOKEN_1, TOKEN_2]
         assert list(labels[0]) == ['B-<institution>', 'B-<country>']
+        assert features.tolist() == expected_features.tolist()

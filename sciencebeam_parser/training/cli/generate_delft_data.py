@@ -7,8 +7,6 @@ from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
 
-import numpy as np
-
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
 )
@@ -17,6 +15,13 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     iter_format_tag_result
 )
 
+from sciencebeam_parser.document.layout_document import (
+    LayoutBlock,
+    LayoutDocument,
+    LayoutToken
+)
+
+from sciencebeam_parser.models.data import DocumentFeaturesContext, ModelDataGenerator
 from sciencebeam_parser.models.training_data import TrainingTeiParser
 
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
@@ -92,10 +97,23 @@ def get_training_tei_parser_for_model_name(
         raise RuntimeError('unsupported model: %r' % model_name) from exc
 
 
+def get_data_generator_for_model_name(
+    model_name: str,
+    sciencebeam_parser: ScienceBeamParser
+) -> ModelDataGenerator:
+    model = sciencebeam_parser.fulltext_models.get_sequence_model_by_name(model_name)
+    return model.get_data_generator(
+        document_features_context=DocumentFeaturesContext(
+            app_features_context=sciencebeam_parser.app_features_context
+        )
+    )
+
+
 def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too-many-locals
     tei_file: str,
     raw_file: Optional[str],
-    training_tei_parser: TrainingTeiParser
+    training_tei_parser: TrainingTeiParser,
+    data_generator: ModelDataGenerator
 ) -> Iterable[str]:
     tei_root = etree.parse(tei_file).getroot()
     tag_result = training_tei_parser.parse_training_tei_to_tag_result(
@@ -112,13 +130,19 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
             [token_text for token_text, _tag in doc_tag_result]
             for doc_tag_result in tag_result
         ]
-        features = np.array([
-            [
-                ['0']
-                for _ in range(len(doc_tag_result))
-            ]
-            for doc_tag_result in tag_result
-        ], dtype='object')
+        layout_documents = [
+            LayoutDocument.for_blocks([
+                LayoutBlock.for_tokens([
+                    LayoutToken(text=token_text)
+                    for token_text in doc_texts
+                ])
+            ])
+            for doc_texts in texts
+        ]
+        data_line_iterable = list(data_generator.iter_data_lines_for_layout_documents(
+            layout_documents
+        ))
+        _texts, features = load_data_crf_lines(data_line_iterable)
     assert len(texts) == len(tag_result)
     for doc_tokens, doc_tag_result in zip(texts, tag_result):
         assert len(doc_tokens) == len(doc_tag_result)
@@ -139,6 +163,10 @@ def generate_delft_training_data(
     sciencebeam_parser: ScienceBeamParser
 ):
     training_tei_parser = get_training_tei_parser_for_model_name(
+        model_name,
+        sciencebeam_parser=sciencebeam_parser
+    )
+    data_generator = get_data_generator_for_model_name(
         model_name,
         sciencebeam_parser=sciencebeam_parser
     )
@@ -164,7 +192,8 @@ def generate_delft_training_data(
             data_fp.writelines(iter_generate_delft_training_data_lines_for_document(
                 tei_file=tei_file,
                 raw_file=raw_file,
-                training_tei_parser=training_tei_parser
+                training_tei_parser=training_tei_parser,
+                data_generator=data_generator
             ))
 
 
