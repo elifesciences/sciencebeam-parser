@@ -8,9 +8,12 @@ from lxml.builder import E
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_and_labels_crf_file
 )
+
+from sciencebeam_parser.document.tei.common import TEI_E
 from sciencebeam_parser.training.cli.generate_delft_data import (
     main
 )
+from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 
 from tests.test_utils import log_on_exception
 
@@ -110,3 +113,40 @@ class TestMain:
             ['1.1', '1.2', '1.3'],
             ['2.1', '2.2', '2.3']
         ]]
+
+    def test_should_be_able_to_generate_affiliation_address_training_data(
+        self,
+        tmp_path: Path
+    ):
+        tei_source_path = tmp_path / 'tei'
+        output_path = tmp_path / 'output.data'
+        tei_source_path.mkdir(parents=True, exist_ok=True)
+        xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
+        xml_writer.require_path([
+            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+            'affiliation', 'orgName[@type="institution"]'
+        ])
+        xml_writer.append_text(TOKEN_1)
+        xml_writer.require_path([
+            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+            'affiliation', 'address', 'country'
+        ])
+        xml_writer.append_text(TOKEN_2)
+        (tei_source_path / 'sample.affiliation.tei.xml').write_bytes(etree.tostring(
+            xml_writer.root
+        ))
+        main([
+            '--model-name=affiliation_address',
+            f'--tei-source-path={tei_source_path}/*.tei.xml',
+            f'--delft-output-path={output_path}'
+        ])
+        assert output_path.exists()
+        texts, labels, _features = load_data_and_labels_crf_file(
+            str(output_path)
+        )
+        LOGGER.debug('texts: %r', texts)
+        LOGGER.debug('labels: %r', labels)
+        LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
+        assert len(texts) == 1
+        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+        assert list(labels[0]) == ['B-<institution>', 'B-<country>']

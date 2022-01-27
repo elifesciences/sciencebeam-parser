@@ -7,6 +7,8 @@ from typing import Iterable, List, Optional, Sequence
 
 from lxml import etree
 
+import numpy as np
+
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
 )
@@ -42,7 +44,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         '--raw-source-path',
         type=str,
-        required=True
+        required=False
     )
     parser.add_argument(
         '--delft-output-path',
@@ -106,10 +108,13 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
     if not tei_file_list:
         raise RuntimeError('no files found for file pattern %r' % tei_source_path)
     LOGGER.info('tei_file_list: %r', tei_file_list)
-    raw_file_list = get_raw_file_list_for_tei_file_list(
-        tei_file_list,
-        raw_source_path=raw_source_path
-    )
+    if raw_source_path:
+        raw_file_list: Sequence[Optional[str]] = get_raw_file_list_for_tei_file_list(
+            tei_file_list,
+            raw_source_path=raw_source_path
+        )
+    else:
+        raw_file_list = [None] * len(tei_file_list)
     LOGGER.info('raw_file_list: %r', raw_file_list)
     LOGGER.info('writing to : %r', delft_output_path)
     Path(delft_output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -120,10 +125,23 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
                 tei_root
             )
             LOGGER.debug('tag_result: %r', tag_result)
-            with open(raw_file, 'r', encoding='utf-8') as raw_fp:
-                texts, features = load_data_crf_lines(
-                    raw_fp
-                )
+            if raw_file:
+                with open(raw_file, 'r', encoding='utf-8') as raw_fp:
+                    texts, features = load_data_crf_lines(
+                        raw_fp
+                    )
+            else:
+                texts = [
+                    [token_text for token_text, _tag in doc_tag_result]
+                    for doc_tag_result in tag_result
+                ]
+                features = np.array([
+                    [
+                        ['0']
+                        for _ in range(len(doc_tag_result))
+                    ]
+                    for doc_tag_result in tag_result
+                ], dtype='object')
             assert len(texts) == len(tag_result)
             for doc_tokens, doc_tag_result in zip(texts, tag_result):
                 assert len(doc_tokens) == len(doc_tag_result)

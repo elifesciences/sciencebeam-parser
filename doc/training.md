@@ -93,3 +93,13 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --raw-source-path="data/generated-training-data/header/corpus/raw/" \
     --delft-output-path="./data/generated-training-data/delft/header/corpus/header.data"
 ```
+
+Or:
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="affiliation_address" \
+    --tei-source-path="data/generated-training-data/affiliation-address/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/affiliation-address/corpus/affiliation-address.data"
+```

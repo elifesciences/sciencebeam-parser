@@ -9,7 +9,7 @@ from lxml.builder import ElementMaker
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.utils.labels import get_split_prefix_label
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
-from sciencebeam_parser.document.tei.common import TEI_E
+from sciencebeam_parser.document.tei.common import TEI_E, TEI_NS_PREFIX, tei_xpath
 from sciencebeam_parser.document.layout_document import (
     LayoutLine
 )
@@ -476,15 +476,37 @@ class TrainingTeiParser(ABC):
         pass
 
 
+def get_element_path_with_prefix(
+    element_path: Sequence[str],
+    prefix: str
+) -> Sequence[str]:
+    return [
+        prefix + item
+        for item in element_path
+    ]
+
+
 class AbstractTrainingTeiParser(TrainingTeiParser):
     def __init__(
         self,
         root_training_xml_element_path: Sequence[str],
         training_xml_element_path_by_label: Mapping[str, Sequence[str]],
-        line_as_token: bool = False
+        line_as_token: bool = False,
+        use_tei_namespace: bool = False
     ) -> None:
+        tag_namespace_prefix = TEI_NS_PREFIX if use_tei_namespace else ''
+        if use_tei_namespace:
+            root_training_xml_element_path = get_element_path_with_prefix(
+                root_training_xml_element_path,
+                'tei:'
+            )
         self.label_by_relative_element_path_map = {
-            tuple(element_path[len(root_training_xml_element_path):]): label
+            tuple(
+                get_element_path_with_prefix(
+                    element_path[len(root_training_xml_element_path):],
+                    tag_namespace_prefix
+                )
+            ): label
             for label, element_path in training_xml_element_path_by_label.items()
         }
         for element_path in list(self.label_by_relative_element_path_map.keys()):
@@ -517,7 +539,7 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
         self,
         tei_root: etree.ElementBase
     ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
-        for text_node in tei_root.xpath(self.root_training_xml_xpath):
+        for text_node in tei_xpath(tei_root, self.root_training_xml_xpath):
             tei_training_lines = list(
                 _iter_tei_training_lines_from_element(
                     text_node, EMPTY_TEI_TRAINING_ELEMENT_PATH
