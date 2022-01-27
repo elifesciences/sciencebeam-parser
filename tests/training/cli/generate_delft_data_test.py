@@ -111,7 +111,7 @@ class TestMain:
         raw_source_path = tmp_path / 'raw'
         output_path = tmp_path / 'output.data'
         tei_source_path.mkdir(parents=True, exist_ok=True)
-        (tei_source_path / 'sample.segmentation.tei.xml').write_bytes(etree.tostring(
+        (tei_source_path / 'sample.header.tei.xml').write_bytes(etree.tostring(
             E('tei', E('text', E('front', *[
                 E('docTitle', E('titlePart', TOKEN_1, E('lb'))),
                 '\n',
@@ -120,7 +120,7 @@ class TestMain:
             ])))
         ))
         raw_source_path.mkdir(parents=True, exist_ok=True)
-        (raw_source_path / 'sample.segmentation').write_text('\n'.join([
+        (raw_source_path / 'sample.header').write_text('\n'.join([
             '{TOKEN_1} 1.1 1.2 1.3',
             '{TOKEN_2} 2.1 2.2 2.3'
         ]))
