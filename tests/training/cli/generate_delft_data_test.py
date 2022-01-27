@@ -16,7 +16,7 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import (
 from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument
 
 from sciencebeam_parser.document.tei.common import TEI_E
-from sciencebeam_parser.models.data import DocumentFeaturesContext
+from sciencebeam_parser.models.data import DocumentFeaturesContext, ModelDataGenerator
 
 import sciencebeam_parser.training.cli.generate_delft_data as generate_delft_data_module
 from sciencebeam_parser.training.cli.generate_delft_data import (
@@ -100,6 +100,47 @@ def _test_generate_delft_with_two_tokens_tei_and_raw(
     ]]
 
 
+def _test_generate_delft_with_two_tokens_tei_only(
+    tmp_path: Path,
+    model_name: str,
+    file_suffix: str,
+    tei_root: etree.ElementBase,
+    expected_labels: Sequence[str],
+    data_generator: ModelDataGenerator
+):
+    tei_source_path = tmp_path / 'tei'
+    output_path = tmp_path / 'output.data'
+    tei_source_path.mkdir(parents=True, exist_ok=True)
+    (tei_source_path / f'sample{file_suffix}.tei.xml').write_bytes(
+        etree.tostring(tei_root)
+    )
+    main([
+        f'--model-name={model_name}',
+        f'--tei-source-path={tei_source_path}/*.tei.xml',
+        f'--delft-output-path={output_path}'
+    ])
+    assert output_path.exists()
+    layout_document = LayoutDocument.for_blocks([
+        LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
+    ])
+    expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
+        layout_document
+    ))
+    _expected_texts, expected_features = load_data_crf_lines(expected_data_lines)
+    LOGGER.debug('expected_features: %r', expected_features)
+    texts, labels, features = load_data_and_labels_crf_file(
+        str(output_path)
+    )
+    LOGGER.debug('texts: %r', texts)
+    LOGGER.debug('labels: %r', labels)
+    LOGGER.debug('features: %r', features)
+    LOGGER.debug('training tei: %r', etree.tostring(tei_root))
+    assert len(texts) == 1
+    assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+    assert list(labels[0]) == expected_labels
+    assert features.tolist() == expected_features.tolist()
+
+
 @log_on_exception
 class TestMain:
     def test_should_be_able_to_generate_segmentation_training_data(
@@ -160,43 +201,20 @@ class TestMain:
         data_generator = fulltext_models_mock.affiliation_address_model.get_data_generator(
             document_features_context=document_features_context
         )
-        tei_source_path = tmp_path / 'tei'
-        output_path = tmp_path / 'output.data'
-        tei_source_path.mkdir(parents=True, exist_ok=True)
         xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
         xml_writer.require_path([
             'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
             'affiliation', 'orgName[@type="institution"]'
         ])
         xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
-        (tei_source_path / 'sample.affiliation.tei.xml').write_bytes(etree.tostring(
-            xml_writer.root
-        ))
-        main([
-            '--model-name=affiliation_address',
-            f'--tei-source-path={tei_source_path}/*.tei.xml',
-            f'--delft-output-path={output_path}'
-        ])
-        assert output_path.exists()
-        layout_document = LayoutDocument.for_blocks([
-            LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
-        ])
-        expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
-            layout_document
-        ))
-        _expected_texts, expected_features = load_data_crf_lines(expected_data_lines)
-        LOGGER.debug('expected_features: %r', expected_features)
-        texts, labels, features = load_data_and_labels_crf_file(
-            str(output_path)
+        _test_generate_delft_with_two_tokens_tei_only(
+            tmp_path=tmp_path,
+            model_name='affiliation_address',
+            file_suffix='.affiliation',
+            tei_root=xml_writer.root,
+            expected_labels=['B-<institution>', 'I-<institution>'],
+            data_generator=data_generator
         )
-        LOGGER.debug('texts: %r', texts)
-        LOGGER.debug('labels: %r', labels)
-        LOGGER.debug('features: %r', features)
-        LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
-        assert len(texts) == 1
-        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
-        assert list(labels[0]) == ['B-<institution>', 'I-<institution>']
-        assert features.tolist() == expected_features.tolist()
 
     def test_should_be_able_to_generate_citation_training_data(
         self,
@@ -207,37 +225,14 @@ class TestMain:
         data_generator = fulltext_models_mock.citation_model.get_data_generator(
             document_features_context=document_features_context
         )
-        tei_source_path = tmp_path / 'tei'
-        output_path = tmp_path / 'output.data'
-        tei_source_path.mkdir(parents=True, exist_ok=True)
         xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
         xml_writer.require_path(['text', 'back', 'listBibl', 'bibl', 'author'])
         xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
-        (tei_source_path / 'sample.references.tei.xml').write_bytes(etree.tostring(
-            xml_writer.root
-        ))
-        main([
-            '--model-name=citation',
-            f'--tei-source-path={tei_source_path}/*.tei.xml',
-            f'--delft-output-path={output_path}'
-        ])
-        assert output_path.exists()
-        layout_document = LayoutDocument.for_blocks([
-            LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
-        ])
-        expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
-            layout_document
-        ))
-        _expected_texts, expected_features = load_data_crf_lines(expected_data_lines)
-        LOGGER.debug('expected_features: %r', expected_features)
-        texts, labels, features = load_data_and_labels_crf_file(
-            str(output_path)
+        _test_generate_delft_with_two_tokens_tei_only(
+            tmp_path=tmp_path,
+            model_name='citation',
+            file_suffix='.references',
+            tei_root=xml_writer.root,
+            expected_labels=['B-<author>', 'I-<author>'],
+            data_generator=data_generator
         )
-        LOGGER.debug('texts: %r', texts)
-        LOGGER.debug('labels: %r', labels)
-        LOGGER.debug('features: %r', features)
-        LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
-        assert len(texts) == 1
-        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
-        assert list(labels[0]) == ['B-<author>', 'I-<author>']
-        assert features.tolist() == expected_features.tolist()
