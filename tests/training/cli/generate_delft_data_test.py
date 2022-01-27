@@ -192,6 +192,25 @@ class TestMain:
             expected_labels=['B-<figDesc>', 'I-<figDesc>']
         )
 
+    def test_should_be_able_to_generate_table_training_data(
+        self,
+        tmp_path: Path
+    ):
+        _test_generate_delft_with_two_tokens_tei_and_raw(
+            tmp_path=tmp_path,
+            model_name='table',
+            file_suffix='.table',
+            tei_root=E('tei', E('text', *[
+                E(
+                    'figure',
+                    {'type': 'table'},
+                    E('figDesc', TOKEN_1, E('lb'), '\n', TOKEN_2, E('lb'))
+                ),
+                '\n'
+            ])),
+            expected_labels=['B-<figDesc>', 'I-<figDesc>']
+        )
+
     def test_should_be_able_to_generate_affiliation_address_training_data(
         self,
         tmp_path: Path,

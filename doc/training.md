@@ -106,6 +106,16 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --delft-output-path="./data/generated-training-data/delft/figure/corpus/figure.data"
 ```
 
+#### Example command for `table` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="table" \
+    --tei-source-path="data/generated-training-data/table/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/table/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/table/corpus/table.data"
+```
+
 #### Example command for `affiliation_address` model
 
 ```bash
