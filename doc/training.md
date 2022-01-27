@@ -76,6 +76,8 @@ It will do one of the following:
 - For models with only `tei` XML files (no layout feature), it will parse the `tei` and generate data using the data generator.
 - For models with additional layout data files, it will align the parsed `tei` with the layout data file and add the label to it.
 
+#### Example command for `segmentation` model
+
 ```bash
 python -m sciencebeam_parser.training.cli.generate_delft_data \
     --model-name="segmentation" \
@@ -84,7 +86,7 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --delft-output-path="./data/generated-training-data/delft/segmentation/corpus/segmentation.data"
 ```
 
-Or:
+#### Example command for `header` model
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_delft_data \
@@ -94,7 +96,17 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --delft-output-path="./data/generated-training-data/delft/header/corpus/header.data"
 ```
 
-Or:
+#### Example command for `figure` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="figure" \
+    --tei-source-path="data/generated-training-data/figure/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/figure/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/figure/corpus/figure.data"
+```
+
+#### Example command for `affiliation_address` model
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_delft_data \
@@ -104,7 +116,7 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     "./data/generated-training-data/delft/affiliation-address/corpus/affiliation-address.data"
 ```
 
-Or:
+#### Example command for `citation` model
 
 ```bash
 python -m sciencebeam_parser.training.cli.generate_delft_data \

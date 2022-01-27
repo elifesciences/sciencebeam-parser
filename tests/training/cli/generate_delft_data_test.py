@@ -143,6 +143,44 @@ class TestMain:
             ['2.1', '2.2', '2.3']
         ]]
 
+    def test_should_be_able_to_generate_figure_training_data(
+        self,
+        tmp_path: Path
+    ):
+        tei_source_path = tmp_path / 'tei'
+        raw_source_path = tmp_path / 'raw'
+        output_path = tmp_path / 'output.data'
+        tei_source_path.mkdir(parents=True, exist_ok=True)
+        (tei_source_path / 'sample.figure.tei.xml').write_bytes(etree.tostring(
+            E('tei', E('text', *[
+                E('figure', E('figDesc', TOKEN_1, E('lb'), '\n', TOKEN_2, E('lb'))),
+                '\n'
+            ]))
+        ))
+        raw_source_path.mkdir(parents=True, exist_ok=True)
+        (raw_source_path / 'sample.figure').write_text('\n'.join([
+            '{TOKEN_1} 1.1 1.2 1.3',
+            '{TOKEN_2} 2.1 2.2 2.3'
+        ]))
+        main([
+            '--model-name=figure',
+            f'--tei-source-path={tei_source_path}/*.tei.xml',
+            f'--raw-source-path={raw_source_path}',
+            f'--delft-output-path={output_path}'
+        ])
+        assert output_path.exists()
+        texts, _labels, _features = load_data_and_labels_crf_file(
+            str(output_path)
+        )
+        LOGGER.debug('texts: %r', texts)
+        assert len(texts) == 1
+        assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+        assert list(_labels[0]) == ['B-<figDesc>', 'I-<figDesc>']
+        assert _features.tolist() == [[
+            ['1.1', '1.2', '1.3'],
+            ['2.1', '2.2', '2.3']
+        ]]
+
     def test_should_be_able_to_generate_affiliation_address_training_data(
         self,
         tmp_path: Path,
