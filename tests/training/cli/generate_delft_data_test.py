@@ -16,6 +16,7 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import (
 from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument
 
 from sciencebeam_parser.document.tei.common import TEI_E
+from sciencebeam_parser.models.data import DocumentFeaturesContext
 
 import sciencebeam_parser.training.cli.generate_delft_data as generate_delft_data_module
 from sciencebeam_parser.training.cli.generate_delft_data import (
@@ -49,6 +50,15 @@ def _patch_sciencebeam_parser_class_mock(
         generate_delft_data_module, 'ScienceBeamParser', sciencebeam_parser_class_mock
     ) as mock:
         yield mock
+
+
+@pytest.fixture(name='document_features_context')
+def _document_features_context(
+    sciencebeam_parser_mock: MagicMock
+) -> DocumentFeaturesContext:
+    return DocumentFeaturesContext(
+        sciencebeam_parser_mock.app_features_context
+    )
 
 
 @log_on_exception
@@ -137,10 +147,10 @@ class TestMain:
         self,
         tmp_path: Path,
         fulltext_models_mock: MockFullTextModels,
-        sciencebeam_parser_mock: MagicMock
+        document_features_context: DocumentFeaturesContext
     ):
         data_generator = fulltext_models_mock.affiliation_address_model.get_data_generator(
-            document_features_context=sciencebeam_parser_mock.document_features_context
+            document_features_context=document_features_context
         )
         tei_source_path = tmp_path / 'tei'
         output_path = tmp_path / 'output.data'
@@ -184,10 +194,10 @@ class TestMain:
         self,
         tmp_path: Path,
         fulltext_models_mock: MockFullTextModels,
-        sciencebeam_parser_mock: MagicMock
+        document_features_context: DocumentFeaturesContext
     ):
         data_generator = fulltext_models_mock.citation_model.get_data_generator(
-            document_features_context=sciencebeam_parser_mock.document_features_context
+            document_features_context=document_features_context
         )
         tei_source_path = tmp_path / 'tei'
         output_path = tmp_path / 'output.data'
