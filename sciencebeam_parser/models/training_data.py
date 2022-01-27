@@ -491,8 +491,8 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
         self,
         root_training_xml_element_path: Sequence[str],
         training_xml_element_path_by_label: Mapping[str, Sequence[str]],
+        use_tei_namespace: bool,
         line_as_token: bool = False,
-        use_tei_namespace: bool = False
     ) -> None:
         tag_namespace_prefix = TEI_NS_PREFIX if use_tei_namespace else ''
         if use_tei_namespace:
