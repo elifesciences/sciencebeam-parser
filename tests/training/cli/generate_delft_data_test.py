@@ -150,12 +150,12 @@ class TestMain:
             'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
             'affiliation', 'orgName[@type="institution"]'
         ])
-        xml_writer.append_text(TOKEN_1)
-        xml_writer.require_path([
-            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
-            'affiliation', 'address', 'country'
-        ])
-        xml_writer.append_text(TOKEN_2)
+        xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
+        # xml_writer.require_path([
+        #     'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+        #     'affiliation', 'address', 'country'
+        # ])
+        # xml_writer.append_text(TOKEN_2)
         (tei_source_path / 'sample.affiliation.tei.xml').write_bytes(etree.tostring(
             xml_writer.root
         ))
@@ -182,5 +182,5 @@ class TestMain:
         LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
         assert len(texts) == 1
         assert list(texts[0]) == [TOKEN_1, TOKEN_2]
-        assert list(labels[0]) == ['B-<institution>', 'B-<country>']
+        assert list(labels[0]) == ['B-<institution>', 'I-<institution>']
         assert features.tolist() == expected_features.tolist()

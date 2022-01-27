@@ -10,7 +10,7 @@ from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 @pytest.fixture(autouse=True)
 def configure_logging():
     logging.root.setLevel('INFO')
-    for name in ['tests', 'sciencebeam_parser']:
+    for name in ['tests', 'sciencebeam_parser', 'sciencebeam_trainer_delft']:
         logging.getLogger(name).setLevel('DEBUG')
 
 

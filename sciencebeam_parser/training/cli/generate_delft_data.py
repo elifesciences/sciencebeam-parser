@@ -3,7 +3,7 @@ import logging
 import os
 from glob import glob
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 from lxml import etree
 
@@ -64,6 +64,34 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def translate_tags_IOB_to_grobid(tag: str) -> str:
+    """
+    Convert labels from IOB2 to the ones used by GROBID (expected by the wapiti model)
+    """
+    if tag == 'O':
+        # outside
+        return '<other>'
+    if tag.startswith('B-'):
+        # begin
+        return 'I-' + tag[2:]
+    if tag.startswith('I-'):
+        # inside
+        return '' + tag[2:]
+    return tag
+
+
+def translate_tag_result_tags_IOB_to_grobid(
+    tag_result: Sequence[Sequence[Tuple[str, str]]]
+) -> List[List[Tuple[str, str]]]:
+    return [
+        [
+            (token_text, translate_tags_IOB_to_grobid(tag))
+            for token_text, tag in doc_tag_result
+        ]
+        for doc_tag_result in tag_result
+    ]
+
+
 def get_raw_file_for_tei_file(
     tei_file: str,
     raw_source_path: str
@@ -120,6 +148,8 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
         tei_root
     )
     LOGGER.debug('tag_result: %r', tag_result)
+    translated_tag_result = translate_tag_result_tags_IOB_to_grobid(tag_result)
+    LOGGER.debug('translated_tag_result: %r', translated_tag_result)
     if raw_file:
         with open(raw_file, 'r', encoding='utf-8') as raw_fp:
             texts, features = load_data_crf_lines(
@@ -128,7 +158,7 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     else:
         texts = [
             [token_text for token_text, _tag in doc_tag_result]
-            for doc_tag_result in tag_result
+            for doc_tag_result in translated_tag_result
         ]
         layout_documents = [
             LayoutDocument.for_blocks([
@@ -143,12 +173,12 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
             layout_documents
         ))
         _texts, features = load_data_crf_lines(data_line_iterable)
-    assert len(texts) == len(tag_result)
-    for doc_tokens, doc_tag_result in zip(texts, tag_result):
+    assert len(texts) == len(translated_tag_result)
+    for doc_tokens, doc_tag_result in zip(texts, translated_tag_result):
         assert len(doc_tokens) == len(doc_tag_result)
     LOGGER.debug('features: %r', features)
     yield from iter_format_tag_result(
-        tag_result=tag_result,
+        tag_result=translated_tag_result,
         output_format=TagOutputFormats.DATA,
         texts=None,
         features=features
