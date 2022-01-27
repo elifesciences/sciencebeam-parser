@@ -14,7 +14,7 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import (
 )
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
-    format_tag_result
+    iter_format_tag_result
 )
 
 from sciencebeam_parser.models.training_data import TrainingTeiParser
@@ -92,7 +92,46 @@ def get_training_tei_parser_for_model_name(
         raise RuntimeError('unsupported model: %r' % model_name) from exc
 
 
-def generate_delft_training_data(  # pylint: disable=too-many-locals
+def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too-many-locals
+    tei_file: str,
+    raw_file: Optional[str],
+    training_tei_parser: TrainingTeiParser
+) -> Iterable[str]:
+    tei_root = etree.parse(tei_file).getroot()
+    tag_result = training_tei_parser.parse_training_tei_to_tag_result(
+        tei_root
+    )
+    LOGGER.debug('tag_result: %r', tag_result)
+    if raw_file:
+        with open(raw_file, 'r', encoding='utf-8') as raw_fp:
+            texts, features = load_data_crf_lines(
+                raw_fp
+            )
+    else:
+        texts = [
+            [token_text for token_text, _tag in doc_tag_result]
+            for doc_tag_result in tag_result
+        ]
+        features = np.array([
+            [
+                ['0']
+                for _ in range(len(doc_tag_result))
+            ]
+            for doc_tag_result in tag_result
+        ], dtype='object')
+    assert len(texts) == len(tag_result)
+    for doc_tokens, doc_tag_result in zip(texts, tag_result):
+        assert len(doc_tokens) == len(doc_tag_result)
+    LOGGER.debug('features: %r', features)
+    yield from iter_format_tag_result(
+        tag_result=tag_result,
+        output_format=TagOutputFormats.DATA,
+        texts=None,
+        features=features
+    )
+
+
+def generate_delft_training_data(
     model_name: str,
     tei_source_path: str,
     raw_source_path: str,
@@ -120,42 +159,13 @@ def generate_delft_training_data(  # pylint: disable=too-many-locals
     Path(delft_output_path).parent.mkdir(parents=True, exist_ok=True)
     with Path(delft_output_path).open('w', encoding='utf-8') as data_fp:
         for document_index, (tei_file, raw_file) in enumerate(zip(tei_file_list, raw_file_list)):
-            tei_root = etree.parse(tei_file).getroot()
-            tag_result = training_tei_parser.parse_training_tei_to_tag_result(
-                tei_root
-            )
-            LOGGER.debug('tag_result: %r', tag_result)
-            if raw_file:
-                with open(raw_file, 'r', encoding='utf-8') as raw_fp:
-                    texts, features = load_data_crf_lines(
-                        raw_fp
-                    )
-            else:
-                texts = [
-                    [token_text for token_text, _tag in doc_tag_result]
-                    for doc_tag_result in tag_result
-                ]
-                features = np.array([
-                    [
-                        ['0']
-                        for _ in range(len(doc_tag_result))
-                    ]
-                    for doc_tag_result in tag_result
-                ], dtype='object')
-            assert len(texts) == len(tag_result)
-            for doc_tokens, doc_tag_result in zip(texts, tag_result):
-                assert len(doc_tokens) == len(doc_tag_result)
-            LOGGER.debug('features: %r', features)
             if document_index > 0:
                 data_fp.write('\n\n')
-            data_fp.write(
-                format_tag_result(
-                    tag_result=tag_result,
-                    output_format=TagOutputFormats.DATA,
-                    texts=None,
-                    features=features
-                )
-            )
+            data_fp.writelines(iter_generate_delft_training_data_lines_for_document(
+                tei_file=tei_file,
+                raw_file=raw_file,
+                training_tei_parser=training_tei_parser
+            ))
 
 
 def run(args: argparse.Namespace):
