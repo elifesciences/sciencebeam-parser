@@ -96,6 +96,16 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --delft-output-path="./data/generated-training-data/delft/header/corpus/header.data"
 ```
 
+#### Example command for `fulltext` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="fulltext" \
+    --tei-source-path="data/generated-training-data/fulltext/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/fulltext/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/fulltext/corpus/fulltext.data"
+```
+
 #### Example command for `figure` model
 
 ```bash

@@ -177,6 +177,21 @@ class TestMain:
             expected_labels=['B-<title>', 'B-<author>']
         )
 
+    def test_should_be_able_to_generate_fulltext_training_data(
+        self,
+        tmp_path: Path
+    ):
+        _test_generate_delft_with_two_tokens_tei_and_raw(
+            tmp_path=tmp_path,
+            model_name='fulltext',
+            file_suffix='.fulltext',
+            tei_root=E('tei', E('text', *[
+                E('p', TOKEN_1, ' ', TOKEN_2, E('lb')),
+                '\n'
+            ])),
+            expected_labels=['B-<paragraph>', 'I-<paragraph>']
+        )
+
     def test_should_be_able_to_generate_figure_training_data(
         self,
         tmp_path: Path
