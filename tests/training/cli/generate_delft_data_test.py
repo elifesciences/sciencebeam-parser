@@ -253,6 +253,54 @@ class TestMain:
             data_generator=data_generator
         )
 
+    def test_should_be_able_to_generate_name_header_training_data(
+        self,
+        tmp_path: Path,
+        fulltext_models_mock: MockFullTextModels,
+        document_features_context: DocumentFeaturesContext
+    ):
+        data_generator = fulltext_models_mock.name_header_model.get_data_generator(
+            document_features_context=document_features_context
+        )
+        xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
+        xml_writer.require_path([
+            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+            'persName', 'forename'
+        ])
+        xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
+        _test_generate_delft_with_two_tokens_tei_only(
+            tmp_path=tmp_path,
+            model_name='name_header',
+            file_suffix='.header.authors',
+            tei_root=xml_writer.root,
+            expected_labels=['B-<forename>', 'I-<forename>'],
+            data_generator=data_generator
+        )
+
+    def test_should_be_able_to_generate_name_citation_training_data(
+        self,
+        tmp_path: Path,
+        fulltext_models_mock: MockFullTextModels,
+        document_features_context: DocumentFeaturesContext
+    ):
+        data_generator = fulltext_models_mock.name_header_model.get_data_generator(
+            document_features_context=document_features_context
+        )
+        xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
+        xml_writer.require_path([
+            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+            'persName', 'forename'
+        ])
+        xml_writer.append_text(' '.join([TOKEN_1, TOKEN_2]))
+        _test_generate_delft_with_two_tokens_tei_only(
+            tmp_path=tmp_path,
+            model_name='name_citation',
+            file_suffix='.citations.authors',
+            tei_root=xml_writer.root,
+            expected_labels=['B-<forename>', 'I-<forename>'],
+            data_generator=data_generator
+        )
+
     def test_should_be_able_to_generate_citation_training_data(
         self,
         tmp_path: Path,

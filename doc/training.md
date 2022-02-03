@@ -136,6 +136,24 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     "./data/generated-training-data/delft/affiliation-address/corpus/affiliation-address.data"
 ```
 
+#### Example command for `name` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="name_header" \
+    --tei-source-path="data/generated-training-data/name/header/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/name/header/corpus/name.data"
+```
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="name_citation" \
+    --tei-source-path="data/generated-training-data/name/citation/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/name/citation/corpus/name.data"
+```
+
 #### Example command for `citation` model
 
 ```bash
