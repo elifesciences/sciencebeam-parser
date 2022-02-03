@@ -7,7 +7,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    NamedTuple,
     Optional,
     Sequence,
     Set,
@@ -32,6 +31,7 @@ from sciencebeam_parser.models.data import (
     AppFeaturesContext,
     DocumentFeaturesContext,
     LabeledLayoutModelData,
+    LabeledLayoutToken,
     LayoutModelData,
     ModelDataGenerator,
     NewDocumentMarker
@@ -56,11 +56,6 @@ class LayoutModelLabel:
     label_token_text: str
     layout_line: Optional[LayoutLine] = field(repr=False, default=None)
     layout_token: Optional[LayoutToken] = field(repr=False, default=None)
-
-
-class LabeledLayoutToken(NamedTuple):
-    label: str
-    layout_token: LayoutToken
 
 
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:

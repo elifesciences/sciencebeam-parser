@@ -1,7 +1,7 @@
 # pylint: disable=not-callable
 import logging
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterator, Optional, Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +13,12 @@ from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines,
     load_data_and_labels_crf_file
 )
-from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument
+from sciencebeam_parser.document.layout_document import (
+    LayoutBlock,
+    LayoutDocument,
+    LayoutLine,
+    LayoutToken
+)
 
 from sciencebeam_parser.document.tei.common import TEI_E
 from sciencebeam_parser.models.data import DocumentFeaturesContext, ModelDataGenerator
@@ -120,13 +125,15 @@ def _test_generate_delft_with_two_tokens_tei_and_raw(
     )
 
 
-def _test_generate_delft_with_two_tokens_tei_only(
+def _test_generate_delft_with_multiple_tokens_tei_only(  # pylint: disable=too-many-locals
     tmp_path: Path,
     model_name: str,
     file_suffix: str,
     tei_root: etree.ElementBase,
+    tokens: Sequence[str],
     expected_labels: Sequence[str],
-    data_generator: ModelDataGenerator
+    data_generator: ModelDataGenerator,
+    layout_document: Optional[LayoutDocument] = None
 ):
     tei_source_path = tmp_path / 'tei'
     output_path = tmp_path / 'output.data'
@@ -140,9 +147,10 @@ def _test_generate_delft_with_two_tokens_tei_only(
         f'--delft-output-path={output_path}'
     ])
     assert output_path.exists()
-    layout_document = LayoutDocument.for_blocks([
-        LayoutBlock.for_text(' '.join([TOKEN_1, TOKEN_2]))
-    ])
+    if layout_document is None:
+        layout_document = LayoutDocument.for_blocks([
+            LayoutBlock.for_text(' '.join(tokens))
+        ])
     expected_data_lines = list(data_generator.iter_data_lines_for_layout_document(
         layout_document
     ))
@@ -156,9 +164,28 @@ def _test_generate_delft_with_two_tokens_tei_only(
     LOGGER.debug('features: %r', features)
     LOGGER.debug('training tei: %r', etree.tostring(tei_root))
     assert len(texts) == 1
-    assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+    assert list(texts[0]) == tokens
     assert list(labels[0]) == expected_labels
     assert features.tolist() == expected_features.tolist()
+
+
+def _test_generate_delft_with_two_tokens_tei_only(
+    tmp_path: Path,
+    model_name: str,
+    file_suffix: str,
+    tei_root: etree.ElementBase,
+    expected_labels: Sequence[str],
+    data_generator: ModelDataGenerator
+):
+    _test_generate_delft_with_multiple_tokens_tei_only(
+        tmp_path=tmp_path,
+        model_name=model_name,
+        file_suffix=file_suffix,
+        tei_root=tei_root,
+        tokens=[TOKEN_1, TOKEN_2],
+        expected_labels=expected_labels,
+        data_generator=data_generator
+    )
 
 
 @log_on_exception
@@ -356,6 +383,43 @@ class TestMain:
             model_name='name_citation',
             file_suffix='.citations.authors',
             tei_root=xml_writer.root,
+            expected_labels=['B-<forename>', 'I-<forename>'],
+            data_generator=data_generator
+        )
+
+    def test_should_generate_lineend_on_lb_for_citation_model(
+        self,
+        tmp_path: Path,
+        fulltext_models_mock: MockFullTextModels,
+        document_features_context: DocumentFeaturesContext
+    ):
+        data_generator = fulltext_models_mock.name_citation_model.get_data_generator(
+            document_features_context=document_features_context
+        )
+        xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
+        xml_writer.require_path([
+            'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
+            'persName', 'forename'
+        ])
+        xml_writer.append_all(
+            TOKEN_1,
+            TEI_E('lb'),
+            '\n',
+            TOKEN_2
+        )
+        layout_document = LayoutDocument.for_blocks([
+            LayoutBlock(lines=[
+                LayoutLine(tokens=[LayoutToken(TOKEN_1)]),
+                LayoutLine(tokens=[LayoutToken(TOKEN_2)])
+            ])
+        ])
+        _test_generate_delft_with_multiple_tokens_tei_only(
+            tmp_path=tmp_path,
+            model_name='name_citation',
+            file_suffix='.citations.authors',
+            tei_root=xml_writer.root,
+            tokens=[TOKEN_1, TOKEN_2],
+            layout_document=layout_document,
             expected_labels=['B-<forename>', 'I-<forename>'],
             data_generator=data_generator
         )

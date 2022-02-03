@@ -17,11 +17,14 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
-    LayoutDocument,
-    LayoutToken
+    LayoutDocument
 )
 
-from sciencebeam_parser.models.data import DocumentFeaturesContext, ModelDataGenerator
+from sciencebeam_parser.models.data import (
+    DocumentFeaturesContext,
+    LabeledLayoutToken,
+    ModelDataGenerator
+)
 from sciencebeam_parser.models.training_data import TrainingTeiParser
 
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
@@ -92,6 +95,21 @@ def translate_tag_result_tags_IOB_to_grobid(
     ]
 
 
+def get_tag_result_for_labeled_layout_tokens_list(
+    labeled_layout_tokens_list: Sequence[Sequence[LabeledLayoutToken]]
+) -> List[List[Tuple[str, str]]]:
+    return [
+        [
+            (
+                labeled_layout_token.layout_token.text,
+                labeled_layout_token.label
+            )
+            for labeled_layout_token in labeled_layout_tokens
+        ]
+        for labeled_layout_tokens in labeled_layout_tokens_list
+    ]
+
+
 def get_raw_file_for_tei_file(
     tei_file: str,
     raw_source_path: str
@@ -144,38 +162,41 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     data_generator: ModelDataGenerator
 ) -> Iterable[str]:
     tei_root = etree.parse(tei_file).getroot()
-    tag_result = training_tei_parser.parse_training_tei_to_tag_result(
-        tei_root
+    labeled_layout_tokens_list = (
+        training_tei_parser.parse_training_tei_to_labeled_layout_tokens_list(
+            tei_root
+        )
     )
-    LOGGER.debug('tag_result: %r', tag_result)
-    translated_tag_result = translate_tag_result_tags_IOB_to_grobid(tag_result)
+    LOGGER.debug('labeled_layout_tokens_list: %r', labeled_layout_tokens_list)
+    translated_tag_result = translate_tag_result_tags_IOB_to_grobid(
+        get_tag_result_for_labeled_layout_tokens_list(
+            labeled_layout_tokens_list
+        )
+    )
     LOGGER.debug('translated_tag_result: %r', translated_tag_result)
     if raw_file:
         with open(raw_file, 'r', encoding='utf-8') as raw_fp:
             texts, features = load_data_crf_lines(
                 raw_fp
             )
+        assert len(texts) == len(translated_tag_result)
+        for doc_tokens, doc_tag_result in zip(texts, translated_tag_result):
+            assert len(doc_tokens) == len(doc_tag_result)
     else:
-        texts = [
-            [token_text for token_text, _tag in doc_tag_result]
-            for doc_tag_result in translated_tag_result
-        ]
         layout_documents = [
             LayoutDocument.for_blocks([
                 LayoutBlock.for_tokens([
-                    LayoutToken(text=token_text)
-                    for token_text in doc_texts
+                    labeled_layout_token.layout_token
+                    for labeled_layout_token in labeled_layout_tokens
                 ])
             ])
-            for doc_texts in texts
+            for labeled_layout_tokens in labeled_layout_tokens_list
         ]
+        LOGGER.debug('layout_documents: %r', layout_documents)
         data_line_iterable = list(data_generator.iter_data_lines_for_layout_documents(
             layout_documents
         ))
         _texts, features = load_data_crf_lines(data_line_iterable)
-    assert len(texts) == len(translated_tag_result)
-    for doc_tokens, doc_tag_result in zip(texts, translated_tag_result):
-        assert len(doc_tokens) == len(doc_tag_result)
     LOGGER.debug('features: %r', features)
     yield from iter_format_tag_result(
         tag_result=translated_tag_result,

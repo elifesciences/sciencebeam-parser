@@ -38,6 +38,11 @@ class NewDocumentMarker:
 NEW_DOCUMENT_MARKER = NewDocumentMarker()
 
 
+class LabeledLayoutToken(NamedTuple):
+    label: str
+    layout_token: LayoutToken
+
+
 @dataclass
 class LayoutModelData:
     data_line: str

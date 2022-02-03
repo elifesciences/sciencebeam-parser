@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
-from typing import Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -11,11 +11,14 @@ from sciencebeam_parser.utils.labels import get_split_prefix_label
 from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.document.tei.common import TEI_E, TEI_NS_PREFIX, tei_xpath
 from sciencebeam_parser.document.layout_document import (
-    LayoutLine
+    LayoutLine,
+    LayoutLineDescriptor,
+    LayoutToken
 )
 from sciencebeam_parser.models.data import (
     NEW_DOCUMENT_MARKER,
     LabeledLayoutModelData,
+    LabeledLayoutToken,
     LayoutModelData,
     NewDocumentMarker
 )
@@ -365,6 +368,12 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
 TEI_LB = 'lb'
 
 
+LINE_BREAK_TAGS = {
+    TEI_LB,
+    TEI_NS_PREFIX + TEI_LB
+}
+
+
 def _get_tag_expression_for_element(element: etree.ElementBase) -> str:
     if not element.attrib:
         return element.tag
@@ -402,6 +411,10 @@ class TeiTrainingLine(NamedTuple):
     text_list: Sequence[TeiTrainingText]
 
 
+def is_line_break_element(element: etree.ElementBase) -> bool:
+    return element.tag in LINE_BREAK_TAGS
+
+
 def _iter_flat_tei_training_text_from_element(
     parent_element: etree.ElementBase,
     current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
@@ -417,7 +430,7 @@ def _iter_flat_tei_training_text_from_element(
         is_start = False
 
     for child_element in parent_element:
-        if child_element.tag == TEI_LB:
+        if is_line_break_element(child_element):
             yield NewLineExtractInstruction()
         else:
             child_path = current_path.append(child_element)
@@ -455,6 +468,21 @@ def _iter_tei_training_lines_from_element(
         yield TeiTrainingLine(line_text_list)
 
 
+T = TypeVar('T')
+
+
+def iter_group_doc_items_with_new_doc_marker(
+    flat_item_iterable: Iterable[Union[T, NewDocumentMarker]]
+) -> Iterable[List[T]]:
+    doc_items: List[T] = []
+    for item in flat_item_iterable:
+        if isinstance(item, NewDocumentMarker):
+            yield doc_items
+            doc_items = []
+            continue
+        doc_items.append(item)
+
+
 def iter_tag_result_for_flat_tag_result(
     flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
 ) -> Iterable[List[Tuple[str, str]]]:
@@ -479,6 +507,13 @@ class TrainingTeiParser(ABC):
         self,
         tei_root: etree.ElementBase
     ) -> List[List[Tuple[str, str]]]:
+        pass
+
+    @abstractmethod
+    def parse_training_tei_to_labeled_layout_tokens_list(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Sequence[Sequence[LabeledLayoutToken]]:
         pass
 
 
@@ -541,10 +576,10 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
             )
         return label
 
-    def iter_parse_training_tei_to_flat_tag_result(
+    def iter_parse_training_tei_to_flat_labeled_layout_tokens(
         self,
         tei_root: etree.ElementBase
-    ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+    ) -> Iterable[Union[LabeledLayoutToken, NewDocumentMarker]]:
         for text_node in tei_xpath(tei_root, self.root_training_xml_xpath):
             tei_training_lines = list(
                 _iter_tei_training_lines_from_element(
@@ -554,7 +589,8 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
             LOGGER.debug('tei_training_lines: %r', tei_training_lines)
             prefix = ''
             prev_label = ''
-            for line in tei_training_lines:
+            for line_index, line in enumerate(tei_training_lines):
+                line_descriptor = LayoutLineDescriptor(line_id=1 + line_index)
                 for text in line.text_list:
                     if text.text.isspace():
                         continue
@@ -570,7 +606,13 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
                         prefix = ''
                     prev_label = label
                     for token_text in get_tokenized_tokens(text.text):
-                        yield token_text, prefix + label
+                        yield LabeledLayoutToken(
+                            label=prefix + label,
+                            layout_token=LayoutToken(
+                                text=token_text,
+                                line_descriptor=line_descriptor
+                            )
+                        )
                         token_count += 1
                         if prefix:
                             prefix = 'I-'
@@ -581,12 +623,35 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
                         break
             yield NEW_DOCUMENT_MARKER
 
+    def iter_parse_training_tei_to_flat_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+        for item in self.iter_parse_training_tei_to_flat_labeled_layout_tokens(
+            tei_root
+        ):
+            if isinstance(item, NewDocumentMarker):
+                yield item
+                continue
+            assert isinstance(item, LabeledLayoutToken)
+            yield item.layout_token.text, item.label
+
     def parse_training_tei_to_tag_result(
         self,
         tei_root: etree.ElementBase
     ) -> List[List[Tuple[str, str]]]:
-        return get_tag_result_for_flat_tag_result(
+        return list(iter_group_doc_items_with_new_doc_marker(
             self.iter_parse_training_tei_to_flat_tag_result(
                 tei_root
             )
-        )
+        ))
+
+    def parse_training_tei_to_labeled_layout_tokens_list(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Sequence[Sequence[LabeledLayoutToken]]:
+        return list(iter_group_doc_items_with_new_doc_marker(
+            self.iter_parse_training_tei_to_flat_labeled_layout_tokens(
+                tei_root
+            )
+        ))
