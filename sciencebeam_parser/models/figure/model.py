@@ -3,7 +3,10 @@ import logging
 from sciencebeam_parser.models.data import (
     DocumentFeaturesContext
 )
-from sciencebeam_parser.models.figure.training_data import FigureTeiTrainingDataGenerator
+from sciencebeam_parser.models.figure.training_data import (
+    FigureTeiTrainingDataGenerator,
+    FigureTrainingTeiParser
+)
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.models.fulltext.data import FullTextDataGenerator
 from sciencebeam_parser.models.figure.extract import FigureSemanticExtractor
@@ -26,3 +29,6 @@ class FigureModel(Model):
 
     def get_tei_training_data_generator(self) -> FigureTeiTrainingDataGenerator:
         return FigureTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> FigureTrainingTeiParser:
+        return FigureTrainingTeiParser()

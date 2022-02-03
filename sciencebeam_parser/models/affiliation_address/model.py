@@ -9,7 +9,8 @@ from sciencebeam_parser.models.affiliation_address.extract import (
     AffiliationAddressSemanticExtractor
 )
 from sciencebeam_parser.models.affiliation_address.training_data import (
-    AffiliationAddressTeiTrainingDataGenerator
+    AffiliationAddressTeiTrainingDataGenerator,
+    AffiliationAddressTrainingTeiParser
 )
 
 
@@ -30,3 +31,6 @@ class AffiliationAddressModel(Model):
 
     def get_tei_training_data_generator(self) -> AffiliationAddressTeiTrainingDataGenerator:
         return AffiliationAddressTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> AffiliationAddressTrainingTeiParser:
+        return AffiliationAddressTrainingTeiParser()

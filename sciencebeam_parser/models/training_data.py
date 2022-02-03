@@ -1,18 +1,27 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
-from typing import Iterable, List, Mapping, Optional, Sequence, Union
+from typing import Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
 from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 from sciencebeam_parser.utils.labels import get_split_prefix_label
-from sciencebeam_parser.document.tei.common import TEI_E
+from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
+from sciencebeam_parser.document.tei.common import TEI_E, TEI_NS_PREFIX, tei_xpath
 from sciencebeam_parser.document.layout_document import (
-    LayoutLine
+    LayoutLine,
+    LayoutLineDescriptor,
+    LayoutToken
 )
-from sciencebeam_parser.models.data import LabeledLayoutModelData, LayoutModelData
+from sciencebeam_parser.models.data import (
+    NEW_DOCUMENT_MARKER,
+    LabeledLayoutModelData,
+    LabeledLayoutToken,
+    LayoutModelData,
+    NewDocumentMarker
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -354,3 +363,295 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
         return self.get_training_tei_xml_for_multiple_model_data_iterables(
             [model_data_iterable]
         )
+
+
+TEI_LB = 'lb'
+
+
+LINE_BREAK_TAGS = {
+    TEI_LB,
+    TEI_NS_PREFIX + TEI_LB
+}
+
+
+def _get_tag_expression_for_element(element: etree.ElementBase) -> str:
+    if not element.attrib:
+        return element.tag
+    if len(element.attrib) > 1:
+        raise ValueError('only supporting up to one attribute')
+    key, value = list(element.attrib.items())[0]
+    return '{tag}[@{key}="{value}"]'.format(tag=element.tag, key=key, value=value)
+
+
+class TeiTrainingElementPath(NamedTuple):
+    element_list: Sequence[etree.ElementBase] = tuple([])
+
+    def get_path(self) -> Sequence[str]:
+        return [
+            _get_tag_expression_for_element(element)
+            for element in self.element_list
+        ]
+
+    def append(self, element: etree.ElementBase) -> 'TeiTrainingElementPath':
+        return TeiTrainingElementPath(
+            list(self.element_list) + [element]
+        )
+
+
+EMPTY_TEI_TRAINING_ELEMENT_PATH = TeiTrainingElementPath()
+
+
+class TeiTrainingText(NamedTuple):
+    text: str
+    path: TeiTrainingElementPath
+    is_start: bool
+
+
+class TeiTrainingLine(NamedTuple):
+    text_list: Sequence[TeiTrainingText]
+
+
+def is_line_break_element(element: etree.ElementBase) -> bool:
+    return element.tag in LINE_BREAK_TAGS
+
+
+def _iter_flat_tei_training_text_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[Union[TeiTrainingText, ExtractInstruction]]:
+    LOGGER.debug('current_path: %s', current_path)
+    is_start = True
+    if parent_element.text:
+        yield TeiTrainingText(
+            text=parent_element.text,
+            path=current_path,
+            is_start=is_start
+        )
+        is_start = False
+
+    for child_element in parent_element:
+        if is_line_break_element(child_element):
+            yield NewLineExtractInstruction()
+        else:
+            child_path = current_path.append(child_element)
+            yield from _iter_flat_tei_training_text_from_element(
+                child_element,
+                child_path
+            )
+
+        if child_element.tail:
+            yield TeiTrainingText(
+                text=child_element.tail,
+                path=current_path,
+                is_start=is_start
+            )
+            is_start = False
+
+
+def _iter_tei_training_lines_from_element(
+    parent_element: etree.ElementBase,
+    current_path: TeiTrainingElementPath = EMPTY_TEI_TRAINING_ELEMENT_PATH
+) -> Iterable[TeiTrainingLine]:
+    line_text_list = []
+    for item in _iter_flat_tei_training_text_from_element(
+        parent_element,
+        current_path
+    ):
+        if isinstance(item, TeiTrainingText):
+            line_text_list.append(item)
+        elif isinstance(item, NewLineExtractInstruction):
+            yield TeiTrainingLine(line_text_list)
+            line_text_list = []
+        else:
+            raise RuntimeError('unrecognised item: %r' % item)
+    if line_text_list:
+        yield TeiTrainingLine(line_text_list)
+
+
+T = TypeVar('T')
+
+
+def iter_group_doc_items_with_new_doc_marker(
+    flat_item_iterable: Iterable[Union[T, NewDocumentMarker]]
+) -> Iterable[List[T]]:
+    doc_items: List[T] = []
+    for item in flat_item_iterable:
+        if isinstance(item, NewDocumentMarker):
+            yield doc_items
+            doc_items = []
+            continue
+        doc_items.append(item)
+
+
+def iter_tag_result_for_flat_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> Iterable[List[Tuple[str, str]]]:
+    doc_tag_result: List[Tuple[str, str]] = []
+    for token_tag_result in flat_tag_result_iterable:
+        if isinstance(token_tag_result, NewDocumentMarker):
+            yield doc_tag_result
+            doc_tag_result = []
+            continue
+        doc_tag_result.append(token_tag_result)
+
+
+def get_tag_result_for_flat_tag_result(
+    flat_tag_result_iterable: Iterable[Union[Tuple[str, str], NewDocumentMarker]]
+) -> List[List[Tuple[str, str]]]:
+    return list(iter_tag_result_for_flat_tag_result(flat_tag_result_iterable))
+
+
+class TrainingTeiParser(ABC):
+    @abstractmethod
+    def parse_training_tei_to_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> List[List[Tuple[str, str]]]:
+        pass
+
+    @abstractmethod
+    def parse_training_tei_to_labeled_layout_tokens_list(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Sequence[Sequence[LabeledLayoutToken]]:
+        pass
+
+
+def get_element_path_with_prefix(
+    element_path: Sequence[str],
+    prefix: str
+) -> Sequence[str]:
+    return [
+        prefix + item
+        for item in element_path
+    ]
+
+
+class AbstractTrainingTeiParser(TrainingTeiParser):
+    def __init__(
+        self,
+        root_training_xml_element_path: Sequence[str],
+        training_xml_element_path_by_label: Mapping[str, Sequence[str]],
+        use_tei_namespace: bool,
+        line_as_token: bool = False,
+    ) -> None:
+        tag_namespace_prefix = TEI_NS_PREFIX if use_tei_namespace else ''
+        if use_tei_namespace:
+            root_training_xml_element_path = get_element_path_with_prefix(
+                root_training_xml_element_path,
+                'tei:'
+            )
+        self.label_by_relative_element_path_map = {
+            tuple(
+                get_element_path_with_prefix(
+                    element_path[len(root_training_xml_element_path):],
+                    tag_namespace_prefix
+                )
+            ): label
+            for label, element_path in training_xml_element_path_by_label.items()
+        }
+        for element_path in list(self.label_by_relative_element_path_map.keys()):
+            if len(element_path) < 2:
+                continue
+            parent_element_path = element_path[:-1]
+            if parent_element_path not in self.label_by_relative_element_path_map:
+                self.label_by_relative_element_path_map[parent_element_path] = 'O'
+        self.root_training_xml_xpath = './' + '/'.join(root_training_xml_element_path)
+        self.line_as_token = line_as_token
+
+    def _get_label_for_element_path(
+        self,
+        tei_training_element_path: TeiTrainingElementPath,
+        text: str
+    ) -> str:
+        element_path = tei_training_element_path.get_path()
+        label = self.label_by_relative_element_path_map.get(tuple(element_path))
+        if not label:
+            raise RuntimeError(
+                'label not found for %r (available: %r; for text: %r)' % (
+                    element_path,
+                    self.label_by_relative_element_path_map.keys(),
+                    text
+                )
+            )
+        return label
+
+    def iter_parse_training_tei_to_flat_labeled_layout_tokens(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Iterable[Union[LabeledLayoutToken, NewDocumentMarker]]:
+        for text_node in tei_xpath(tei_root, self.root_training_xml_xpath):
+            tei_training_lines = list(
+                _iter_tei_training_lines_from_element(
+                    text_node, EMPTY_TEI_TRAINING_ELEMENT_PATH
+                )
+            )
+            LOGGER.debug('tei_training_lines: %r', tei_training_lines)
+            prefix = ''
+            prev_label = ''
+            for line_index, line in enumerate(tei_training_lines):
+                line_descriptor = LayoutLineDescriptor(line_id=1 + line_index)
+                for text in line.text_list:
+                    if text.text.isspace():
+                        continue
+                    token_count = 0
+                    if text.path.element_list:
+                        label = self._get_label_for_element_path(text.path, text=text.text)
+                        if prev_label != label:
+                            prefix = 'B-' if text.is_start else 'I-'
+                    else:
+                        label = 'O'
+                        prefix = ''
+                    if label in OTHER_LABELS:
+                        prefix = ''
+                    prev_label = label
+                    for token_text in get_tokenized_tokens(text.text):
+                        yield LabeledLayoutToken(
+                            label=prefix + label,
+                            layout_token=LayoutToken(
+                                text=token_text,
+                                line_descriptor=line_descriptor
+                            )
+                        )
+                        token_count += 1
+                        if prefix:
+                            prefix = 'I-'
+                        if self.line_as_token:
+                            break
+                    if token_count and self.line_as_token:
+                        # we are only outputting the first token of each line
+                        break
+            yield NEW_DOCUMENT_MARKER
+
+    def iter_parse_training_tei_to_flat_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Iterable[Union[Tuple[str, str], NewDocumentMarker]]:
+        for item in self.iter_parse_training_tei_to_flat_labeled_layout_tokens(
+            tei_root
+        ):
+            if isinstance(item, NewDocumentMarker):
+                yield item
+                continue
+            assert isinstance(item, LabeledLayoutToken)
+            yield item.layout_token.text, item.label
+
+    def parse_training_tei_to_tag_result(
+        self,
+        tei_root: etree.ElementBase
+    ) -> List[List[Tuple[str, str]]]:
+        return list(iter_group_doc_items_with_new_doc_marker(
+            self.iter_parse_training_tei_to_flat_tag_result(
+                tei_root
+            )
+        ))
+
+    def parse_training_tei_to_labeled_layout_tokens_list(
+        self,
+        tei_root: etree.ElementBase
+    ) -> Sequence[Sequence[LabeledLayoutToken]]:
+        return list(iter_group_doc_items_with_new_doc_marker(
+            self.iter_parse_training_tei_to_flat_labeled_layout_tokens(
+                tei_root
+            )
+        ))

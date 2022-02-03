@@ -6,7 +6,8 @@ from sciencebeam_parser.models.data import (
 from sciencebeam_parser.models.segmentation.data import SegmentationDataGenerator
 from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.models.segmentation.training_data import (
-    SegmentationTeiTrainingDataGenerator
+    SegmentationTeiTrainingDataGenerator,
+    SegmentationTrainingTeiParser
 )
 
 
@@ -27,3 +28,6 @@ class SegmentationModel(Model):
 
     def get_tei_training_data_generator(self) -> SegmentationTeiTrainingDataGenerator:
         return SegmentationTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> SegmentationTrainingTeiParser:
+        return SegmentationTrainingTeiParser()

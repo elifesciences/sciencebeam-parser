@@ -31,6 +31,18 @@ class DocumentFeaturesContext(NamedTuple):
 DEFAULT_DOCUMENT_FEATURES_CONTEXT = DocumentFeaturesContext()
 
 
+class NewDocumentMarker:
+    pass
+
+
+NEW_DOCUMENT_MARKER = NewDocumentMarker()
+
+
+class LabeledLayoutToken(NamedTuple):
+    label: str
+    layout_token: LayoutToken
+
+
 @dataclass
 class LayoutModelData:
     data_line: str

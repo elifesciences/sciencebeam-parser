@@ -4,7 +4,8 @@ from lxml import etree
 
 from sciencebeam_parser.document.tei.common import tei_xpath
 from sciencebeam_parser.models.training_data import (
-    AbstractTeiTrainingDataGenerator
+    AbstractTeiTrainingDataGenerator,
+    AbstractTrainingTeiParser
 )
 from sciencebeam_parser.models.citation.extract import (
     get_detected_external_identifier_type_for_text
@@ -67,3 +68,14 @@ class CitationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
                 continue
             idno_element.attrib['type'] = external_identifier_type
         return xml_root
+
+
+class CitationTrainingTeiParser(AbstractTrainingTeiParser):
+    def __init__(self) -> None:
+        super().__init__(
+            root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
+            training_xml_element_path_by_label=(
+                TRAINING_XML_ELEMENT_PATH_BY_LABEL
+            ),
+            use_tei_namespace=True
+        )

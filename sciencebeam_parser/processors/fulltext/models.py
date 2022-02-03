@@ -65,6 +65,11 @@ class FullTextModels:
                 pass
         LOGGER.info('preloaded models')
 
+    def get_sequence_model_by_name(self, model_name: str) -> Model:
+        model = getattr(self, model_name + '_model')
+        assert isinstance(model, Model)
+        return model
+
 
 T_Model = TypeVar('T_Model', bound=Model)
 

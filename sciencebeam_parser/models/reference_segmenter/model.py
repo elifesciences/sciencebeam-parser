@@ -9,7 +9,8 @@ from sciencebeam_parser.models.reference_segmenter.extract import (
     ReferenceSegmenterSemanticExtractor
 )
 from sciencebeam_parser.models.reference_segmenter.training_data import (
-    ReferenceSegmenterTeiTrainingDataGenerator
+    ReferenceSegmenterTeiTrainingDataGenerator,
+    ReferenceSegmenterTrainingTeiParser
 )
 
 
@@ -30,3 +31,6 @@ class ReferenceSegmenterModel(Model):
 
     def get_tei_training_data_generator(self) -> ReferenceSegmenterTeiTrainingDataGenerator:
         return ReferenceSegmenterTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> ReferenceSegmenterTrainingTeiParser:
+        return ReferenceSegmenterTrainingTeiParser()

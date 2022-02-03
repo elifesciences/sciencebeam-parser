@@ -10,6 +10,7 @@ from sciencebeam_parser.models.model import (
 from sciencebeam_parser.models.name.extract import NameSemanticExtractor
 from sciencebeam_parser.models.training_data import (
     AbstractTeiTrainingDataGenerator,
+    AbstractTrainingTeiParser,
     ExtractInstruction,
     ResetExtractInstruction,
     get_model_data_label
@@ -103,4 +104,15 @@ class NameTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
         )
         return iter_model_data_with_reset_instruction_iterable(
             parent_model_data_or_instruction_iterable
+        )
+
+
+class NameTrainingTeiParser(AbstractTrainingTeiParser):
+    def __init__(self) -> None:
+        super().__init__(
+            root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH[:-1],
+            training_xml_element_path_by_label=(
+                TRAINING_XML_ELEMENT_PATH_BY_LABEL
+            ),
+            use_tei_namespace=True
         )

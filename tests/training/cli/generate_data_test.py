@@ -197,26 +197,14 @@ def configure_fulltext_models_mock_with_sample_document(
     )
 
 
-@pytest.fixture(name='fulltext_models_mock')
-def _fulltext_models_mock() -> MockFullTextModels:
-    return MockFullTextModels()
-
-
-@pytest.fixture(name='sciencebeam_parser_class_mock', autouse=True)
-def _sciencebeam_parser_class_mock() -> Iterator[MockFullTextModels]:
-    with patch.object(generate_data_module, 'ScienceBeamParser') as mock:
+@pytest.fixture(autouse=True)
+def _patch_sciencebeam_parser_class_mock(
+    sciencebeam_parser_class_mock: MagicMock
+) -> Iterator[MagicMock]:
+    with patch.object(
+        generate_data_module, 'ScienceBeamParser', sciencebeam_parser_class_mock
+    ) as mock:
         yield mock
-
-
-@pytest.fixture(name='sciencebeam_parser_mock', autouse=True)
-def _sciencebeam_parser_mock(
-    sciencebeam_parser_class_mock: MagicMock,
-    fulltext_models_mock: MockFullTextModels
-) -> MockFullTextModels:
-    mock = MagicMock(name='ScienceBeamParser')
-    mock.fulltext_models = fulltext_models_mock
-    sciencebeam_parser_class_mock.from_config.return_value = mock
-    return mock
 
 
 @pytest.fixture(name='sample_layout_document')
