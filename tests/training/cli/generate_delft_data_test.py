@@ -283,7 +283,7 @@ class TestMain:
         fulltext_models_mock: MockFullTextModels,
         document_features_context: DocumentFeaturesContext
     ):
-        data_generator = fulltext_models_mock.name_header_model.get_data_generator(
+        data_generator = fulltext_models_mock.name_citation_model.get_data_generator(
             document_features_context=document_features_context
         )
         xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
