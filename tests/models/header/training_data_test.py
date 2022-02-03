@@ -48,13 +48,17 @@ def get_data_generator() -> HeaderDataGenerator:
     return HeaderDataGenerator(DEFAULT_DOCUMENT_FEATURES_CONTEXT)
 
 
+def get_tei_training_data_generator() -> HeaderTeiTrainingDataGenerator:
+    return HeaderTeiTrainingDataGenerator()
+
+
 def get_training_tei_parser() -> HeaderTrainingTeiParser:
     return HeaderTrainingTeiParser()
 
 
 class TestHeaderTeiTrainingDataGenerator:
     def test_should_include_layout_document_text_in_tei_output(self):
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         layout_document = LayoutDocument.for_blocks([LayoutBlock.for_text(TEXT_1)])
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             get_model_data_list_for_layout_document(
@@ -68,7 +72,7 @@ class TestHeaderTeiTrainingDataGenerator:
         assert get_text_content(text_nodes[0]).rstrip() == TEXT_1
 
     def test_should_keep_original_whitespace(self):
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         text = 'Token1, Token2  ,Token3'
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
             LayoutLine.for_text(text, tail_whitespace='\n')
@@ -84,7 +88,7 @@ class TestHeaderTeiTrainingDataGenerator:
         assert get_text_content(text_nodes[0]).rstrip() == text
 
     def test_should_add_line_feeds(self):
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
             LayoutLine.for_text(TEXT_1, tail_whitespace='\n'),
             LayoutLine.for_text(TEXT_2, tail_whitespace='\n')
@@ -100,7 +104,7 @@ class TestHeaderTeiTrainingDataGenerator:
         assert get_text_content(text_nodes[0]).rstrip() == '\n'.join([TEXT_1, TEXT_2])
 
     def test_should_lb_elements_before_line_feeds(self):
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         layout_document = LayoutDocument.for_blocks([LayoutBlock(lines=[
             LayoutLine.for_text(TEXT_1, tail_whitespace='\n'),
             LayoutLine.for_text(TEXT_2, tail_whitespace='\n')
@@ -127,7 +131,7 @@ class TestHeaderTeiTrainingDataGenerator:
         model_data_iterable = data_generator.iter_model_data_for_layout_document(
             layout_document
         )
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             model_data_iterable
         )
@@ -148,7 +152,7 @@ class TestHeaderTeiTrainingDataGenerator:
             label_and_layout_line_list,
             data_generator=get_data_generator()
         )
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
         )
@@ -171,7 +175,7 @@ class TestHeaderTeiTrainingDataGenerator:
             label_and_layout_line_list,
             data_generator=get_data_generator()
         )
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
         )
@@ -192,7 +196,7 @@ class TestHeaderTeiTrainingDataGenerator:
             label_and_layout_line_list,
             data_generator=get_data_generator()
         )
-        training_data_generator = HeaderTeiTrainingDataGenerator()
+        training_data_generator = get_tei_training_data_generator()
         xml_root = training_data_generator.get_training_tei_xml_for_model_data_iterable(
             labeled_model_data_list
         )
