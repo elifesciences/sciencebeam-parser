@@ -238,7 +238,7 @@ class TestMain:
         data_generator = fulltext_models_mock.affiliation_address_model.get_data_generator(
             document_features_context=document_features_context
         )
-        xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
+        xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
         xml_writer.require_path([
             'teiHeader', 'fileDesc', 'sourceDesc', 'biblStruct', 'analytic', 'author',
             'affiliation', 'orgName[@type="institution"]'

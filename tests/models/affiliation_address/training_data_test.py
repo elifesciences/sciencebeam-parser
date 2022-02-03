@@ -309,7 +309,7 @@ class TestAffiliationAddressTeiTrainingDataGenerator:
 def _get_training_tei_with_affiliations(
     affiliations: Sequence[etree.ElementBase]
 ) -> etree.ElementBase:
-    xml_writer = XmlTreeWriter(TEI_E('tei'), element_maker=TEI_E)
+    xml_writer = XmlTreeWriter(TEI_E('TEI'), element_maker=TEI_E)
     xml_writer.require_path(
         ROOT_TRAINING_XML_ELEMENT_PATH[:-1]
     )
