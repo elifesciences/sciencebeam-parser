@@ -61,13 +61,15 @@ def _document_features_context(
     )
 
 
-def _test_generate_delft_with_two_tokens_tei_and_raw(
+def _test_generate_delft_with_multiple_tokens_tei_and_raw(
     tmp_path: Path,
     model_name: str,
     file_suffix: str,
     tei_root: etree.ElementBase,
+    tokens: Sequence[str],
     expected_labels: Sequence[str]
 ):
+    assert len(tokens) == len(expected_labels)
     tei_source_path = tmp_path / 'tei'
     raw_source_path = tmp_path / 'raw'
     output_path = tmp_path / 'output.data'
@@ -76,9 +78,13 @@ def _test_generate_delft_with_two_tokens_tei_and_raw(
         etree.tostring(tei_root)
     )
     raw_source_path.mkdir(parents=True, exist_ok=True)
+    expected_features = [[
+        [f'{i}.1', f'{i}.2', f'{i}.3']
+        for i in range(len(tokens))
+    ]]
     (raw_source_path / f'sample{file_suffix}').write_text('\n'.join([
-        '{TOKEN_1} 1.1 1.2 1.3',
-        '{TOKEN_2} 2.1 2.2 2.3'
+        f'{token} {" ".join(expected_token_features)}'
+        for token, expected_token_features in zip(tokens, expected_features[0])
     ]))
     main([
         f'--model-name={model_name}',
@@ -92,12 +98,26 @@ def _test_generate_delft_with_two_tokens_tei_and_raw(
     )
     LOGGER.debug('texts: %r', texts)
     assert len(texts) == 1
-    assert list(texts[0]) == [TOKEN_1, TOKEN_2]
+    assert list(texts[0]) == tokens
     assert list(_labels[0]) == expected_labels
-    assert _features.tolist() == [[
-        ['1.1', '1.2', '1.3'],
-        ['2.1', '2.2', '2.3']
-    ]]
+    assert _features.tolist() == expected_features
+
+
+def _test_generate_delft_with_two_tokens_tei_and_raw(
+    tmp_path: Path,
+    model_name: str,
+    file_suffix: str,
+    tei_root: etree.ElementBase,
+    expected_labels: Sequence[str]
+):
+    _test_generate_delft_with_multiple_tokens_tei_and_raw(
+        tmp_path=tmp_path,
+        model_name=model_name,
+        file_suffix=file_suffix,
+        tei_root=tei_root,
+        expected_labels=expected_labels,
+        tokens=[TOKEN_1, TOKEN_2]
+    )
 
 
 def _test_generate_delft_with_two_tokens_tei_only(
@@ -190,6 +210,30 @@ class TestMain:
                 '\n'
             ])),
             expected_labels=['B-<paragraph>', 'I-<paragraph>']
+        )
+
+    def test_should_continue_fulltext_paragraph(
+        self,
+        tmp_path: Path
+    ):
+        _test_generate_delft_with_multiple_tokens_tei_and_raw(
+            tmp_path=tmp_path,
+            model_name='fulltext',
+            file_suffix='.fulltext',
+            tei_root=E('tei', E('text', *[
+                E(
+                    'p',
+                    TOKEN_1,
+                    ' ',
+                    E('ref', {'type': 'biblio'}, TOKEN_2),
+                    ' ',
+                    TOKEN_3,
+                    E('lb')
+                ),
+                '\n'
+            ])),
+            tokens=[TOKEN_1, TOKEN_2, TOKEN_3],
+            expected_labels=['B-<paragraph>', 'B-<citation_marker>', 'I-<paragraph>']
         )
 
     def test_should_be_able_to_generate_figure_training_data(
