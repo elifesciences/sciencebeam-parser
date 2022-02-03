@@ -116,6 +116,16 @@ python -m sciencebeam_parser.training.cli.generate_delft_data \
     --delft-output-path="./data/generated-training-data/delft/table/corpus/table.data"
 ```
 
+#### Example command for `reference_segmenter` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="reference_segmenter" \
+    --tei-source-path="data/generated-training-data/reference-segmenter/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/reference-segmenter/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/reference-segmenter/corpus/reference-segmenter.data"
+```
+
 #### Example command for `affiliation_address` model
 
 ```bash
