@@ -264,22 +264,22 @@ def _check_tei_training_data_generator_output_and_return_xml_root(
     source_filename: str = SOURCE_FILENAME_1,
     pre_file_path_suffix: str = ''
 ) -> etree.ElementBase:
-    expected_segmentation_tei_path = _get_expected_file_path_with_suffix(
+    expected_tei_path = _get_expected_file_path_with_suffix(
         output_path,
         source_filename,
         tei_training_data_generator.get_default_tei_filename_suffix(),
         pre_file_path_suffix=pre_file_path_suffix
     )
-    assert expected_segmentation_tei_path.exists()
+    assert expected_tei_path.exists()
     if expect_raw_data:
-        expected_segmentation_data_path = _get_expected_file_path_with_suffix(
+        expected_data_path = _get_expected_file_path_with_suffix(
             output_path,
             source_filename,
             tei_training_data_generator.get_default_data_filename_suffix(),
             pre_file_path_suffix=pre_file_path_suffix
         )
-        assert expected_segmentation_data_path.exists()
-    xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+        assert expected_data_path.exists()
+    xml_root = etree.parse(str(expected_tei_path)).getroot()
     LOGGER.debug('xml: %r', etree.tostring(xml_root))
     return xml_root
 
