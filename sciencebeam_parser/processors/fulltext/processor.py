@@ -342,7 +342,7 @@ class FullTextProcessor:
     ):
         unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
         candidate_semantic_content_list = list(
-            document.iter_by_type_recursively(SemanticFigure)
+            document.iter_by_types_recursively((SemanticFigure, SemanticTable,))
         )
         self._match_graphic_elements(
             semantic_graphic_list=list(

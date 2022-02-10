@@ -794,3 +794,79 @@ class TestFullTextProcessor:
         assert len(table_citation_list) == 1
         assert table_citation_list[0].get_text() == citation_block.text
         assert table_citation_list[0].target_content_id == 'tab_0'
+
+    @pytest.mark.parametrize(
+        'segmentation_label',
+        ['<body>', '<annex>']
+    )
+    def test_should_extract_table_graphic(
+        self, fulltext_models_mock: MockFullTextModels,
+        segmentation_label: str
+    ):
+        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        graphic_local_file_path = '/path/to/graphic1.svg'
+        graphic = LayoutGraphic(
+            coordinates=_coordinates,
+            local_file_path=graphic_local_file_path
+        )
+        _coordinates = _coordinates.move_by(dy=10)
+        label_block = LayoutBlock.for_text('Table 1', coordinates=_coordinates)
+        _coordinates = _coordinates.move_by(dy=10)
+        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
+        other_block = LayoutBlock.for_text('Other')
+        table_block = LayoutBlock.merge_blocks([
+            label_block, other_block, caption_block
+        ])
+
+        fulltext_block = LayoutBlock.merge_blocks([table_block])
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(
+                extract_figure_fields=True,
+                extract_graphic_bounding_boxes=True,
+                extract_graphic_assets=True
+            )
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+        table_model_mock = fulltext_models_mock.table_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            fulltext_block, segmentation_label
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            table_block, '<table>'
+        )
+
+        table_model_mock.update_label_by_layout_block(
+            label_block, '<label>'
+        )
+        table_model_mock.update_label_by_layout_block(
+            caption_block, '<figDesc>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(
+            blocks=[fulltext_block],
+            graphics=[graphic]
+        )])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        table_list = list(iter_by_semantic_type_recursively(
+            [semantic_document.body_section, semantic_document.back_section],
+            SemanticTable
+        ))
+        assert len(table_list) == 1
+        table = table_list[0]
+        assert table.get_text_by_type(SemanticLabel) == label_block.text
+        assert table.get_text_by_type(SemanticCaption) == caption_block.text
+        semantic_graphic_list = list(table.iter_by_type(SemanticGraphic))
+        assert semantic_graphic_list
+        assert semantic_graphic_list[0].layout_graphic == graphic
+        assert semantic_graphic_list[0].relative_path == os.path.basename(
+            graphic_local_file_path
+        )
