@@ -4,10 +4,15 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from glob import glob
 from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from lxml import etree
+
+from sciencebeam_trainer_delft.utils.io import (
+    auto_download_input_file
+)
+
+from sciencebeam_parser.utils.io import glob
 
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
@@ -830,6 +835,20 @@ def generate_training_data_for_layout_document(
         )
 
 
+def get_layout_document_for_source_filename(
+    source_filename: str,
+    sciencebeam_parser: ScienceBeamParser,
+) -> LayoutDocument:
+    with sciencebeam_parser.get_new_session() as session:
+        with auto_download_input_file(
+            source_filename,
+            auto_decompress=True
+        ) as local_source_filename:
+            source = session.get_source(local_source_filename, MediaTypes.PDF)
+            layout_document = source.get_layout_document()
+            return layout_document
+
+
 def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
@@ -838,20 +857,21 @@ def generate_training_data_for_source_filename(
     use_directory_structure: bool
 ):
     LOGGER.debug('use_model: %r', use_model)
-    with sciencebeam_parser.get_new_session() as session:
-        source = session.get_source(source_filename, MediaTypes.PDF)
-        layout_document = source.get_layout_document()
-        generate_training_data_for_layout_document(
-            layout_document=layout_document,
-            output_path=output_path,
-            source_filename=source_filename,
-            document_features_context=DocumentFeaturesContext(
-                sciencebeam_parser.app_features_context
-            ),
-            fulltext_models=sciencebeam_parser.fulltext_models,
-            use_model=use_model,
-            use_directory_structure=use_directory_structure
-        )
+    layout_document = get_layout_document_for_source_filename(
+        source_filename,
+        sciencebeam_parser=sciencebeam_parser
+    )
+    generate_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=DocumentFeaturesContext(
+            sciencebeam_parser.app_features_context
+        ),
+        fulltext_models=sciencebeam_parser.fulltext_models,
+        use_model=use_model,
+        use_directory_structure=use_directory_structure
+    )
 
 
 def get_source_file_list_or_fail(
@@ -866,6 +886,7 @@ def get_source_file_list_or_fail(
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
     source_file_list = get_source_file_list_or_fail(args.source_path)
+    LOGGER.info('source files: %d', len(source_file_list))
     output_path = args.output_path
     config = AppConfig.load_yaml(
         DEFAULT_CONFIG_FILE
