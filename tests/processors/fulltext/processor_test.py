@@ -49,6 +49,7 @@ def _fulltext_models() -> MockFullTextModels:
     return MockFullTextModels()
 
 
+# pylint: disable=too-many-locals
 class TestFullTextProcessor:
     def test_should_not_fail_with_empty_document(
         self, fulltext_models_mock: MockFullTextModels
@@ -242,7 +243,7 @@ class TestFullTextProcessor:
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
 
-    def test_should_extract_affiliation_address_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_affiliation_address_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         marker_block = LayoutBlock.for_text('1')
@@ -298,7 +299,7 @@ class TestFullTextProcessor:
         assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
         assert affiliations[0].content_id == 'aff0'
 
-    def test_should_not_merge_separate_raw_affiliations(  # pylint: disable=too-many-locals
+    def test_should_not_merge_separate_raw_affiliations(
         self, fulltext_models_mock: MockFullTextModels
     ):
         aff_suffix_texts = ['1', '2']
@@ -347,7 +348,7 @@ class TestFullTextProcessor:
             == ['aff0', 'aff1']
         )
 
-    def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_raw_references_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         label_block = LayoutBlock.for_text('1')
@@ -390,7 +391,7 @@ class TestFullTextProcessor:
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
         assert ref.content_id == 'b0'
 
-    def test_should_extract_references_fields_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_references_fields_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         other_body = LayoutBlock.for_text('the body')
@@ -461,7 +462,7 @@ class TestFullTextProcessor:
         assert len(ref_citations) == 1
         assert ref_citations[0].target_content_id == 'b0'
 
-    def test_should_extract_invalid_reference_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_invalid_reference_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         other_body = LayoutBlock.for_text('the body')
@@ -517,7 +518,7 @@ class TestFullTextProcessor:
         assert len(references) == 1
         assert references[0].get_text() == invalid_reference_block.text
 
-    def test_should_extract_author_names_from_references_fields(  # pylint: disable=too-many-locals
+    def test_should_extract_author_names_from_references_fields(
         self, fulltext_models_mock: MockFullTextModels
     ):
         given_name_block = LayoutBlock.for_text('Given name')
@@ -577,7 +578,7 @@ class TestFullTextProcessor:
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
 
-    def test_should_extract_editor_names_from_references_fields(  # pylint: disable=too-many-locals
+    def test_should_extract_editor_names_from_references_fields(
         self, fulltext_models_mock: MockFullTextModels
     ):
         given_name_block = LayoutBlock.for_text('Given name')
@@ -645,7 +646,7 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_figure_label_caption_from_body(  # pylint: disable=too-many-locals
+    def test_should_extract_figure_label_caption_from_body(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
@@ -731,7 +732,7 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_table_label_caption_from_body(  # pylint: disable=too-many-locals
+    def test_should_extract_table_label_caption_from_body(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
