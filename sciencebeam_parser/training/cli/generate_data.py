@@ -854,8 +854,18 @@ def generate_training_data_for_source_filename(
         )
 
 
+def get_source_file_list_or_fail(
+    source_path_pattern: str
+) -> Sequence[str]:
+    source_file_list = list(glob(source_path_pattern))
+    if not source_file_list:
+        raise FileNotFoundError('no files found for file pattern: %r' % source_path_pattern)
+    return source_file_list
+
+
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
+    source_file_list = get_source_file_list_or_fail(args.source_path)
     output_path = args.output_path
     config = AppConfig.load_yaml(
         DEFAULT_CONFIG_FILE
@@ -863,7 +873,7 @@ def run(args: argparse.Namespace):
     sciencebeam_parser = ScienceBeamParser.from_config(config)
     LOGGER.info('output_path: %r', output_path)
     os.makedirs(output_path, exist_ok=True)
-    for source_filename in glob(args.source_path):
+    for source_filename in source_file_list:
         generate_training_data_for_source_filename(
             source_filename,
             output_path=output_path,

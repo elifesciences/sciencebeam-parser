@@ -57,6 +57,8 @@ LOGGER = logging.getLogger(__name__)
 MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
 MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
 
+NON_EXISTING_PDF_PATTERN = 'test-data/non-existing*.pdf'
+
 
 SOURCE_FILENAME_1 = 'test1.pdf'
 
@@ -450,6 +452,24 @@ class TestGenerateTrainingDataForLayoutDocument:
 
 @log_on_exception
 class TestMain:
+    def test_should_fail_if_no_files_were_found(
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        output_path = tmp_path / 'generated-data'
+        with pytest.raises(FileNotFoundError):
+            main([
+                f'--source-path={NON_EXISTING_PDF_PATTERN}',
+                f'--output-path={output_path}'
+            ])
+        assert not output_path.exists()
+
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
         tmp_path: Path,
