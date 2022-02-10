@@ -732,7 +732,7 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_table_label_caption_from_body(
+    def test_should_extract_table_label_caption(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
