@@ -3,11 +3,15 @@ import argparse
 import logging
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
-from glob import glob
 from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from lxml import etree
+
+from sciencebeam_trainer_delft.utils.io import (
+    auto_download_input_file
+)
+
+from sciencebeam_parser.utils.io import glob, makedirs, write_bytes, write_text
 
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
@@ -65,6 +69,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         required=True
     )
     parser.add_argument(
+        '--limit',
+        type=int,
+        required=False
+    )
+    parser.add_argument(
         '--use-model',
         action='store_true',
         help='Use configured models to pre-annotate training data'
@@ -73,6 +82,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         '--use-directory-structure',
         action='store_true',
         help='Output training data to a directory structure'
+    )
+    parser.add_argument(
+        '--gzip',
+        action='store_true',
+        help='Enable gzip compression for output files (with .gz suffix)'
     )
     parser.add_argument(
         '--debug',
@@ -160,6 +174,7 @@ class TrainingDataDocumentContext(NamedTuple):
     use_model: bool
     use_directory_structure: bool
     model_result_cache: ModelResultCache
+    gzip_enabled: bool
 
     @property
     def source_name(self) -> str:
@@ -305,6 +320,8 @@ class AbstractModelTrainingDataGenerator(ABC):
         output_path = document_context.output_path
         if sub_directory and document_context.use_directory_structure:
             output_path = os.path.join(output_path, sub_directory)
+        if document_context.gzip_enabled:
+            suffix += '.gz'
         return os.path.join(
             output_path,
             document_context.source_name + self.get_pre_file_path_suffix() + suffix
@@ -362,16 +379,19 @@ class AbstractModelTrainingDataGenerator(ABC):
             )
         )
         LOGGER.info('writing training tei to: %r', tei_file_path)
-        Path(tei_file_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(tei_file_path).write_bytes(
+        write_bytes(
+            tei_file_path,
             etree.tostring(training_tei_root, pretty_print=True)
         )
         if data_file_path:
             LOGGER.info('writing training raw data to: %r', data_file_path)
-            Path(data_file_path).parent.mkdir(parents=True, exist_ok=True)
-            Path(data_file_path).write_text('\n'.join(
-                iter_data_lines_for_model_data_iterables(model_data_list_list)
-            ), encoding='utf-8')
+            write_text(
+                data_file_path,
+                '\n'.join(
+                    iter_data_lines_for_model_data_iterables(model_data_list_list)
+                ),
+                encoding='utf-8'
+            )
 
 
 class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
@@ -799,7 +819,8 @@ def generate_training_data_for_layout_document(
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
     use_model: bool,
-    use_directory_structure: bool
+    use_directory_structure: bool,
+    gzip_enabled: bool = False
 ):
     model_result_cache = ModelResultCache()
     document_context = TrainingDataDocumentContext(
@@ -809,7 +830,8 @@ def generate_training_data_for_layout_document(
         fulltext_models=fulltext_models,
         use_model=use_model,
         use_directory_structure=use_directory_structure,
-        model_result_cache=model_result_cache
+        model_result_cache=model_result_cache,
+        gzip_enabled=gzip_enabled
     )
     training_data_generators = [
         SegmentationModelTrainingDataGenerator(),
@@ -830,46 +852,78 @@ def generate_training_data_for_layout_document(
         )
 
 
+def get_layout_document_for_source_filename(
+    source_filename: str,
+    sciencebeam_parser: ScienceBeamParser,
+) -> LayoutDocument:
+    with sciencebeam_parser.get_new_session() as session:
+        with auto_download_input_file(
+            source_filename,
+            auto_decompress=True
+        ) as local_source_filename:
+            source = session.get_source(local_source_filename, MediaTypes.PDF)
+            layout_document = source.get_layout_document()
+            return layout_document
+
+
 def generate_training_data_for_source_filename(
     source_filename: str,
     output_path: str,
     sciencebeam_parser: ScienceBeamParser,
     use_model: bool,
-    use_directory_structure: bool
+    use_directory_structure: bool,
+    gzip_enabled: bool
 ):
     LOGGER.debug('use_model: %r', use_model)
-    with sciencebeam_parser.get_new_session() as session:
-        source = session.get_source(source_filename, MediaTypes.PDF)
-        layout_document = source.get_layout_document()
-        generate_training_data_for_layout_document(
-            layout_document=layout_document,
-            output_path=output_path,
-            source_filename=source_filename,
-            document_features_context=DocumentFeaturesContext(
-                sciencebeam_parser.app_features_context
-            ),
-            fulltext_models=sciencebeam_parser.fulltext_models,
-            use_model=use_model,
-            use_directory_structure=use_directory_structure
-        )
+    layout_document = get_layout_document_for_source_filename(
+        source_filename,
+        sciencebeam_parser=sciencebeam_parser
+    )
+    generate_training_data_for_layout_document(
+        layout_document=layout_document,
+        output_path=output_path,
+        source_filename=source_filename,
+        document_features_context=DocumentFeaturesContext(
+            sciencebeam_parser.app_features_context
+        ),
+        fulltext_models=sciencebeam_parser.fulltext_models,
+        use_model=use_model,
+        use_directory_structure=use_directory_structure,
+        gzip_enabled=gzip_enabled
+    )
+
+
+def get_source_file_list_or_fail(
+    source_path_pattern: str
+) -> Sequence[str]:
+    source_file_list = list(glob(source_path_pattern))
+    if not source_file_list:
+        raise FileNotFoundError('no files found for file pattern: %r' % source_path_pattern)
+    return source_file_list
 
 
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
+    source_file_list = get_source_file_list_or_fail(args.source_path)
+    if args.limit:
+        source_file_list = source_file_list[:args.limit]
+    LOGGER.info('source files: %d', len(source_file_list))
     output_path = args.output_path
     config = AppConfig.load_yaml(
         DEFAULT_CONFIG_FILE
     )
     sciencebeam_parser = ScienceBeamParser.from_config(config)
     LOGGER.info('output_path: %r', output_path)
-    os.makedirs(output_path, exist_ok=True)
-    for source_filename in glob(args.source_path):
+    # Note: creating the directory may not be necessary, but provides early feedback
+    makedirs(output_path, exist_ok=True)
+    for source_filename in source_file_list:
         generate_training_data_for_source_filename(
             source_filename,
             output_path=output_path,
             sciencebeam_parser=sciencebeam_parser,
             use_model=args.use_model,
-            use_directory_structure=args.use_directory_structure
+            use_directory_structure=args.use_directory_structure,
+            gzip_enabled=args.gzip
         )
 
 

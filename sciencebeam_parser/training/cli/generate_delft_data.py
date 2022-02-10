@@ -1,18 +1,24 @@
 import argparse
 import logging
 import os
-from glob import glob
-from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from lxml import etree
 
+from sciencebeam_trainer_delft.utils.io import (
+    auto_download_input_file
+)
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
 )
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
     iter_format_tag_result
+)
+
+from sciencebeam_parser.utils.io import (
+    auto_uploading_output_file,
+    glob
 )
 
 from sciencebeam_parser.document.layout_document import (
@@ -114,9 +120,16 @@ def get_raw_file_for_tei_file(
     tei_file: str,
     raw_source_path: str
 ) -> str:
+    compression_suffix = ''
+    if tei_file.endswith('.gz'):
+        compression_suffix = '.gz'
+        tei_file = tei_file[:-len(compression_suffix)]
     tei_suffix = '.tei.xml'
     assert tei_file.endswith(tei_suffix)
-    return os.path.join(raw_source_path, os.path.basename(tei_file[:-len(tei_suffix)]))
+    return os.path.join(
+        raw_source_path,
+        os.path.basename(tei_file[:-len(tei_suffix)] + compression_suffix)
+    )
 
 
 def get_raw_file_list_for_tei_file_list(
@@ -161,7 +174,11 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     training_tei_parser: TrainingTeiParser,
     data_generator: ModelDataGenerator
 ) -> Iterable[str]:
-    tei_root = etree.parse(tei_file).getroot()
+    with auto_download_input_file(
+        tei_file,
+        auto_decompress=True
+    ) as local_tei_file:
+        tei_root = etree.parse(local_tei_file).getroot()
     labeled_layout_tokens_list = (
         training_tei_parser.parse_training_tei_to_labeled_layout_tokens_list(
             tei_root
@@ -175,10 +192,14 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     )
     LOGGER.debug('translated_tag_result: %r', translated_tag_result)
     if raw_file:
-        with open(raw_file, 'r', encoding='utf-8') as raw_fp:
-            texts, features = load_data_crf_lines(
-                raw_fp
-            )
+        with auto_download_input_file(
+            raw_file,
+            auto_decompress=True
+        ) as local_raw_file:
+            with open(local_raw_file, 'r', encoding='utf-8') as raw_fp:
+                texts, features = load_data_crf_lines(
+                    raw_fp
+                )
         assert len(texts) == len(translated_tag_result)
         for doc_tokens, doc_tag_result in zip(texts, translated_tag_result):
             assert len(doc_tokens) == len(doc_tag_result)
@@ -235,8 +256,11 @@ def generate_delft_training_data(
         raw_file_list = [None] * len(tei_file_list)
     LOGGER.info('raw_file_list: %r', raw_file_list)
     LOGGER.info('writing to : %r', delft_output_path)
-    Path(delft_output_path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(delft_output_path).open('w', encoding='utf-8') as data_fp:
+    with auto_uploading_output_file(
+        delft_output_path,
+        mode='w',
+        encoding='utf-8',
+    ) as data_fp:
         for document_index, (tei_file, raw_file) in enumerate(zip(tei_file_list, raw_file_list)):
             if document_index > 0:
                 data_fp.write('\n\n')

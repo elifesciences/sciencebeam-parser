@@ -19,6 +19,8 @@ For the sequence model (`delft` etc) the general workflow looks like:
 
 The training data for the sequential models follows the GROBID training data format.
 
+Note: all commands below also support input and output files in google cloud storage (using `gs://` for the path url)
+
 ### Generate `tei` training data for the sequence models
 
 Currently training data will be generated for the following models:
@@ -61,6 +63,8 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
 ```
+
+Additionally the `--gzip` argument can be passed in, resulting in gzip (`.gz`) compressed output files.
 
 ### Annotating `tei` training data for the sequence models
 
