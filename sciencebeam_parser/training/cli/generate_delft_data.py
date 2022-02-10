@@ -167,7 +167,10 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     training_tei_parser: TrainingTeiParser,
     data_generator: ModelDataGenerator
 ) -> Iterable[str]:
-    with auto_download_input_file(tei_file) as local_tei_file:
+    with auto_download_input_file(
+        tei_file,
+        auto_decompress=True
+    ) as local_tei_file:
         tei_root = etree.parse(local_tei_file).getroot()
     labeled_layout_tokens_list = (
         training_tei_parser.parse_training_tei_to_labeled_layout_tokens_list(
@@ -182,7 +185,10 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     )
     LOGGER.debug('translated_tag_result: %r', translated_tag_result)
     if raw_file:
-        with auto_download_input_file(raw_file) as local_raw_file:
+        with auto_download_input_file(
+            raw_file,
+            auto_decompress=True
+        ) as local_raw_file:
             with open(local_raw_file, 'r', encoding='utf-8') as raw_fp:
                 texts, features = load_data_crf_lines(
                     raw_fp
