@@ -646,7 +646,7 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_figure_label_caption_and_graphic_from_body(
+    def test_should_extract_figure_label_caption_and_graphic(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
