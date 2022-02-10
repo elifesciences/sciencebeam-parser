@@ -1,18 +1,24 @@
 import argparse
 import logging
 import os
-from glob import glob
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from lxml import etree
 
+from sciencebeam_trainer_delft.utils.io import (
+    auto_download_input_file
+)
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
 )
 from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
     TagOutputFormats,
     iter_format_tag_result
+)
+
+from sciencebeam_parser.utils.io import (
+    glob
 )
 
 from sciencebeam_parser.document.layout_document import (
@@ -161,7 +167,8 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     training_tei_parser: TrainingTeiParser,
     data_generator: ModelDataGenerator
 ) -> Iterable[str]:
-    tei_root = etree.parse(tei_file).getroot()
+    with auto_download_input_file(tei_file) as local_tei_file:
+        tei_root = etree.parse(local_tei_file).getroot()
     labeled_layout_tokens_list = (
         training_tei_parser.parse_training_tei_to_labeled_layout_tokens_list(
             tei_root
@@ -175,10 +182,11 @@ def iter_generate_delft_training_data_lines_for_document(  # pylint: disable=too
     )
     LOGGER.debug('translated_tag_result: %r', translated_tag_result)
     if raw_file:
-        with open(raw_file, 'r', encoding='utf-8') as raw_fp:
-            texts, features = load_data_crf_lines(
-                raw_fp
-            )
+        with auto_download_input_file(raw_file) as local_raw_file:
+            with open(local_raw_file, 'r', encoding='utf-8') as raw_fp:
+                texts, features = load_data_crf_lines(
+                    raw_fp
+                )
         assert len(texts) == len(translated_tag_result)
         for doc_tokens, doc_tag_result in zip(texts, translated_tag_result):
             assert len(doc_tokens) == len(doc_tag_result)
