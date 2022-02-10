@@ -70,6 +70,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         required=True
     )
     parser.add_argument(
+        '--limit',
+        type=int,
+        required=False
+    )
+    parser.add_argument(
         '--use-model',
         action='store_true',
         help='Use configured models to pre-annotate training data'
@@ -886,6 +891,8 @@ def get_source_file_list_or_fail(
 def run(args: argparse.Namespace):
     LOGGER.info('args: %r', args)
     source_file_list = get_source_file_list_or_fail(args.source_path)
+    if args.limit:
+        source_file_list = source_file_list[:args.limit]
     LOGGER.info('source files: %d', len(source_file_list))
     output_path = args.output_path
     config = AppConfig.load_yaml(
