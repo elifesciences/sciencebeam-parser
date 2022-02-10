@@ -1,13 +1,13 @@
 import argparse
 import logging
 import os
-from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 from lxml import etree
 
 from sciencebeam_trainer_delft.utils.io import (
-    auto_download_input_file
+    auto_download_input_file,
+    auto_uploading_output_file
 )
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
@@ -243,8 +243,7 @@ def generate_delft_training_data(
         raw_file_list = [None] * len(tei_file_list)
     LOGGER.info('raw_file_list: %r', raw_file_list)
     LOGGER.info('writing to : %r', delft_output_path)
-    Path(delft_output_path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(delft_output_path).open('w', encoding='utf-8') as data_fp:
+    with auto_uploading_output_file(delft_output_path, 'w', encoding='utf-8') as data_fp:
         for document_index, (tei_file, raw_file) in enumerate(zip(tei_file_list, raw_file_list)):
             if document_index > 0:
                 data_fp.write('\n\n')
