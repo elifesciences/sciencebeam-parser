@@ -3,6 +3,10 @@ from urllib.parse import urlparse
 
 import fsspec
 
+from sciencebeam_trainer_delft.utils.io import (
+    auto_uploading_output_file
+)
+
 
 def get_file_system_protocol_for_url(url: str) -> fsspec.AbstractFileSystem:
     parsed_url = urlparse(url)
@@ -63,3 +67,15 @@ def glob(
         protocol,
         fs.glob(glob_pattern)
     ))
+
+
+def makedirs(
+    path: str,
+    exist_ok: bool = False
+):
+    get_file_system_for_url(path).makedirs(path, exist_ok=exist_ok)
+
+
+def write_bytes(filepath: str, data: bytes, **kwargs):
+    with auto_uploading_output_file(filepath, mode='wb', **kwargs) as fp:
+        fp.write(data)

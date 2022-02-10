@@ -3,16 +3,16 @@ import argparse
 import logging
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from lxml import etree
 
 from sciencebeam_trainer_delft.utils.io import (
-    auto_download_input_file
+    auto_download_input_file,
+    write_text
 )
 
-from sciencebeam_parser.utils.io import glob
+from sciencebeam_parser.utils.io import glob, makedirs, write_bytes
 
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
@@ -372,16 +372,19 @@ class AbstractModelTrainingDataGenerator(ABC):
             )
         )
         LOGGER.info('writing training tei to: %r', tei_file_path)
-        Path(tei_file_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(tei_file_path).write_bytes(
+        write_bytes(
+            tei_file_path,
             etree.tostring(training_tei_root, pretty_print=True)
         )
         if data_file_path:
             LOGGER.info('writing training raw data to: %r', data_file_path)
-            Path(data_file_path).parent.mkdir(parents=True, exist_ok=True)
-            Path(data_file_path).write_text('\n'.join(
-                iter_data_lines_for_model_data_iterables(model_data_list_list)
-            ), encoding='utf-8')
+            write_text(
+                data_file_path,
+                '\n'.join(
+                    iter_data_lines_for_model_data_iterables(model_data_list_list)
+                ),
+                encoding='utf-8'
+            )
 
 
 class AbstractDocumentModelTrainingDataGenerator(AbstractModelTrainingDataGenerator):
@@ -900,7 +903,8 @@ def run(args: argparse.Namespace):
     )
     sciencebeam_parser = ScienceBeamParser.from_config(config)
     LOGGER.info('output_path: %r', output_path)
-    os.makedirs(output_path, exist_ok=True)
+    # Note: creating the directory may not be necessary, but provides early feedback
+    makedirs(output_path, exist_ok=True)
     for source_filename in source_file_list:
         generate_training_data_for_source_filename(
             source_filename,
