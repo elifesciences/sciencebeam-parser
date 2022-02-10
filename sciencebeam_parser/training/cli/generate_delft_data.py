@@ -6,8 +6,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 from lxml import etree
 
 from sciencebeam_trainer_delft.utils.io import (
-    auto_download_input_file,
-    auto_uploading_output_file
+    auto_download_input_file
 )
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines
@@ -18,6 +17,7 @@ from sciencebeam_trainer_delft.sequence_labelling.tag_formatter import (
 )
 
 from sciencebeam_parser.utils.io import (
+    auto_uploading_output_file,
     glob
 )
 
@@ -120,9 +120,16 @@ def get_raw_file_for_tei_file(
     tei_file: str,
     raw_source_path: str
 ) -> str:
+    compression_suffix = ''
+    if tei_file.endswith('.gz'):
+        compression_suffix = '.gz'
+        tei_file = tei_file[:-len(compression_suffix)]
     tei_suffix = '.tei.xml'
     assert tei_file.endswith(tei_suffix)
-    return os.path.join(raw_source_path, os.path.basename(tei_file[:-len(tei_suffix)]))
+    return os.path.join(
+        raw_source_path,
+        os.path.basename(tei_file[:-len(tei_suffix)] + compression_suffix)
+    )
 
 
 def get_raw_file_list_for_tei_file_list(
@@ -249,7 +256,11 @@ def generate_delft_training_data(
         raw_file_list = [None] * len(tei_file_list)
     LOGGER.info('raw_file_list: %r', raw_file_list)
     LOGGER.info('writing to : %r', delft_output_path)
-    with auto_uploading_output_file(delft_output_path, 'w', encoding='utf-8') as data_fp:
+    with auto_uploading_output_file(
+        delft_output_path,
+        mode='w',
+        encoding='utf-8',
+    ) as data_fp:
         for document_index, (tei_file, raw_file) in enumerate(zip(tei_file_list, raw_file_list)):
             if document_index > 0:
                 data_fp.write('\n\n')

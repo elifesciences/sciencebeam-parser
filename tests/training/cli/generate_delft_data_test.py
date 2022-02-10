@@ -1,5 +1,6 @@
 # pylint: disable=not-callable
 import logging
+import gzip
 from pathlib import Path
 from typing import Iterator, Optional, Sequence
 from unittest.mock import MagicMock, patch
@@ -11,7 +12,8 @@ from lxml.builder import E
 
 from sciencebeam_trainer_delft.sequence_labelling.reader import (
     load_data_crf_lines,
-    load_data_and_labels_crf_file
+    load_data_and_labels_crf_file,
+    load_data_and_labels_crf_lines
 )
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
@@ -444,3 +446,46 @@ class TestMain:
             expected_labels=['B-<author>', 'I-<author>'],
             data_generator=data_generator
         )
+
+    def test_should_be_able_to_load_and_generate_gzipped_training_data(
+        self,
+        tmp_path: Path
+    ):
+        model_name = 'segmentation'
+        tokens = [TOKEN_1, TOKEN_2]
+        file_suffix = '.segmentation'
+        tei_root = E('tei', E('text', *[
+            E('front', TOKEN_1, E('lb')),
+            '\n',
+            E('body', TOKEN_2, E('lb')),
+            '\n'
+        ]))
+        tei_source_path = tmp_path / 'tei'
+        raw_source_path = tmp_path / 'raw'
+        output_path = tmp_path / 'output.data.gz'
+        tei_source_path.mkdir(parents=True, exist_ok=True)
+        (tei_source_path / f'sample{file_suffix}.tei.xml.gz').write_bytes(
+            gzip.compress(etree.tostring(tei_root))
+        )
+        raw_source_path.mkdir(parents=True, exist_ok=True)
+        expected_features = [[
+            [f'{i}.1', f'{i}.2', f'{i}.3']
+            for i in range(len(tokens))
+        ]]
+        (raw_source_path / f'sample{file_suffix}.gz').write_text('\n'.join([
+            f'{token} {" ".join(expected_token_features)}'
+            for token, expected_token_features in zip(tokens, expected_features[0])
+        ]))
+        main([
+            f'--model-name={model_name}',
+            f'--tei-source-path={tei_source_path}/*.tei.xml.gz',
+            f'--raw-source-path={raw_source_path}',
+            f'--delft-output-path={output_path}'
+        ])
+        assert output_path.exists()
+        texts, _labels, _features = load_data_and_labels_crf_lines(
+            gzip.decompress(output_path.read_bytes()).decode('utf-8').splitlines()
+        )
+        LOGGER.debug('texts: %r', texts)
+        assert len(texts) == 1
+        assert list(texts[0]) == tokens

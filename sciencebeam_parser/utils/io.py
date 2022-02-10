@@ -82,17 +82,31 @@ def makedirs(
 
 
 @contextmanager
-def auto_uploading_output_file(filepath: str, mode: str = 'w', **kwargs):
+def auto_uploading_binary_output_file(filepath: str, **kwargs):
     if not is_external_location(filepath):
         # Note: the upstream implementation doesn't currently auto-compress local files
         file_dirname = os.path.dirname(filepath)
         if file_dirname:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open_file(filepath, mode=mode, **kwargs) as fp:
+        with open_file(filepath, mode='wb', **kwargs) as fp:
             yield fp
             return
-    with _auto_uploading_output_file(filepath, mode, **kwargs) as fp:
+    with _auto_uploading_output_file(filepath, 'wb', **kwargs) as fp:
         yield fp
+
+
+@contextmanager
+def auto_uploading_text_output_file(filepath: str, encoding: str, **kwargs):
+    with auto_uploading_binary_output_file(filepath, **kwargs) as fp:
+        yield codecs.getwriter(encoding)(fp)
+
+
+def auto_uploading_output_file(filepath: str, mode: str, encoding: str = 'utf-8', **kwargs):
+    if mode == 'w':
+        return auto_uploading_text_output_file(filepath, encoding=encoding, **kwargs)
+    if mode == 'wb':
+        return auto_uploading_binary_output_file(filepath, **kwargs)
+    raise ValueError('invalid mode: %r' % mode)
 
 
 def write_bytes(filepath: str, data: bytes, **kwargs):
