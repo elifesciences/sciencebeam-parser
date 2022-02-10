@@ -1,10 +1,15 @@
+import os
+import codecs
+from contextlib import contextmanager
 from typing import Iterable, Sequence
 from urllib.parse import urlparse
 
 import fsspec
 
 from sciencebeam_trainer_delft.utils.io import (
-    auto_uploading_output_file
+    auto_uploading_output_file as _auto_uploading_output_file,
+    is_external_location,
+    open_file
 )
 
 
@@ -76,6 +81,29 @@ def makedirs(
     get_file_system_for_url(path).makedirs(path, exist_ok=exist_ok)
 
 
+@contextmanager
+def auto_uploading_output_file(filepath: str, mode: str = 'w', **kwargs):
+    if not is_external_location(filepath):
+        # Note: the upstream implementation doesn't currently auto-compress local files
+        file_dirname = os.path.dirname(filepath)
+        if file_dirname:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open_file(filepath, mode=mode, **kwargs) as fp:
+            yield fp
+            return
+    with _auto_uploading_output_file(filepath, mode, **kwargs) as fp:
+        yield fp
+
+
 def write_bytes(filepath: str, data: bytes, **kwargs):
     with auto_uploading_output_file(filepath, mode='wb', **kwargs) as fp:
         fp.write(data)
+
+
+def write_text(filepath: str, text: str, encoding: str, **kwargs):
+    # Note: the upstream implementation doesn't support encoding with compression
+    write_bytes(
+        filepath,
+        codecs.encode(text, encoding=encoding),
+        **kwargs
+    )

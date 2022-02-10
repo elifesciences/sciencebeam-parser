@@ -8,11 +8,10 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence
 from lxml import etree
 
 from sciencebeam_trainer_delft.utils.io import (
-    auto_download_input_file,
-    write_text
+    auto_download_input_file
 )
 
-from sciencebeam_parser.utils.io import glob, makedirs, write_bytes
+from sciencebeam_parser.utils.io import glob, makedirs, write_bytes, write_text
 
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
@@ -83,6 +82,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         '--use-directory-structure',
         action='store_true',
         help='Output training data to a directory structure'
+    )
+    parser.add_argument(
+        '--gzip',
+        action='store_true',
+        help='Enable gzip compression for output files (with .gz suffix)'
     )
     parser.add_argument(
         '--debug',
@@ -170,6 +174,7 @@ class TrainingDataDocumentContext(NamedTuple):
     use_model: bool
     use_directory_structure: bool
     model_result_cache: ModelResultCache
+    gzip_enabled: bool
 
     @property
     def source_name(self) -> str:
@@ -315,6 +320,8 @@ class AbstractModelTrainingDataGenerator(ABC):
         output_path = document_context.output_path
         if sub_directory and document_context.use_directory_structure:
             output_path = os.path.join(output_path, sub_directory)
+        if document_context.gzip_enabled:
+            suffix += '.gz'
         return os.path.join(
             output_path,
             document_context.source_name + self.get_pre_file_path_suffix() + suffix
@@ -812,7 +819,8 @@ def generate_training_data_for_layout_document(
     document_features_context: DocumentFeaturesContext,
     fulltext_models: FullTextModels,
     use_model: bool,
-    use_directory_structure: bool
+    use_directory_structure: bool,
+    gzip_enabled: bool = False
 ):
     model_result_cache = ModelResultCache()
     document_context = TrainingDataDocumentContext(
@@ -822,7 +830,8 @@ def generate_training_data_for_layout_document(
         fulltext_models=fulltext_models,
         use_model=use_model,
         use_directory_structure=use_directory_structure,
-        model_result_cache=model_result_cache
+        model_result_cache=model_result_cache,
+        gzip_enabled=gzip_enabled
     )
     training_data_generators = [
         SegmentationModelTrainingDataGenerator(),
@@ -862,7 +871,8 @@ def generate_training_data_for_source_filename(
     output_path: str,
     sciencebeam_parser: ScienceBeamParser,
     use_model: bool,
-    use_directory_structure: bool
+    use_directory_structure: bool,
+    gzip_enabled: bool
 ):
     LOGGER.debug('use_model: %r', use_model)
     layout_document = get_layout_document_for_source_filename(
@@ -878,7 +888,8 @@ def generate_training_data_for_source_filename(
         ),
         fulltext_models=sciencebeam_parser.fulltext_models,
         use_model=use_model,
-        use_directory_structure=use_directory_structure
+        use_directory_structure=use_directory_structure,
+        gzip_enabled=gzip_enabled
     )
 
 
@@ -911,7 +922,8 @@ def run(args: argparse.Namespace):
             output_path=output_path,
             sciencebeam_parser=sciencebeam_parser,
             use_model=args.use_model,
-            use_directory_structure=args.use_directory_structure
+            use_directory_structure=args.use_directory_structure,
+            gzip_enabled=args.gzip
         )
 
 
