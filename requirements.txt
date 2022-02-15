@@ -1,4 +1,4 @@
-Flask==2.0.2
+Flask==2.0.3
 fsspec>=2022.1.0
 gcsfs>=2022.1.0
 lxml==4.7.1
