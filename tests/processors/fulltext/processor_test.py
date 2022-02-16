@@ -751,7 +751,7 @@ class TestFullTextProcessor:
         get_cv_document_graphic_provider_mock: MagicMock,
         segmentation_label: str
     ):
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10, page_number=10)
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
@@ -827,10 +827,13 @@ class TestFullTextProcessor:
         assert figure.get_text_by_type(SemanticCaption) == caption_block.text
         semantic_graphic_list = list(figure.iter_by_type(SemanticGraphic))
         assert semantic_graphic_list
-        # assert semantic_graphic_list[0].layout_graphic == graphic
+        assert semantic_graphic_list[0].layout_graphic == graphic
         assert semantic_graphic_list[0].relative_path == os.path.basename(
             graphic_local_file_path
         )
+        assert get_cv_document_graphic_provider_mock.call_args[1]['page_numbers'] == [
+            _coordinates.page_number
+        ]
 
     @pytest.mark.parametrize(
         'segmentation_label',
@@ -909,7 +912,7 @@ class TestFullTextProcessor:
         get_cv_document_graphic_provider_mock: MagicMock,
         segmentation_label: str
     ):
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10, page_number=10)
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
@@ -990,3 +993,6 @@ class TestFullTextProcessor:
         assert semantic_graphic_list[0].relative_path == os.path.basename(
             graphic_local_file_path
         )
+        assert get_cv_document_graphic_provider_mock.call_args[1]['page_numbers'] == [
+            _coordinates.page_number
+        ]
