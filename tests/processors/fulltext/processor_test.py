@@ -903,8 +903,10 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_table_graphic(
+    def test_should_detect_and_extract_table_graphic(
         self, fulltext_models_mock: MockFullTextModels,
+        tmp_path: Path,
+        get_cv_document_graphic_provider_mock: MagicMock,
         segmentation_label: str
     ):
         _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
@@ -913,6 +915,15 @@ class TestFullTextProcessor:
             coordinates=_coordinates,
             local_file_path=graphic_local_file_path
         )
+        iter_semantic_graphic_for_layout_document_mock = (
+            get_cv_document_graphic_provider_mock
+            .return_value
+            .iter_semantic_graphic_for_layout_document
+        )
+        iter_semantic_graphic_for_layout_document_mock.return_value = [SemanticGraphic(
+            layout_graphic=graphic,
+            relative_path=os.path.basename(graphic_local_file_path)
+        )]
         _coordinates = _coordinates.move_by(dy=10)
         label_block = LayoutBlock.for_text('Table 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
@@ -926,10 +937,15 @@ class TestFullTextProcessor:
         fulltext_processor = FullTextProcessor(
             fulltext_models_mock,
             FullTextProcessorConfig(
+                use_cv_model=True,
                 extract_figure_fields=True,
                 extract_graphic_bounding_boxes=True,
                 extract_graphic_assets=True
             )
+        )
+        processor_document_context = FullTextProcessorDocumentContext(
+            pdf_path=str(tmp_path / 'test.pdf'),
+            temp_dir=str(tmp_path)
         )
 
         segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
@@ -952,11 +968,11 @@ class TestFullTextProcessor:
         )
 
         layout_document = LayoutDocument(pages=[LayoutPage(
-            blocks=[fulltext_block],
-            graphics=[graphic]
+            blocks=[fulltext_block]
         )])
         semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
-            layout_document=layout_document
+            layout_document=layout_document,
+            context=processor_document_context
         )
         LOGGER.debug('semantic_document: %s', semantic_document)
         assert semantic_document is not None
