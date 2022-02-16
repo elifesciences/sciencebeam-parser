@@ -110,7 +110,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
         cv_start = monotonic()
         cv_result = self.computer_vision_model.predict_single(image)
         cv_end = monotonic()
-        figure_instances = cv_result.get_instances_by_type_name('Figure')
+        figure_instances = cv_result.get_instances_by_type_names(['Figure'])
         figure_coordinates_list = [
             instance.get_bounding_box() for instance in figure_instances
         ]

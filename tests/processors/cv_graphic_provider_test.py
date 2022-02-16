@@ -136,7 +136,7 @@ class TestComputerVisionDocumentGraphicProvider:
         ])
         cv_result = computer_vision_model_mock.predict_single.return_value
         cv_bbox = BoundingBox(x=1, y=2, width=3, height=4)
-        cv_result.get_instances_by_type_name.return_value = [
+        cv_result.get_instances_by_type_names.return_value = [
             SimpleComputerVisionModelInstance(bounding_box=cv_bbox)
         ]
         expected_page_coordinates = LayoutPageCoordinates(
