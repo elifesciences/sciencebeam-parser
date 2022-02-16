@@ -82,14 +82,17 @@ class LayoutParserComputerVisionModelResult(ComputerVisionModelResult):
         self.max_overlap_ratio = max_overlap_ratio
         LOGGER.debug('layout: %r', layout)
 
-    def get_instances_by_type_name(self, type_name: str) -> Sequence[ComputerVisionModelInstance]:
+    def get_instances_by_type_names(
+        self,
+        type_names: Sequence[str]
+    ) -> Sequence[ComputerVisionModelInstance]:
         instances = [
             LayoutParserComputerVisionModelInstance(
                 get_bounding_box_for_layout_parser_coordinates(block.coordinates)
             )
             for block in self.layout
             if (
-                block.type == type_name
+                block.type in type_names
                 and block.score >= self.score_threshold
             )
         ]
