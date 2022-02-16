@@ -157,6 +157,7 @@ class TestComputerVisionDocumentGraphicProvider:
         layout_graphic = semantic_graphic.layout_graphic
         assert layout_graphic is not None
         assert layout_graphic.coordinates == expected_page_coordinates
+        assert layout_graphic.page_meta == layout_document.pages[0].meta
         if extract_graphic_assets:
             assert layout_graphic.local_file_path
             assert (
