@@ -12,7 +12,7 @@ from sciencebeam_parser.utils.tokenizer import get_tokenized_tokens
 from sciencebeam_parser.document.tei.common import TEI_E, TEI_NS_PREFIX, tei_xpath
 from sciencebeam_parser.document.layout_document import (
     LayoutLine,
-    LayoutLineDescriptor,
+    LayoutLineMeta,
     LayoutToken
 )
 from sciencebeam_parser.models.data import (
@@ -590,7 +590,7 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
             prefix = ''
             prev_label = ''
             for line_index, line in enumerate(tei_training_lines):
-                line_descriptor = LayoutLineDescriptor(line_id=1 + line_index)
+                line_meta = LayoutLineMeta(line_id=1 + line_index)
                 for text in line.text_list:
                     if text.text.isspace():
                         continue
@@ -610,7 +610,7 @@ class AbstractTrainingTeiParser(TrainingTeiParser):
                             label=prefix + label,
                             layout_token=LayoutToken(
                                 text=token_text,
-                                line_descriptor=line_descriptor
+                                line_meta=line_meta
                             )
                         )
                         token_count += 1

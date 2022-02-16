@@ -98,7 +98,7 @@ class TestTrainingTeiParser:
             (TOKEN_2, 'B-<paragraph>')
         ]]
 
-    def test_should_parse_same_line_labelled_token_with_same_line_descriptors(self):
+    def test_should_parse_same_line_labelled_token_with_same_line_meta(self):
         tei_root = _get_training_tei_with_text([
             E('head', TOKEN_1),
             ' ',
@@ -117,11 +117,11 @@ class TestTrainingTeiParser:
         assert labeled_layout_tokens[0].layout_token.text == TOKEN_1
         assert labeled_layout_tokens[1].layout_token.text == TOKEN_2
         assert (
-            labeled_layout_tokens[0].layout_token.line_descriptor
-            == labeled_layout_tokens[1].layout_token.line_descriptor
+            labeled_layout_tokens[0].layout_token.line_meta
+            == labeled_layout_tokens[1].layout_token.line_meta
         )
 
-    def test_should_parse_multi_line_labelled_token_with_diff_line_descriptors(self):
+    def test_should_parse_multi_line_labelled_token_with_diff_line_meta(self):
         tei_root = _get_training_tei_with_text([
             E('head', TOKEN_1, E('lb')),
             '\n',
@@ -140,6 +140,6 @@ class TestTrainingTeiParser:
         assert labeled_layout_tokens[0].layout_token.text == TOKEN_1
         assert labeled_layout_tokens[1].layout_token.text == TOKEN_2
         assert (
-            labeled_layout_tokens[0].layout_token.line_descriptor
-            != labeled_layout_tokens[1].layout_token.line_descriptor
+            labeled_layout_tokens[0].layout_token.line_meta
+            != labeled_layout_tokens[1].layout_token.line_meta
         )

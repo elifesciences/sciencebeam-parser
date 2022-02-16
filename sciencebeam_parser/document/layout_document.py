@@ -106,12 +106,12 @@ class LayoutPageMeta(NamedTuple):
 DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
 
 
-class LayoutLineDescriptor(NamedTuple):
+class LayoutLineMeta(NamedTuple):
     line_id: int = -1
     page_meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
 
-DEFAULT_LAYOUT_LINE_DESCRIPTOR = LayoutLineDescriptor()
+DEFAULT_LAYOUT_LINE_META = LayoutLineMeta()
 
 
 class LayoutToken(NamedTuple):
@@ -119,7 +119,7 @@ class LayoutToken(NamedTuple):
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '
     coordinates: Optional[LayoutPageCoordinates] = None
-    line_descriptor: LayoutLineDescriptor = DEFAULT_LAYOUT_LINE_DESCRIPTOR
+    line_meta: LayoutLineMeta = DEFAULT_LAYOUT_LINE_META
 
 
 T_FlatMapLayoutTokensFn = Callable[[LayoutToken], List[LayoutToken]]
@@ -202,7 +202,7 @@ def retokenize_layout_token(
                 text_character_offset,
                 total_text_length
             ),
-            line_descriptor=layout_token.line_descriptor
+            line_meta=layout_token.line_meta
         )
         for token_text, whitespace, text_character_offset in texts_with_whitespace
     ]
@@ -266,7 +266,7 @@ class LayoutBlock:
         lines = [
             LayoutLine(tokens=list(line_tokens))
             for _, line_tokens in itertools.groupby(
-                tokens, key=operator.attrgetter('line_descriptor')
+                tokens, key=operator.attrgetter('line_meta')
             )
         ]
         return LayoutBlock(lines=lines)

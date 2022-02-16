@@ -4,7 +4,7 @@ from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
     LayoutGraphic,
-    LayoutLineDescriptor,
+    LayoutLineMeta,
     LayoutPageCoordinates,
     LayoutFont,
     LayoutPageMeta,
@@ -48,7 +48,7 @@ class AltoParser:
         self,
         token_node: etree.ElementBase,
         page_number: int,
-        layout_line_descriptor: LayoutLineDescriptor
+        layout_line_meta: LayoutLineMeta
     ) -> LayoutToken:
         return LayoutToken(
             text=token_node.attrib.get('CONTENT') or '',
@@ -57,7 +57,7 @@ class AltoParser:
                 EMPTY_FONT
             ),
             coordinates=self.parse_page_coordinates(token_node, page_number=page_number),
-            line_descriptor=layout_line_descriptor
+            line_meta=layout_line_meta
         )
 
     def parse_line(
@@ -70,7 +70,7 @@ class AltoParser:
             self.parse_token(
                 token_node,
                 page_number=page_number,
-                layout_line_descriptor=LayoutLineDescriptor(
+                layout_line_meta=LayoutLineMeta(
                     line_id=id(line_node),
                     page_meta=page_meta
                 )
