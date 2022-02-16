@@ -89,13 +89,15 @@ class AltoParser:
     def parse_graphic(
         self,
         graphic_node: etree.ElementBase,
-        page_number: int
+        page_number: int,
+        page_meta: LayoutPageMeta
     ) -> LayoutGraphic:
         attrib = graphic_node.attrib
         return LayoutGraphic(
             local_file_path=attrib.get('FILEID'),
             coordinates=self.parse_page_coordinates(graphic_node, page_number=page_number),
-            graphic_type=attrib.get('TYPE')
+            graphic_type=attrib.get('TYPE'),
+            page_meta=page_meta
         )
 
     def parse_page(
@@ -118,17 +120,18 @@ class AltoParser:
             if width_str and height_str
             else None
         )
+        page_meta = LayoutPageMeta(
+            page_number=page_number,
+            coordinates=coordinates
+        )
         return LayoutPage(
-            meta=LayoutPageMeta(
-                page_number=page_number,
-                coordinates=coordinates
-            ),
+            meta=page_meta,
             blocks=[
                 self.parse_block(block_node, page_number=page_number)
                 for block_node in alto_xpath(page_node, './/alto:TextBlock')
             ],
             graphics=[
-                self.parse_graphic(graphic_node, page_number=page_number)
+                self.parse_graphic(graphic_node, page_number=page_number, page_meta=page_meta)
                 for graphic_node in alto_xpath(page_node, './/alto:Illustration')
             ]
         )

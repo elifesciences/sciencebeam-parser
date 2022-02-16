@@ -98,6 +98,14 @@ def get_merged_coordinates_list(
     return result
 
 
+class LayoutPageMeta(NamedTuple):
+    page_number: int = 0
+    coordinates: Optional[LayoutPageCoordinates] = None
+
+
+DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
+
+
 class LayoutLineDescriptor(NamedTuple):
     line_id: int = -1
 
@@ -320,14 +328,7 @@ class LayoutGraphic(NamedTuple):
     coordinates: Optional[LayoutPageCoordinates] = None
     graphic_type: Optional[str] = None
     related_block: Optional[LayoutBlock] = None
-
-
-class LayoutPageMeta(NamedTuple):
-    page_number: int = 0
-    coordinates: Optional[LayoutPageCoordinates] = None
-
-
-DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
+    page_meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
 
 @dataclass

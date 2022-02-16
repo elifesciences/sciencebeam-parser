@@ -111,6 +111,7 @@ class TestAltoParser:
         assert graphic.local_file_path == '/path/to/graphic.svg'
         assert graphic.coordinates == COORDINATES_1
         assert graphic.graphic_type == 'svg'
+        assert graphic.page_meta.page_number == COORDINATES_1.page_number
 
     def test_should_parse_page_meta_data(self):
         page = AltoParser().parse_page(
