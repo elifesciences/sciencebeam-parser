@@ -108,6 +108,7 @@ DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
 
 class LayoutLineDescriptor(NamedTuple):
     line_id: int = -1
+    page_meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
 
 DEFAULT_LAYOUT_LINE_DESCRIPTOR = LayoutLineDescriptor()

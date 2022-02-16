@@ -200,3 +200,4 @@ class TestParseAltoRoot:
         assert token.coordinates == COORDINATES_2
         assert tokens[0].line_descriptor is not None
         assert tokens[0].line_descriptor == tokens[1].line_descriptor
+        assert tokens[0].line_descriptor.page_meta == layout_document.pages[0].meta
