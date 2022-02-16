@@ -118,6 +118,12 @@ dev-start-no-debug-logging-auto-reload:
 	$(MAKE) dev-start
 
 
+dev-start-no-debug-logging-auto-reload-with-cv-and-ocr:
+	SCIENCEBEAM_PARSER__PROCESSORS__FULLTEXT__USE_CV_MODEL=true \
+	SCIENCEBEAM_PARSER__PROCESSORS__FULLTEXT__USE_OCR_MODEL=true \
+	$(MAKE) dev-start-no-debug-logging-auto-reload
+
+
 dev-end-to-end:
 	curl --fail --show-error \
 		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \

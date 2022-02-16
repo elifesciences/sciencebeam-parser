@@ -11,7 +11,8 @@ from sciencebeam_parser.utils.bounding_box import BoundingBox
 from sciencebeam_parser.cv_models.cv_model import (
     ComputerVisionModel,
     ComputerVisionModelInstance,
-    ComputerVisionModelResult
+    ComputerVisionModelResult,
+    SimpleComputerVisionModelInstance
 )
 from sciencebeam_parser.utils.lazy import LazyLoaded
 
@@ -52,21 +53,6 @@ def is_bounding_box_overlapping_with_any_bounding_boxes(
     return False
 
 
-class LayoutParserComputerVisionModelInstance(ComputerVisionModelInstance):
-    def __init__(self, bounding_box: BoundingBox):
-        super().__init__()
-        self.bounding_box = bounding_box
-
-    def __repr__(self) -> str:
-        return '%s(bounding_box=%r)' % (
-            type(self).__name__,
-            self.bounding_box
-        )
-
-    def get_bounding_box(self) -> BoundingBox:
-        return self.bounding_box
-
-
 class LayoutParserComputerVisionModelResult(ComputerVisionModelResult):
     def __init__(
         self,
@@ -82,14 +68,18 @@ class LayoutParserComputerVisionModelResult(ComputerVisionModelResult):
         self.max_overlap_ratio = max_overlap_ratio
         LOGGER.debug('layout: %r', layout)
 
-    def get_instances_by_type_name(self, type_name: str) -> Sequence[ComputerVisionModelInstance]:
+    def get_instances_by_type_names(
+        self,
+        type_names: Sequence[str]
+    ) -> Sequence[ComputerVisionModelInstance]:
         instances = [
-            LayoutParserComputerVisionModelInstance(
-                get_bounding_box_for_layout_parser_coordinates(block.coordinates)
+            SimpleComputerVisionModelInstance(
+                bounding_box=get_bounding_box_for_layout_parser_coordinates(block.coordinates),
+                type_name=block.type
             )
             for block in self.layout
             if (
-                block.type == type_name
+                block.type in type_names
                 and block.score >= self.score_threshold
             )
         ]

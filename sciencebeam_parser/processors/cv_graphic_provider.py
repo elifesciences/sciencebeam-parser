@@ -1,7 +1,7 @@
 import os
 import logging
 from time import monotonic
-from typing import Iterable, Mapping, Optional, Sequence, Set
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Set
 
 import PIL.Image
 
@@ -110,26 +110,33 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
         cv_start = monotonic()
         cv_result = self.computer_vision_model.predict_single(image)
         cv_end = monotonic()
-        figure_instances = cv_result.get_instances_by_type_name('Figure')
-        figure_coordinates_list = [
-            instance.get_bounding_box() for instance in figure_instances
+        cv_instances = cv_result.get_instances_by_type_names(['Figure', 'Table'])
+        cv_type_name_and_coordinates_list = [
+            (instance.get_type_name(), instance.get_bounding_box())
+            for instance in cv_instances
         ]
         LOGGER.info(
-            'cv result, took=%.3fs, page_number=%d, image_size=%dx%d, figure_coordinates_list=%r',
+            (
+                'cv result, took=%.3fs, page_number=%d, image_size=%dx%d'
+                ', cv_type_name_and_coordinates_list=%r'
+            ),
             cv_end - cv_start,
             page_number,
             image.width,
             image.height,
-            figure_coordinates_list
+            cv_type_name_and_coordinates_list
         )
-        for figure_index, figure_coordinates in enumerate(figure_coordinates_list):
-            figure_number = 1 + figure_index
+        count_by_type_name_map: Dict[str, int] = {}
+        for type_name, cv_coordinates in cv_type_name_and_coordinates_list:
+            lower_type_name = type_name.lower()
+            count_by_type_name_map[type_name] = count_by_type_name_map.get(type_name, 0) + 1
+            item_number = count_by_type_name_map[type_name]
             local_image_path: Optional[str] = None
             relative_image_path: Optional[str] = None
-            scaled_figure_coordinates = figure_coordinates
+            scaled_item_coordinates = cv_coordinates
             if page_coordinates:
-                scaled_figure_coordinates = (
-                    figure_coordinates
+                scaled_item_coordinates = (
+                    cv_coordinates
                     .scale_by(
                         page_coordinates.width / image.width,
                         page_coordinates.height / image.height
@@ -137,7 +144,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
                 )
             matching_layout_graphic = get_layout_graphic_with_similar_coordinates(
                 page_graphics=page_graphics,
-                bounding_box=scaled_figure_coordinates,
+                bounding_box=scaled_item_coordinates,
                 ignored_graphic_types=self.ignored_graphic_types
             )
             if matching_layout_graphic is not None:
@@ -148,20 +155,20 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
                 continue
             if extract_graphic_assets:
                 local_image_path = os.path.join(
-                    self.temp_dir, f'figure-{page_number}-{figure_number}.png'
+                    self.temp_dir, f'{lower_type_name}-{page_number}-{item_number}.png'
                 )
                 relative_image_path = os.path.basename(local_image_path)
-                cropped_image = get_cropped_image(image, figure_coordinates)
+                cropped_image = get_cropped_image(image, cv_coordinates)
                 cropped_image.save(local_image_path)
             layout_graphic = LayoutGraphic(
                 coordinates=LayoutPageCoordinates(
-                    x=scaled_figure_coordinates.x,
-                    y=scaled_figure_coordinates.y,
-                    width=scaled_figure_coordinates.width,
-                    height=scaled_figure_coordinates.height,
+                    x=scaled_item_coordinates.x,
+                    y=scaled_item_coordinates.y,
+                    width=scaled_item_coordinates.width,
+                    height=scaled_item_coordinates.height,
                     page_number=page_number
                 ),
-                graphic_type='cv-figure',
+                graphic_type=f'cv-{lower_type_name}',
                 local_file_path=local_image_path
             )
             semantic_graphic = SemanticGraphic(
