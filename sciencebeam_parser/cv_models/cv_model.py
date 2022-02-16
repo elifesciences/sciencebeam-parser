@@ -13,13 +13,21 @@ class ComputerVisionModelInstance(ABC):
     def get_bounding_box(self) -> BoundingBox:
         pass
 
+    @abstractmethod
+    def get_type_name(self) -> str:
+        pass
+
 
 @dataclass
 class SimpleComputerVisionModelInstance(ComputerVisionModelInstance):
     bounding_box: BoundingBox
+    type_name: str
 
     def get_bounding_box(self) -> BoundingBox:
         return self.bounding_box
+
+    def get_type_name(self) -> str:
+        return self.type_name
 
 
 class ComputerVisionModelResult(ABC):

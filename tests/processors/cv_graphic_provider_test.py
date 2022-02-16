@@ -137,7 +137,7 @@ class TestComputerVisionDocumentGraphicProvider:
         cv_result = computer_vision_model_mock.predict_single.return_value
         cv_bbox = BoundingBox(x=1, y=2, width=3, height=4)
         cv_result.get_instances_by_type_names.return_value = [
-            SimpleComputerVisionModelInstance(bounding_box=cv_bbox)
+            SimpleComputerVisionModelInstance(bounding_box=cv_bbox, type_name='Figure')
         ]
         expected_page_coordinates = LayoutPageCoordinates(
             x=10, y=20, width=30, height=40, page_number=10
@@ -197,7 +197,7 @@ class TestComputerVisionDocumentGraphicProvider:
         cv_result = computer_vision_model_mock.predict_single.return_value
         cv_bbox = BoundingBox(x=1, y=2, width=3, height=4)
         cv_result.get_instances_by_type_name.return_value = [
-            SimpleComputerVisionModelInstance(bounding_box=cv_bbox)
+            SimpleComputerVisionModelInstance(bounding_box=cv_bbox, type_name='Figure')
         ]
         graphic_provider = ComputerVisionDocumentGraphicProvider(
             computer_vision_model=computer_vision_model_mock,
