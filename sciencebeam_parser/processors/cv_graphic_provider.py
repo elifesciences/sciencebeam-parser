@@ -1,7 +1,7 @@
 import os
 import logging
 from time import monotonic
-from typing import Iterable, Mapping, Optional, Sequence, Set
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Set
 
 import PIL.Image
 
@@ -111,19 +111,26 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
         cv_result = self.computer_vision_model.predict_single(image)
         cv_end = monotonic()
         cv_instances = cv_result.get_instances_by_type_names(['Figure', 'Table'])
-        cv_coordinates_list = [
-            instance.get_bounding_box() for instance in cv_instances
+        cv_type_name_and_coordinates_list = [
+            (instance.get_type_name(), instance.get_bounding_box())
+            for instance in cv_instances
         ]
         LOGGER.info(
-            'cv result, took=%.3fs, page_number=%d, image_size=%dx%d, cv_coordinates_list=%r',
+            (
+                'cv result, took=%.3fs, page_number=%d, image_size=%dx%d'
+                ', cv_type_name_and_coordinates_list=%r'
+            ),
             cv_end - cv_start,
             page_number,
             image.width,
             image.height,
-            cv_coordinates_list
+            cv_type_name_and_coordinates_list
         )
-        for cv_index, cv_coordinates in enumerate(cv_coordinates_list):
-            item_number = 1 + cv_index
+        count_by_type_name_map: Dict[str, int] = {}
+        for type_name, cv_coordinates in cv_type_name_and_coordinates_list:
+            lower_type_name = type_name.lower()
+            count_by_type_name_map[type_name] = count_by_type_name_map.get(type_name, 0) + 1
+            item_number = count_by_type_name_map[type_name]
             local_image_path: Optional[str] = None
             relative_image_path: Optional[str] = None
             scaled_item_coordinates = cv_coordinates
@@ -148,7 +155,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
                 continue
             if extract_graphic_assets:
                 local_image_path = os.path.join(
-                    self.temp_dir, f'item-{page_number}-{item_number}.png'
+                    self.temp_dir, f'{lower_type_name}-{page_number}-{item_number}.png'
                 )
                 relative_image_path = os.path.basename(local_image_path)
                 cropped_image = get_cropped_image(image, cv_coordinates)
@@ -161,7 +168,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
                     height=scaled_item_coordinates.height,
                     page_number=page_number
                 ),
-                graphic_type='cv-item',
+                graphic_type=f'cv-{lower_type_name}',
                 local_file_path=local_image_path
             )
             semantic_graphic = SemanticGraphic(
