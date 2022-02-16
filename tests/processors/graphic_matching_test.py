@@ -265,7 +265,7 @@ class TestBoundingBoxDistanceGraphicMatcher:
         "graphic_type,should_match",
         [("svg", False), ("bitmap", True)]
     )
-    def test_should_match_graphic_of_specific(
+    def test_should_match_graphic_of_specific_type(
         self,
         graphic_type: str,
         should_match: bool
