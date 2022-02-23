@@ -27,7 +27,9 @@ from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher,
     GraphicRelatedBlockTextGraphicMatcher,
     OpticalCharacterRecognitionGraphicMatcher,
-    get_bounding_box_list_distance
+    get_bounding_box_for_page_coordinates_and_page_meta,
+    get_bounding_box_list_distance,
+    get_bounding_box_list_for_layout_graphic
 )
 
 
@@ -199,6 +201,60 @@ class TestGetBoundingBoxListDistance:
         assert bounding_box_distance.delta_x == 0
         assert round(bounding_box_distance.delta_y, 3) == 0.2
         assert round(bounding_box_distance.euclidean_distance, 3) == 0.2
+
+
+class TestGetBoundingBoxForPageCoordinatesAndPageMeta:
+    def test_should_scale_coordinates(self):
+        result = get_bounding_box_for_page_coordinates_and_page_meta(
+            coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=0),
+            page_meta=LayoutPageMeta.for_coordinates(
+                LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=0)
+            )
+        )
+        LOGGER.debug('result: %r', result)
+        assert result == LayoutPageCoordinates(x=0.1, y=0.01, width=0.2, height=0.02, page_number=0)
+
+    def test_should_scale_coordinates_and_adjust_page_number_to_y(self):
+        result = get_bounding_box_for_page_coordinates_and_page_meta(
+            coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=5),
+            page_meta=LayoutPageMeta.for_coordinates(
+                LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=5)
+            )
+        )
+        LOGGER.debug('result: %r', result)
+        assert result == LayoutPageCoordinates(x=0.1, y=5.01, width=0.2, height=0.02, page_number=5)
+
+
+class TestGetBoundingBoxListForLayoutGraphic:
+    def test_should_scale_coordinates(self):
+        result = get_bounding_box_list_for_layout_graphic(
+            LayoutGraphic(
+                coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=0),
+                page_meta=LayoutPageMeta.for_coordinates(
+                    LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=0)
+                )
+            )
+        )
+        LOGGER.debug('result: %r', result)
+        assert len(result) == 1
+        assert result[0] == LayoutPageCoordinates(
+            x=0.1, y=0.01, width=0.2, height=0.02, page_number=0
+        )
+
+    def test_should_scale_coordinates_and_adjust_page_number_to_y(self):
+        result = get_bounding_box_list_for_layout_graphic(
+            LayoutGraphic(
+                coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=5),
+                page_meta=LayoutPageMeta.for_coordinates(
+                    LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=5)
+                )
+            )
+        )
+        LOGGER.debug('result: %r', result)
+        assert len(result) == 1
+        assert result[0] == LayoutPageCoordinates(
+            x=0.1, y=5.01, width=0.2, height=0.02, page_number=5
+        )
 
 
 class TestBoundingBoxDistanceGraphicMatcher:

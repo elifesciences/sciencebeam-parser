@@ -6,7 +6,11 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, cast
 import PIL.Image
 
 from sciencebeam_parser.utils.image import get_image_with_max_resolution
-from sciencebeam_parser.document.layout_document import LayoutPageCoordinates
+from sciencebeam_parser.document.layout_document import (
+    LayoutGraphic,
+    LayoutPageCoordinates,
+    LayoutPageMeta
+)
 from sciencebeam_parser.document.semantic_document import (
     SemanticContentWrapper,
     SemanticGraphic,
@@ -155,6 +159,32 @@ class BoundingBoxDistanceBetween(NamedTuple):
 
     def get_sort_key(self):
         return self.bounding_box_distance.get_sort_key()
+
+
+def get_bounding_box_for_page_coordinates_and_page_meta(
+    coordinates: LayoutPageCoordinates,
+    page_meta: LayoutPageMeta
+) -> LayoutPageCoordinates:
+    page_coordinates = page_meta.coordinates
+    assert page_coordinates is not None
+    return LayoutPageCoordinates(
+        x=coordinates.x / page_coordinates.width,
+        y=(coordinates.y / page_coordinates.height) + page_meta.page_number,
+        width=coordinates.width / page_coordinates.width,
+        height=coordinates.height / page_coordinates.height,
+        page_number=coordinates.page_number
+    )
+
+
+def get_bounding_box_list_for_layout_graphic(
+    layout_graphic: LayoutGraphic
+) -> Sequence[LayoutPageCoordinates]:
+    if not layout_graphic.coordinates:
+        return []
+    return [get_bounding_box_for_page_coordinates_and_page_meta(
+        layout_graphic.coordinates,
+        page_meta=layout_graphic.page_meta
+    )]
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
