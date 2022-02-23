@@ -8,8 +8,10 @@ import pytest
 import PIL.Image
 
 from sciencebeam_parser.document.layout_document import (
+    DEFAULT_LAYOUT_LINE_META,
     LayoutBlock,
     LayoutGraphic,
+    LayoutLineMeta,
     LayoutPageCoordinates,
     LayoutToken
 )
@@ -79,13 +81,15 @@ def _ocr_model_mock() -> MagicMock:
 
 
 def _get_semantic_content_for_page_coordinates(
-    coordinates: LayoutPageCoordinates
+    coordinates: LayoutPageCoordinates,
+    line_meta: LayoutLineMeta = DEFAULT_LAYOUT_LINE_META
 ) -> SemanticContentWrapper:
     return SemanticFigure(
         layout_block=LayoutBlock.for_tokens([
             LayoutToken(
                 text='dummy',
-                coordinates=coordinates
+                coordinates=coordinates,
+                line_meta=line_meta
             )
         ])
     )
@@ -260,6 +264,36 @@ class TestBoundingBoxDistanceGraphicMatcher:
         LOGGER.debug('result: %r', result)
         assert not result.graphic_matches
         assert result.unmatched_graphics == [semantic_graphic_1]
+
+    @pytest.mark.xfail(reason='not yet implemented')
+    def test_should_match_graphic_at_the_top_of_the_next_page(self):
+        page_meta_1 = LayoutPageCoordinates(
+            x=0, y=0, width=100, height=200, page_number=1
+        )
+        page_meta_2 = page_meta_1._replace(page_number=2)
+        candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=180, width=60, height=20, page_number=1
+            ),
+            line_meta=page_meta_1
+        )
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=10, width=60, height=50, page_number=2
+            ),
+            page_meta=page_meta_2
+        ))
+        result = BoundingBoxDistanceGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        assert len(result) == 1
+        first_match = result.graphic_matches[0]
+        assert first_match.semantic_graphic == semantic_graphic_1
+        assert first_match.candidate_semantic_content == candidate_semantic_content_1
 
     @pytest.mark.parametrize(
         "graphic_type,should_match",
