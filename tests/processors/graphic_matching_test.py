@@ -13,6 +13,7 @@ from sciencebeam_parser.document.layout_document import (
     LayoutGraphic,
     LayoutLineMeta,
     LayoutPageCoordinates,
+    LayoutPageMeta,
     LayoutToken
 )
 from sciencebeam_parser.document.semantic_document import (
@@ -31,6 +32,18 @@ from sciencebeam_parser.processors.graphic_matching import (
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+PAGE_META_1 = LayoutPageMeta(
+    page_number=1,
+    coordinates=LayoutPageCoordinates(
+        x=0,
+        y=0,
+        width=400,
+        height=600,
+        page_number=1
+    )
+)
 
 
 COORDINATES_1 = LayoutPageCoordinates(
@@ -164,6 +177,28 @@ class TestGetBoundingBoxListDistance:
         assert bounding_box_distance.delta_x == 0
         assert bounding_box_distance.delta_y == 10
         assert bounding_box_distance.euclidean_distance == 10
+
+    def test_should_calculate_distance_based_on_relative_bounding_boxes(self):
+        bounding_box_distance = get_bounding_box_list_distance(
+            [LayoutPageCoordinates(
+                x=0.1,
+                y=0.8,
+                width=1.0,
+                height=0.1,
+                page_number=1
+            )],
+            [LayoutPageCoordinates(
+                x=0.1,
+                y=0.1 + 1.0,
+                width=1.0,
+                height=0.2,
+                page_number=2
+            )]
+        )
+        assert bounding_box_distance.page_number_diff == 1
+        assert bounding_box_distance.delta_x == 0
+        assert round(bounding_box_distance.delta_y, 3) == 0.2
+        assert round(bounding_box_distance.euclidean_distance, 3) == 0.2
 
 
 class TestBoundingBoxDistanceGraphicMatcher:
