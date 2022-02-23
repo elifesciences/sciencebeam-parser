@@ -162,7 +162,7 @@ class BoundingBoxDistanceBetween(NamedTuple):
         return self.bounding_box_distance.get_sort_key()
 
 
-def get_bounding_box_for_page_coordinates_and_page_meta(
+def get_normalized_bounding_box_for_page_coordinates_and_page_meta(
     coordinates: LayoutPageCoordinates,
     page_meta: LayoutPageMeta
 ) -> LayoutPageCoordinates:
@@ -177,18 +177,18 @@ def get_bounding_box_for_page_coordinates_and_page_meta(
     )
 
 
-def get_bounding_box_list_for_layout_graphic(
+def get_normalized_bounding_box_list_for_layout_graphic(
     layout_graphic: LayoutGraphic
 ) -> Sequence[LayoutPageCoordinates]:
     if not layout_graphic.coordinates:
         return []
-    return [get_bounding_box_for_page_coordinates_and_page_meta(
+    return [get_normalized_bounding_box_for_page_coordinates_and_page_meta(
         layout_graphic.coordinates,
         page_meta=layout_graphic.page_meta
     )]
 
 
-def get_bounding_box_list_for_layout_block(
+def get_normalized_bounding_box_list_for_layout_block(
     layout_block: LayoutBlock
 ) -> Sequence[LayoutPageCoordinates]:
     page_meta_by_page_number = {
@@ -199,7 +199,7 @@ def get_bounding_box_list_for_layout_block(
     LOGGER.debug('page_meta_by_page_number: %r', page_meta_by_page_number)
     merged_coordinates_list = layout_block.get_merged_coordinates_list()
     return [
-        get_bounding_box_for_page_coordinates_and_page_meta(
+        get_normalized_bounding_box_for_page_coordinates_and_page_meta(
             coordinates=coordinates,
             page_meta=page_meta_by_page_number[coordinates.page_number]
         )
@@ -225,7 +225,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         graphic_bounding_box_ref_list = [
             BoundingBoxRef(
                 id(semantic_graphic),
-                bounding_box_list=get_bounding_box_list_for_layout_graphic(
+                bounding_box_list=get_normalized_bounding_box_list_for_layout_graphic(
                     semantic_graphic.layout_graphic
                 ),
                 semantic_content=semantic_graphic
@@ -240,7 +240,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         candidate_bounding_box_ref_list = [
             BoundingBoxRef(
                 id(candidate_semantic_content),
-                bounding_box_list=get_bounding_box_list_for_layout_block(
+                bounding_box_list=get_normalized_bounding_box_list_for_layout_block(
                     candidate_semantic_content
                     .merged_block
                 ),

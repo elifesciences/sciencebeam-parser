@@ -27,10 +27,10 @@ from sciencebeam_parser.processors.graphic_matching import (
     BoundingBoxDistanceGraphicMatcher,
     GraphicRelatedBlockTextGraphicMatcher,
     OpticalCharacterRecognitionGraphicMatcher,
-    get_bounding_box_for_page_coordinates_and_page_meta,
+    get_normalized_bounding_box_for_page_coordinates_and_page_meta,
     get_bounding_box_list_distance,
-    get_bounding_box_list_for_layout_block,
-    get_bounding_box_list_for_layout_graphic
+    get_normalized_bounding_box_list_for_layout_block,
+    get_normalized_bounding_box_list_for_layout_graphic
 )
 
 
@@ -218,9 +218,9 @@ class TestGetBoundingBoxListDistance:
         assert round(bounding_box_distance.euclidean_distance, 3) == 0.2
 
 
-class TestGetBoundingBoxForPageCoordinatesAndPageMeta:
+class TestGetNormalizedBoundingBoxForPageCoordinatesAndPageMeta:
     def test_should_scale_coordinates(self):
-        result = get_bounding_box_for_page_coordinates_and_page_meta(
+        result = get_normalized_bounding_box_for_page_coordinates_and_page_meta(
             coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=0),
             page_meta=LayoutPageMeta.for_coordinates(
                 LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=0)
@@ -230,7 +230,7 @@ class TestGetBoundingBoxForPageCoordinatesAndPageMeta:
         assert result == LayoutPageCoordinates(x=0.1, y=0.01, width=0.2, height=0.02, page_number=0)
 
     def test_should_scale_coordinates_and_adjust_page_number_to_y(self):
-        result = get_bounding_box_for_page_coordinates_and_page_meta(
+        result = get_normalized_bounding_box_for_page_coordinates_and_page_meta(
             coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=5),
             page_meta=LayoutPageMeta.for_coordinates(
                 LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=5)
@@ -240,9 +240,9 @@ class TestGetBoundingBoxForPageCoordinatesAndPageMeta:
         assert result == LayoutPageCoordinates(x=0.1, y=5.01, width=0.2, height=0.02, page_number=5)
 
 
-class TestGetBoundingBoxListForLayoutGraphic:
+class TestGetNormalizedBoundingBoxListForLayoutGraphic:
     def test_should_scale_coordinates(self):
-        result = get_bounding_box_list_for_layout_graphic(
+        result = get_normalized_bounding_box_list_for_layout_graphic(
             LayoutGraphic(
                 coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=0),
                 page_meta=LayoutPageMeta.for_coordinates(
@@ -257,7 +257,7 @@ class TestGetBoundingBoxListForLayoutGraphic:
         )
 
     def test_should_scale_coordinates_and_adjust_page_number_to_y(self):
-        result = get_bounding_box_list_for_layout_graphic(
+        result = get_normalized_bounding_box_list_for_layout_graphic(
             LayoutGraphic(
                 coordinates=LayoutPageCoordinates(x=10, y=10, width=20, height=20, page_number=5),
                 page_meta=LayoutPageMeta.for_coordinates(
@@ -272,9 +272,9 @@ class TestGetBoundingBoxListForLayoutGraphic:
         )
 
 
-class TestGetBoundingBoxListForLayoutBlock:
+class TestGetNormalizedBoundingBoxListForLayoutBlock:
     def test_should_scale_coordinates_of_single_line_block(self):
-        result = get_bounding_box_list_for_layout_block(
+        result = get_normalized_bounding_box_list_for_layout_block(
             LayoutBlock(
                 lines=[
                     LayoutLine(
