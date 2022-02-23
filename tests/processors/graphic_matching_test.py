@@ -409,17 +409,18 @@ class TestBoundingBoxDistanceGraphicMatcher:
         assert not result.graphic_matches
         assert result.unmatched_graphics == [semantic_graphic_1]
 
-    @pytest.mark.xfail(reason='not yet implemented')
     def test_should_match_graphic_at_the_top_of_the_next_page(self):
-        page_meta_1 = LayoutPageCoordinates(
+        page_meta_1 = LayoutPageMeta.for_coordinates(LayoutPageCoordinates(
             x=0, y=0, width=100, height=200, page_number=1
+        ))
+        page_meta_2 = LayoutPageMeta.for_coordinates(
+            page_meta_1.coordinates._replace(page_number=2)
         )
-        page_meta_2 = page_meta_1._replace(page_number=2)
         candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
             coordinates=LayoutPageCoordinates(
                 x=20, y=180, width=60, height=20, page_number=1
             ),
-            line_meta=page_meta_1
+            line_meta=LayoutLineMeta(page_meta=page_meta_1)
         )
         semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
             coordinates=LayoutPageCoordinates(

@@ -208,14 +208,15 @@ def get_normalized_bounding_box_list_for_layout_block(
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
-    def __init__(self):
+    def __init__(self, max_distance: float = 0.5):
         super().__init__()
         # we ignore svgs for now because they currently represent the whole page
         # rather than individual images
         self.ignored_graphic_types = {'svg'}
+        self.max_distance = max_distance
 
     def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
-        return distance_between.bounding_box_distance.page_number_diff == 0
+        return distance_between.bounding_box_distance.euclidean_distance < self.max_distance
 
     def get_graphic_matches(
         self,
