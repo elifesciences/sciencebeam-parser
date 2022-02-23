@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import logging
 import os
 from pathlib import Path
@@ -10,8 +11,10 @@ from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutDocument,
     LayoutGraphic,
+    LayoutLineMeta,
     LayoutPage,
-    LayoutPageCoordinates
+    LayoutPageCoordinates,
+    LayoutPageMeta
 )
 from sciencebeam_parser.document.semantic_document import (
     SemanticAffiliationAddress,
@@ -50,6 +53,30 @@ from tests.test_utils import log_on_exception
 LOGGER = logging.getLogger(__name__)
 
 
+PAGE_META_1 = LayoutPageMeta.for_coordinates(LayoutPageCoordinates(
+    x=0,
+    y=0,
+    width=400,
+    height=600,
+    page_number=1
+))
+
+
+COORDINATES_1 = LayoutPageCoordinates(
+    x=10,
+    y=100,
+    width=200,
+    height=100,
+    page_number=1
+)
+
+
+LINE_META_1 = LayoutLineMeta(
+    line_id=1,
+    page_meta=PAGE_META_1
+)
+
+
 @pytest.fixture(name='fulltext_models_mock')
 def _fulltext_models() -> MockFullTextModels:
     return MockFullTextModels()
@@ -59,6 +86,15 @@ def _fulltext_models() -> MockFullTextModels:
 def _get_cv_document_graphic_provider_mock() -> Iterator[MagicMock]:
     with patch.object(processor_module, 'get_cv_document_graphic_provider') as mock:
         yield mock
+
+
+def _get_layout_block_for_text(
+    text: str,
+    coordinates: LayoutPageCoordinates
+):
+    page_meta = PAGE_META_1._replace(page_number=coordinates.page_number)
+    line_meta = LINE_META_1._replace(page_meta=page_meta)
+    return LayoutBlock.for_text(text, coordinates=coordinates, line_meta=line_meta)
 
 
 # pylint: disable=too-many-locals
@@ -664,16 +700,17 @@ class TestFullTextProcessor:
         segmentation_label: str
     ):
         citation_block = LayoutBlock.for_text('Figure 1')
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        _coordinates = COORDINATES_1
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
-            local_file_path=graphic_local_file_path
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
         )
         _coordinates = _coordinates.move_by(dy=10)
-        label_block = LayoutBlock.for_text('Figure 1', coordinates=_coordinates)
+        label_block = _get_layout_block_for_text('Figure 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
-        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
@@ -751,11 +788,12 @@ class TestFullTextProcessor:
         get_cv_document_graphic_provider_mock: MagicMock,
         segmentation_label: str
     ):
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10, page_number=10)
+        _coordinates = COORDINATES_1
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
-            local_file_path=graphic_local_file_path
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
         )
         iter_semantic_graphic_for_layout_document_mock = (
             get_cv_document_graphic_provider_mock
@@ -767,9 +805,9 @@ class TestFullTextProcessor:
             relative_path=os.path.basename(graphic_local_file_path)
         )]
         _coordinates = _coordinates.move_by(dy=10)
-        label_block = LayoutBlock.for_text('Figure 1', coordinates=_coordinates)
+        label_block = _get_layout_block_for_text('Figure 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
-        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
@@ -912,11 +950,12 @@ class TestFullTextProcessor:
         get_cv_document_graphic_provider_mock: MagicMock,
         segmentation_label: str
     ):
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10, page_number=10)
+        _coordinates = COORDINATES_1
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
-            local_file_path=graphic_local_file_path
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
         )
         iter_semantic_graphic_for_layout_document_mock = (
             get_cv_document_graphic_provider_mock
@@ -928,9 +967,9 @@ class TestFullTextProcessor:
             relative_path=os.path.basename(graphic_local_file_path)
         )]
         _coordinates = _coordinates.move_by(dy=10)
-        label_block = LayoutBlock.for_text('Table 1', coordinates=_coordinates)
+        label_block = _get_layout_block_for_text('Table 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
-        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
         other_block = LayoutBlock.for_text('Other')
         table_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block

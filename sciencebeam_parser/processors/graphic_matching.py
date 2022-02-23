@@ -225,7 +225,9 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         graphic_bounding_box_ref_list = [
             BoundingBoxRef(
                 id(semantic_graphic),
-                bounding_box_list=[semantic_graphic.layout_graphic.coordinates],
+                bounding_box_list=get_bounding_box_list_for_layout_graphic(
+                    semantic_graphic.layout_graphic
+                ),
                 semantic_content=semantic_graphic
             )
             for semantic_graphic in semantic_graphic_list
@@ -238,10 +240,9 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         candidate_bounding_box_ref_list = [
             BoundingBoxRef(
                 id(candidate_semantic_content),
-                bounding_box_list=(
+                bounding_box_list=get_bounding_box_list_for_layout_block(
                     candidate_semantic_content
                     .merged_block
-                    .get_merged_coordinates_list()
                 ),
                 semantic_content=candidate_semantic_content
             )

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +8,6 @@ import pytest
 import PIL.Image
 
 from sciencebeam_parser.document.layout_document import (
-    DEFAULT_LAYOUT_LINE_META,
     LayoutBlock,
     LayoutGraphic,
     LayoutLine,
@@ -49,6 +48,10 @@ PAGE_META_1 = LayoutPageMeta(
     )
 )
 
+LINE_META_1 = LayoutLineMeta(
+    line_id=1,
+    page_meta=PAGE_META_1
+)
 
 COORDINATES_1 = LayoutPageCoordinates(
     x=10,
@@ -102,8 +105,15 @@ def _ocr_model_mock() -> MagicMock:
 
 def _get_semantic_content_for_page_coordinates(
     coordinates: LayoutPageCoordinates,
-    line_meta: LayoutLineMeta = DEFAULT_LAYOUT_LINE_META
+    line_meta: Optional[LayoutLineMeta] = None
 ) -> SemanticContentWrapper:
+    if line_meta is None:
+        line_meta = LINE_META_1._replace(
+            page_meta=PAGE_META_1._replace(
+                page_number=coordinates.page_number
+            )
+        )
+
     return SemanticFigure(
         layout_block=LayoutBlock.for_tokens([
             LayoutToken(
@@ -303,7 +313,8 @@ class TestBoundingBoxDistanceGraphicMatcher:
 
     def test_should_match_graphic_above_semantic_content(self):
         semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
-            coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1
+            coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1,
+            page_meta=PAGE_META_1
         ))
         candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
             coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1
@@ -328,16 +339,19 @@ class TestBoundingBoxDistanceGraphicMatcher:
 
     def test_should_not_match_further_away_graphic_to_same_semantic_content(self):
         semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
-            coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1
+            coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1,
+            page_meta=PAGE_META_1
         ))
         candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
             coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1
         )
         further_away_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
-            coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1.move_by(dy=500)
+            coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1.move_by(dy=500),
+            page_meta=PAGE_META_1
         ))
         further_away_graphic_2 = SemanticGraphic(layout_graphic=LayoutGraphic(
-            coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1.move_by(dy=1000)
+            coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1.move_by(dy=1000),
+            page_meta=PAGE_META_1
         ))
         result = BoundingBoxDistanceGraphicMatcher().get_graphic_matches(
             semantic_graphic_list=[
@@ -377,6 +391,9 @@ class TestBoundingBoxDistanceGraphicMatcher:
         semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
             coordinates=COORDINATES_1._replace(
                 page_number=COORDINATES_1.page_number + 1
+            ),
+            page_meta=PAGE_META_1._replace(
+                page_number=PAGE_META_1.page_number + 1
             )
         ))
         candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
@@ -433,7 +450,8 @@ class TestBoundingBoxDistanceGraphicMatcher:
     ):
         semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
             coordinates=GRAPHIC_ABOVE_FIGURE_COORDINATES_1,
-            graphic_type=graphic_type
+            graphic_type=graphic_type,
+            page_meta=PAGE_META_1
         ))
         candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
             coordinates=FIGURE_BELOW_GRAPHIC_COORDINATES_1
