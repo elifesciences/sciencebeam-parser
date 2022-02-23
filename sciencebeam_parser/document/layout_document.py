@@ -102,6 +102,10 @@ class LayoutPageMeta(NamedTuple):
     page_number: int = 0
     coordinates: Optional[LayoutPageCoordinates] = None
 
+    @staticmethod
+    def for_coordinates(coordinates: LayoutPageCoordinates) -> 'LayoutPageMeta':
+        return LayoutPageMeta(page_number=coordinates.page_number, coordinates=coordinates)
+
 
 DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
 
