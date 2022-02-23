@@ -7,6 +7,7 @@ import PIL.Image
 
 from sciencebeam_parser.utils.image import get_image_with_max_resolution
 from sciencebeam_parser.document.layout_document import (
+    LayoutBlock,
     LayoutGraphic,
     LayoutPageCoordinates,
     LayoutPageMeta
@@ -185,6 +186,25 @@ def get_bounding_box_list_for_layout_graphic(
         layout_graphic.coordinates,
         page_meta=layout_graphic.page_meta
     )]
+
+
+def get_bounding_box_list_for_layout_block(
+    layout_block: LayoutBlock
+) -> Sequence[LayoutPageCoordinates]:
+    page_meta_by_page_number = {
+        token.line_meta.page_meta.page_number: token.line_meta.page_meta
+        for line in layout_block.lines
+        for token in line.tokens
+    }
+    LOGGER.debug('page_meta_by_page_number: %r', page_meta_by_page_number)
+    merged_coordinates_list = layout_block.get_merged_coordinates_list()
+    return [
+        get_bounding_box_for_page_coordinates_and_page_meta(
+            coordinates=coordinates,
+            page_meta=page_meta_by_page_number[coordinates.page_number]
+        )
+        for coordinates in merged_coordinates_list
+    ]
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):

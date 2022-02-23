@@ -11,6 +11,7 @@ from sciencebeam_parser.document.layout_document import (
     DEFAULT_LAYOUT_LINE_META,
     LayoutBlock,
     LayoutGraphic,
+    LayoutLine,
     LayoutLineMeta,
     LayoutPageCoordinates,
     LayoutPageMeta,
@@ -29,6 +30,7 @@ from sciencebeam_parser.processors.graphic_matching import (
     OpticalCharacterRecognitionGraphicMatcher,
     get_bounding_box_for_page_coordinates_and_page_meta,
     get_bounding_box_list_distance,
+    get_bounding_box_list_for_layout_block,
     get_bounding_box_list_for_layout_graphic
 )
 
@@ -88,6 +90,9 @@ FAR_AWAY_COORDINATES_2 = LayoutPageCoordinates(
     height=20,
     page_number=11
 )
+
+
+TOKEN_1 = 'token1'
 
 
 @pytest.fixture(name='ocr_model_mock')
@@ -248,6 +253,37 @@ class TestGetBoundingBoxListForLayoutGraphic:
                 page_meta=LayoutPageMeta.for_coordinates(
                     LayoutPageCoordinates(x=0, y=0, width=100, height=1000, page_number=5)
                 )
+            )
+        )
+        LOGGER.debug('result: %r', result)
+        assert len(result) == 1
+        assert result[0] == LayoutPageCoordinates(
+            x=0.1, y=5.01, width=0.2, height=0.02, page_number=5
+        )
+
+
+class TestGetBoundingBoxListForLayoutBlock:
+    def test_should_scale_coordinates_of_single_line_block(self):
+        result = get_bounding_box_list_for_layout_block(
+            LayoutBlock(
+                lines=[
+                    LayoutLine(
+                        tokens=[LayoutToken(
+                            TOKEN_1,
+                            coordinates=LayoutPageCoordinates(
+                                x=10, y=10, width=20, height=20, page_number=5
+                            ),
+                            line_meta=LayoutLineMeta(
+                                line_id=1,
+                                page_meta=LayoutPageMeta.for_coordinates(
+                                    LayoutPageCoordinates(
+                                        x=0, y=0, width=100, height=1000, page_number=5
+                                    )
+                                )
+                            )
+                        )],
+                    )
+                ]
             )
         )
         LOGGER.debug('result: %r', result)
