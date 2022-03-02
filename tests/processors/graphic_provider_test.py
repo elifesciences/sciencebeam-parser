@@ -1,12 +1,18 @@
 import logging
+from typing import Optional
 
-from sciencebeam_parser.document.semantic_document import SemanticGraphic
+from sciencebeam_parser.document.semantic_document import (
+    SemanticContentWrapper,
+    SemanticFigure,
+    SemanticGraphic
+)
 from sciencebeam_parser.utils.bounding_box import BoundingBox
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutDocument,
     LayoutGraphic,
     LayoutLine,
+    LayoutLineMeta,
     LayoutPage,
     LayoutPageCoordinates,
     LayoutPageMeta,
@@ -14,6 +20,7 @@ from sciencebeam_parser.document.layout_document import (
 )
 from sciencebeam_parser.processors.graphic_provider import (
     SimpleDocumentGraphicProvider,
+    get_graphic_matching_candidate_page_numbers_for_semantic_content_list,
     get_layout_document_with_graphics_replaced_by_graphics,
     get_layout_document_with_text_and_graphics_replaced_by_graphics,
     get_page_numbers_with_mostly_bitmap_graphics,
@@ -31,6 +38,39 @@ LAYOUT_PAGE_COORDINATES_1 = LayoutPageCoordinates(
 LAYOUT_PAGE_COORDINATES_2 = LayoutPageCoordinates(
     x=10, y=11, width=200, height=101, page_number=2
 )
+
+
+PAGE_META_1 = LayoutPageMeta(
+    page_number=1,
+    coordinates=LAYOUT_PAGE_COORDINATES_1
+)
+
+LINE_META_1 = LayoutLineMeta(
+    line_id=1,
+    page_meta=PAGE_META_1
+)
+
+
+def _get_semantic_content_for_page_coordinates(
+    coordinates: LayoutPageCoordinates,
+    line_meta: Optional[LayoutLineMeta] = None
+) -> SemanticContentWrapper:
+    if line_meta is None:
+        line_meta = LINE_META_1._replace(
+            page_meta=PAGE_META_1._replace(
+                page_number=coordinates.page_number
+            )
+        )
+
+    return SemanticFigure(
+        layout_block=LayoutBlock.for_tokens([
+            LayoutToken(
+                text='dummy',
+                coordinates=coordinates,
+                line_meta=line_meta
+            )
+        ])
+    )
 
 
 def _get_layout_document_for_layout_graphic(
@@ -163,6 +203,23 @@ class TestGetPageNumbersWithMostlyBitmapGraphics:
         ])
         result = get_page_numbers_with_mostly_bitmap_graphics(layout_document)
         assert result == []
+
+
+class TestGetGraphicMatchingCandidatePageNumbersForSemanticContentList:
+    def test_should_return_empty_list_for_empty_semantic_content_list(self):
+        result = get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+            []
+        )
+        assert not result
+
+    def test_should_return_page_number_of_semantic_content(self):
+        semantic_content = _get_semantic_content_for_page_coordinates(
+            coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=1)
+        )
+        result = get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+            [semantic_content]
+        )
+        assert result == [1]
 
 
 class TestGetLayoutDocumentWithTextAndGraphicsReplacedByGraphics:

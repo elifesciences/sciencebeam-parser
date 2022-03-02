@@ -81,9 +81,9 @@ from sciencebeam_parser.processors.graphic_matching import (
 from sciencebeam_parser.processors.graphic_provider import (
     DocumentGraphicProvider,
     SimpleDocumentGraphicProvider,
+    get_graphic_matching_candidate_page_numbers_for_semantic_content_list,
     get_layout_document_with_graphics_replaced_by_graphics,
     get_layout_document_with_text_and_graphics_replaced_by_graphics,
-    get_page_numbers_for_semantic_content_list,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
 )
@@ -348,8 +348,10 @@ class FullTextProcessor:
             semantic_graphic_list=list(
                 self._get_document_graphic_provider(
                     context=context,
-                    page_numbers=get_page_numbers_for_semantic_content_list(
-                        candidate_semantic_content_list
+                    page_numbers=(
+                        get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+                            candidate_semantic_content_list
+                        )
                     )
                 ).iter_semantic_graphic_for_layout_document(
                     layout_document,

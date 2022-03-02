@@ -66,6 +66,12 @@ def get_page_numbers_for_semantic_content_list(
     })
 
 
+def get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+    semantic_content_list: Sequence[SemanticContentWrapper]
+) -> Sequence[int]:
+    return get_page_numbers_for_semantic_content_list(semantic_content_list)
+
+
 def get_page_numbers_with_uncommon_page_dimension(
     layout_document: LayoutDocument
 ) -> Sequence[int]:
