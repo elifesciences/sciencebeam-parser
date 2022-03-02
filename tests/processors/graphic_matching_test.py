@@ -24,6 +24,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper
 )
 from sciencebeam_parser.processors.graphic_matching import (
+    BoundingBoxDistance,
+    BoundingBoxDistanceBetween,
     BoundingBoxDistanceGraphicMatcher,
     GraphicRelatedBlockTextGraphicMatcher,
     OpticalCharacterRecognitionGraphicMatcher,
@@ -302,6 +304,54 @@ class TestGetNormalizedBoundingBoxListForLayoutBlock:
         assert result[0] == LayoutPageCoordinates(
             x=0.1, y=5.01, width=0.2, height=0.02, page_number=5
         )
+
+
+class TestBoundingBoxDistance:
+    def test_is_better_than_should_return_true_for_none(self):
+        assert BoundingBoxDistance(euclidean_distance=1.0).is_better_than(
+            None
+        ) is True
+
+    def test_is_better_than_should_return_true_for_smaller_distance(self):
+        assert BoundingBoxDistance(euclidean_distance=1.0).is_better_than(
+            BoundingBoxDistance(euclidean_distance=2.0)
+        ) is True
+
+    def test_is_better_than_should_return_false_for_larger_distance(self):
+        assert BoundingBoxDistance(euclidean_distance=2.0).is_better_than(
+            BoundingBoxDistance(euclidean_distance=1.0)
+        ) is False
+
+
+class TestBoundingBoxDistanceBetween:
+    def test_is_better_than_should_return_true_for_none(self):
+        assert BoundingBoxDistanceBetween(
+            bounding_box_distance=BoundingBoxDistance(euclidean_distance=1.0),
+            bounding_box_ref_1=MagicMock(name='bounding_box_ref_1'),
+            bounding_box_ref_2=MagicMock(name='bounding_box_ref_2')
+        ).is_better_than(None) is True
+
+    def test_is_better_than_should_return_true_for_smaller_distance(self):
+        assert BoundingBoxDistanceBetween(
+            bounding_box_distance=BoundingBoxDistance(euclidean_distance=1.0),
+            bounding_box_ref_1=MagicMock(name='bounding_box_ref_1'),
+            bounding_box_ref_2=MagicMock(name='bounding_box_ref_2')
+        ).is_better_than(BoundingBoxDistanceBetween(
+            bounding_box_distance=BoundingBoxDistance(euclidean_distance=2.0),
+            bounding_box_ref_1=MagicMock(name='bounding_box_ref_1'),
+            bounding_box_ref_2=MagicMock(name='bounding_box_ref_2')
+        )) is True
+
+    def test_is_better_than_should_return_false_for_larger_distance(self):
+        assert BoundingBoxDistanceBetween(
+            bounding_box_distance=BoundingBoxDistance(euclidean_distance=2.0),
+            bounding_box_ref_1=MagicMock(name='bounding_box_ref_1'),
+            bounding_box_ref_2=MagicMock(name='bounding_box_ref_2')
+        ).is_better_than(BoundingBoxDistanceBetween(
+            bounding_box_distance=BoundingBoxDistance(euclidean_distance=1.0),
+            bounding_box_ref_1=MagicMock(name='bounding_box_ref_1'),
+            bounding_box_ref_2=MagicMock(name='bounding_box_ref_2')
+        )) is False
 
 
 class TestBoundingBoxDistanceGraphicMatcher:

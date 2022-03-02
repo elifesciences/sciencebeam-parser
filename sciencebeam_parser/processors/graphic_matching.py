@@ -92,13 +92,18 @@ class ChainedGraphicMatcher(GraphicMatcher):
 
 
 class BoundingBoxDistance(NamedTuple):
-    page_number_diff: int
+    page_number_diff: int = 0
     delta_x: float = 0
     delta_y: float = 0
     euclidean_distance: float = 0
 
     def get_sort_key(self):
         return self.euclidean_distance
+
+    def is_better_than(self, other: Optional['BoundingBoxDistance']) -> bool:
+        if not other:
+            return True
+        return self.get_sort_key() < other.get_sort_key()
 
 
 def get_bounding_box_distance(
@@ -185,7 +190,9 @@ class BoundingBoxDistanceBetween(NamedTuple):
         return self.bounding_box_distance.get_sort_key()
 
     def is_better_than(self, other: Optional['BoundingBoxDistanceBetween']) -> bool:
-        return bool(other and (other.get_sort_key() < other.get_sort_key()))
+        if not other:
+            return True
+        return self.bounding_box_distance.is_better_than(other.bounding_box_distance)
 
 
 def get_graphic_match_for_distance_between(
@@ -377,7 +384,7 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
             previous_best_distance_between = (
                 best_distance_between_by_candidate_key.get(candidate_key)
             )
-            if best_distance_between.is_better_than(previous_best_distance_between):
+            if not best_distance_between.is_better_than(previous_best_distance_between):
                 LOGGER.debug(
                     'found better previous best distance between: %r > %r',
                     previous_best_distance_between,
