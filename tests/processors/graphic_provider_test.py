@@ -221,6 +221,34 @@ class TestGetGraphicMatchingCandidatePageNumbersForSemanticContentList:
         )
         assert result == [1]
 
+    def test_should_return_subsequent_page_numbers_present_in_layout_document(self):
+        semantic_content = _get_semantic_content_for_page_coordinates(
+            coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=2)
+        )
+        layout_document = LayoutDocument(pages=[
+            LayoutPage(blocks=LayoutBlock.for_text('test'), meta=LayoutPageMeta(
+                page_number=2,
+                coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=2)
+            )),
+            LayoutPage(blocks=LayoutBlock.for_text('test'), meta=LayoutPageMeta(
+                page_number=3,
+                coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=3)
+            )),
+            LayoutPage(blocks=LayoutBlock.for_text('test'), meta=LayoutPageMeta(
+                page_number=4,
+                coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=4)
+            )),
+            LayoutPage(blocks=LayoutBlock.for_text('test'), meta=LayoutPageMeta(
+                page_number=5,
+                coordinates=LAYOUT_PAGE_COORDINATES_1._replace(page_number=5)
+            ))
+        ])
+        result = get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+            [semantic_content],
+            layout_document=layout_document
+        )
+        assert result == [2, 3]
+
 
 class TestGetLayoutDocumentWithTextAndGraphicsReplacedByGraphics:
     def test_should_not_change_layout_document_if_semantic_graphics_is_empty(self):

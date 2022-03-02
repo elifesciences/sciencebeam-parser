@@ -350,7 +350,8 @@ class FullTextProcessor:
                     context=context,
                     page_numbers=(
                         get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
-                            candidate_semantic_content_list
+                            candidate_semantic_content_list,
+                            layout_document=layout_document
                         )
                     )
                 ).iter_semantic_graphic_for_layout_document(
