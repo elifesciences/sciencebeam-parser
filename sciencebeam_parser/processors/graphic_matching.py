@@ -98,7 +98,7 @@ class BoundingBoxDistance(NamedTuple):
     euclidean_distance: float = 0
 
     def get_sort_key(self):
-        return (self.page_number_diff, self.euclidean_distance,)
+        return self.euclidean_distance
 
 
 def get_bounding_box_distance(
@@ -328,6 +328,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 if not self.is_accept_distance(best_distance_between):
                     LOGGER.debug('not accepting distance: %r', best_distance_between)
                     continue
+                LOGGER.debug('sorted_distances_between: %r', sorted_distances_between)
                 candidate_key = best_distance_between.bounding_box_ref_2.key
                 previous_best_distance_between = (
                     best_distance_between_by_candidate_key.get(candidate_key)
@@ -351,6 +352,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                         previous_best_distance_between,
                         best_distance_between
                     )
+                LOGGER.debug('accept candidate: %r -> %r', candidate_key, best_distance_between)
                 best_distance_between_by_candidate_key[
                     candidate_key
                 ] = best_distance_between

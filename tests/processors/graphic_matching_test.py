@@ -488,7 +488,6 @@ class TestBoundingBoxDistanceGraphicMatcher:
         assert second_match.candidate_semantic_content == candidate_semantic_content_1
         assert not result.unmatched_graphics
 
-    @pytest.mark.xfail(reason='currently failing')
     def test_should_match_continuation_graphic_to_closer_graphic(self):
         page_meta_1 = LayoutPageMeta.for_coordinates(LayoutPageCoordinates(
             x=0, y=0, width=100, height=200, page_number=1
