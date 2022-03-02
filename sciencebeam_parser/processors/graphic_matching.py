@@ -185,6 +185,20 @@ class BoundingBoxDistanceBetween(NamedTuple):
         return self.bounding_box_distance.get_sort_key()
 
 
+def get_graphic_match_for_distance_between(
+    distance_between: BoundingBoxDistanceBetween
+) -> GraphicMatch:
+    return GraphicMatch(
+        semantic_graphic=cast(
+            SemanticGraphic,
+            distance_between.bounding_box_ref_1.semantic_content
+        ),
+        candidate_semantic_content=(
+            distance_between.bounding_box_ref_2.semantic_content
+        )
+    )
+
+
 def get_normalized_bounding_box_for_page_coordinates_and_page_meta(
     coordinates: LayoutPageCoordinates,
     page_meta: LayoutPageMeta
@@ -397,15 +411,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                     candidate_key
                 ] = best_distance_between
             graphic_matches.extend([
-                GraphicMatch(
-                    semantic_graphic=cast(
-                        SemanticGraphic,
-                        distance_between.bounding_box_ref_1.semantic_content
-                    ),
-                    candidate_semantic_content=(
-                        distance_between.bounding_box_ref_2.semantic_content
-                    )
-                )
+                get_graphic_match_for_distance_between(distance_between)
                 for distance_between in best_distance_between_by_candidate_key.values()
             ])
             matched_graphic_keys = {
