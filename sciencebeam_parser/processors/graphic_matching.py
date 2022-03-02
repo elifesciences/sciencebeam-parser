@@ -184,6 +184,9 @@ class BoundingBoxDistanceBetween(NamedTuple):
     def get_sort_key(self):
         return self.bounding_box_distance.get_sort_key()
 
+    def is_better_than(self, other: Optional['BoundingBoxDistanceBetween']) -> bool:
+        return bool(other and (other.get_sort_key() < other.get_sort_key()))
+
 
 def get_graphic_match_for_distance_between(
     distance_between: BoundingBoxDistanceBetween
@@ -387,13 +390,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 previous_best_distance_between = (
                     best_distance_between_by_candidate_key.get(candidate_key)
                 )
-                if (
-                    previous_best_distance_between
-                    and (
-                        previous_best_distance_between.get_sort_key()
-                        < best_distance_between.get_sort_key()
-                    )
-                ):
+                if best_distance_between.is_better_than(previous_best_distance_between):
                     LOGGER.debug(
                         'found better previous best distance between: %r > %r',
                         previous_best_distance_between,
