@@ -324,11 +324,18 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
     def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
         return distance_between.bounding_box_distance.euclidean_distance < self.max_distance
 
+    def with_graphic_bounding_box_ref_list(
+        self,
+        graphic_bounding_box_ref_list: Sequence[BoundingBoxRef]
+    ) -> '_BoundingBoxDistanceGraphicMatcherInstance':
+        return self._replace(  # pylint: disable=no-member
+            graphic_bounding_box_ref_list=graphic_bounding_box_ref_list
+        )
+
     def with_candidate_bounding_box_ref_list(
         self,
         candidate_bounding_box_ref_list: Sequence[BoundingBoxRef]
     ) -> '_BoundingBoxDistanceGraphicMatcherInstance':
-        LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
         return self._replace(  # pylint: disable=no-member
             candidate_bounding_box_ref_list=candidate_bounding_box_ref_list
         )
@@ -351,60 +358,70 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
             key=BoundingBoxDistanceBetween.get_sort_key
         )
 
-    def iter_graphic_matches(self) -> Iterable[GraphicMatch]:
+    def get_best_distance_between_batch(self) -> Sequence[BoundingBoxDistanceBetween]:
         best_distance_between_by_candidate_key: Dict[int, BoundingBoxDistanceBetween] = {}
-        remaining_graphic_bounding_box_ref_list = self.graphic_bounding_box_ref_list
+        for graphic_bounding_box_ref in self.graphic_bounding_box_ref_list:
+            sorted_distances_between = (
+                self.get_sorted_distances_between_for_graphic_bounding_box_ref(
+                    graphic_bounding_box_ref
+                )
+            )
+            if not sorted_distances_between:
+                continue
+            best_distance_between = sorted_distances_between[0]
+            if not self.is_accept_distance(best_distance_between):
+                LOGGER.debug('not accepting distance: %r', best_distance_between)
+                continue
+            LOGGER.debug('sorted_distances_between: %r', sorted_distances_between)
+            candidate_key = best_distance_between.bounding_box_ref_2.key
+            previous_best_distance_between = (
+                best_distance_between_by_candidate_key.get(candidate_key)
+            )
+            if best_distance_between.is_better_than(previous_best_distance_between):
+                LOGGER.debug(
+                    'found better previous best distance between: %r > %r',
+                    previous_best_distance_between,
+                    best_distance_between
+                )
+                continue
+            if previous_best_distance_between:
+                LOGGER.debug(
+                    'found better best distance between: %r < %r',
+                    previous_best_distance_between,
+                    best_distance_between
+                )
+            LOGGER.debug('accept candidate: %r -> %r', candidate_key, best_distance_between)
+            best_distance_between_by_candidate_key[
+                candidate_key
+            ] = best_distance_between
+        return list(best_distance_between_by_candidate_key.values())
+
+    def iter_remaining_candidate_bounding_box_refs(
+        self,
+        best_distance_between_batch: Iterable[BoundingBoxDistanceBetween]
+    ) -> Iterable[BoundingBoxRef]:
+        for best_distance_between in best_distance_between_batch:
+            yield best_distance_between.bounding_box_ref_2.with_extended_bounding_box_list(
+                best_distance_between.bounding_box_ref_1.bounding_box_list
+            )
+
+    def iter_graphic_matches(self) -> Iterable[GraphicMatch]:
         graphic_matches: List[GraphicMatch] = []
         matcher = self
-        while remaining_graphic_bounding_box_ref_list:
-            current_graphic_bounding_box_ref_list = remaining_graphic_bounding_box_ref_list
-            remaining_graphic_bounding_box_ref_list = []
-            for graphic_bounding_box_ref in current_graphic_bounding_box_ref_list:
-                sorted_distances_between = (
-                    matcher.get_sorted_distances_between_for_graphic_bounding_box_ref(
-                        graphic_bounding_box_ref
-                    )
-                )
-                if not sorted_distances_between:
-                    continue
-                best_distance_between = sorted_distances_between[0]
-                if not self.is_accept_distance(best_distance_between):
-                    LOGGER.debug('not accepting distance: %r', best_distance_between)
-                    continue
-                LOGGER.debug('sorted_distances_between: %r', sorted_distances_between)
-                candidate_key = best_distance_between.bounding_box_ref_2.key
-                previous_best_distance_between = (
-                    best_distance_between_by_candidate_key.get(candidate_key)
-                )
-                if best_distance_between.is_better_than(previous_best_distance_between):
-                    LOGGER.debug(
-                        'found better previous best distance between: %r > %r',
-                        previous_best_distance_between,
-                        best_distance_between
-                    )
-                    continue
-                if previous_best_distance_between:
-                    LOGGER.debug(
-                        'found better best distance between: %r < %r',
-                        previous_best_distance_between,
-                        best_distance_between
-                    )
-                LOGGER.debug('accept candidate: %r -> %r', candidate_key, best_distance_between)
-                best_distance_between_by_candidate_key[
-                    candidate_key
-                ] = best_distance_between
+        while matcher.graphic_bounding_box_ref_list:
+            best_distance_between_batch = matcher.get_best_distance_between_batch()
             graphic_matches.extend([
                 get_graphic_match_for_distance_between(distance_between)
-                for distance_between in best_distance_between_by_candidate_key.values()
+                for distance_between in best_distance_between_batch
             ])
             matched_graphic_keys = {
                 distance_between.bounding_box_ref_1.key
-                for distance_between in best_distance_between_by_candidate_key.values()
+                for distance_between in best_distance_between_batch
             }
             LOGGER.debug('matched_graphic_keys: %r', matched_graphic_keys)
             remaining_graphic_bounding_box_ref_list = [
                 graphic_bounding_box_ref
-                for graphic_bounding_box_ref in current_graphic_bounding_box_ref_list
+                for graphic_bounding_box_ref in matcher.graphic_bounding_box_ref_list
                 if graphic_bounding_box_ref.key not in matched_graphic_keys
             ]
             LOGGER.debug(
@@ -413,23 +430,22 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
             )
             if (
                 len(remaining_graphic_bounding_box_ref_list)
-                == len(current_graphic_bounding_box_ref_list)
+                == len(matcher.graphic_bounding_box_ref_list)
             ):
                 # not matched anything in this round
                 break
-            matcher = matcher.with_candidate_bounding_box_ref_list([
-                candidate_bounding_box_ref.with_extended_bounding_box_list(
-                    best_distance_between_by_candidate_key[
-                        candidate_bounding_box_ref.key
-                    ].bounding_box_ref_1.bounding_box_list
+            remaining_candidate_bounding_box_ref_list = list(
+                matcher.iter_remaining_candidate_bounding_box_refs(
+                    best_distance_between_batch
                 )
-                for candidate_bounding_box_ref in matcher.candidate_bounding_box_ref_list
-                if (
-                    candidate_bounding_box_ref.key
-                    in best_distance_between_by_candidate_key
-                )
-            ])
-            best_distance_between_by_candidate_key = {}
+            )
+            LOGGER.debug(
+                'remaining_candidate_bounding_box_ref_list: %r',
+                remaining_candidate_bounding_box_ref_list
+            )
+            matcher = matcher.with_candidate_bounding_box_ref_list(
+                remaining_candidate_bounding_box_ref_list
+            ).with_graphic_bounding_box_ref_list(remaining_graphic_bounding_box_ref_list)
         return get_sorted_graphic_matches(graphic_matches)
 
 
