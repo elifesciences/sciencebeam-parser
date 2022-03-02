@@ -1,7 +1,7 @@
 import logging
 import math
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, cast
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set, cast
 
 import PIL.Image
 
@@ -258,6 +258,50 @@ def get_sorted_graphic_matches(graphic_matches: Sequence[GraphicMatch]) -> Seque
     return sorted(graphic_matches, key=get_graphic_match_sort_key)
 
 
+class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
+    graphic_bounding_box_ref_list: Sequence[BoundingBoxRef]
+    candidate_bounding_box_ref_list: Sequence[BoundingBoxRef]
+
+    @staticmethod
+    def create(
+        semantic_graphic_list: Sequence[SemanticGraphic],
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper],
+        ignored_graphic_types: Set[str]
+    ) -> '_BoundingBoxDistanceGraphicMatcherInstance':
+        graphic_bounding_box_ref_list = [
+            BoundingBoxRef(
+                id(semantic_graphic),
+                bounding_box_list=get_normalized_bounding_box_list_for_layout_graphic(
+                    semantic_graphic.layout_graphic
+                ),
+                semantic_content=semantic_graphic
+            )
+            for semantic_graphic in semantic_graphic_list
+            if (
+                semantic_graphic.layout_graphic
+                and semantic_graphic.layout_graphic.coordinates
+                and semantic_graphic.layout_graphic.graphic_type not in ignored_graphic_types
+            )
+        ]
+        LOGGER.debug('graphic_bounding_box_ref_list: %r', graphic_bounding_box_ref_list)
+        candidate_bounding_box_ref_list = [
+            BoundingBoxRef(
+                id(candidate_semantic_content),
+                bounding_box_list=get_normalized_bounding_box_list_for_layout_block(
+                    candidate_semantic_content
+                    .merged_block
+                ),
+                semantic_content=candidate_semantic_content
+            )
+            for candidate_semantic_content in candidate_semantic_content_list
+        ]
+        LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
+        return _BoundingBoxDistanceGraphicMatcherInstance(
+            graphic_bounding_box_ref_list=graphic_bounding_box_ref_list,
+            candidate_bounding_box_ref_list=candidate_bounding_box_ref_list
+        )
+
+
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
     def __init__(self, max_distance: float = 0.5):
         super().__init__()
@@ -274,36 +318,14 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         semantic_graphic_list: Sequence[SemanticGraphic],
         candidate_semantic_content_list: Sequence[SemanticContentWrapper]
     ) -> GraphicMatchResult:
-        graphic_bounding_box_ref_list = [
-            BoundingBoxRef(
-                id(semantic_graphic),
-                bounding_box_list=get_normalized_bounding_box_list_for_layout_graphic(
-                    semantic_graphic.layout_graphic
-                ),
-                semantic_content=semantic_graphic
-            )
-            for semantic_graphic in semantic_graphic_list
-            if (
-                semantic_graphic.layout_graphic
-                and semantic_graphic.layout_graphic.coordinates
-                and semantic_graphic.layout_graphic.graphic_type not in self.ignored_graphic_types
-            )
-        ]
-        LOGGER.debug('graphic_bounding_box_ref_list: %r', graphic_bounding_box_ref_list)
-        candidate_bounding_box_ref_list = [
-            BoundingBoxRef(
-                id(candidate_semantic_content),
-                bounding_box_list=get_normalized_bounding_box_list_for_layout_block(
-                    candidate_semantic_content
-                    .merged_block
-                ),
-                semantic_content=candidate_semantic_content
-            )
-            for candidate_semantic_content in candidate_semantic_content_list
-        ]
-        LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
+        matcher = _BoundingBoxDistanceGraphicMatcherInstance.create(
+            semantic_graphic_list=semantic_graphic_list,
+            candidate_semantic_content_list=candidate_semantic_content_list,
+            ignored_graphic_types=self.ignored_graphic_types
+        )
         best_distance_between_by_candidate_key: Dict[int, BoundingBoxDistanceBetween] = {}
-        remaining_graphic_bounding_box_ref_list = graphic_bounding_box_ref_list
+        remaining_graphic_bounding_box_ref_list = matcher.graphic_bounding_box_ref_list
+        candidate_bounding_box_ref_list = matcher.candidate_bounding_box_ref_list
         graphic_matches: List[GraphicMatch] = []
         while remaining_graphic_bounding_box_ref_list:
             current_graphic_bounding_box_ref_list = remaining_graphic_bounding_box_ref_list
