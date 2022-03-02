@@ -152,6 +152,14 @@ class BoundingBoxRef(NamedTuple):
             other.bounding_box_list
         )
 
+    def with_extended_bounding_box_list(
+        self,
+        bounding_box_list: Sequence[LayoutPageCoordinates]
+    ) -> 'BoundingBoxRef':
+        return self._replace(  # pylint: disable=no-member
+            bounding_box_list=list(self.bounding_box_list) + list(bounding_box_list)
+        )
+
 
 class BoundingBoxDistanceBetween(NamedTuple):
     bounding_box_distance: BoundingBoxDistance
@@ -205,6 +213,34 @@ def get_normalized_bounding_box_list_for_layout_block(
         )
         for coordinates in merged_coordinates_list
     ]
+
+
+def get_coordinates_sort_key(coordinates: LayoutPageCoordinates):
+    return (coordinates.page_number, coordinates.y, coordinates.x)
+
+
+def get_semantic_content_sort_key(semantic_content: SemanticContentWrapper):
+    for token in semantic_content.iter_tokens():
+        if token.coordinates:
+            return get_coordinates_sort_key(token.coordinates)
+    raise RuntimeError('no token with coordinates found')
+
+
+def get_semantic_graphic_sort_key(semantic_graphic: SemanticGraphic):
+    assert semantic_graphic.layout_graphic
+    assert semantic_graphic.layout_graphic.coordinates
+    return get_coordinates_sort_key(semantic_graphic.layout_graphic.coordinates)
+
+
+def get_graphic_match_sort_key(graphic_match: GraphicMatch):
+    return (
+        get_semantic_content_sort_key(graphic_match.candidate_semantic_content),
+        get_semantic_graphic_sort_key(graphic_match.semantic_graphic)
+    )
+
+
+def get_sorted_graphic_matches(graphic_matches: Sequence[GraphicMatch]) -> Sequence[GraphicMatch]:
+    return sorted(graphic_matches, key=get_graphic_match_sort_key)
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
@@ -336,14 +372,20 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 # not matched anything in this round
                 break
             candidate_bounding_box_ref_list = [
-                candidate_bounding_box_ref
+                candidate_bounding_box_ref.with_extended_bounding_box_list(
+                    best_distance_between_by_candidate_key[
+                        best_distance_between.bounding_box_ref_2.key
+                    ].bounding_box_ref_1.bounding_box_list
+                )
                 for candidate_bounding_box_ref in candidate_bounding_box_ref_list
                 if (
                     best_distance_between.bounding_box_ref_2.key
                     in best_distance_between_by_candidate_key
                 )
             ]
+            LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
             best_distance_between_by_candidate_key = {}
+        graphic_matches = list(get_sorted_graphic_matches(graphic_matches))
         all_matched_graphic_keys = {
             id(graphic_match.semantic_graphic)
             for graphic_match in graphic_matches
