@@ -25,6 +25,9 @@ from sciencebeam_parser.processors.ref_matching import SimpleContentIdMatcher
 LOGGER = logging.getLogger(__name__)
 
 
+DEFAULT_MAX_GRAPHIC_DISTANCE = 0.5
+
+
 class GraphicMatch(NamedTuple):
     semantic_graphic: SemanticGraphic
     candidate_semantic_content: SemanticContentWrapper
@@ -457,7 +460,7 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
 
 
 class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
-    def __init__(self, max_distance: float = 0.5):
+    def __init__(self, max_distance: float = DEFAULT_MAX_GRAPHIC_DISTANCE):
         super().__init__()
         # we ignore svgs for now because they currently represent the whole page
         # rather than individual images

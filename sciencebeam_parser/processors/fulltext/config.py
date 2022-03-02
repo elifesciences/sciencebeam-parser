@@ -5,6 +5,7 @@ from sciencebeam_parser.config.config import AppConfig
 from sciencebeam_parser.processors.document_page_image import (
     DEFAULT_PDF_RENDER_DPI
 )
+from sciencebeam_parser.processors.graphic_matching import DEFAULT_MAX_GRAPHIC_DISTANCE
 
 
 class RequestFieldNames:
@@ -46,6 +47,7 @@ class FullTextProcessorConfig(NamedTuple):
     cv_render_dpi: float = DEFAULT_PDF_RENDER_DPI
     use_ocr_model: bool = False
     replace_text_by_cv_graphic: bool = False
+    max_graphic_distance: float = DEFAULT_MAX_GRAPHIC_DISTANCE
 
     @staticmethod
     def from_app_config(app_config: AppConfig) -> 'FullTextProcessorConfig':

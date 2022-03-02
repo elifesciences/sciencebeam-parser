@@ -73,6 +73,7 @@ processors:
     cv_render_dpi: 100
     use_ocr_model: false
     replace_text_by_cv_graphic: false
+    max_graphic_distance: 0.5
 models:
   segmentation:
     path: 'https://github.com/elifesciences/sciencebeam-models/releases/download/biorxiv-grobid/2021-05-11-delft-grobid-segmentation-biorxiv-10k-auto-v0.0.23-train-1966-e133.tar.gz'
