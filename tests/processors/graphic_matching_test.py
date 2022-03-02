@@ -105,6 +105,7 @@ def _ocr_model_mock() -> MagicMock:
 
 def _get_semantic_content_for_page_coordinates(
     coordinates: LayoutPageCoordinates,
+    text: str = 'dummy',
     line_meta: Optional[LayoutLineMeta] = None
 ) -> SemanticContentWrapper:
     if line_meta is None:
@@ -117,7 +118,7 @@ def _get_semantic_content_for_page_coordinates(
     return SemanticFigure(
         layout_block=LayoutBlock.for_tokens([
             LayoutToken(
-                text='dummy',
+                text=text,
                 coordinates=coordinates,
                 line_meta=line_meta
             )
@@ -485,6 +486,71 @@ class TestBoundingBoxDistanceGraphicMatcher:
         second_match = result.graphic_matches[1]
         assert second_match.semantic_graphic == semantic_graphic_2
         assert second_match.candidate_semantic_content == candidate_semantic_content_1
+        assert not result.unmatched_graphics
+
+    @pytest.mark.xfail(reason='currently failing')
+    def test_should_match_continuation_graphic_to_closer_graphic(self):
+        page_meta_1 = LayoutPageMeta.for_coordinates(LayoutPageCoordinates(
+            x=0, y=0, width=100, height=200, page_number=1
+        ))
+        page_meta_2 = LayoutPageMeta.for_coordinates(
+            page_meta_1.coordinates._replace(page_number=2)
+        )
+        candidate_semantic_content_1 = _get_semantic_content_for_page_coordinates(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=110, width=60, height=20, page_number=1
+            ),
+            text='candidate_semantic_content_1',
+            line_meta=LayoutLineMeta(page_meta=page_meta_1)
+        )
+        candidate_semantic_content_2 = _get_semantic_content_for_page_coordinates(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=100, width=60, height=20, page_number=2
+            ),
+            text='candidate_semantic_content_2',
+            line_meta=LayoutLineMeta(page_meta=page_meta_2)
+        )
+        semantic_graphic_1 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=140, width=60, height=50, page_number=1
+            ),
+            page_meta=page_meta_1,
+            local_file_path='test-graphic1.png'
+        ))
+        semantic_graphic_2 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=10, width=60, height=20, page_number=2
+            ),
+            page_meta=page_meta_2,
+            local_file_path='test-graphic2.png'
+        ))
+        semantic_graphic_3 = SemanticGraphic(layout_graphic=LayoutGraphic(
+            coordinates=LayoutPageCoordinates(
+                x=20, y=130, width=60, height=20, page_number=2
+            ),
+            page_meta=page_meta_2,
+            local_file_path='test-graphic3.png'
+        ))
+        result = BoundingBoxDistanceGraphicMatcher().get_graphic_matches(
+            semantic_graphic_list=[semantic_graphic_1, semantic_graphic_2, semantic_graphic_3],
+            candidate_semantic_content_list=[
+                candidate_semantic_content_1,
+                candidate_semantic_content_2
+            ]
+        )
+        LOGGER.debug('result: %r', result)
+        LOGGER.debug('result.graphic_matches[].local_file_path: %r', [
+            graphic_match.semantic_graphic.layout_graphic.local_file_path
+            for graphic_match in result.graphic_matches
+        ])
+        assert [
+            (graphic_match.candidate_semantic_content.get_text(), graphic_match.semantic_graphic)
+            for graphic_match in result.graphic_matches
+        ] == [
+            ('candidate_semantic_content_1', semantic_graphic_1),
+            ('candidate_semantic_content_1', semantic_graphic_2),
+            ('candidate_semantic_content_2', semantic_graphic_3)
+        ]
         assert not result.unmatched_graphics
 
     @pytest.mark.parametrize(
