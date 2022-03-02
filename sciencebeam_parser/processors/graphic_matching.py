@@ -278,12 +278,14 @@ def get_sorted_graphic_matches(graphic_matches: Sequence[GraphicMatch]) -> Seque
 class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
     graphic_bounding_box_ref_list: Sequence[BoundingBoxRef]
     candidate_bounding_box_ref_list: Sequence[BoundingBoxRef]
+    max_distance: float
 
     @staticmethod
     def create(
         semantic_graphic_list: Sequence[SemanticGraphic],
         candidate_semantic_content_list: Sequence[SemanticContentWrapper],
-        ignored_graphic_types: Set[str]
+        ignored_graphic_types: Set[str],
+        max_distance: float
     ) -> '_BoundingBoxDistanceGraphicMatcherInstance':
         graphic_bounding_box_ref_list = [
             BoundingBoxRef(
@@ -315,8 +317,12 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
         LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
         return _BoundingBoxDistanceGraphicMatcherInstance(
             graphic_bounding_box_ref_list=graphic_bounding_box_ref_list,
-            candidate_bounding_box_ref_list=candidate_bounding_box_ref_list
+            candidate_bounding_box_ref_list=candidate_bounding_box_ref_list,
+            max_distance=max_distance
         )
+
+    def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
+        return distance_between.bounding_box_distance.euclidean_distance < self.max_distance
 
     def with_candidate_bounding_box_ref_list(
         self,
@@ -345,31 +351,11 @@ class _BoundingBoxDistanceGraphicMatcherInstance(NamedTuple):
             key=BoundingBoxDistanceBetween.get_sort_key
         )
 
-
-class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
-    def __init__(self, max_distance: float = 0.5):
-        super().__init__()
-        # we ignore svgs for now because they currently represent the whole page
-        # rather than individual images
-        self.ignored_graphic_types = {'svg'}
-        self.max_distance = max_distance
-
-    def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
-        return distance_between.bounding_box_distance.euclidean_distance < self.max_distance
-
-    def get_graphic_matches(  # pylint: disable=too-many-locals
-        self,
-        semantic_graphic_list: Sequence[SemanticGraphic],
-        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
-    ) -> GraphicMatchResult:
-        matcher = _BoundingBoxDistanceGraphicMatcherInstance.create(
-            semantic_graphic_list=semantic_graphic_list,
-            candidate_semantic_content_list=candidate_semantic_content_list,
-            ignored_graphic_types=self.ignored_graphic_types
-        )
+    def iter_graphic_matches(self) -> Iterable[GraphicMatch]:
         best_distance_between_by_candidate_key: Dict[int, BoundingBoxDistanceBetween] = {}
-        remaining_graphic_bounding_box_ref_list = matcher.graphic_bounding_box_ref_list
+        remaining_graphic_bounding_box_ref_list = self.graphic_bounding_box_ref_list
         graphic_matches: List[GraphicMatch] = []
+        matcher = self
         while remaining_graphic_bounding_box_ref_list:
             current_graphic_bounding_box_ref_list = remaining_graphic_bounding_box_ref_list
             remaining_graphic_bounding_box_ref_list = []
@@ -444,7 +430,29 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 )
             ])
             best_distance_between_by_candidate_key = {}
-        graphic_matches = list(get_sorted_graphic_matches(graphic_matches))
+        return get_sorted_graphic_matches(graphic_matches)
+
+
+class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
+    def __init__(self, max_distance: float = 0.5):
+        super().__init__()
+        # we ignore svgs for now because they currently represent the whole page
+        # rather than individual images
+        self.ignored_graphic_types = {'svg'}
+        self.max_distance = max_distance
+
+    def get_graphic_matches(  # pylint: disable=too-many-locals
+        self,
+        semantic_graphic_list: Sequence[SemanticGraphic],
+        candidate_semantic_content_list: Sequence[SemanticContentWrapper]
+    ) -> GraphicMatchResult:
+        matcher = _BoundingBoxDistanceGraphicMatcherInstance.create(
+            semantic_graphic_list=semantic_graphic_list,
+            candidate_semantic_content_list=candidate_semantic_content_list,
+            ignored_graphic_types=self.ignored_graphic_types,
+            max_distance=self.max_distance
+        )
+        graphic_matches = list(matcher.iter_graphic_matches())
         all_matched_graphic_keys = {
             id(graphic_match.semantic_graphic)
             for graphic_match in graphic_matches
