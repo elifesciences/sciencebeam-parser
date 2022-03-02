@@ -25,7 +25,7 @@ from sciencebeam_parser.processors.ref_matching import SimpleContentIdMatcher
 LOGGER = logging.getLogger(__name__)
 
 
-DEFAULT_MAX_GRAPHIC_DISTANCE = 0.5
+DEFAULT_MAX_GRAPHIC_DISTANCE = 0.3
 
 
 class GraphicMatch(NamedTuple):
