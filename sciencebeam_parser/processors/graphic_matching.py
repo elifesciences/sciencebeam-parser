@@ -441,7 +441,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
         self.ignored_graphic_types = {'svg'}
         self.max_distance = max_distance
 
-    def get_graphic_matches(  # pylint: disable=too-many-locals
+    def get_graphic_matches(
         self,
         semantic_graphic_list: Sequence[SemanticGraphic],
         candidate_semantic_content_list: Sequence[SemanticContentWrapper]
