@@ -29,6 +29,13 @@ class GraphicMatch(NamedTuple):
     semantic_graphic: SemanticGraphic
     candidate_semantic_content: SemanticContentWrapper
 
+    def __repr__(self) -> str:
+        return '%s(semantic_graphic=%r, candidate_semantic_content=%s)' % (
+            type(self).__name__,
+            self.semantic_graphic.get_short_semantic_content_repr(),
+            self.candidate_semantic_content.get_short_semantic_content_repr()
+        )
+
 
 class GraphicMatchResult(NamedTuple):
     graphic_matches: Sequence[GraphicMatch]
@@ -145,6 +152,14 @@ class BoundingBoxRef(NamedTuple):
     key: int
     bounding_box_list: Sequence[LayoutPageCoordinates]
     semantic_content: SemanticContentWrapper
+
+    def __repr__(self) -> str:
+        return '%s(key=%r, bounding_box_list=%r, semantic_content=%s)' % (
+            type(self).__name__,
+            self.key,
+            self.bounding_box_list,
+            self.semantic_content.get_short_semantic_content_repr()
+        )
 
     def get_distance_to(self, other: 'BoundingBoxRef') -> BoundingBoxDistance:
         return get_bounding_box_list_distance(
