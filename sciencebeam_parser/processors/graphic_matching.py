@@ -374,12 +374,12 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
             candidate_bounding_box_ref_list = [
                 candidate_bounding_box_ref.with_extended_bounding_box_list(
                     best_distance_between_by_candidate_key[
-                        best_distance_between.bounding_box_ref_2.key
+                        candidate_bounding_box_ref.key
                     ].bounding_box_ref_1.bounding_box_list
                 )
                 for candidate_bounding_box_ref in candidate_bounding_box_ref_list
                 if (
-                    best_distance_between.bounding_box_ref_2.key
+                    candidate_bounding_box_ref.key
                     in best_distance_between_by_candidate_key
                 )
             ]
