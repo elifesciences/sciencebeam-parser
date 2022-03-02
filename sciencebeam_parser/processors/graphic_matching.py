@@ -218,7 +218,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
     def is_accept_distance(self, distance_between: BoundingBoxDistanceBetween) -> bool:
         return distance_between.bounding_box_distance.euclidean_distance < self.max_distance
 
-    def get_graphic_matches(
+    def get_graphic_matches(  # pylint: disable=too-many-locals
         self,
         semantic_graphic_list: Sequence[SemanticGraphic],
         candidate_semantic_content_list: Sequence[SemanticContentWrapper]
@@ -238,6 +238,7 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
                 and semantic_graphic.layout_graphic.graphic_type not in self.ignored_graphic_types
             )
         ]
+        LOGGER.debug('graphic_bounding_box_ref_list: %r', graphic_bounding_box_ref_list)
         candidate_bounding_box_ref_list = [
             BoundingBoxRef(
                 id(candidate_semantic_content),
@@ -249,73 +250,108 @@ class BoundingBoxDistanceGraphicMatcher(GraphicMatcher):
             )
             for candidate_semantic_content in candidate_semantic_content_list
         ]
+        LOGGER.debug('candidate_bounding_box_ref_list: %r', candidate_bounding_box_ref_list)
         best_distance_between_by_candidate_key: Dict[int, BoundingBoxDistanceBetween] = {}
-        for graphic_bounding_box_ref in graphic_bounding_box_ref_list:
-            sorted_distances_between = sorted(
-                [
-                    BoundingBoxDistanceBetween(
-                        bounding_box_distance=graphic_bounding_box_ref.get_distance_to(
-                            candidate_bounding_box_ref
-                        ),
-                        bounding_box_ref_1=graphic_bounding_box_ref,
-                        bounding_box_ref_2=candidate_bounding_box_ref
+        remaining_graphic_bounding_box_ref_list = graphic_bounding_box_ref_list
+        graphic_matches: List[GraphicMatch] = []
+        while remaining_graphic_bounding_box_ref_list:
+            current_graphic_bounding_box_ref_list = remaining_graphic_bounding_box_ref_list
+            remaining_graphic_bounding_box_ref_list = []
+            for graphic_bounding_box_ref in current_graphic_bounding_box_ref_list:
+                sorted_distances_between = sorted(
+                    [
+                        BoundingBoxDistanceBetween(
+                            bounding_box_distance=graphic_bounding_box_ref.get_distance_to(
+                                candidate_bounding_box_ref
+                            ),
+                            bounding_box_ref_1=graphic_bounding_box_ref,
+                            bounding_box_ref_2=candidate_bounding_box_ref
+                        )
+                        for candidate_bounding_box_ref in candidate_bounding_box_ref_list
+                    ],
+                    key=BoundingBoxDistanceBetween.get_sort_key
+                )
+                if not sorted_distances_between:
+                    continue
+                best_distance_between = sorted_distances_between[0]
+                if not self.is_accept_distance(best_distance_between):
+                    LOGGER.debug('not accepting distance: %r', best_distance_between)
+                    continue
+                candidate_key = best_distance_between.bounding_box_ref_2.key
+                previous_best_distance_between = (
+                    best_distance_between_by_candidate_key.get(candidate_key)
+                )
+                if (
+                    previous_best_distance_between
+                    and (
+                        previous_best_distance_between.get_sort_key()
+                        < best_distance_between.get_sort_key()
                     )
-                    for candidate_bounding_box_ref in candidate_bounding_box_ref_list
-                ],
-                key=BoundingBoxDistanceBetween.get_sort_key
-            )
-            if not sorted_distances_between:
-                continue
-            best_distance_between = sorted_distances_between[0]
-            if not self.is_accept_distance(best_distance_between):
-                LOGGER.debug('not accepting distance: %r', best_distance_between)
-                continue
-            candidate_key = best_distance_between.bounding_box_ref_2.key
-            previous_best_distance_between = (
-                best_distance_between_by_candidate_key.get(candidate_key)
+                ):
+                    LOGGER.debug(
+                        'found better previous best distance between: %r > %r',
+                        previous_best_distance_between,
+                        best_distance_between
+                    )
+                    continue
+                if previous_best_distance_between:
+                    LOGGER.debug(
+                        'found better best distance between: %r < %r',
+                        previous_best_distance_between,
+                        best_distance_between
+                    )
+                best_distance_between_by_candidate_key[
+                    candidate_key
+                ] = best_distance_between
+            graphic_matches.extend([
+                GraphicMatch(
+                    semantic_graphic=cast(
+                        SemanticGraphic,
+                        distance_between.bounding_box_ref_1.semantic_content
+                    ),
+                    candidate_semantic_content=(
+                        distance_between.bounding_box_ref_2.semantic_content
+                    )
+                )
+                for distance_between in best_distance_between_by_candidate_key.values()
+            ])
+            matched_graphic_keys = {
+                distance_between.bounding_box_ref_1.key
+                for distance_between in best_distance_between_by_candidate_key.values()
+            }
+            LOGGER.debug('matched_graphic_keys: %r', matched_graphic_keys)
+            remaining_graphic_bounding_box_ref_list = [
+                graphic_bounding_box_ref
+                for graphic_bounding_box_ref in current_graphic_bounding_box_ref_list
+                if graphic_bounding_box_ref.key not in matched_graphic_keys
+            ]
+            LOGGER.debug(
+                'remaining_graphic_bounding_box_ref_list: %r',
+                remaining_graphic_bounding_box_ref_list
             )
             if (
-                previous_best_distance_between
-                and (
-                    previous_best_distance_between.get_sort_key()
-                    < best_distance_between.get_sort_key()
-                )
+                len(remaining_graphic_bounding_box_ref_list)
+                == len(current_graphic_bounding_box_ref_list)
             ):
-                LOGGER.debug(
-                    'found better previous best distance between: %r > %r',
-                    previous_best_distance_between,
-                    best_distance_between
+                # not matched anything in this round
+                break
+            candidate_bounding_box_ref_list = [
+                candidate_bounding_box_ref
+                for candidate_bounding_box_ref in candidate_bounding_box_ref_list
+                if (
+                    best_distance_between.bounding_box_ref_2.key
+                    in best_distance_between_by_candidate_key
                 )
-                continue
-            if previous_best_distance_between:
-                LOGGER.debug(
-                    'found better best distance between: %r < %r',
-                    previous_best_distance_between,
-                    best_distance_between
-                )
-            best_distance_between_by_candidate_key[
-                candidate_key
-            ] = best_distance_between
-        graphic_matches = [
-            GraphicMatch(
-                semantic_graphic=cast(
-                    SemanticGraphic,
-                    distance_between.bounding_box_ref_1.semantic_content
-                ),
-                candidate_semantic_content=(
-                    distance_between.bounding_box_ref_2.semantic_content
-                )
-            )
-            for distance_between in best_distance_between_by_candidate_key.values()
-        ]
-        matched_graphic_keys = {
-            distance_between.bounding_box_ref_1.key
-            for distance_between in best_distance_between_by_candidate_key.values()
+            ]
+            best_distance_between_by_candidate_key = {}
+        all_matched_graphic_keys = {
+            id(graphic_match.semantic_graphic)
+            for graphic_match in graphic_matches
         }
         unmatched_graphics = [
             semantic_graphic
             for semantic_graphic in semantic_graphic_list
-            if id(semantic_graphic) not in matched_graphic_keys
+            if id(semantic_graphic) not in all_matched_graphic_keys
         ]
         return GraphicMatchResult(
             graphic_matches=graphic_matches,
