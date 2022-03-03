@@ -8,6 +8,7 @@ import PIL.Image
 from sciencebeam_parser.utils.bounding_box import BoundingBox
 from sciencebeam_parser.document.semantic_document import SemanticGraphic
 from sciencebeam_parser.document.layout_document import (
+    DEFAULT_LAYOUT_PAGE_META,
     LayoutDocument,
     LayoutGraphic,
     LayoutPage,
@@ -101,6 +102,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
         page: Optional[LayoutPage]
     ) -> Iterable[SemanticGraphic]:
         LOGGER.debug('image size: %d x %d', image.width, image.height)
+        page_meta = page.meta if page is not None else DEFAULT_LAYOUT_PAGE_META
         page_coordinates = (
             page.meta.coordinates if page is not None else None
         )
@@ -168,6 +170,7 @@ class ComputerVisionDocumentGraphicProvider(DocumentGraphicProvider):
                     height=scaled_item_coordinates.height,
                     page_number=page_number
                 ),
+                page_meta=page_meta,
                 graphic_type=f'cv-{lower_type_name}',
                 local_file_path=local_image_path
             )

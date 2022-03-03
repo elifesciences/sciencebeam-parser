@@ -1,6 +1,6 @@
 from sciencebeam_parser.document.layout_document import (
     EMPTY_BLOCK,
-    LayoutLineDescriptor,
+    LayoutLineMeta,
     LayoutPageCoordinates,
     LayoutPageMeta,
     LayoutToken,
@@ -61,15 +61,15 @@ class TestLayoutBlock:
             ('token2', '\n')
         ]
 
-    def test_should_create_lines_based_on_line_descriptor(self):
-        line_descriptor_1 = LayoutLineDescriptor(line_id=1)
-        line_descriptor_2 = LayoutLineDescriptor(line_id=2)
+    def test_should_create_lines_based_on_line_meta(self):
+        line_meta_1 = LayoutLineMeta(line_id=1)
+        line_meta_2 = LayoutLineMeta(line_id=2)
         line_tokens_1 = [
-            LayoutToken(text, line_descriptor=line_descriptor_1)
+            LayoutToken(text, line_meta=line_meta_1)
             for text in ['token1.1', 'token1.2']
         ]
         line_tokens_2 = [
-            LayoutToken(text, line_descriptor=line_descriptor_2)
+            LayoutToken(text, line_meta=line_meta_2)
             for text in ['token2.1', 'token2.2']
         ]
         layout_block = LayoutBlock.for_tokens(line_tokens_1 + line_tokens_2)

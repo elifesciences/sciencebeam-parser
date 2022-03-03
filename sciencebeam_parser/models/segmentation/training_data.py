@@ -63,8 +63,8 @@ def iter_layout_lines_from_layout_tokens(
             line_layout_tokens.append(layout_token)
             continue
         if (
-            layout_token.line_descriptor.line_id
-            == line_layout_tokens[0].line_descriptor.line_id
+            layout_token.line_meta.line_id
+            == line_layout_tokens[0].line_meta.line_id
         ):
             LOGGER.debug('line id matching: %r - %r', layout_token, line_layout_tokens[0])
             line_layout_tokens.append(layout_token)
