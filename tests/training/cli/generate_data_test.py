@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import gzip
 from pathlib import Path
 from typing import Iterable, Iterator, Optional, Sequence
 from unittest.mock import MagicMock, patch
@@ -56,6 +57,8 @@ LOGGER = logging.getLogger(__name__)
 
 MINIMAL_EXAMPLE_PDF = 'test-data/minimal-example.pdf'
 MINIMAL_EXAMPLE_PDF_PATTERN = 'test-data/minimal-example*.pdf'
+
+NON_EXISTING_PDF_PATTERN = 'test-data/non-existing*.pdf'
 
 
 SOURCE_FILENAME_1 = 'test1.pdf'
@@ -197,26 +200,14 @@ def configure_fulltext_models_mock_with_sample_document(
     )
 
 
-@pytest.fixture(name='fulltext_models_mock')
-def _fulltext_models_mock() -> MockFullTextModels:
-    return MockFullTextModels()
-
-
-@pytest.fixture(name='sciencebeam_parser_class_mock', autouse=True)
-def _sciencebeam_parser_class_mock() -> Iterator[MockFullTextModels]:
-    with patch.object(generate_data_module, 'ScienceBeamParser') as mock:
+@pytest.fixture(autouse=True)
+def _patch_sciencebeam_parser_class_mock(
+    sciencebeam_parser_class_mock: MagicMock
+) -> Iterator[MagicMock]:
+    with patch.object(
+        generate_data_module, 'ScienceBeamParser', sciencebeam_parser_class_mock
+    ) as mock:
         yield mock
-
-
-@pytest.fixture(name='sciencebeam_parser_mock', autouse=True)
-def _sciencebeam_parser_mock(
-    sciencebeam_parser_class_mock: MagicMock,
-    fulltext_models_mock: MockFullTextModels
-) -> MockFullTextModels:
-    mock = MagicMock(name='ScienceBeamParser')
-    mock.fulltext_models = fulltext_models_mock
-    sciencebeam_parser_class_mock.from_config.return_value = mock
-    return mock
 
 
 @pytest.fixture(name='sample_layout_document')
@@ -273,22 +264,22 @@ def _check_tei_training_data_generator_output_and_return_xml_root(
     source_filename: str = SOURCE_FILENAME_1,
     pre_file_path_suffix: str = ''
 ) -> etree.ElementBase:
-    expected_segmentation_tei_path = _get_expected_file_path_with_suffix(
+    expected_tei_path = _get_expected_file_path_with_suffix(
         output_path,
         source_filename,
         tei_training_data_generator.get_default_tei_filename_suffix(),
         pre_file_path_suffix=pre_file_path_suffix
     )
-    assert expected_segmentation_tei_path.exists()
+    assert expected_tei_path.exists()
     if expect_raw_data:
-        expected_segmentation_data_path = _get_expected_file_path_with_suffix(
+        expected_data_path = _get_expected_file_path_with_suffix(
             output_path,
             source_filename,
             tei_training_data_generator.get_default_data_filename_suffix(),
             pre_file_path_suffix=pre_file_path_suffix
         )
-        assert expected_segmentation_data_path.exists()
-    xml_root = etree.parse(str(expected_segmentation_tei_path)).getroot()
+        assert expected_data_path.exists()
+    xml_root = etree.parse(str(expected_tei_path)).getroot()
     LOGGER.debug('xml: %r', etree.tostring(xml_root))
     return xml_root
 
@@ -462,6 +453,24 @@ class TestGenerateTrainingDataForLayoutDocument:
 
 @log_on_exception
 class TestMain:
+    def test_should_fail_if_no_files_were_found(
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        output_path = tmp_path / 'generated-data'
+        with pytest.raises(FileNotFoundError):
+            main([
+                f'--source-path={NON_EXISTING_PDF_PATTERN}',
+                f'--output-path={output_path}'
+            ])
+        assert not output_path.exists()
+
     def test_should_be_able_to_generate_segmentation_training_data(
         self,
         tmp_path: Path,
@@ -495,6 +504,47 @@ class TestMain:
             source_filename=MINIMAL_EXAMPLE_PDF
         )
         assert get_text_content_list(xml_root.xpath('text/front'))
+
+    def test_should_add_gz_suffix_if_enabled(
+        self,
+        tmp_path: Path,
+        sample_layout_document: SampleLayoutDocument,
+        fulltext_models_mock: MockFullTextModels
+    ):
+        configure_fulltext_models_mock_with_sample_document(
+            fulltext_models_mock,
+            sample_layout_document
+        )
+        output_path = tmp_path / 'generated-data'
+        main([
+            f'--source-path={MINIMAL_EXAMPLE_PDF_PATTERN}',
+            f'--output-path={output_path}',
+            '--gzip'
+        ])
+        assert output_path.exists()
+
+        tei_training_data_generator = SegmentationTeiTrainingDataGenerator()
+        tei_filename_suffix = tei_training_data_generator.get_default_tei_filename_suffix()
+        assert tei_filename_suffix
+        expected_tei_path = _get_expected_file_path_with_suffix(
+            output_path,
+            MINIMAL_EXAMPLE_PDF,
+            tei_filename_suffix + '.gz',
+        )
+        assert expected_tei_path.exists()
+        with gzip.open(expected_tei_path, 'r') as fp:
+            etree.parse(fp)
+
+        data_filename_suffix = tei_training_data_generator.get_default_data_filename_suffix()
+        assert data_filename_suffix
+        expected_data_path = _get_expected_file_path_with_suffix(
+            output_path,
+            MINIMAL_EXAMPLE_PDF,
+            data_filename_suffix + '.gz',
+        )
+        assert expected_data_path.exists()
+        with gzip.open(expected_data_path, 'r') as fp:
+            fp.read()
 
     def test_should_be_able_to_generate_segmentation_training_data_using_model(
         self,

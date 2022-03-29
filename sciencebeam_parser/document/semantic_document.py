@@ -38,6 +38,9 @@ class SemanticContentWrapper(ABC):
     def __len__(self) -> int:
         return len(list(self.iter_blocks()))
 
+    def get_short_semantic_content_repr(self):
+        return '%s(%r)' % (type(self).__name__, self.get_text())
+
     @abstractmethod
     def iter_blocks(self) -> Iterable[LayoutBlock]:
         pass
@@ -502,6 +505,14 @@ class SemanticRawEquation(SemanticMixedContentWrapper):
 class SemanticGraphic(SemanticSimpleContentWrapper):
     layout_graphic: Optional[LayoutGraphic] = None
     relative_path: Optional[str] = None
+
+    def get_short_semantic_content_repr(self):
+        if not self.layout_graphic:
+            return repr(self)
+        return '%s(layout_graphic.local_file_path=%r)' % (
+            type(self).__name__,
+            self.layout_graphic.local_file_path
+        )
 
 
 @dataclass

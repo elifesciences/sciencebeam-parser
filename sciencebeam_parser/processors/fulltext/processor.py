@@ -81,9 +81,9 @@ from sciencebeam_parser.processors.graphic_matching import (
 from sciencebeam_parser.processors.graphic_provider import (
     DocumentGraphicProvider,
     SimpleDocumentGraphicProvider,
+    get_graphic_matching_candidate_page_numbers_for_semantic_content_list,
     get_layout_document_with_graphics_replaced_by_graphics,
     get_layout_document_with_text_and_graphics_replaced_by_graphics,
-    get_page_numbers_for_semantic_content_list,
     get_page_numbers_with_mostly_bitmap_graphics,
     get_page_numbers_with_uncommon_page_dimension
 )
@@ -342,14 +342,17 @@ class FullTextProcessor:
     ):
         unmatched_graphics_container = SemanticMixedNote(note_type='unmatched_graphics')
         candidate_semantic_content_list = list(
-            document.iter_by_type_recursively(SemanticFigure)
+            document.iter_by_types_recursively((SemanticFigure, SemanticTable,))
         )
         self._match_graphic_elements(
             semantic_graphic_list=list(
                 self._get_document_graphic_provider(
                     context=context,
-                    page_numbers=get_page_numbers_for_semantic_content_list(
-                        candidate_semantic_content_list
+                    page_numbers=(
+                        get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+                            candidate_semantic_content_list,
+                            layout_document=layout_document
+                        )
                     )
                 ).iter_semantic_graphic_for_layout_document(
                     layout_document,
@@ -387,7 +390,9 @@ class FullTextProcessor:
         unmatched_graphics_container: SemanticMixedContentWrapper
     ):
         _graphic_matchers: List[GraphicMatcher] = [
-            BoundingBoxDistanceGraphicMatcher(),
+            BoundingBoxDistanceGraphicMatcher(
+                max_distance=self.config.max_graphic_distance
+            ),
             GraphicRelatedBlockTextGraphicMatcher()
         ]
         if self.config.use_ocr_model:

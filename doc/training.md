@@ -19,7 +19,9 @@ For the sequence model (`delft` etc) the general workflow looks like:
 
 The training data for the sequential models follows the GROBID training data format.
 
-### Generate training data for the sequence models
+Note: all commands below also support input and output files in google cloud storage (using `gs://` for the path url)
+
+### Generate `tei` training data for the sequence models
 
 Currently training data will be generated for the following models:
 
@@ -60,4 +62,118 @@ python -m sciencebeam_parser.training.cli.generate_data \
     --use-directory-structure \
     --source-path="test-data/*.pdf" \
     --output-path="./data/generated-training-data"
+```
+
+Additionally the `--gzip` argument can be passed in, resulting in gzip (`.gz`) compressed output files.
+
+### Annotating `tei` training data for the sequence models
+
+After the `tei` training data has been generated, it should get reviewed and manually annotated.
+Alternatively it can auto-annotated using [sciencebeam-trainer-grobid-tools](https://gitlab.coko.foundation/sciencebeam/sciencebeam-trainer-grobid-tools).
+
+### Generate `delft` training data for the sequence models
+
+From the annotated `tei` training data, we can generate the `delft` training data used for training.
+
+It will do one of the following:
+
+- For models with only `tei` XML files (no layout feature), it will parse the `tei` and generate data using the data generator.
+- For models with additional layout data files, it will align the parsed `tei` with the layout data file and add the label to it.
+
+#### Example command for `segmentation` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="segmentation" \
+    --tei-source-path="data/generated-training-data/segmentation/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/segmentation/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/segmentation/corpus/segmentation.data"
+```
+
+#### Example command for `header` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="header" \
+    --tei-source-path="data/generated-training-data/header/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/header/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/header/corpus/header.data"
+```
+
+#### Example command for `fulltext` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="fulltext" \
+    --tei-source-path="data/generated-training-data/fulltext/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/fulltext/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/fulltext/corpus/fulltext.data"
+```
+
+#### Example command for `figure` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="figure" \
+    --tei-source-path="data/generated-training-data/figure/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/figure/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/figure/corpus/figure.data"
+```
+
+#### Example command for `table` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="table" \
+    --tei-source-path="data/generated-training-data/table/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/table/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/table/corpus/table.data"
+```
+
+#### Example command for `reference_segmenter` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="reference_segmenter" \
+    --tei-source-path="data/generated-training-data/reference-segmenter/corpus/tei/*.tei.xml" \
+    --raw-source-path="data/generated-training-data/reference-segmenter/corpus/raw/" \
+    --delft-output-path="./data/generated-training-data/delft/reference-segmenter/corpus/reference-segmenter.data"
+```
+
+#### Example command for `affiliation_address` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="affiliation_address" \
+    --tei-source-path="data/generated-training-data/affiliation-address/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/affiliation-address/corpus/affiliation-address.data"
+```
+
+#### Example command for `name` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="name_header" \
+    --tei-source-path="data/generated-training-data/name/header/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/name/header/corpus/name.data"
+```
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="name_citation" \
+    --tei-source-path="data/generated-training-data/name/citation/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/name/citation/corpus/name.data"
+```
+
+#### Example command for `citation` model
+
+```bash
+python -m sciencebeam_parser.training.cli.generate_delft_data \
+    --model-name="citation" \
+    --tei-source-path="data/generated-training-data/citation/corpus/*.tei.xml" \
+    --delft-output-path \
+    "./data/generated-training-data/delft/citation/corpus/citation.data"
 ```

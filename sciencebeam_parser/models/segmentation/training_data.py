@@ -10,9 +10,12 @@ from sciencebeam_parser.document.layout_document import (
     join_layout_tokens
 )
 from sciencebeam_parser.models.data import LayoutModelData
-from sciencebeam_parser.models.model import get_split_prefix_label
+from sciencebeam_parser.models.model import (
+    get_split_prefix_label
+)
 from sciencebeam_parser.models.training_data import (
     AbstractTeiTrainingDataGenerator,
+    AbstractTrainingTeiParser,
     get_model_data_label
 )
 
@@ -60,8 +63,8 @@ def iter_layout_lines_from_layout_tokens(
             line_layout_tokens.append(layout_token)
             continue
         if (
-            layout_token.line_descriptor.line_id
-            == line_layout_tokens[0].line_descriptor.line_id
+            layout_token.line_meta.line_id
+            == line_layout_tokens[0].line_meta.line_id
         ):
             LOGGER.debug('line id matching: %r - %r', layout_token, line_layout_tokens[0])
             line_layout_tokens.append(layout_token)
@@ -129,3 +132,13 @@ class SegmentationTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
                 pending_whitespace = '\n'
         xml_writer.require_path(default_path)
         xml_writer.append_text(pending_whitespace)
+
+
+class SegmentationTrainingTeiParser(AbstractTrainingTeiParser):
+    def __init__(self) -> None:
+        super().__init__(
+            root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
+            training_xml_element_path_by_label=TRAINING_XML_ELEMENT_PATH_BY_LABEL,
+            use_tei_namespace=False,
+            line_as_token=True
+        )

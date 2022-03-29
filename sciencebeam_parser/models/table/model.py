@@ -7,7 +7,8 @@ from sciencebeam_parser.models.model import Model
 from sciencebeam_parser.models.fulltext.data import FullTextDataGenerator
 from sciencebeam_parser.models.table.extract import TableSemanticExtractor
 from sciencebeam_parser.models.table.training_data import (
-    TableTeiTrainingDataGenerator
+    TableTeiTrainingDataGenerator,
+    TableTrainingTeiParser
 )
 
 
@@ -28,3 +29,6 @@ class TableModel(Model):
 
     def get_tei_training_data_generator(self) -> TableTeiTrainingDataGenerator:
         return TableTeiTrainingDataGenerator()
+
+    def get_training_tei_parser(self) -> TableTrainingTeiParser:
+        return TableTrainingTeiParser()

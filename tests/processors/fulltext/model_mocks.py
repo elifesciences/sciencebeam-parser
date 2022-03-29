@@ -104,6 +104,7 @@ class MockDelftModelWrapper:
 class MockFullTextModels(FullTextModels):
     def __init__(self):
         model_impl_mock = MagicMock('model_impl')
+        self.cv_model_mock = MagicMock(name='cv_model')
         super().__init__(
             segmentation_model=SegmentationModel(model_impl_mock),
             header_model=HeaderModel(model_impl_mock),
@@ -114,7 +115,8 @@ class MockFullTextModels(FullTextModels):
             figure_model=FigureModel(model_impl_mock),
             table_model=TableModel(model_impl_mock),
             reference_segmenter_model=ReferenceSegmenterModel(model_impl_mock),
-            citation_model=CitationModel(model_impl_mock)
+            citation_model=CitationModel(model_impl_mock),
+            cv_model=self.cv_model_mock
         )
         self.segmentation_model_mock = MockDelftModelWrapper(self.segmentation_model)
         self.header_model_mock = MockDelftModelWrapper(self.header_model)

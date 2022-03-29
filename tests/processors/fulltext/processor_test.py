@@ -1,5 +1,9 @@
+# pylint: disable=too-many-lines
 import logging
 import os
+from pathlib import Path
+from typing import Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -7,8 +11,10 @@ from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutDocument,
     LayoutGraphic,
+    LayoutLineMeta,
     LayoutPage,
-    LayoutPageCoordinates
+    LayoutPageCoordinates,
+    LayoutPageMeta
 )
 from sciencebeam_parser.document.semantic_document import (
     SemanticAffiliationAddress,
@@ -34,14 +40,41 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticTitle,
     iter_by_semantic_type_recursively
 )
+from sciencebeam_parser.processors.fulltext import processor as processor_module
 from sciencebeam_parser.processors.fulltext.processor import (
     FullTextProcessor,
-    FullTextProcessorConfig
+    FullTextProcessorConfig,
+    FullTextProcessorDocumentContext
 )
 from tests.processors.fulltext.model_mocks import MockFullTextModels
+from tests.test_utils import log_on_exception
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+PAGE_META_1 = LayoutPageMeta.for_coordinates(LayoutPageCoordinates(
+    x=0,
+    y=0,
+    width=400,
+    height=600,
+    page_number=1
+))
+
+
+COORDINATES_1 = LayoutPageCoordinates(
+    x=10,
+    y=100,
+    width=200,
+    height=100,
+    page_number=1
+)
+
+
+LINE_META_1 = LayoutLineMeta(
+    line_id=1,
+    page_meta=PAGE_META_1
+)
 
 
 @pytest.fixture(name='fulltext_models_mock')
@@ -49,6 +82,23 @@ def _fulltext_models() -> MockFullTextModels:
     return MockFullTextModels()
 
 
+@pytest.fixture(name='get_cv_document_graphic_provider_mock')
+def _get_cv_document_graphic_provider_mock() -> Iterator[MagicMock]:
+    with patch.object(processor_module, 'get_cv_document_graphic_provider') as mock:
+        yield mock
+
+
+def _get_layout_block_for_text(
+    text: str,
+    coordinates: LayoutPageCoordinates
+):
+    page_meta = PAGE_META_1._replace(page_number=coordinates.page_number)
+    line_meta = LINE_META_1._replace(page_meta=page_meta)
+    return LayoutBlock.for_text(text, coordinates=coordinates, line_meta=line_meta)
+
+
+# pylint: disable=too-many-locals
+@log_on_exception
 class TestFullTextProcessor:
     def test_should_not_fail_with_empty_document(
         self, fulltext_models_mock: MockFullTextModels
@@ -242,7 +292,7 @@ class TestFullTextProcessor:
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
 
-    def test_should_extract_affiliation_address_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_affiliation_address_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         marker_block = LayoutBlock.for_text('1')
@@ -298,7 +348,7 @@ class TestFullTextProcessor:
         assert affiliations[0].get_text_by_type(SemanticCountry) == country_block.text
         assert affiliations[0].content_id == 'aff0'
 
-    def test_should_not_merge_separate_raw_affiliations(  # pylint: disable=too-many-locals
+    def test_should_not_merge_separate_raw_affiliations(
         self, fulltext_models_mock: MockFullTextModels
     ):
         aff_suffix_texts = ['1', '2']
@@ -347,7 +397,7 @@ class TestFullTextProcessor:
             == ['aff0', 'aff1']
         )
 
-    def test_should_extract_raw_references_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_raw_references_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         label_block = LayoutBlock.for_text('1')
@@ -390,7 +440,7 @@ class TestFullTextProcessor:
         assert ref.get_text_by_type(SemanticRawReferenceText) == ref_text_block.text
         assert ref.content_id == 'b0'
 
-    def test_should_extract_references_fields_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_references_fields_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         other_body = LayoutBlock.for_text('the body')
@@ -461,7 +511,7 @@ class TestFullTextProcessor:
         assert len(ref_citations) == 1
         assert ref_citations[0].target_content_id == 'b0'
 
-    def test_should_extract_invalid_reference_from_document(  # pylint: disable=too-many-locals
+    def test_should_extract_invalid_reference_from_document(
         self, fulltext_models_mock: MockFullTextModels
     ):
         other_body = LayoutBlock.for_text('the body')
@@ -517,7 +567,7 @@ class TestFullTextProcessor:
         assert len(references) == 1
         assert references[0].get_text() == invalid_reference_block.text
 
-    def test_should_extract_author_names_from_references_fields(  # pylint: disable=too-many-locals
+    def test_should_extract_author_names_from_references_fields(
         self, fulltext_models_mock: MockFullTextModels
     ):
         given_name_block = LayoutBlock.for_text('Given name')
@@ -577,7 +627,7 @@ class TestFullTextProcessor:
         assert authors[0].given_name_text == given_name_block.text
         assert authors[0].surname_text == surname_block.text
 
-    def test_should_extract_editor_names_from_references_fields(  # pylint: disable=too-many-locals
+    def test_should_extract_editor_names_from_references_fields(
         self, fulltext_models_mock: MockFullTextModels
     ):
         given_name_block = LayoutBlock.for_text('Given name')
@@ -645,21 +695,22 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_figure_label_caption_from_body(  # pylint: disable=too-many-locals
+    def test_should_extract_figure_label_caption_and_graphic(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
         citation_block = LayoutBlock.for_text('Figure 1')
-        _coordinates = LayoutPageCoordinates(x=10, y=10, width=100, height=10)
+        _coordinates = COORDINATES_1
         graphic_local_file_path = '/path/to/graphic1.svg'
         graphic = LayoutGraphic(
             coordinates=_coordinates,
-            local_file_path=graphic_local_file_path
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
         )
         _coordinates = _coordinates.move_by(dy=10)
-        label_block = LayoutBlock.for_text('Figure 1', coordinates=_coordinates)
+        label_block = _get_layout_block_for_text('Figure 1', coordinates=_coordinates)
         _coordinates = _coordinates.move_by(dy=10)
-        caption_block = LayoutBlock.for_text('Caption 1', coordinates=_coordinates)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
         other_block = LayoutBlock.for_text('Other')
         figure_block = LayoutBlock.merge_blocks([
             label_block, other_block, caption_block
@@ -731,7 +782,102 @@ class TestFullTextProcessor:
         'segmentation_label',
         ['<body>', '<annex>']
     )
-    def test_should_extract_table_label_caption_from_body(  # pylint: disable=too-many-locals
+    def test_should_detect_and_extract_figure_graphic(
+        self, fulltext_models_mock: MockFullTextModels,
+        tmp_path: Path,
+        get_cv_document_graphic_provider_mock: MagicMock,
+        segmentation_label: str
+    ):
+        _coordinates = COORDINATES_1
+        graphic_local_file_path = '/path/to/graphic1.svg'
+        graphic = LayoutGraphic(
+            coordinates=_coordinates,
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
+        )
+        iter_semantic_graphic_for_layout_document_mock = (
+            get_cv_document_graphic_provider_mock
+            .return_value
+            .iter_semantic_graphic_for_layout_document
+        )
+        iter_semantic_graphic_for_layout_document_mock.return_value = [SemanticGraphic(
+            layout_graphic=graphic,
+            relative_path=os.path.basename(graphic_local_file_path)
+        )]
+        _coordinates = _coordinates.move_by(dy=10)
+        label_block = _get_layout_block_for_text('Figure 1', coordinates=_coordinates)
+        _coordinates = _coordinates.move_by(dy=10)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
+        other_block = LayoutBlock.for_text('Other')
+        figure_block = LayoutBlock.merge_blocks([
+            label_block, other_block, caption_block
+        ])
+        fulltext_block = LayoutBlock.merge_blocks([figure_block])
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(
+                use_cv_model=True,
+                extract_figure_fields=True,
+                extract_graphic_bounding_boxes=True,
+                extract_graphic_assets=True
+            )
+        )
+        processor_document_context = FullTextProcessorDocumentContext(
+            pdf_path=str(tmp_path / 'test.pdf'),
+            temp_dir=str(tmp_path)
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+        figure_model_mock = fulltext_models_mock.figure_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            fulltext_block, segmentation_label
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            figure_block, '<figure>'
+        )
+
+        figure_model_mock.update_label_by_layout_block(
+            label_block, '<label>'
+        )
+        figure_model_mock.update_label_by_layout_block(
+            caption_block, '<figDesc>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(
+            blocks=[fulltext_block]
+        )])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document,
+            context=processor_document_context
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        figure_list = list(iter_by_semantic_type_recursively(
+            [semantic_document.body_section, semantic_document.back_section],
+            SemanticFigure
+        ))
+        assert len(figure_list) == 1
+        figure = figure_list[0]
+        assert figure.get_text_by_type(SemanticLabel) == label_block.text
+        assert figure.get_text_by_type(SemanticCaption) == caption_block.text
+        semantic_graphic_list = list(figure.iter_by_type(SemanticGraphic))
+        assert semantic_graphic_list
+        assert semantic_graphic_list[0].layout_graphic == graphic
+        assert semantic_graphic_list[0].relative_path == os.path.basename(
+            graphic_local_file_path
+        )
+        assert get_cv_document_graphic_provider_mock.call_args[1]['page_numbers'] == [
+            _coordinates.page_number
+        ]
+
+    @pytest.mark.parametrize(
+        'segmentation_label',
+        ['<body>', '<annex>']
+    )
+    def test_should_extract_table_label_caption(
         self, fulltext_models_mock: MockFullTextModels,
         segmentation_label: str
     ):
@@ -793,3 +939,99 @@ class TestFullTextProcessor:
         assert len(table_citation_list) == 1
         assert table_citation_list[0].get_text() == citation_block.text
         assert table_citation_list[0].target_content_id == 'tab_0'
+
+    @pytest.mark.parametrize(
+        'segmentation_label',
+        ['<body>', '<annex>']
+    )
+    def test_should_detect_and_extract_table_graphic(
+        self, fulltext_models_mock: MockFullTextModels,
+        tmp_path: Path,
+        get_cv_document_graphic_provider_mock: MagicMock,
+        segmentation_label: str
+    ):
+        _coordinates = COORDINATES_1
+        graphic_local_file_path = '/path/to/graphic1.svg'
+        graphic = LayoutGraphic(
+            coordinates=_coordinates,
+            local_file_path=graphic_local_file_path,
+            page_meta=PAGE_META_1
+        )
+        iter_semantic_graphic_for_layout_document_mock = (
+            get_cv_document_graphic_provider_mock
+            .return_value
+            .iter_semantic_graphic_for_layout_document
+        )
+        iter_semantic_graphic_for_layout_document_mock.return_value = [SemanticGraphic(
+            layout_graphic=graphic,
+            relative_path=os.path.basename(graphic_local_file_path)
+        )]
+        _coordinates = _coordinates.move_by(dy=10)
+        label_block = _get_layout_block_for_text('Table 1', coordinates=_coordinates)
+        _coordinates = _coordinates.move_by(dy=10)
+        caption_block = _get_layout_block_for_text('Caption 1', coordinates=_coordinates)
+        other_block = LayoutBlock.for_text('Other')
+        table_block = LayoutBlock.merge_blocks([
+            label_block, other_block, caption_block
+        ])
+
+        fulltext_block = LayoutBlock.merge_blocks([table_block])
+        fulltext_processor = FullTextProcessor(
+            fulltext_models_mock,
+            FullTextProcessorConfig(
+                use_cv_model=True,
+                extract_figure_fields=True,
+                extract_graphic_bounding_boxes=True,
+                extract_graphic_assets=True
+            )
+        )
+        processor_document_context = FullTextProcessorDocumentContext(
+            pdf_path=str(tmp_path / 'test.pdf'),
+            temp_dir=str(tmp_path)
+        )
+
+        segmentation_model_mock = fulltext_models_mock.segmentation_model_mock
+        fulltext_model_mock = fulltext_models_mock.fulltext_model_mock
+        table_model_mock = fulltext_models_mock.table_model_mock
+
+        segmentation_model_mock.update_label_by_layout_block(
+            fulltext_block, segmentation_label
+        )
+
+        fulltext_model_mock.update_label_by_layout_block(
+            table_block, '<table>'
+        )
+
+        table_model_mock.update_label_by_layout_block(
+            label_block, '<label>'
+        )
+        table_model_mock.update_label_by_layout_block(
+            caption_block, '<figDesc>'
+        )
+
+        layout_document = LayoutDocument(pages=[LayoutPage(
+            blocks=[fulltext_block]
+        )])
+        semantic_document = fulltext_processor.get_semantic_document_for_layout_document(
+            layout_document=layout_document,
+            context=processor_document_context
+        )
+        LOGGER.debug('semantic_document: %s', semantic_document)
+        assert semantic_document is not None
+        table_list = list(iter_by_semantic_type_recursively(
+            [semantic_document.body_section, semantic_document.back_section],
+            SemanticTable
+        ))
+        assert len(table_list) == 1
+        table = table_list[0]
+        assert table.get_text_by_type(SemanticLabel) == label_block.text
+        assert table.get_text_by_type(SemanticCaption) == caption_block.text
+        semantic_graphic_list = list(table.iter_by_type(SemanticGraphic))
+        assert semantic_graphic_list
+        assert semantic_graphic_list[0].layout_graphic == graphic
+        assert semantic_graphic_list[0].relative_path == os.path.basename(
+            graphic_local_file_path
+        )
+        assert get_cv_document_graphic_provider_mock.call_args[1]['page_numbers'] == [
+            _coordinates.page_number
+        ]

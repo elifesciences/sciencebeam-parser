@@ -4,7 +4,7 @@ from lxml import etree
 
 from sciencebeam_parser.document.layout_document import (
     LayoutGraphic,
-    LayoutLineDescriptor,
+    LayoutLineMeta,
     LayoutPageCoordinates,
     LayoutFont,
     LayoutPageMeta,
@@ -48,7 +48,7 @@ class AltoParser:
         self,
         token_node: etree.ElementBase,
         page_number: int,
-        layout_line_descriptor: LayoutLineDescriptor
+        layout_line_meta: LayoutLineMeta
     ) -> LayoutToken:
         return LayoutToken(
             text=token_node.attrib.get('CONTENT') or '',
@@ -57,20 +57,22 @@ class AltoParser:
                 EMPTY_FONT
             ),
             coordinates=self.parse_page_coordinates(token_node, page_number=page_number),
-            line_descriptor=layout_line_descriptor
+            line_meta=layout_line_meta
         )
 
     def parse_line(
         self,
         line_node: etree.ElementBase,
-        page_number: int
+        page_number: int,
+        page_meta: LayoutPageMeta
     ) -> LayoutLine:
         return LayoutLine(tokens=[
             self.parse_token(
                 token_node,
                 page_number=page_number,
-                layout_line_descriptor=LayoutLineDescriptor(
-                    line_id=id(line_node)
+                layout_line_meta=LayoutLineMeta(
+                    line_id=id(line_node),
+                    page_meta=page_meta
                 )
             )
             for token_node in alto_xpath(line_node, './/alto:String')
@@ -79,23 +81,26 @@ class AltoParser:
     def parse_block(
         self,
         block_node: etree.ElementBase,
-        page_number: int
+        page_number: int,
+        page_meta: LayoutPageMeta
     ) -> LayoutBlock:
         return LayoutBlock(lines=[
-            self.parse_line(line_node, page_number=page_number)
+            self.parse_line(line_node, page_number=page_number, page_meta=page_meta)
             for line_node in alto_xpath(block_node, './/alto:TextLine[alto:String]')
         ])
 
     def parse_graphic(
         self,
         graphic_node: etree.ElementBase,
-        page_number: int
+        page_number: int,
+        page_meta: LayoutPageMeta
     ) -> LayoutGraphic:
         attrib = graphic_node.attrib
         return LayoutGraphic(
             local_file_path=attrib.get('FILEID'),
             coordinates=self.parse_page_coordinates(graphic_node, page_number=page_number),
-            graphic_type=attrib.get('TYPE')
+            graphic_type=attrib.get('TYPE'),
+            page_meta=page_meta
         )
 
     def parse_page(
@@ -118,17 +123,18 @@ class AltoParser:
             if width_str and height_str
             else None
         )
+        page_meta = LayoutPageMeta(
+            page_number=page_number,
+            coordinates=coordinates
+        )
         return LayoutPage(
-            meta=LayoutPageMeta(
-                page_number=page_number,
-                coordinates=coordinates
-            ),
+            meta=page_meta,
             blocks=[
-                self.parse_block(block_node, page_number=page_number)
+                self.parse_block(block_node, page_number=page_number, page_meta=page_meta)
                 for block_node in alto_xpath(page_node, './/alto:TextBlock')
             ],
             graphics=[
-                self.parse_graphic(graphic_node, page_number=page_number)
+                self.parse_graphic(graphic_node, page_number=page_number, page_meta=page_meta)
                 for graphic_node in alto_xpath(page_node, './/alto:Illustration')
             ]
         )

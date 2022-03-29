@@ -98,11 +98,24 @@ def get_merged_coordinates_list(
     return result
 
 
-class LayoutLineDescriptor(NamedTuple):
+class LayoutPageMeta(NamedTuple):
+    page_number: int = 0
+    coordinates: Optional[LayoutPageCoordinates] = None
+
+    @staticmethod
+    def for_coordinates(coordinates: LayoutPageCoordinates) -> 'LayoutPageMeta':
+        return LayoutPageMeta(page_number=coordinates.page_number, coordinates=coordinates)
+
+
+DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
+
+
+class LayoutLineMeta(NamedTuple):
     line_id: int = -1
+    page_meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
 
-DEFAULT_LAYOUT_LINE_DESCRIPTOR = LayoutLineDescriptor()
+DEFAULT_LAYOUT_LINE_META = LayoutLineMeta()
 
 
 class LayoutToken(NamedTuple):
@@ -110,7 +123,7 @@ class LayoutToken(NamedTuple):
     font: LayoutFont = EMPTY_FONT
     whitespace: str = ' '
     coordinates: Optional[LayoutPageCoordinates] = None
-    line_descriptor: LayoutLineDescriptor = DEFAULT_LAYOUT_LINE_DESCRIPTOR
+    line_meta: LayoutLineMeta = DEFAULT_LAYOUT_LINE_META
 
 
 T_FlatMapLayoutTokensFn = Callable[[LayoutToken], List[LayoutToken]]
@@ -193,7 +206,7 @@ def retokenize_layout_token(
                 text_character_offset,
                 total_text_length
             ),
-            line_descriptor=layout_token.line_descriptor
+            line_meta=layout_token.line_meta
         )
         for token_text, whitespace, text_character_offset in texts_with_whitespace
     ]
@@ -257,7 +270,7 @@ class LayoutBlock:
         lines = [
             LayoutLine(tokens=list(line_tokens))
             for _, line_tokens in itertools.groupby(
-                tokens, key=operator.attrgetter('line_descriptor')
+                tokens, key=operator.attrgetter('line_meta')
             )
         ]
         return LayoutBlock(lines=lines)
@@ -320,14 +333,7 @@ class LayoutGraphic(NamedTuple):
     coordinates: Optional[LayoutPageCoordinates] = None
     graphic_type: Optional[str] = None
     related_block: Optional[LayoutBlock] = None
-
-
-class LayoutPageMeta(NamedTuple):
-    page_number: int = 0
-    coordinates: Optional[LayoutPageCoordinates] = None
-
-
-DEFAULT_LAYOUT_PAGE_META = LayoutPageMeta()
+    page_meta: LayoutPageMeta = DEFAULT_LAYOUT_PAGE_META
 
 
 @dataclass

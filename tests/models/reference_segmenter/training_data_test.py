@@ -1,6 +1,8 @@
 import logging
+from typing import Sequence, Union
 
 from lxml import etree
+from lxml.builder import E
 
 from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
@@ -13,9 +15,12 @@ from sciencebeam_parser.models.data import (
 )
 from sciencebeam_parser.models.reference_segmenter.data import ReferenceSegmenterDataGenerator
 from sciencebeam_parser.models.reference_segmenter.training_data import (
-    ReferenceSegmenterTeiTrainingDataGenerator
+    ROOT_TRAINING_XML_ELEMENT_PATH,
+    ReferenceSegmenterTeiTrainingDataGenerator,
+    ReferenceSegmenterTrainingTeiParser
 )
 from sciencebeam_parser.utils.xml import get_text_content, get_text_content_list
+from sciencebeam_parser.utils.xml_writer import XmlTreeWriter
 
 from tests.test_utils import log_on_exception
 from tests.models.training_data_test_utils import (
@@ -32,12 +37,22 @@ TEXT_1 = 'this is text 1'
 TEXT_2 = 'this is text 2'
 
 
+TOKEN_1 = 'token1'
+TOKEN_2 = 'token2'
+TOKEN_3 = 'token3'
+TOKEN_4 = 'token4'
+
+
 def get_data_generator() -> ReferenceSegmenterDataGenerator:
     return ReferenceSegmenterDataGenerator(DEFAULT_DOCUMENT_FEATURES_CONTEXT)
 
 
 def get_tei_training_data_generator() -> ReferenceSegmenterTeiTrainingDataGenerator:
     return ReferenceSegmenterTeiTrainingDataGenerator()
+
+
+def get_training_tei_parser() -> ReferenceSegmenterTrainingTeiParser:
+    return ReferenceSegmenterTrainingTeiParser()
 
 
 @log_on_exception
@@ -247,3 +262,98 @@ class TestReferenceSegmenterTeiTrainingDataGenerator:
         assert get_text_content_list(
             xml_root.xpath('./text/listBibl')
         ) == [f'{TEXT_1}\n']
+
+
+# pylint: disable=not-callable
+
+def _get_training_tei_with_references(
+    references: Sequence[Union[etree.ElementBase, str]]
+) -> etree.ElementBase:
+    xml_writer = XmlTreeWriter(E('tei'), element_maker=E)
+    xml_writer.require_path(
+        ROOT_TRAINING_XML_ELEMENT_PATH
+    )
+    xml_writer.append_all(*references)
+    LOGGER.debug('training tei: %r', etree.tostring(xml_writer.root))
+    return xml_writer.root
+
+
+class TestTableTrainingTeiParser:
+    def test_should_parse_single_token_labelled_training_tei_lines(self):
+        tei_root = _get_training_tei_with_references([E(
+            'bibl',
+            E('label', TOKEN_1, E('lb')),
+            '\n',
+            TOKEN_2, E('lb'),
+            '\n'
+        )])
+        tag_result = get_training_tei_parser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        assert tag_result == [[
+            (TOKEN_1, 'B-<label>'),
+            (TOKEN_2, 'B-<reference>')
+        ]]
+
+    def test_should_parse_single_label_with_multiple_lines(self):
+        tei_root = _get_training_tei_with_references([E(
+            'bibl',
+            E('label', TOKEN_1, E('lb'), '\n', TOKEN_2, E('lb')),
+            '\n'
+        )])
+        tag_result = get_training_tei_parser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        assert tag_result == [[
+            (TOKEN_1, 'B-<label>'),
+            (TOKEN_2, 'I-<label>')
+        ]]
+
+    def test_should_output_multiple_tokens_of_each_unlabelled_lines(self):
+        tei_root = _get_training_tei_with_references([
+            TOKEN_1,
+            ' ',
+            TOKEN_2,
+            E('lb'),
+            '\n',
+            TOKEN_3,
+            ' ',
+            TOKEN_4,
+            E('lb'),
+            '\n'
+        ])
+        tag_result = get_training_tei_parser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        LOGGER.debug('tag_result: %r', tag_result)
+        assert tag_result == [[
+            (TOKEN_1, 'O'),
+            (TOKEN_2, 'O'),
+            (TOKEN_3, 'O'),
+            (TOKEN_4, 'O')
+        ]]
+
+    def test_should_parse_single_label_with_multiple_tokens_on_multiple_lines(self):
+        tei_root = _get_training_tei_with_references([E(
+            'bibl',
+            TOKEN_1,
+            ' ',
+            TOKEN_2,
+            E('lb'),
+            '\n',
+            TOKEN_3,
+            ' ',
+            TOKEN_4,
+            E('lb'),
+            '\n'
+        )])
+        tag_result = get_training_tei_parser().parse_training_tei_to_tag_result(
+            tei_root
+        )
+        LOGGER.debug('tag_result: %r', tag_result)
+        assert tag_result == [[
+            (TOKEN_1, 'B-<reference>'),
+            (TOKEN_2, 'I-<reference>'),
+            (TOKEN_3, 'I-<reference>'),
+            (TOKEN_4, 'I-<reference>')
+        ]]

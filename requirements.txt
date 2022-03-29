@@ -1,5 +1,7 @@
-Flask==2.0.2
-lxml==4.7.1
+Flask==2.0.3
+fsspec>=2022.1.0
+gcsfs>=2022.1.0
+lxml==4.8.0
 pdf2image==1.16.0
 PyYAML==6.0
 sciencebeam-trainer-delft==0.0.31

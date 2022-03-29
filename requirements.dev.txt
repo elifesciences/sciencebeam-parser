@@ -1,8 +1,8 @@
 flake8==4.0.1
 mypy==0.931
 pylint==2.12.2
-pytest==6.2.5
+pytest==7.0.1
 pytest-watch==4.2.0
-twine==3.7.1
-types-PyYAML==6.0.3
-types-setuptools==57.4.7
+twine==3.8.0
+types-PyYAML==6.0.4
+types-setuptools==57.4.9

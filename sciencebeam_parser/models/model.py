@@ -7,7 +7,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    NamedTuple,
     Optional,
     Sequence,
     Set,
@@ -28,14 +27,17 @@ from sciencebeam_parser.document.layout_document import (
     LayoutDocument
 )
 from sciencebeam_parser.models.data import (
+    NEW_DOCUMENT_MARKER,
     AppFeaturesContext,
     DocumentFeaturesContext,
     LabeledLayoutModelData,
+    LabeledLayoutToken,
     LayoutModelData,
-    ModelDataGenerator
+    ModelDataGenerator,
+    NewDocumentMarker
 )
 from sciencebeam_parser.models.extract import ModelSemanticExtractor
-from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator
+from sciencebeam_parser.models.training_data import TeiTrainingDataGenerator, TrainingTeiParser
 from sciencebeam_parser.document.semantic_document import SemanticContentWrapper
 from sciencebeam_parser.models.model_impl import ModelImpl, T_ModelImplFactory
 from sciencebeam_parser.utils.lazy import LazyLoaded, Preloadable
@@ -54,18 +56,6 @@ class LayoutModelLabel:
     label_token_text: str
     layout_line: Optional[LayoutLine] = field(repr=False, default=None)
     layout_token: Optional[LayoutToken] = field(repr=False, default=None)
-
-
-class LabeledLayoutToken(NamedTuple):
-    label: str
-    layout_token: LayoutToken
-
-
-class NewDocumentMarker:
-    pass
-
-
-NEW_DOCUMENT_MARKER = NewDocumentMarker()
 
 
 def iter_entities_including_other(seq: List[str]) -> Iterable[Tuple[str, int, int]]:
@@ -252,6 +242,10 @@ class Model(ABC, Preloadable):
 
     # @abstractmethod
     def get_tei_training_data_generator(self) -> TeiTrainingDataGenerator:
+        raise NotImplementedError()
+
+    # @abstractmethod
+    def get_training_tei_parser(self) -> TrainingTeiParser:
         raise NotImplementedError()
 
     def _load_model_impl(self) -> ModelImpl:

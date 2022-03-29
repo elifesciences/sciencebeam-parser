@@ -1,7 +1,8 @@
 import logging
 
 from sciencebeam_parser.models.training_data import (
-    AbstractTeiTrainingDataGenerator
+    AbstractTeiTrainingDataGenerator,
+    AbstractTrainingTeiParser
 )
 
 
@@ -38,4 +39,15 @@ class FigureTeiTrainingDataGenerator(AbstractTeiTrainingDataGenerator):
             ),
             default_tei_sub_directory='figure/corpus/tei',
             default_data_sub_directory='figure/corpus/raw'
+        )
+
+
+class FigureTrainingTeiParser(AbstractTrainingTeiParser):
+    def __init__(self) -> None:
+        super().__init__(
+            root_training_xml_element_path=ROOT_TRAINING_XML_ELEMENT_PATH,
+            training_xml_element_path_by_label=(
+                TRAINING_XML_ELEMENT_PATH_BY_LABEL
+            ),
+            use_tei_namespace=False
         )

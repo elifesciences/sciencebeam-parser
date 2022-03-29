@@ -66,6 +66,32 @@ def get_page_numbers_for_semantic_content_list(
     })
 
 
+def get_all_page_numbers_of_layout_document(
+    layout_document: LayoutDocument
+) -> Sequence[int]:
+    return sorted({
+        page.meta.page_number
+        for page in layout_document.pages
+    })
+
+
+def get_graphic_matching_candidate_page_numbers_for_semantic_content_list(
+    semantic_content_list: Sequence[SemanticContentWrapper],
+    layout_document: Optional[LayoutDocument] = None
+) -> Sequence[int]:
+    page_numbers = get_page_numbers_for_semantic_content_list(semantic_content_list)
+    if layout_document:
+        document_page_numbers = set(get_all_page_numbers_of_layout_document(layout_document))
+        page_numbers = sorted(
+            set(page_numbers).union({
+                page_number + 1
+                for page_number in page_numbers
+                if page_number + 1 in document_page_numbers
+            })
+        )
+    return page_numbers
+
+
 def get_page_numbers_with_uncommon_page_dimension(
     layout_document: LayoutDocument
 ) -> Sequence[int]:

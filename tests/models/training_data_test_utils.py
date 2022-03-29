@@ -4,7 +4,7 @@ from sciencebeam_parser.document.layout_document import (
     LayoutBlock,
     LayoutDocument,
     LayoutLine,
-    LayoutLineDescriptor
+    LayoutLineMeta
 )
 from sciencebeam_parser.models.data import (
     LabeledLayoutModelData,
@@ -68,7 +68,7 @@ def get_layout_line_for_text(text: str, line_id: int) -> LayoutLine:
     return LayoutLine.for_text(
         text,
         tail_whitespace='\n',
-        line_descriptor=LayoutLineDescriptor(line_id=line_id)
+        line_meta=LayoutLineMeta(line_id=line_id)
     )
 
 
