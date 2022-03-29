@@ -1,5 +1,13 @@
 # ScienceBeam Parser
 
+## ⚠️ Under new stewardship
+
+eLife have handed over stewardship of ScienceBeam to The Coko Foundation. You can now find the updated code repository at https://gitlab.coko.foundation/sciencebeam/sciencebeam-parser and continue the conversation on Coko's Mattermost chat server: https://mattermost.coko.foundation/
+
+For more information on why we're doing this read our latest update on our new technology direction: https://elifesciences.org/inside-elife/daf1b699/elife-latest-announcing-a-new-technology-direction
+
+## Overview
+
 [![PyPi version](https://img.shields.io/pypi/v/sciencebeam-parser)](https://pypi.org/project/sciencebeam-parser/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
