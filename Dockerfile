@@ -1,4 +1,4 @@
-FROM python:3.7.10-buster AS base
+FROM python:3.7.17-slim-bookworm AS base
 
 
 # shared between builder and runtime image
@@ -7,6 +7,7 @@ RUN apt-get update \
         dumb-init \
         poppler-utils \
         libgl1 \
+        build-essential \
         # install LibreOffice Write to convert Word to PDF
         # also install fonts and fontconfig to provide common fonts
         # or configuration to their alternatives
@@ -43,7 +44,6 @@ FROM base AS builder-base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc \
-        libtesseract4 \
         tesseract-ocr-eng \
         libtesseract-dev \
         libleptonica-dev \
@@ -62,6 +62,7 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
     -r requirements.txt
 
 COPY requirements.delft.txt ./
@@ -69,7 +70,7 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.delft.txt --no-deps
 
 
-# builder
+# builder-cv
 FROM builder-base AS builder-cv
 
 COPY requirements.cpu.txt ./
@@ -78,14 +79,20 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 
 COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
     -r requirements.cv.txt
 
 COPY requirements.ocr.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.cv.txt \
     -r requirements.ocr.txt
 
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.cv.txt \
+    -r requirements.ocr.txt \
     -r requirements.txt
 
 COPY requirements.delft.txt ./
@@ -132,7 +139,7 @@ FROM base AS runtime-cv
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        libtesseract4 \
+        libtesseract-dev \
         tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
