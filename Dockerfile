@@ -111,6 +111,11 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 # dev image
 FROM builder-cv AS dev
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.dev.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.dev.txt
