@@ -54,6 +54,7 @@ dev-install:
 	$(PIP) install \
 		-r requirements.cpu.txt \
 		-r requirements.dev.txt \
+		-r requirements.torch.txt \
 		-r requirements.cv.txt \
 		-r requirements.ocr.txt \
 		-r requirements.txt

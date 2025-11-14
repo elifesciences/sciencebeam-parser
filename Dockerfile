@@ -77,27 +77,35 @@ COPY requirements.cpu.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt
 
+COPY requirements.torch.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.torch.txt
+
 COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
+    -r requirements.torch.txt \
     -r requirements.cv.txt
 
-COPY requirements.ocr.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.cv.txt \
-    -r requirements.ocr.txt
+# COPY requirements.ocr.txt ./
+# RUN pip install --disable-pip-version-check --no-warn-script-location \
+#     -r requirements.cpu.txt \
+#     -r requirements.cv.txt \
+#     -r requirements.torch.txt \
+#     -r requirements.ocr.txt
 
-COPY requirements.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.cv.txt \
-    -r requirements.ocr.txt \
-    -r requirements.txt
+# COPY requirements.txt ./
+# RUN pip install --disable-pip-version-check --no-warn-script-location \
+#     -r requirements.cpu.txt \
+#     -r requirements.cv.txt \
+#     -r requirements.torch.txt \
+#     -r requirements.ocr.txt \
+#     -r requirements.txt
 
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.delft.txt --no-deps
+# COPY requirements.delft.txt ./
+# RUN pip install --disable-pip-version-check --no-warn-script-location \
+#     -r requirements.delft.txt --no-deps
 
 
 # dev image
