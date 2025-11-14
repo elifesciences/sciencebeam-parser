@@ -22,3 +22,5 @@ jobs:
         run: make ci-lint
       - name: Unit Test
         run: make ci-pytest
+      - name: End-to-end Test
+        run: make ci-end-to-end
