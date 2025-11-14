@@ -22,7 +22,7 @@ RUN apt-get update \
 
 # set and check UNO_PATH, UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
 ENV UNO_PATH=/usr/lib/python3/dist-packages
-ENV UNO_PYTHON_PATH=python3.7
+ENV UNO_PYTHON_PATH=/usr/local/bin/python3.7
 ENV UNO_OFFICE_BINARY_PATH=/usr/lib/libreoffice/program/soffice.bin
 RUN \
   echo "UNO_PATH: ${UNO_PATH}" \
