@@ -88,6 +88,7 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.torch.txt \
     -r requirements.cv.txt
 
+# Note: OCR requirements are not included in the cv builder image because of issues installing tesserocr
 # COPY requirements.ocr.txt ./
 # RUN pip install --disable-pip-version-check --no-warn-script-location \
 #     -r requirements.cpu.txt \
@@ -95,17 +96,16 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 #     -r requirements.torch.txt \
 #     -r requirements.ocr.txt
 
-# COPY requirements.txt ./
-# RUN pip install --disable-pip-version-check --no-warn-script-location \
-#     -r requirements.cpu.txt \
-#     -r requirements.cv.txt \
-#     -r requirements.torch.txt \
-#     -r requirements.ocr.txt \
-#     -r requirements.txt
+COPY requirements.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.cv.txt \
+    -r requirements.torch.txt \
+    -r requirements.txt
 
-# COPY requirements.delft.txt ./
-# RUN pip install --disable-pip-version-check --no-warn-script-location \
-#     -r requirements.delft.txt --no-deps
+COPY requirements.delft.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.delft.txt --no-deps
 
 
 # dev image
