@@ -1,5 +1,5 @@
-DOCKER_COMPOSE_DEV = docker-compose
-DOCKER_COMPOSE_CI = docker-compose -f docker-compose.yml
+DOCKER_COMPOSE_DEV = docker compose
+DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 VENV = venv
@@ -181,7 +181,7 @@ docker-logs:
 	$(DOCKER_COMPOSE) logs -f
 
 
-docker-end-to-end-pdfalto: docker-start-and-wait-for-api
+docker-end-to-end-pdfalto: #docker-start-and-wait-for-api
 	$(DOCKER_DEV_RUN) curl --fail --show-error --silent \
 		--form "file=@$(EXAMPLE_PDF_DOCUMENT);filename=$(EXAMPLE_PDF_DOCUMENT)" \
 		--output /dev/null \
