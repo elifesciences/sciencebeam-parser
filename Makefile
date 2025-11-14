@@ -1,5 +1,5 @@
-DOCKER_COMPOSE_DEV = docker-compose
-DOCKER_COMPOSE_CI = docker-compose -f docker-compose.yml
+DOCKER_COMPOSE_DEV = docker compose
+DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 VENV = venv
@@ -54,6 +54,7 @@ dev-install:
 	$(PIP) install \
 		-r requirements.cpu.txt \
 		-r requirements.dev.txt \
+		-r requirements.torch.txt \
 		-r requirements.cv.txt \
 		-r requirements.ocr.txt \
 		-r requirements.txt

@@ -25,12 +25,18 @@ Otherwise the following paragraphs list some of the pre-requisits when not using
 This currently only supports Linux due to the binaries used (`pdfalto`, `wapiti`).
 It may also be used on other platforms without Docker, provided matching binaries are configured.
 
+For sqlite or lmdb you may need:
+
+```bash
+apt-get install libsqlite3-dev liblmdb-dev
+```
+
 For Computer Vision PyTorch is required.
 
 For OCR, tesseract needs to be installed. On Ubuntu the following command can be used:
 
 ```bash
-apt-get install libtesseract4 tesseract-ocr-eng libtesseract-dev libleptonica-dev
+apt-get install tesseract-ocr-eng libtesseract-dev libleptonica-dev
 ```
 
 The Word* to PDF conversion requires [LibreOffice](https://www.libreoffice.org/).

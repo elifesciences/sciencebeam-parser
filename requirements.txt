@@ -4,4 +4,23 @@ gcsfs>=2022.1.0
 lxml==4.8.0
 pdf2image==1.16.0
 PyYAML==6.0
-sciencebeam-trainer-delft==0.0.31
+
+# dependencies for sciencebeam-trainer-delft
+bleach>=2.1.0
+gensim>=3.4.0,<4.0.0
+h5py==2.10.0
+jsonpickle>=1.4.1
+keras==2.2.4
+keras-bert>=0.39.0,<0.85.0
+langdetect>=1.0.7
+lmdb==1.4.1
+numpy>=1.16.1,<1.17.0
+pandas>=0.22.0
+pydot>=1.2.4
+regex>=2018.2.21
+requests==2.27.1
+scikit-learn>=0.24.2,<0.25.0
+textblob>=0.15.1
+tqdm>=4.21
+truecase==0.0.14
+unidecode>=1.0.22
