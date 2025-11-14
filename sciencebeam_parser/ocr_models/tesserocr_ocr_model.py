@@ -4,8 +4,8 @@ from typing import Optional, Union
 
 import PIL.Image
 
-import tesserocr
-from tesserocr import PyTessBaseAPI
+import tesserocr  # pylint: disable=import-error
+from tesserocr import PyTessBaseAPI  # pylint: disable=import-error
 
 from sciencebeam_parser.ocr_models.ocr_model import (
     OpticalCharacterRecognitionModel,
