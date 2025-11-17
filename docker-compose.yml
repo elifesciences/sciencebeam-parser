@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile
       target: dev
     environment:
-        TWINE_PASSWORD: ${TWINE_PASSWORD}
+      TWINE_PASSWORD: ${TWINE_PASSWORD}
     image: elifesciences/sciencebeam-parser-dev:${IMAGE_TAG}
 
   wait-for-it:
