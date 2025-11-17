@@ -221,14 +221,12 @@ ci-end-to-end:
 
 ci-push-testpypi:
 	$(DOCKER_COMPOSE_CI) run --rm \
-		-v $$PWD/.pypirc:/root/.pypirc \
 		sciencebeam-parser-dev \
 		./scripts/dev/push-testpypi-commit-version.sh "$(REVISION)"
 
 
 ci-push-pypi:
 	$(DOCKER_COMPOSE_CI) run --rm \
-		-v $$PWD/.pypirc:/root/.pypirc \
 		sciencebeam-parser-dev \
 		./scripts/dev/push-pypi-version.sh "$(VERSION)"
 
