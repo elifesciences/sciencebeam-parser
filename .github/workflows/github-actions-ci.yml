@@ -14,16 +14,34 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
+      - name: Set Version Env Var
+        run: |
+          VERSION=""
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo "VERSION: ${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Check out repository code
         uses: actions/checkout@v5
       - name: Build Dev Image
-        run: make ci-build-all
+        run: make IMAGE_TAG=${{ github.sha }} ci-build-all
       - name: Linting
-        run: make ci-lint
+        run: make IMAGE_TAG=${{ github.sha }} ci-lint
       - name: Unit Test
-        run: make ci-pytest
+        run: make IMAGE_TAG=${{ github.sha }} ci-pytest
       - name: End-to-end Test
-        run: make ci-end-to-end
+        run: make IMAGE_TAG=${{ github.sha }} ci-end-to-end
+      - name: Push package to test.pypi.org
+        if: ${{ env.VERSION == '' }}
+        run: make IMAGE_TAG=${{ github.sha }} REVISION=${{ github.sha }} ci-push-testpypi
+        env:
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
+      - name: Push package to pypi.org
+        if: ${{ env.VERSION != '' }}
+        run: make IMAGE_TAG=${{ github.sha }} VERSION=${{ env.VERSION }} NO_BUILD=y ci-push-pypi
+        env:
+          TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
   docker-build-and-push:
     needs: [build-and-test]
