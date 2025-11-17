@@ -1,5 +1,5 @@
 DOCKER_COMPOSE_DEV = docker compose
-DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml
+DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml -f docker-compose.ci.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 VENV = venv
@@ -221,14 +221,12 @@ ci-end-to-end:
 
 ci-push-testpypi:
 	$(DOCKER_COMPOSE_CI) run --rm \
-		-v $$PWD/.pypirc:/root/.pypirc \
 		sciencebeam-parser-dev \
 		./scripts/dev/push-testpypi-commit-version.sh "$(REVISION)"
 
 
 ci-push-pypi:
 	$(DOCKER_COMPOSE_CI) run --rm \
-		-v $$PWD/.pypirc:/root/.pypirc \
 		sciencebeam-parser-dev \
 		./scripts/dev/push-pypi-version.sh "$(VERSION)"
 

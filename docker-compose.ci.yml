@@ -1,0 +1,5 @@
+services:
+  sciencebeam-parser-dev:
+    environment:
+      TWINE_USERNAME: "__token__"
+      TWINE_PASSWORD: ${TWINE_PASSWORD:-}

@@ -18,8 +18,6 @@ cat sciencebeam_parser/__init__.py
 
 python setup.py sdist
 
-ls -l $HOME/.pypirc
-
 ls -l dist/
 
 twine upload --repository "${repository}" --verbose "dist/sciencebeam_parser-${version}"*
