@@ -29,15 +29,19 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
           if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            IMAGE_NAME="${DOCKER_IMAGE}"
             IMAGE_TAG="${VERSION}"
             TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
             CV_TAGS="${DOCKER_IMAGE}:${VERSION}-cv,${DOCKER_IMAGE}:latest-cv"
           else
+            IMAGE_NAME="${DOCKER_IMAGE}_unstable"
             IMAGE_TAG="${GITHUB_SHA}"
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
           fi
           DEV_TAG="${DOCKER_IMAGE}-dev:${GITHUB_SHA}"
+          echo "IMAGE_NAME=${IMAGE_NAME}"
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "TAGS=${TAGS}"
@@ -68,19 +72,19 @@ jobs:
           load: true
 
       - name: Linting
-        run: make IMAGE_TAG=${{ github.sha }} ci-lint
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} IMAGE_TAG=${{ github.sha }} ci-lint
       - name: Unit Test
-        run: make IMAGE_TAG=${{ github.sha }} ci-pytest
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} ci-pytest
       - name: End-to-end Test
-        run: make IMAGE_TAG=${{ github.sha }} ci-end-to-end
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} ci-end-to-end
       - name: Push package to test.pypi.org
         if: ${{ steps.set_tags.outputs.VERSION == '' }}
-        run: make IMAGE_TAG=${{ github.sha }} REVISION=${{ github.sha }} ci-push-testpypi
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} REVISION=${{ github.sha }} ci-push-testpypi
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
       - name: Push package to pypi.org
         if: ${{ steps.set_tags.outputs.VERSION != '' }}
-        run: make IMAGE_TAG=${{ github.sha }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 

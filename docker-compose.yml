@@ -4,21 +4,21 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: elifesciences/sciencebeam-parser:${IMAGE_TAG}
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
 
   sciencebeam-parser-cv:
     build:
       context: .
       dockerfile: Dockerfile
       target: runtime-cv
-    image: elifesciences/sciencebeam-parser:${IMAGE_TAG}-cv
+    image: ${IMAGE_NAME}:${IMAGE_TAG}-cv
 
   sciencebeam-parser-dev:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    image: elifesciences/sciencebeam-parser-dev:${IMAGE_TAG}
+    image: ${IMAGE_NAME}-dev:${IMAGE_TAG}
 
   wait-for-it:
     image: willwill/wait-for-it
