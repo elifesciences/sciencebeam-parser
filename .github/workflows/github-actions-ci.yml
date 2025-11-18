@@ -61,7 +61,7 @@ jobs:
           files: docker-compose.yml
           targets: sciencebeam-parser-dev
           set: |
-            sciencebeam-parser-dev=${{ steps.set_tags.outputs.dev_tag }}
+            sciencebeam-parser-dev.tags=${{ steps.set_tags.outputs.dev_tag }}
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
           push: false
