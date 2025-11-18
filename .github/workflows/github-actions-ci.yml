@@ -76,13 +76,13 @@ jobs:
       - name: End-to-end Test
         run: make IMAGE_TAG=${{ github.sha }} ci-end-to-end
       - name: Push package to test.pypi.org
-        if: ${{ env.VERSION == '' }}
+        if: ${{ steps.set_tags.outputs.VERSION == '' }}
         run: make IMAGE_TAG=${{ github.sha }} REVISION=${{ github.sha }} ci-push-testpypi
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
       - name: Push package to pypi.org
-        if: ${{ env.VERSION != '' }}
-        run: make IMAGE_TAG=${{ github.sha }} VERSION=${{ env.VERSION }} NO_BUILD=y ci-push-pypi
+        if: ${{ steps.set_tags.outputs.VERSION != '' }}
+        run: make IMAGE_TAG=${{ github.sha }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
