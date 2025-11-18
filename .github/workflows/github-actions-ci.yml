@@ -53,10 +53,8 @@ jobs:
         uses: docker/bake-action@v6
         with:
           files: docker-bake.hcl
-          targets: dev,runtime,runtime-cv
+          targets: dev
           set: |
-            runtime.tags=${{ steps.set_tags.outputs.tags }}
-            runtime-cv.tags=${{ steps.set_tags.outputs.cv_tags }}
             dev.tags=${{ steps.set_tags.outputs.dev_tags }}
           push: false
           load: true
