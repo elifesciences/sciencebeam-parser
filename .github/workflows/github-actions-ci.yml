@@ -46,7 +46,7 @@ jobs:
           echo "CV_TAGS=${CV_TAGS}"
           echo "cv_tags=${CV_TAGS}" >> $GITHUB_OUTPUT
           echo "DEV_TAGS=${DEV_TAGS}"
-          echo "cv_tags=${DEV_TAGS}" >> $GITHUB_OUTPUT
+          echo "dev_tags=${DEV_TAGS}" >> $GITHUB_OUTPUT
           echo "VERSION: ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
@@ -59,11 +59,10 @@ jobs:
       - name: Bake build for all targets (no push)
         uses: docker/bake-action@v6
         with:
-          files: docker-bake.hcl
-          targets: dev,runtime
+          files: docker-compose.yml
+          targets: sciencebeam-parser-dev
           set: |
-            dev.tags=${{ steps.set_tags.outputs.dev_tags }}
-            runtime.tags=${{ env.DOCKER_IMAGE_NAME }}:${{ steps.set_tags.outputs.image_tag }}
+            sciencebeam-parser-dev=${{ steps.set_tags.outputs.dev_tags }}
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
           push: false
