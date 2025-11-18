@@ -50,7 +50,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Bake build for all targets (no push)
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v6
         with:
           files: docker-bake.hcl
           targets: dev,runtime,runtime-cv
