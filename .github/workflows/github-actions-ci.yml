@@ -32,21 +32,20 @@ jobs:
             IMAGE_TAG="${VERSION}"
             TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
             CV_TAGS="${DOCKER_IMAGE}:${VERSION}-cv,${DOCKER_IMAGE}:latest-cv"
-            DEV_TAGS="${DOCKER_IMAGE}-dev:${VERSION}"
           else
             IMAGE_TAG="${GITHUB_SHA}"
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
-            DEV_TAGS="${DOCKER_IMAGE}-dev:${GITHUB_SHA}"
           fi
+          DEV_TAG="${DOCKER_IMAGE}-dev:${GITHUB_SHA}"
           echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "TAGS=${TAGS}"
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "CV_TAGS=${CV_TAGS}"
           echo "cv_tags=${CV_TAGS}" >> $GITHUB_OUTPUT
-          echo "DEV_TAGS=${DEV_TAGS}"
-          echo "dev_tags=${DEV_TAGS}" >> $GITHUB_OUTPUT
+          echo "DEV_TAG=${DEV_TAG}"
+          echo "dev_tag=${DEV_TAG}" >> $GITHUB_OUTPUT
           echo "VERSION: ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
@@ -62,7 +61,7 @@ jobs:
           files: docker-compose.yml
           targets: sciencebeam-parser-dev
           set: |
-            sciencebeam-parser-dev=${{ steps.set_tags.outputs.dev_tags }}
+            sciencebeam-parser-dev=${{ steps.set_tags.outputs.dev_tag }}
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
           push: false
