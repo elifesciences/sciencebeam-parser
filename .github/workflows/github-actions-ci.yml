@@ -64,10 +64,10 @@ jobs:
           set: |
             dev.tags=${{ steps.set_tags.outputs.dev_tags }}
             runtime.tags=${{ env.DOCKER_IMAGE_NAME }}:${{ steps.set_tags.outputs.image_tag }}
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
           push: false
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Linting
         run: make IMAGE_TAG=${{ github.sha }} ci-lint
