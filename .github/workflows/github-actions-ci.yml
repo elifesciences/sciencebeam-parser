@@ -10,6 +10,9 @@ on:
     branches:
       - main
 
+env:
+  DOCKER_IMAGE_NAME: ghcr.io/elifesciences/sciencebeam-parser
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -17,7 +20,7 @@ jobs:
       - name: Set tags
         id: set_tags
         run: |
-          DOCKER_IMAGE=ghcr.io/elifesciences/sciencebeam-parser
+          DOCKER_IMAGE="${{ env.DOCKER_IMAGE_NAME }}"
           VERSION=""
           GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
           SHORT_SHA=${GITHUB_SHA::8}
@@ -26,14 +29,18 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
           if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            IMAGE_TAG="${VERSION}"
             TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
             CV_TAGS="${DOCKER_IMAGE}:${VERSION}-cv,${DOCKER_IMAGE}:latest-cv"
             DEV_TAGS="${DOCKER_IMAGE}-dev:${VERSION}"
           else
+            IMAGE_TAG="${GITHUB_SHA}"
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
             DEV_TAGS="${DOCKER_IMAGE}-dev:${GITHUB_SHA}"
           fi
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "TAGS=${TAGS}"
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "CV_TAGS=${CV_TAGS}"
@@ -53,9 +60,10 @@ jobs:
         uses: docker/bake-action@v6
         with:
           files: docker-bake.hcl
-          targets: dev
+          targets: dev,runtime
           set: |
             dev.tags=${{ steps.set_tags.outputs.dev_tags }}
+            runtime.tags=${{ env.DOCKER_IMAGE_NAME }}:${{ steps.set_tags.outputs.image_tag }}
           push: false
           load: true
           cache-from: type=gha
