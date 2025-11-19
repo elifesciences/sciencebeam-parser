@@ -104,6 +104,15 @@ jobs:
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
+      - name: List files changed or added by tests
+        run: |
+            echo "Changed or added tracked files (porcelain format):"
+            git status --porcelain=v2
+
+            echo
+            echo "Untracked files to be deleted by 'git clean --force -d --dry-run --exclude=.git':"
+            git clean --force -d --dry-run --exclude=.git
+
       - name: Bake push (if not PR)
         uses: docker/bake-action@v6
         with:
