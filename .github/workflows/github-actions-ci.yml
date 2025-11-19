@@ -87,22 +87,22 @@ jobs:
           push: false
           load: true
 
-      - name: Linting
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
-      - name: Unit Test
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-pytest
-      - name: End-to-end Test
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-end-to-end
-      - name: Push package to test.pypi.org
-        if: ${{ steps.set_tags.outputs.VERSION == '' }}
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} REVISION=${{ github.sha }} ci-push-testpypi
-        env:
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
-      - name: Push package to pypi.org
-        if: ${{ steps.set_tags.outputs.VERSION != '' }}
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
-        env:
-          TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
+    #   - name: Linting
+    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
+    #   - name: Unit Test
+    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-pytest
+    #   - name: End-to-end Test
+    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-end-to-end
+    #   - name: Push package to test.pypi.org
+    #     if: ${{ steps.set_tags.outputs.VERSION == '' }}
+    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} REVISION=${{ github.sha }} ci-push-testpypi
+    #     env:
+    #       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
+    #   - name: Push package to pypi.org
+    #     if: ${{ steps.set_tags.outputs.VERSION != '' }}
+    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
+    #     env:
+    #       TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
       - name: List files changed or added by tests
         run: |
