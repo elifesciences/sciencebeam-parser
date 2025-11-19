@@ -41,8 +41,8 @@ jobs:
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
             RUNTIME_TAGS_JSON="[\"${IMAGE_NAME}:${GITHUB_SHA}\",\"${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\",\"${IMAGE_NAME}:latest\"]"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
-            TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\n"
-            TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv\n"
+            TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\n"
+            TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv\n"
           fi
           TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:${IMAGE_TAG}\n"
           TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:latest\n"
