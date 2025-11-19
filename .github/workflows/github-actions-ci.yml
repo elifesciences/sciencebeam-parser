@@ -33,13 +33,11 @@ jobs:
             IMAGE_NAME="${DOCKER_IMAGE}"
             IMAGE_TAG="${VERSION}"
             TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
-            RUNTIME_TAGS_JSON="[\"${IMAGE_NAME}:${VERSION}\",\"${IMAGE_NAME}:latest\"]"
             CV_TAGS="${DOCKER_IMAGE}:${VERSION}-cv,${DOCKER_IMAGE}:latest-cv"
           else
             IMAGE_NAME="${DOCKER_IMAGE}_unstable"
             IMAGE_TAG="${GITHUB_SHA}"
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
-            RUNTIME_TAGS_JSON="[\"${IMAGE_NAME}:${GITHUB_SHA}\",\"${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\",\"${IMAGE_NAME}:latest\"]"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
             TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\n"
             TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv\n"
@@ -55,8 +53,6 @@ jobs:
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "RUNTIME_TAGS_JSON=${RUNTIME_TAGS_JSON}"
-          echo "runtime_tags_json=${RUNTIME_TAGS_JSON}" >> $GITHUB_OUTPUT
           echo "TAGS=${TAGS}"
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "CV_TAGS=${CV_TAGS}"
