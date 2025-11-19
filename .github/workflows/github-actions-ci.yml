@@ -28,6 +28,7 @@ jobs:
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
+          TAG_LINES=""
           if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
             IMAGE_NAME="${DOCKER_IMAGE}"
             IMAGE_TAG="${VERSION}"
@@ -41,6 +42,10 @@ jobs:
             RUNTIME_TAGS_JSON="[\"${IMAGE_NAME}:${GITHUB_SHA}\",\"${IMAGE_NAME}:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}\",\"${IMAGE_NAME}:latest\"]"
             CV_TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA}-cv,${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP}-cv,${DOCKER_IMAGE}_unstable:latest-cv"
           fi
+          TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:${IMAGE_TAG}\n"
+          TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:${IMAGE_TAG}-cv\n"
+          TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}-dev:${GITHUB_SHA}\n"
+          echo -e "tag_lines<<EOF\n${TAG_LINES}EOF" >> $GITHUB_OUTPUT
           DEV_TAG="${IMAGE_NAME}-dev:${GITHUB_SHA}"
           echo "IMAGE_NAME=${IMAGE_NAME}"
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
@@ -69,27 +74,26 @@ jobs:
           files: docker-compose.yml
           targets: sciencebeam-parser-dev,sciencebeam-parser
           set: |
-            sciencebeam-parser.tags=${{ steps.set_tags.outputs.runtime_tags_json }}
-            sciencebeam-parser-dev.tags=${{ steps.set_tags.outputs.dev_tag }}
+            ${{ steps.set_tags.outputs.tag_lines }}
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
           push: false
           load: true
 
       - name: Linting
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} IMAGE_TAG=${{ github.sha }} ci-lint
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
       - name: Unit Test
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} ci-pytest
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-pytest
       - name: End-to-end Test
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} ci-end-to-end
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-end-to-end
       - name: Push package to test.pypi.org
         if: ${{ steps.set_tags.outputs.VERSION == '' }}
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} REVISION=${{ github.sha }} ci-push-testpypi
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} REVISION=${{ github.sha }} ci-push-testpypi
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
       - name: Push package to pypi.org
         if: ${{ steps.set_tags.outputs.VERSION != '' }}
-        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ github.sha }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
+        run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
