@@ -199,7 +199,7 @@ jobs:
 
 
   testpypi-publish:
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
     needs: ["build-and-test"]
     name: Upload release to Test PyPI
     runs-on: ubuntu-latest
