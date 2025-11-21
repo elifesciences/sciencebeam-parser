@@ -79,7 +79,7 @@ jobs:
         uses: docker/bake-action@v6
         with:
           files: docker-compose.yml
-          targets: sciencebeam-parser-dev
+          targets: sciencebeam-parser-dev,sciencebeam-parser
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
           push: false
@@ -89,7 +89,7 @@ jobs:
         uses: docker/bake-action@v6
         with:
           files: docker-compose.yml
-          targets: sciencebeam-parser-dev
+          targets: sciencebeam-parser-dev,sciencebeam-parser
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
           push: false
