@@ -250,17 +250,5 @@ ci-end-to-end:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end-cv
 
 
-ci-push-testpypi:
-	$(DOCKER_COMPOSE_CI) run --rm \
-		sciencebeam-parser-dev \
-		./scripts/dev/push-testpypi-commit-version.sh "$(REVISION)"
-
-
-ci-push-pypi:
-	$(DOCKER_COMPOSE_CI) run --rm \
-		sciencebeam-parser-dev \
-		./scripts/dev/push-pypi-version.sh "$(VERSION)"
-
-
 ci-clean:
 	$(DOCKER_COMPOSE_CI) down -v
