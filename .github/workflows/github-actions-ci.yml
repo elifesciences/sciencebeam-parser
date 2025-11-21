@@ -97,7 +97,7 @@ jobs:
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
           push: false
-          load: true
+          load: false
 
     #   - name: Linting
     #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
