@@ -91,11 +91,27 @@ jobs:
           push: false
           load: true
 
+      - name: Build "runtime-cv" (no push)
+        uses: docker/build-push-action@v6
+        with:
+          tags: ${{ steps.set_tags.outputs.cv_tags }}
+          target: runtime-cv
+          push: false
+          load: true
+
       - name: Push "runtime"
         uses: docker/build-push-action@v6
         with:
           tags: ${{ steps.set_tags.outputs.tags }}
           target: runtime
+          push: true
+          load: false
+
+      - name: Push "runtime-cv"
+        uses: docker/build-push-action@v6
+        with:
+          tags: ${{ steps.set_tags.outputs.cv_tags }}
+          target: runtime-cv
           push: true
           load: false
 
