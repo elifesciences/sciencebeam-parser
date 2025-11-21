@@ -131,6 +131,54 @@ COPY .flake8 .pylintrc setup.py MANIFEST.in README.md ./
 ENV LC_ALL=C
 
 
+# python-dist-builder
+FROM dev AS python-dist-builder
+
+ARG python_package_version
+RUN echo "Setting version to: $version" && \
+    ./scripts/dev/set-version.sh "$python_package_version"
+RUN python setup.py sdist && \
+    ls -l dist
+
+
+# python-dist
+FROM scratch AS python-dist
+
+WORKDIR /dist
+
+COPY --from=python-dist-builder /opt/sciencebeam_parser/dist /dist
+
+
+# lint-flake8
+FROM dev AS lint-flake8
+
+RUN python -m flake8 sciencebeam_parser tests setup.py
+
+
+# lint-pylint
+FROM dev AS lint-pylint
+
+RUN python -m pylint sciencebeam_parser tests setup.py
+
+
+# lint-mypy
+FROM dev AS lint-mypy
+
+RUN python -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
+
+
+# pytest
+FROM dev AS pytest
+
+RUN python -m pytest -p no:cacheprovider
+
+
+# end-to-end-tests
+FROM dev AS end-to-end-tests
+
+RUN ./scripts/dev/start-and-run-end-to-end-tests.sh
+
+
 # runtime image
 FROM base AS runtime
 

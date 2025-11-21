@@ -1,5 +1,5 @@
 DOCKER_COMPOSE_DEV = docker compose
-DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml -f docker-compose.ci.yml
+DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 VENV = venv
@@ -132,12 +132,43 @@ dev-end-to-end:
 		> /dev/null
 
 
+dev-script-start-and-run-end-to-end-tests:
+	./scripts/dev/start-and-run-end-to-end-tests.sh
+
+
+dev-script-end-to-end-tests:
+	./scripts/dev/end-to-end-tests.sh
+
+
 dev-build-dist:
 	$(PYTHON) setup.py sdist
 
 
 run:
 	$(PYTHON) -m sciencebeam_parser $(ARGS)
+
+
+docker-buildx-bake-build-all:
+	docker buildx bake \
+		--file docker-bake.hcl \
+		--set python-dist.args.python_package_version="$(VERSION)" \
+		lint-flake8 \
+		lint-pylint \
+		lint-mypy \
+		pytest \
+		end-to-end-tests \
+		python-dist \
+		sciencebeam-parser \
+		sciencebeam-parser-cv
+
+
+docker-buildx-python-dist:
+	docker buildx build \
+		--target python-dist \
+		--output type=local,dest=./build/dist-export \
+		--build-arg python_package_version="$(VERSION)" \
+		--debug \
+		.
 
 
 docker-build-all:
@@ -217,18 +248,6 @@ ci-pytest:
 ci-end-to-end:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" docker-end-to-end-cv
-
-
-ci-push-testpypi:
-	$(DOCKER_COMPOSE_CI) run --rm \
-		sciencebeam-parser-dev \
-		./scripts/dev/push-testpypi-commit-version.sh "$(REVISION)"
-
-
-ci-push-pypi:
-	$(DOCKER_COMPOSE_CI) run --rm \
-		sciencebeam-parser-dev \
-		./scripts/dev/push-pypi-version.sh "$(VERSION)"
 
 
 ci-clean:
