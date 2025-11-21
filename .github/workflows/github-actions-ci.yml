@@ -48,19 +48,6 @@ jobs:
           TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:latest-cv\n"
           TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}-dev:${GITHUB_SHA}\n"
           echo -e "tag_lines<<EOF\n${TAG_LINES}EOF" >> $GITHUB_OUTPUT
-          DEV_TAG="${IMAGE_NAME}-dev:${GITHUB_SHA}"
-          echo "IMAGE_NAME=${IMAGE_NAME}"
-          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "IMAGE_TAG=${IMAGE_TAG}"
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "TAGS=${TAGS}"
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "CV_TAGS=${CV_TAGS}"
-          echo "cv_tags=${CV_TAGS}" >> $GITHUB_OUTPUT
-          echo "DEV_TAG=${DEV_TAG}"
-          echo "dev_tag=${DEV_TAG}" >> $GITHUB_OUTPUT
-          echo "VERSION: ${VERSION}"
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Check out repository code
         uses: actions/checkout@v5
