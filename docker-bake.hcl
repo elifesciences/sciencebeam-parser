@@ -1,16 +1,16 @@
-target "runtime" {
+target "sciencebeam-parser" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "runtime"
 }
 
-target "runtime-cv" {
+target "sciencebeam-parser-cv" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "runtime-cv"
 }
 
-target "dev" {
+target "sciencebeam-parser-dev" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "dev"

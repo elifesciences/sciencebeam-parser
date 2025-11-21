@@ -151,7 +151,7 @@ run:
 docker-buildx-bake-build-all:
 	docker buildx bake \
 		--file docker-bake.hcl \
-		--file docker-compose.yml \
+		--set python-dist.args.python_package_version="$(VERSION)" \
 		lint-flake8 \
 		lint-pylint \
 		lint-mypy \
