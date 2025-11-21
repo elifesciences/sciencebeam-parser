@@ -131,6 +131,30 @@ COPY .flake8 .pylintrc setup.py MANIFEST.in README.md ./
 ENV LC_ALL=C
 
 
+# lint-flake8
+FROM dev AS lint-flake8
+
+RUN python -m flake8 sciencebeam_parser tests setup.py
+
+
+# lint-pylint
+FROM dev AS lint-pylint
+
+RUN python -m pylint sciencebeam_parser tests setup.py
+
+
+# lint-mypy
+FROM dev AS lint-mypy
+
+RUN python -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
+
+
+# lint-pytest
+FROM dev AS pytest
+
+RUN python -m pytest -p no:cacheprovider
+
+
 # runtime image
 FROM base AS runtime
 
