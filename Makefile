@@ -132,12 +132,33 @@ dev-end-to-end:
 		> /dev/null
 
 
+dev-script-start-and-run-end-to-end-tests:
+	./scripts/dev/start-and-run-end-to-end-tests.sh
+
+
+dev-script-end-to-end-tests:
+	./scripts/dev/end-to-end-tests.sh
+
+
 dev-build-dist:
 	$(PYTHON) setup.py sdist
 
 
 run:
 	$(PYTHON) -m sciencebeam_parser $(ARGS)
+
+
+docker-buildx-bake-build-all:
+	docker buildx bake \
+		--file docker-bake.hcl \
+		--file docker-compose.yml \
+		lint-flake8 \
+		lint-pylint \
+		lint-mypy \
+		pytest \
+		end-to-end-tests \
+		sciencebeam-parser \
+		sciencebeam-parser-cv
 
 
 docker-build-all:

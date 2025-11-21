@@ -40,6 +40,12 @@ target "pytest" {
   target     = "pytest"
 }
 
+target "end-to-end-tests" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  target     = "end-to-end-tests"
+}
+
 group "default" {
   targets = ["runtime", "runtime-cv"]
 }

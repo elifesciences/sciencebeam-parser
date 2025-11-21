@@ -149,10 +149,16 @@ FROM dev AS lint-mypy
 RUN python -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
 
 
-# lint-pytest
+# pytest
 FROM dev AS pytest
 
 RUN python -m pytest -p no:cacheprovider
+
+
+# end-to-end-tests
+FROM dev AS end-to-end-tests
+
+RUN ./scripts/dev/start-and-run-end-to-end-tests.sh
 
 
 # runtime image
