@@ -138,6 +138,12 @@ jobs:
       - name: List dist-export contents
         run: ls -R -l ./dist-export
 
+      - name: Upload python package artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: python-package-distributions
+          path: ./dist-export/dist/
+
     #   - name: Bake build for all targets (no push) v2
     #     uses: docker/bake-action@v6
     #     with:
