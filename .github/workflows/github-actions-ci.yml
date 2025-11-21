@@ -75,8 +75,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build `runtime` (no push)
-        id: docker_build
+      - name: Build "dev" (no push)
+        uses: docker/build-push-action@v6
+        with:
+          tags: ${{ steps.set_tags.outputs.dev_tag }}
+          target: dev
+          push: false
+          load: true
+
+      - name: Build "runtime" (no push)
         uses: docker/build-push-action@v6
         with:
           tags: ${{ steps.set_tags.outputs.tags }}
