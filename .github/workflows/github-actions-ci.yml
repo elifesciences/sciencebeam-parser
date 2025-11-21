@@ -75,46 +75,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-    #   - name: Build "dev" (no push)
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       tags: ${{ steps.set_tags.outputs.dev_tag }}
-    #       target: dev
-    #       push: false
-    #       load: true
-
-    #   - name: Build "runtime" (no push)
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       tags: ${{ steps.set_tags.outputs.tags }}
-    #       target: runtime
-    #       push: false
-    #       load: true
-
-    #   - name: Build "runtime-cv" (no push)
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       tags: ${{ steps.set_tags.outputs.cv_tags }}
-    #       target: runtime-cv
-    #       push: false
-    #       load: true
-
-    #   - name: Push "runtime"
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       tags: ${{ steps.set_tags.outputs.tags }}
-    #       target: runtime
-    #       push: true
-    #       load: false
-
-    #   - name: Push "runtime-cv"
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       tags: ${{ steps.set_tags.outputs.cv_tags }}
-    #       target: runtime-cv
-    #       push: true
-    #       load: false
-
       - uses: mtkennerly/dunamai-action@v1
         with:
           env-var: PYTHON_PACKAGE_VERSION
@@ -150,54 +110,6 @@ jobs:
         with:
           name: python-package-distributions
           path: ./dist-export/dist/
-
-    #   - name: Bake build for all targets (no push) v2
-    #     uses: docker/bake-action@v6
-    #     with:
-    #       files: docker-compose.yml
-    #       targets: sciencebeam-parser-dev,sciencebeam-parser
-    #       set: |
-    #         ${{ steps.set_tags.outputs.tag_lines }}
-    #       push: false
-    #       load: false
-
-    #   - name: Linting
-    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
-    #   - name: Unit Test
-    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-pytest
-    #   - name: End-to-end Test
-    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} ci-end-to-end
-    #   - name: Push package to test.pypi.org
-    #     if: ${{ steps.set_tags.outputs.VERSION == '' }}
-    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} REVISION=${{ github.sha }} ci-push-testpypi
-    #     env:
-    #       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_CREDENTIALS }}
-    #   - name: Push package to pypi.org
-    #     if: ${{ steps.set_tags.outputs.VERSION != '' }}
-    #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} VERSION=${{ steps.set_tags.outputs.VERSION }} NO_BUILD=y ci-push-pypi
-    #     env:
-    #       TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
-
-    #   - name: List files changed or added by tests
-    #     run: |
-    #         echo "Changed or added tracked files (porcelain format):"
-    #         git status --porcelain=v2
-
-    #         echo
-    #         echo "Untracked files to be deleted by 'git clean --force -d --dry-run --exclude=.git':"
-    #         git clean --force -d --dry-run --exclude=.git
-
-    #   - name: Bake push (if not PR)
-    #     uses: docker/bake-action@v6
-    #     with:
-    #       files: docker-compose.yml
-    #       targets: sciencebeam-parser,sciencebeam-parser-cv
-    #       set: |
-    #         ${{ steps.set_tags.outputs.tag_lines }}
-    #         *.cache-from=type=gha
-    #         *.cache-to=type=gha,mode=max
-    #       push: true
-    #       load: false
 
 
   testpypi-publish:
