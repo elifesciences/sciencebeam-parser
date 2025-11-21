@@ -91,6 +91,14 @@ jobs:
           push: false
           load: true
 
+      - name: Push "runtime"
+        uses: docker/build-push-action@v6
+        with:
+          tags: ${{ steps.set_tags.outputs.tags }}
+          target: runtime
+          push: true
+          load: false
+
     #   - name: Bake build for all targets (no push)
     #     uses: docker/bake-action@v6
     #     with:
