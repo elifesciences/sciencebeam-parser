@@ -157,8 +157,18 @@ docker-buildx-bake-build-all:
 		lint-mypy \
 		pytest \
 		end-to-end-tests \
+		python-dist \
 		sciencebeam-parser \
 		sciencebeam-parser-cv
+
+
+docker-buildx-python-dist:
+	docker buildx build \
+		--target python-dist \
+		--output type=local,dest=./build/dist-export \
+		--build-arg python_package_version="$(VERSION)" \
+		--debug \
+		.
 
 
 docker-build-all:

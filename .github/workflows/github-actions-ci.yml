@@ -115,15 +115,26 @@ jobs:
     #       push: true
     #       load: false
 
+      - uses: mtkennerly/dunamai-action@v1
+        with:
+          env-var: PYTHON_PACKAGE_VERSION
+          args: --style semver --no-metadata
+
+      - run: echo $PYTHON_PACKAGE_VERSION
+
       - name: Bake build for all targets (no push)
         uses: docker/bake-action@v6
         with:
           files: docker-bake.hcl,docker-compose.yml
-          targets: lint-flake8,lint-pylint,lint-mypy,end-to-end-tests,sciencebeam-parser,sciencebeam-parser-cv
+          targets: python-dist,lint-flake8,lint-pylint,lint-mypy,end-to-end-tests,sciencebeam-parser,sciencebeam-parser-cv
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
+            python-dist.build-args.python_package_version=$PYTHON_PACKAGE_VERSION
+            python-dist.output=type=local,dest=./dist-export
           push: false
           load: false
+
+      - run: ls -l ./dist-export
 
     #   - name: Bake build for all targets (no push) v2
     #     uses: docker/bake-action@v6

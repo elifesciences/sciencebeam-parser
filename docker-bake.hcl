@@ -46,6 +46,12 @@ target "end-to-end-tests" {
   target     = "end-to-end-tests"
 }
 
+target "python-dist" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  target     = "python-dist"
+}
+
 group "default" {
   targets = ["runtime", "runtime-cv"]
 }
