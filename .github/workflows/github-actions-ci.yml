@@ -82,8 +82,6 @@ jobs:
           targets: sciencebeam-parser-dev,sciencebeam-parser,sciencebeam-parser-cv
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
           push: false
           load: true
 
@@ -94,8 +92,6 @@ jobs:
           targets: sciencebeam-parser-dev,sciencebeam-parser,sciencebeam-parser-cv
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
           push: false
           load: false
 
