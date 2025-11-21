@@ -87,6 +87,18 @@ jobs:
           push: false
           load: true
 
+      - name: Bake build for all targets (no push) v2
+        uses: docker/bake-action@v6
+        with:
+          files: docker-compose.yml
+          targets: sciencebeam-parser-dev,sciencebeam-parser,sciencebeam-parser-cv
+          set: |
+            ${{ steps.set_tags.outputs.tag_lines }}
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+          push: false
+          load: true
+
     #   - name: Linting
     #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
     #   - name: Unit Test
@@ -104,23 +116,23 @@ jobs:
     #     env:
     #       TWINE_PASSWORD: ${{ secrets.PYPI_CREDENTIALS }}
 
-      - name: List files changed or added by tests
-        run: |
-            echo "Changed or added tracked files (porcelain format):"
-            git status --porcelain=v2
+    #   - name: List files changed or added by tests
+    #     run: |
+    #         echo "Changed or added tracked files (porcelain format):"
+    #         git status --porcelain=v2
 
-            echo
-            echo "Untracked files to be deleted by 'git clean --force -d --dry-run --exclude=.git':"
-            git clean --force -d --dry-run --exclude=.git
+    #         echo
+    #         echo "Untracked files to be deleted by 'git clean --force -d --dry-run --exclude=.git':"
+    #         git clean --force -d --dry-run --exclude=.git
 
-      - name: Bake push (if not PR)
-        uses: docker/bake-action@v6
-        with:
-          files: docker-compose.yml
-          targets: sciencebeam-parser,sciencebeam-parser-cv
-          set: |
-            ${{ steps.set_tags.outputs.tag_lines }}
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
-          push: true
-          load: false
+    #   - name: Bake push (if not PR)
+    #     uses: docker/bake-action@v6
+    #     with:
+    #       files: docker-compose.yml
+    #       targets: sciencebeam-parser,sciencebeam-parser-cv
+    #       set: |
+    #         ${{ steps.set_tags.outputs.tag_lines }}
+    #         *.cache-from=type=gha
+    #         *.cache-to=type=gha,mode=max
+    #       push: true
+    #       load: false
