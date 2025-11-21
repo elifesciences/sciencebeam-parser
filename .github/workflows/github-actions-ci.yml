@@ -39,7 +39,7 @@ jobs:
             TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
             CV_TAGS="${DOCKER_IMAGE}:${VERSION}-cv,${DOCKER_IMAGE}:latest-cv"
           else
-            PYTHON_PACKAGE_VERSION=`./scripts/get-test-pypi-version.sh ${GITHUB_SHA}`
+            PYTHON_PACKAGE_VERSION=`./scripts/dev/get-test-pypi-version.sh ${GITHUB_SHA}`
             IMAGE_NAME="${DOCKER_IMAGE}_unstable"
             IMAGE_TAG="${GITHUB_SHA}"
             TAGS="${DOCKER_IMAGE}_unstable:${GITHUB_SHA},${DOCKER_IMAGE}_unstable:${GIT_BRANCH}-${SHORT_SHA}-${TIMESTAMP},${DOCKER_IMAGE}_unstable:latest"
