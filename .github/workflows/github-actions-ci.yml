@@ -75,25 +75,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bake build for all targets (no push)
-        uses: docker/bake-action@v6
+      - name: Build `runtime` (no push)
+        id: docker_build
+        uses: docker/build-push-action@v6
         with:
-          files: docker-compose.yml
-          targets: sciencebeam-parser-dev,sciencebeam-parser
-          set: |
-            ${{ steps.set_tags.outputs.tag_lines }}
+          tags: ${{ steps.set_tags.outputs.tags }}
+          target: runtime
           push: false
           load: true
 
-      - name: Bake build for all targets (no push) v2
-        uses: docker/bake-action@v6
-        with:
-          files: docker-compose.yml
-          targets: sciencebeam-parser-dev,sciencebeam-parser
-          set: |
-            ${{ steps.set_tags.outputs.tag_lines }}
-          push: false
-          load: false
+    #   - name: Bake build for all targets (no push)
+    #     uses: docker/bake-action@v6
+    #     with:
+    #       files: docker-compose.yml
+    #       targets: sciencebeam-parser-dev,sciencebeam-parser
+    #       set: |
+    #         ${{ steps.set_tags.outputs.tag_lines }}
+    #       push: false
+    #       load: true
+
+    #   - name: Bake build for all targets (no push) v2
+    #     uses: docker/bake-action@v6
+    #     with:
+    #       files: docker-compose.yml
+    #       targets: sciencebeam-parser-dev,sciencebeam-parser
+    #       set: |
+    #         ${{ steps.set_tags.outputs.tag_lines }}
+    #       push: false
+    #       load: false
 
     #   - name: Linting
     #     run: make IMAGE_NAME=${{ steps.set_tags.outputs.image_name }} IMAGE_TAG=${{ steps.set_tags.outputs.image_tag }} IMAGE_TAG=${{ github.sha }} ci-lint
