@@ -14,18 +14,27 @@ target "sciencebeam-parser" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "runtime"
+  contexts = {
+    "builder" = "target:builder"
+  }
 }
 
 target "sciencebeam-parser-cv" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "runtime-cv"
+  contexts = {
+    "builder-cv" = "target:builder-cv"
+  }
 }
 
 target "sciencebeam-parser-dev" {
   context    = "."
   dockerfile = "Dockerfile"
   target     = "dev"
+  contexts = {
+    "builder-cv" = "target:builder-cv"
+  }
 }
 
 target "lint-flake8" {
