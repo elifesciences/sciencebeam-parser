@@ -78,7 +78,7 @@ jobs:
         uses: docker/bake-action@v6
         with:
           files: docker-bake.hcl
-          targets: sciencebeam-parser-dev,python-dist,lint-flake8,lint-pylint,lint-mypy,end-to-end-tests,sciencebeam-parser,sciencebeam-parser-cv
+          targets: sciencebeam-parser-dev
           set: |
             ${{ steps.set_tags.outputs.tag_lines }}
             python-dist.args.python_package_version=${{ steps.set_tags.outputs.python_package_version }}
