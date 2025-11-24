@@ -1,3 +1,9 @@
+target "builder" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  target     = "builder"
+}
+
 target "sciencebeam-parser" {
   context    = "."
   dockerfile = "Dockerfile"
