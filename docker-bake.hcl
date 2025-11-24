@@ -4,6 +4,12 @@ target "builder" {
   target     = "builder"
 }
 
+target "builder-cv" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  target     = "builder-cv"
+}
+
 target "sciencebeam-parser" {
   context    = "."
   dockerfile = "Dockerfile"
