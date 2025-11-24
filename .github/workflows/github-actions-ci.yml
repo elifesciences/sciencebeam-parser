@@ -51,8 +51,8 @@ jobs:
           TAG_LINES="${TAG_LINES}sciencebeam-parser.tags=${IMAGE_NAME}:latest\n"
           TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:${IMAGE_TAG}-cv\n"
           TAG_LINES="${TAG_LINES}sciencebeam-parser-cv.tags=${IMAGE_NAME}:latest-cv\n"
-          TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}-dev:${IMAGE_TAG}\n"
-          TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}-dev:latest-dev\n"
+          TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}:${IMAGE_TAG}-dev\n"
+          TAG_LINES="${TAG_LINES}sciencebeam-parser-dev.tags=${IMAGE_NAME}:latest-dev\n"
           echo -e "tag_lines<<EOF\n${TAG_LINES}EOF" >> $GITHUB_OUTPUT
           echo "PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}"
           echo "python_package_version=${PYTHON_PACKAGE_VERSION}" >> $GITHUB_OUTPUT
