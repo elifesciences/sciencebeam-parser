@@ -86,7 +86,8 @@ jobs:
             ${{ github.event_name != 'pull_request' && 'sciencebeam-parser.output=type=registry' || '' }}
             ${{ github.event_name != 'pull_request' && 'sciencebeam-parser-cv.output=type=registry' || '' }}
             *.cache-from=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache
-            builder.cache-to=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache,mode=max
+            *.cache-from+=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache-builder
+            builder.cache-to=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache-builder,mode=max
             sciencebeam-parser-dev.cache-to=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache,mode=max
             sciencebeam-parser-cv.cache-to=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache,mode=max
             sciencebeam-parser.cache-to=type=registry,ref=ghcr.io/elifesciences/sciencebeam-parser_unstable:buildcache,mode=max
