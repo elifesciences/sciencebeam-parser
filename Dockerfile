@@ -53,12 +53,12 @@ COPY requirements.build.txt ./
 RUN python3 -m venv ${VENV} \
     && pip install --disable-pip-version-check --no-warn-script-location -r requirements.build.txt
 
-
-FROM builder-base AS builder
-
 COPY requirements.cpu.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt
+
+
+FROM builder-base AS builder
 
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
@@ -72,10 +72,6 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 
 # builder-cv
 FROM builder-base AS builder-cv
-
-COPY requirements.cpu.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt
 
 COPY requirements.torch.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
