@@ -145,4 +145,4 @@ jobs:
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.TEST_PYPI_CREDENTIALS }}
+          password: ${{ secrets.PYPI_CREDENTIALS }}
