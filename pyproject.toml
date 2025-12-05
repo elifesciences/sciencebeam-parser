@@ -1,0 +1,51 @@
+[project]
+name = "sciencebeam-parser"
+version = "0.0.0"
+description = "ScienceBeam Parser, parse scientific documents."
+readme = "README.md"
+requires-python = ">=3.9,<3.10"
+dependencies = [
+    "flask==2.0.3",
+    "fsspec>=2022.1.0",
+    "gcsfs>=2022.1.0",
+    "lxml==4.8.0",
+    "pdf2image==1.16.0",
+    "pyyaml>=6.0.3",
+    "setuptools<70",
+    "werkzeug<2.1",
+]
+
+[project.optional-dependencies]
+cpu = [
+  "torch==1.10.1+cpu",
+  "torchvision==0.11.2+cpu"
+]
+delft = [
+    "sciencebeam-trainer-delft[delft]>=0.0.34",
+]
+cv = [
+    "layoutparser==0.3.2",
+]
+
+[dependency-groups]
+dev = [
+    "flake8==4.0.1",
+    "mypy==0.931",
+    "pylint==2.12.2",
+    "pytest==7.0.1",
+    "pytest-watch==4.2.0",
+    "types-pyyaml>=6.0.12.12",
+    "types-setuptools==57.4.9",
+]
+tf = [
+    "tensorflow==2.9.3",
+]
+
+[tool.uv.sources]
+torch = [{ index = "torch-cpu" }]
+torchvision = [{ index = "torch-cpu" }]
+
+[[tool.uv.index]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
