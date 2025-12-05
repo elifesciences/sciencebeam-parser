@@ -1,2 +1,2 @@
-delft==0.2.7
-sciencebeam-trainer-delft==0.0.31
+delft==0.3.4
+sciencebeam-trainer-delft==0.0.32
