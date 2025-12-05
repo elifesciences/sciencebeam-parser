@@ -57,28 +57,30 @@ COPY requirements.cpu.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt
 
+COPY requirements.torch.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.torch.txt
+
 
 FROM builder-base AS builder
 
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
+    -r requirements.torch.txt \
     -r requirements.txt
 
 COPY requirements.delft.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
+    -r requirements.torch.txt \
     -r requirements.txt \
     -r requirements.delft.txt
 
 
 # builder-cv
 FROM builder-base AS builder-cv
-
-COPY requirements.torch.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt
 
 COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
