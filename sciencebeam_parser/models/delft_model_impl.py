@@ -1,8 +1,6 @@
 import logging
 from typing import Optional, List, Tuple
 
-import tensorflow as tf
-
 from sciencebeam_trainer_delft.embedding.manager import EmbeddingManager
 from sciencebeam_trainer_delft.sequence_labelling.wrapper import (
     DEFAULT_EMBEDDINGS_PATH,
@@ -15,23 +13,6 @@ from sciencebeam_parser.utils.lazy import LazyLoaded
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-class SeparateSessionSequenceWrapper(Sequence):
-    def __init__(self, *args, **kwargs):
-        self._graph = tf.Graph()
-        self._session = tf.Session(graph=self._graph)
-        super().__init__(*args, **kwargs)
-
-    def load_from(self, *args, **kwargs):
-        with self._graph.as_default():
-            with self._session.as_default():
-                return super().load_from(*args, **kwargs)
-
-    def tag(self, *args, **kwargs):
-        with self._graph.as_default():
-            with self._session.as_default():
-                return super().tag(*args, **kwargs)
 
 
 class DelftModelImpl(ModelImpl):
@@ -51,7 +32,7 @@ class DelftModelImpl(ModelImpl):
             path=embedding_registry_path,
             download_manager=self.app_context.download_manager
         )
-        model = SeparateSessionSequenceWrapper(
+        model = Sequence(
             'dummy-model',
             embedding_manager=embedding_manager
         )
