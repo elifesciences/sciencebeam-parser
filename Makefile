@@ -49,15 +49,15 @@ dev-venv: venv-create dev-install
 
 
 dev-flake8:
-	$(PYTHON) -m flake8 sciencebeam_parser tests setup.py
+	$(PYTHON) -m flake8 sciencebeam_parser tests
 
 
 dev-pylint:
-	$(PYTHON) -m pylint sciencebeam_parser tests setup.py
+	$(PYTHON) -m pylint sciencebeam_parser tests
 
 
 dev-mypy:
-	$(PYTHON) -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
+	$(PYTHON) -m mypy --ignore-missing-imports sciencebeam_parser tests
 
 
 dev-lint: dev-flake8 dev-pylint dev-mypy
@@ -121,10 +121,6 @@ dev-script-start-and-run-end-to-end-tests:
 
 dev-script-end-to-end-tests:
 	./scripts/dev/end-to-end-tests.sh
-
-
-dev-build-dist:
-	$(PYTHON) setup.py sdist
 
 
 run:
