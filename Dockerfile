@@ -38,8 +38,8 @@ ENV VENV=/opt/venv
 ENV VIRTUAL_ENV=${VENV} PYTHONUSERBASE=${VENV} PATH=${VENV}/bin:$PATH
 
 
-# builder-base
-FROM base AS builder-base
+# builder
+FROM base AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -62,30 +62,29 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
     -r requirements.torch.txt
 
-
-FROM builder-base AS builder
+COPY requirements.delft.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.torch.txt \
+    -r requirements.delft.txt
 
 COPY requirements.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
     -r requirements.torch.txt \
+    -r requirements.delft.txt \
     -r requirements.txt
-
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt \
-    -r requirements.txt \
-    -r requirements.delft.txt
 
 
 # builder-cv
-FROM builder-base AS builder-cv
+FROM builder AS builder-cv
 
 COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
     -r requirements.torch.txt \
+    -r requirements.delft.txt \
+    -r requirements.txt \
     -r requirements.cv.txt
 
 # Note: OCR requirements are not included in the cv builder image because of issues installing tesserocr
@@ -95,21 +94,6 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 #     -r requirements.cv.txt \
 #     -r requirements.torch.txt \
 #     -r requirements.ocr.txt
-
-COPY requirements.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.cv.txt \
-    -r requirements.torch.txt \
-    -r requirements.txt
-
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.cv.txt \
-    -r requirements.torch.txt \
-    -r requirements.txt \
-    -r requirements.delft.txt
 
 
 # dev image
