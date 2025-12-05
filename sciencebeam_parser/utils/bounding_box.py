@@ -67,4 +67,4 @@ class BoundingBox(NamedTuple):
     def __eq__(self, other):
         if other is None:
             return False
-        return super().__eq__(other)
+        return tuple.__eq__(self, other)

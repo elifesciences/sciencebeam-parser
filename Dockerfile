@@ -1,4 +1,4 @@
-FROM python:3.7.17-slim-bookworm AS base
+FROM python:3.9.25-slim-bookworm AS base
 
 
 # shared between builder and runtime image
@@ -22,7 +22,7 @@ RUN apt-get update \
 
 # set and check UNO_PATH, UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
 ENV UNO_PATH=/usr/lib/python3/dist-packages
-ENV UNO_PYTHON_PATH=/usr/local/bin/python3.7
+ENV UNO_PYTHON_PATH=/usr/local/bin/python3.9
 ENV UNO_OFFICE_BINARY_PATH=/usr/lib/libreoffice/program/soffice.bin
 RUN \
   echo "UNO_PATH: ${UNO_PATH}" \
@@ -38,8 +38,8 @@ ENV VENV=/opt/venv
 ENV VIRTUAL_ENV=${VENV} PYTHONUSERBASE=${VENV} PATH=${VENV}/bin:$PATH
 
 
-# builder-base
-FROM base AS builder-base
+# builder
+FROM base AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -57,31 +57,34 @@ COPY requirements.cpu.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt
 
-
-FROM builder-base AS builder
-
-COPY requirements.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.txt
-
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.delft.txt --no-deps
-
-
-# builder-cv
-FROM builder-base AS builder-cv
-
 COPY requirements.torch.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
     -r requirements.torch.txt
 
+COPY requirements.delft.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.torch.txt \
+    -r requirements.delft.txt
+
+COPY requirements.txt ./
+RUN pip install --disable-pip-version-check --no-warn-script-location \
+    -r requirements.cpu.txt \
+    -r requirements.torch.txt \
+    -r requirements.delft.txt \
+    -r requirements.txt
+
+
+# builder-cv
+FROM builder AS builder-cv
+
 COPY requirements.cv.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.cpu.txt \
     -r requirements.torch.txt \
+    -r requirements.delft.txt \
+    -r requirements.txt \
     -r requirements.cv.txt
 
 # Note: OCR requirements are not included in the cv builder image because of issues installing tesserocr
@@ -91,17 +94,6 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 #     -r requirements.cv.txt \
 #     -r requirements.torch.txt \
 #     -r requirements.ocr.txt
-
-COPY requirements.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.cv.txt \
-    -r requirements.torch.txt \
-    -r requirements.txt
-
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.delft.txt --no-deps
 
 
 # dev image
@@ -117,6 +109,8 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.dev.txt
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
+
 COPY tests ./tests
 COPY test-data ./test-data
 COPY scripts/dev ./scripts/dev
@@ -181,6 +175,7 @@ FROM base AS runtime
 COPY --from=builder /opt/venv /opt/venv
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
@@ -203,6 +198,7 @@ RUN apt-get update \
 COPY --from=builder-cv /opt/venv /opt/venv
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 

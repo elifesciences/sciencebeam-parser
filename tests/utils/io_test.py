@@ -46,7 +46,7 @@ class TestGetFullUrlForFsAndPath:
         fs = fsspec.filesystem('gs')
         assert get_fully_qualified_path_for_fs_and_path(
             fs, 'path/to/file'
-        ) == 'gcs://path/to/file'
+        ) == 'gs://path/to/file'
 
 
 class TestGlob:

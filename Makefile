@@ -11,6 +11,7 @@ else
 endif
 
 PYTHON = $(VENV_BIN)/python
+# PIP = VIRTUAL_ENV=./venv uv pip
 PIP = $(VENV_BIN)/python -m pip
 
 SYSTEM_PYTHON = python3
@@ -57,9 +58,8 @@ dev-install:
 		-r requirements.torch.txt \
 		-r requirements.cv.txt \
 		-r requirements.ocr.txt \
+		-r requirements.delft.txt \
 		-r requirements.txt
-	$(PIP) install -r requirements.delft.txt --no-deps
-	$(PIP) install -e . --no-deps
 
 
 dev-venv: venv-create dev-install
