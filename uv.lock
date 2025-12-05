@@ -1460,6 +1460,9 @@ dev = [
     { name = "types-pyyaml" },
     { name = "types-setuptools" },
 ]
+ocr = [
+    { name = "tesserocr" },
+]
 tf = [
     { name = "tensorflow" },
 ]
@@ -1491,6 +1494,7 @@ dev = [
     { name = "types-pyyaml", specifier = ">=6.0.12.12" },
     { name = "types-setuptools", specifier = "==57.4.9" },
 ]
+ocr = [{ name = "tesserocr", specifier = "==2.5.2" }]
 tf = [{ name = "tensorflow", specifier = "==2.9.3" }]
 
 [[package]]
@@ -1685,6 +1689,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/ca/6c/3d75c196ac07ac874
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4f/bd/de8d508070629b6d84a30d01d57e4a65c69aa7f5abe7560b8fad3b50ea59/termcolor-3.1.0-py3-none-any.whl", hash = "sha256:591dd26b5c2ce03b9e43f391264626557873ce1d379019786f99b0c2bee140aa", size = 7684, upload-time = "2025-04-30T11:37:52.382Z" },
 ]
+
+[[package]]
+name = "tesserocr"
+version = "2.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/01/05cdb20f2842993d134a1a52a34f45bfa40cc4b8480cce2cb654e2eff5ed/tesserocr-2.5.2.tar.gz", hash = "sha256:9371dd3f6fe3238039c73bfe15bcaf21389f7e75f62bd530a30110149f39b2ae", size = 57406, upload-time = "2021-06-19T21:10:18.796Z" }
 
 [[package]]
 name = "threadpoolctl"
