@@ -2,19 +2,10 @@ DOCKER_COMPOSE_DEV = docker compose
 DOCKER_COMPOSE_CI = docker compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
-VENV = venv
-
-ifeq ($(OS),Windows_NT)
-	VENV_BIN = $(VENV)/Scripts
-else
-	VENV_BIN = $(VENV)/bin
-endif
-
-PYTHON = $(VENV_BIN)/python
-# PIP = VIRTUAL_ENV=./venv uv pip
-PIP = $(VENV_BIN)/python -m pip
-
-SYSTEM_PYTHON = python3
+VENV = .venv
+UV = VIRTUAL_ENV=$(VENV) uv
+PIP = $(UV) pip
+PYTHON = PATH=$(VENV)/bin:$$PATH $(VENV)/bin/python
 
 ARGS =
 
@@ -47,34 +38,30 @@ venv-clean:
 
 
 venv-create:
-	$(SYSTEM_PYTHON) -m venv $(VENV)
+	$(UV) venv $(VENV)
 
 
 dev-install:
-	$(PIP) install -r requirements.build.txt
-	$(PIP) install \
-		-r requirements.cpu.txt \
-		-r requirements.dev.txt \
-		-r requirements.torch.txt \
-		-r requirements.cv.txt \
-		-r requirements.ocr.txt \
-		-r requirements.delft.txt \
-		-r requirements.txt
+	$(UV) sync --active --frozen \
+		--dev \
+		--extra cpu \
+		--extra delft \
+		--extra cv
 
 
 dev-venv: venv-create dev-install
 
 
 dev-flake8:
-	$(PYTHON) -m flake8 sciencebeam_parser tests setup.py
+	$(PYTHON) -m flake8 sciencebeam_parser tests
 
 
 dev-pylint:
-	$(PYTHON) -m pylint sciencebeam_parser tests setup.py
+	$(PYTHON) -m pylint sciencebeam_parser tests
 
 
 dev-mypy:
-	$(PYTHON) -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
+	$(PYTHON) -m mypy --ignore-missing-imports sciencebeam_parser tests
 
 
 dev-lint: dev-flake8 dev-pylint dev-mypy
@@ -138,10 +125,6 @@ dev-script-start-and-run-end-to-end-tests:
 
 dev-script-end-to-end-tests:
 	./scripts/dev/end-to-end-tests.sh
-
-
-dev-build-dist:
-	$(PYTHON) setup.py sdist
 
 
 run:

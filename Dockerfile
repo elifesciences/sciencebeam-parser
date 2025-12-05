@@ -1,4 +1,4 @@
-FROM python:3.9.25-slim-bookworm AS base
+FROM ghcr.io/astral-sh/uv:python3.9-bookworm AS base
 
 
 # shared between builder and runtime image
@@ -49,43 +49,21 @@ RUN apt-get update \
         libleptonica-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.build.txt ./
-RUN python3 -m venv ${VENV} \
-    && pip install --disable-pip-version-check --no-warn-script-location -r requirements.build.txt
-
-COPY requirements.cpu.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt
-
-COPY requirements.torch.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt
-
-COPY requirements.delft.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt \
-    -r requirements.delft.txt
-
-COPY requirements.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt \
-    -r requirements.delft.txt \
-    -r requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --active --frozen \
+    --no-dev \
+    --extra cpu \
+    --extra delft
 
 
 # builder-cv
 FROM builder AS builder-cv
 
-COPY requirements.cv.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.cpu.txt \
-    -r requirements.torch.txt \
-    -r requirements.delft.txt \
-    -r requirements.txt \
-    -r requirements.cv.txt
+RUN uv sync --active --frozen \
+    --no-dev \
+    --extra cpu \
+    --extra delft \
+    --extra cv
 
 # Note: OCR requirements are not included in the cv builder image because of issues installing tesserocr
 # COPY requirements.ocr.txt ./
@@ -104,9 +82,11 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.dev.txt ./
-RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.dev.txt
+RUN uv sync --active --frozen \
+    --dev \
+    --extra cpu \
+    --extra delft \
+    --extra cv
 
 COPY sciencebeam_parser ./sciencebeam_parser
 COPY delft ./delft
@@ -115,7 +95,7 @@ COPY tests ./tests
 COPY test-data ./test-data
 COPY scripts/dev ./scripts/dev
 COPY doc ./doc
-COPY .flake8 .pylintrc setup.py MANIFEST.in README.md ./
+COPY .flake8 .pylintrc README.md ./
 
 # temporary workaround for tesserocr https://github.com/sirfz/tesserocr/issues/165
 ENV LC_ALL=C
@@ -126,8 +106,8 @@ FROM dev AS python-dist-builder
 
 ARG python_package_version
 RUN echo "Setting version to: $version" && \
-    ./scripts/dev/set-version.sh "$python_package_version"
-RUN python setup.py sdist && \
+    uv version "$python_package_version"
+RUN uv build && \
     ls -l dist
 
 
@@ -142,19 +122,19 @@ COPY --from=python-dist-builder /opt/sciencebeam_parser/dist /dist
 # lint-flake8
 FROM dev AS lint-flake8
 
-RUN python -m flake8 sciencebeam_parser tests setup.py
+RUN python -m flake8 sciencebeam_parser tests
 
 
 # lint-pylint
 FROM dev AS lint-pylint
 
-RUN python -m pylint sciencebeam_parser tests setup.py
+RUN python -m pylint sciencebeam_parser tests
 
 
 # lint-mypy
 FROM dev AS lint-mypy
 
-RUN python -m mypy --ignore-missing-imports sciencebeam_parser tests setup.py
+RUN python -m mypy --ignore-missing-imports sciencebeam_parser tests
 
 
 # pytest
