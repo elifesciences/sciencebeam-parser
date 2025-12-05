@@ -67,7 +67,9 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 
 COPY requirements.delft.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.delft.txt --no-deps
+    -r requirements.cpu.txt \
+    -r requirements.txt \
+    -r requirements.delft.txt
 
 
 # builder-cv
@@ -101,7 +103,11 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
 
 COPY requirements.delft.txt ./
 RUN pip install --disable-pip-version-check --no-warn-script-location \
-    -r requirements.delft.txt --no-deps
+    -r requirements.cpu.txt \
+    -r requirements.cv.txt \
+    -r requirements.torch.txt \
+    -r requirements.txt \
+    -r requirements.delft.txt
 
 
 # dev image
@@ -117,6 +123,8 @@ RUN pip install --disable-pip-version-check --no-warn-script-location \
     -r requirements.dev.txt
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
+
 COPY tests ./tests
 COPY test-data ./test-data
 COPY scripts/dev ./scripts/dev
@@ -181,6 +189,7 @@ FROM base AS runtime
 COPY --from=builder /opt/venv /opt/venv
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
@@ -203,6 +212,7 @@ RUN apt-get update \
 COPY --from=builder-cv /opt/venv /opt/venv
 
 COPY sciencebeam_parser ./sciencebeam_parser
+COPY delft ./delft
 
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
