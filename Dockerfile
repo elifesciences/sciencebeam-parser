@@ -1,4 +1,4 @@
-FROM python:3.7.17-slim-bookworm AS base
+FROM python:3.9.25-slim-bookworm AS base
 
 
 # shared between builder and runtime image
@@ -22,7 +22,7 @@ RUN apt-get update \
 
 # set and check UNO_PATH, UNO_PYTHON_PATH and UNO_OFFICE_BINARY_PATH
 ENV UNO_PATH=/usr/lib/python3/dist-packages
-ENV UNO_PYTHON_PATH=/usr/local/bin/python3.7
+ENV UNO_PYTHON_PATH=/usr/local/bin/python3.9
 ENV UNO_OFFICE_BINARY_PATH=/usr/lib/libreoffice/program/soffice.bin
 RUN \
   echo "UNO_PATH: ${UNO_PATH}" \
