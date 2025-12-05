@@ -52,3 +52,6 @@ torchvision = [{ index = "torch-cpu" }]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[tool.setuptools.packages.find]
+include = ["sciencebeam_parser*"]
