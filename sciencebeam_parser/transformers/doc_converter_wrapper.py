@@ -212,8 +212,8 @@ class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
 
     def _do_convert(
         self,
-        *,
         temp_source_filename: str,
+        *,
         output_type: str = 'pdf',
         remove_line_no: bool = True,
         remove_header_footer: bool = True,
