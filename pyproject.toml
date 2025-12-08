@@ -5,6 +5,7 @@ description = "ScienceBeam Parser, parse scientific documents."
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
 dependencies = [
+    "fastapi[standard]>=0.124.0",
     "flask==2.0.3",
     "fsspec>=2022.1.0",
     "gcsfs>=2022.1.0",
