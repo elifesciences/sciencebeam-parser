@@ -4,7 +4,6 @@ from typing import Iterable, Mapping, Optional, Set, Tuple, Type, Union
 
 from sciencebeam_parser.utils.misc import iter_ids
 from sciencebeam_parser.document.semantic_document import (
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticDate,
     SemanticExternalIdentifier,
@@ -22,7 +21,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticRawReferenceText,
     SemanticReference,
     SemanticTitle,
-    SemanticVolume
+    SemanticVolume,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
@@ -52,7 +52,7 @@ ARXIV_PATTERN = (
 PII_PATTERN = r'\b([S,B]\W*(?:[0-9xX]\W*){15,}[0-9xX])'
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<author>': SemanticRawAuthors,
     '<editor>': SemanticRawEditors,
     '<title>': SemanticTitle,

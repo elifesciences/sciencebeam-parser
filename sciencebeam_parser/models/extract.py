@@ -4,9 +4,9 @@ import re
 from typing import Iterable, Mapping, Optional, Tuple
 
 from sciencebeam_parser.document.semantic_document import (
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
-    SemanticNote
+    SemanticNote,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import EMPTY_BLOCK, LayoutBlock, LayoutTokensText
 
@@ -56,7 +56,7 @@ class SimpleModelSemanticExtractor(ModelSemanticExtractor):
     def __init__(
         self,
         semantic_content_class_by_tag: Optional[
-            Mapping[str, SemanticContentFactoryProtocol]
+            Mapping[str, T_SemanticContentFactory]
         ] = None
     ):
         super().__init__()

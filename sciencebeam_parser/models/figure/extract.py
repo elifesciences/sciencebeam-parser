@@ -3,10 +3,10 @@ from typing import Iterable, Mapping, Optional, Tuple
 
 from sciencebeam_parser.document.semantic_document import (
     SemanticCaption,
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticFigure,
-    SemanticLabel
+    SemanticLabel,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
@@ -15,7 +15,7 @@ from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
 LOGGER = logging.getLogger(__name__)
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<label>': SemanticLabel,
     '<figDesc>': SemanticCaption
 }

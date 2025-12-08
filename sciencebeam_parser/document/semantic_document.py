@@ -193,6 +193,13 @@ class SemanticMixedContentWrapper(SemanticContentWrapper):
         return self.view_by_type(type_).get_text()
 
 
+T_SemanticContentFactory = Union[
+    SemanticContentFactoryProtocol,
+    type[SemanticSimpleContentWrapper],
+    type[SemanticMixedContentWrapper]
+]
+
+
 def iter_parent_by_semantic_type_recursively(
     semantic_content_iterable: Iterable[SemanticContentWrapper],
     type_: Type[T_SemanticContentWrapper],

@@ -51,6 +51,6 @@ class TestGetFullUrlForFsAndPath:
 
 class TestGlob:
     def test_should_find_local_files(self, tmp_path: Path):
-        file1 = (tmp_path / 'test1.file')
+        file1 = tmp_path / 'test1.file'
         file1.touch()
         assert list(glob(str(tmp_path) + '/test*.file')) == [str(file1)]

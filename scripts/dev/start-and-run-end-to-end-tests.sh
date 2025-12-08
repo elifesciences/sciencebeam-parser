@@ -17,7 +17,7 @@ trap cleanup EXIT
 
 # wait until server responds (timeout ~30s)
 echo "Waiting for server on http://127.0.0.1:8070/ ..."
-for i in $(seq 1 60); do
+for i in $(seq 1 120); do
   if curl -sSf --max-time 1 http://127.0.0.1:8070/ >/dev/null 2>&1; then
     echo "Server is up"
     break

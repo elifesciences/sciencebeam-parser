@@ -243,7 +243,7 @@ class ScienceBeamParserBaseSession:
                 suffix='-sb-parser'
             )
             self.exit_stack.push(temp_dir_context)
-            self._temp_dir = temp_dir_context.__enter__()
+            self._temp_dir = temp_dir_context.__enter__()  # pylint: disable=unnecessary-dunder-call
         return self._temp_dir
 
     @property

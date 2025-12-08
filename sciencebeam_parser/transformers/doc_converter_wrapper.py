@@ -155,7 +155,11 @@ class ListenerProcess(CommandRestartableBackgroundProcess):
             return
         raise ConnectionError('failed to start listener (unable to connect)')
 
-    def start_listener_if_not_running(self, max_uptime: float = None, **kwargs) -> None:
+    def start_listener_if_not_running(
+        self,
+        max_uptime: Optional[float] = None,
+        **kwargs
+    ) -> None:
         if self.is_alive():
             uptime = self.get_uptime()
             if not max_uptime or uptime <= max_uptime:
@@ -168,6 +172,7 @@ class ListenerProcess(CommandRestartableBackgroundProcess):
 class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
+        *,
         port: int = 2003,
         enable_debug: bool = False,
         no_launch: bool = True,
@@ -208,6 +213,7 @@ class DocConverterWrapper:  # pylint: disable=too-many-instance-attributes
     def _do_convert(
         self,
         temp_source_filename: str,
+        *,
         output_type: str = 'pdf',
         remove_line_no: bool = True,
         remove_header_footer: bool = True,

@@ -175,6 +175,7 @@ def exec_with_logging(
         if check_returncode:
             p.check_returncode()
         return p
+    assert p.process.stdout is not None
     t = Thread(target=partial(
         stream_lines_to_logger,
         lines=p.process.stdout,
@@ -190,8 +191,8 @@ class CommandRestartableBackgroundProcess:
     def __init__(
         self,
         command: Union[str, Sequence[str]],
-        name: str = None,
-        logging_prefix: str = None,
+        name: Optional[str] = None,
+        logging_prefix: Optional[str] = None,
         stop_at_exit: bool = False
     ):
         self.command = command

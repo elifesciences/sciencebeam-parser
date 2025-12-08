@@ -51,7 +51,7 @@ def get_layout_graphic_with_similar_coordinates(
     page_graphics: Sequence[LayoutGraphic],
     bounding_box: BoundingBox,
     threshold: float = 0.80,
-    ignored_graphic_types: Set[str] = None
+    ignored_graphic_types: Optional[Set[str]] = None
 ) -> Optional[LayoutGraphic]:
     sorted_area_intersection_bounding_boxes = sorted((
         (

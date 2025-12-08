@@ -240,7 +240,7 @@ def disable_document_header_footer(document):
         pageStyle.setPropertyValue('FooterIsOn', False)
 
 
-def convert_document_file(
+def convert_document_file(  # pylint: disable=too-many-positional-arguments
     desktop,
     input_file: str,
     output_file: str,
