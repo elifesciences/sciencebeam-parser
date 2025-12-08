@@ -72,13 +72,21 @@ dev-pytest:
 
 
 dev-watch:
-	$(PYTHON) -m pytest_watch --ext=.py,.xsl -- \
+	$(PYTHON) -m pytest_watcher \
+		--patterns='*.py,*.xsl' \
+		--runner=$(VENV)/bin/python \
+		. \
+		-m pytest \
 		$(NOT_SLOW_PYTEST_ARGS) \
 		-p no:cacheprovider -p no:warnings $(ARGS)
 
 
 dev-watch-slow:
-	$(PYTHON) -m pytest_watch --ext=.py,.xsl -- \
+	$(PYTHON) -m pytest_watcher \
+		--patterns='*.py,*.xsl' \
+		--runner=$(VENV)/bin/python \
+		. \
+		-m pytest \
 		-p no:cacheprovider -p no:warnings $(ARGS)
 
 

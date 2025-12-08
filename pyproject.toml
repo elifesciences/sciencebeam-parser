@@ -33,7 +33,7 @@ dev = [
     "mypy>=1.19.0",
     "pylint>=3.3.9",
     "pytest>=8.4.2",
-    "pytest-watch==4.2.0",
+    "pytest-watcher>=0.4.3",
     "types-pyyaml>=6.0.12.12",
     "types-setuptools==57.4.9",
 ]
@@ -55,3 +55,10 @@ explicit = true
 
 [tool.setuptools.packages.find]
 include = ["sciencebeam_parser*"]
+
+[tool.pytest-watcher]
+now = true
+clear = false
+delay = 0.2
+runner = ".venv/bin/python"
+runner_args = ["-m", "pytest"]
