@@ -100,10 +100,12 @@ dev-start-debug:
 
 
 dev-start-no-debug-logging-auto-reload:
-	FLASK_ENV=development \
-	FLASK_DEBUG=1 \
-	SCIENCEBEAM_PARSER__LOGGING__HANDLERS__LOG_FILE__LEVEL=INFO \
-	$(MAKE) dev-start
+	$(PYTHON) -m uvicorn \
+		sciencebeam_parser.service.server:create_app \
+		--reload \
+		--factory \
+		--host 127.0.0.1 \
+		--port $(SCIENCEBEAM_PARSER_PORT)
 
 
 dev-start-no-debug-logging-auto-reload-with-cv-and-ocr:

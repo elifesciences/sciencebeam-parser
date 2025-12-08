@@ -2,13 +2,15 @@ import argparse
 import logging
 import os
 from logging.config import dictConfig
+from typing import Optional, Sequence
 
-from flask import Flask
+from fastapi import FastAPI
+import uvicorn
 
 from sciencebeam_parser.app.parser import ScienceBeamParser
 from sciencebeam_parser.config.config import AppConfig
-from sciencebeam_parser.service.blueprints.index import IndexBlueprint
-from sciencebeam_parser.service.blueprints.api import ApiBlueprint
+from sciencebeam_parser.service.routers.api import create_api_app
+from sciencebeam_parser.service.routers.index import create_index_router
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
 
 
@@ -17,29 +19,33 @@ LOGGER = logging.getLogger(__name__)
 
 def create_app_for_parser(
     sciencebeam_parser: ScienceBeamParser
-):
-    app = Flask(__name__)
+) -> FastAPI:
+    app = FastAPI(title='ScienceBeam Parser')
 
-    index = IndexBlueprint()
-    app.register_blueprint(index, url_prefix='/')
+    index_router = create_index_router()
+    app.include_router(index_router, include_in_schema=False)
 
-    api = ApiBlueprint(sciencebeam_parser)
-    app.register_blueprint(api, url_prefix='/api')
+    api_app = create_api_app(sciencebeam_parser)
+    app.mount('/api', api_app)
 
     return app
 
 
-def create_app_for_config(config: AppConfig):
+def create_app_for_config(config: AppConfig) -> FastAPI:
     return create_app_for_parser(
         ScienceBeamParser.from_config(config)
     )
 
 
-def create_app(config: AppConfig):
-    return create_app_for_config(config)
+def get_app_config() -> AppConfig:
+    return AppConfig.load_yaml(DEFAULT_CONFIG_FILE).apply_environment_variables()
 
 
-def parse_args(argv=None):
+def create_app() -> FastAPI:
+    return create_app_for_config(get_app_config())
+
+
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--host', required=False,
@@ -53,9 +59,9 @@ def parse_args(argv=None):
     return parsed_args
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None):
     args = parse_args(argv)
-    config = AppConfig.load_yaml(DEFAULT_CONFIG_FILE).apply_environment_variables()
+    config = get_app_config()
     logging_config = config.get('logging')
     if logging_config:
         for handler_config in logging_config.get('handlers', {}).values():
@@ -72,7 +78,11 @@ def main(argv=None):
             raise
     LOGGER.info('app config: %s', config)
     app = create_app_for_config(config)
-    app.run(port=args.port, host=args.host, threaded=True)
+    uvicorn.run(
+        app,
+        port=args.port,
+        host=args.host
+    )
 
 
 if __name__ == "__main__":
