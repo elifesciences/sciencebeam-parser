@@ -3,14 +3,14 @@ import re
 from typing import Iterable, Mapping, Optional, Tuple
 
 from sciencebeam_parser.document.semantic_document import (
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticRawAddress,
     SemanticRawAffiliation,
     SemanticRawAffiliationAddress,
     SemanticTitle,
     SemanticAbstract,
-    SemanticRawAuthors
+    SemanticRawAuthors,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutTokensText
 from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 ABSTRACT_REGEX = r'^(?:(?:abstract|summary|résumé|abrégé|a b s t r a c t)(?:[.:])?)?\s*(.*)'
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<author>': SemanticRawAuthors,
     '<affiliation>': SemanticRawAffiliation,
     '<address>': SemanticRawAddress

@@ -29,9 +29,9 @@ cv = [
 
 [dependency-groups]
 dev = [
-    "flake8==4.0.1",
-    "mypy==0.931",
-    "pylint==2.12.2",
+    "flake8>=4.0.1",
+    "mypy>=1.19.0",
+    "pylint>=3.3.9",
     "pytest==7.0.1",
     "pytest-watch==4.2.0",
     "types-pyyaml>=6.0.12.12",

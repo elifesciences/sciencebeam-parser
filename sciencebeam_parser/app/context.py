@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from typing_extensions import Protocol
 
@@ -16,7 +16,7 @@ class DownloadManagerProtocol(Protocol):
 
     def download(
         self, file_url: str,
-        local_file: str = None,
+        local_file: Optional[str] = None,
         auto_uncompress: bool = True,
         skip_if_downloaded: bool = True
     ) -> str:

@@ -88,7 +88,11 @@ def auto_uploading_binary_output_file(filepath: str, **kwargs):
         file_dirname = os.path.dirname(filepath)
         if file_dirname:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open_file(filepath, mode='wb', **kwargs) as fp:
+        with open_file(  # pylint: disable=contextmanager-generator-missing-cleanup
+            filepath,
+            mode='wb',
+            **kwargs
+        ) as fp:
             yield fp
             return
     with _auto_uploading_output_file(filepath, 'wb', **kwargs) as fp:
@@ -97,7 +101,10 @@ def auto_uploading_binary_output_file(filepath: str, **kwargs):
 
 @contextmanager
 def auto_uploading_text_output_file(filepath: str, encoding: str, **kwargs):
-    with auto_uploading_binary_output_file(filepath, **kwargs) as fp:
+    with auto_uploading_binary_output_file(  # noqa pylint: disable=contextmanager-generator-missing-cleanup
+        filepath,
+        **kwargs
+    ) as fp:
         yield codecs.getwriter(encoding)(fp)
 
 

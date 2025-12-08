@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -36,7 +36,7 @@ class MockDownloadManager(DownloadManager):
     def download(
         self,
         file_url: str,
-        local_file: str = None,
+        local_file: Optional[str] = None,
         auto_uncompress: bool = True,
         skip_if_downloaded: bool = True
     ) -> str:

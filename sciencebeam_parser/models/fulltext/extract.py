@@ -3,7 +3,6 @@ import re
 from typing import Iterable, Mapping, Optional, Tuple
 
 from sciencebeam_parser.document.semantic_document import (
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticFigureCitation,
     SemanticHeading,
@@ -18,7 +17,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticSection,
     SemanticSectionTypes,
     SemanticTableCitation,
-    SemanticTitle
+    SemanticTitle,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutTokensText
 from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
@@ -27,13 +27,13 @@ from sciencebeam_parser.models.extract import SimpleModelSemanticExtractor
 LOGGER = logging.getLogger(__name__)
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<figure>': SemanticRawFigure,
     '<table>': SemanticRawTable
 }
 
 
-PARAGRAPH_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+PARAGRAPH_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<figure_marker>': SemanticFigureCitation,
     '<table_marker>': SemanticTableCitation,
     '<citation_marker>': SemanticReferenceCitation

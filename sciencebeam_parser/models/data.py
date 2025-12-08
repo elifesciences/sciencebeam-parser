@@ -502,6 +502,7 @@ class ContextAwareLayoutTokenFeatures(  # pylint: disable=too-many-public-method
     def __init__(  # pylint: disable=too-many-locals
         self,
         layout_token: LayoutToken,
+        *,
         layout_line: LayoutLine,
         document_features_context: DocumentFeaturesContext,
         previous_layout_token: Optional[LayoutToken] = None,

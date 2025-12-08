@@ -95,17 +95,20 @@ class TestAltoParser:
         assert font.is_superscript is True
 
     def test_should_parse_illustration_as_layout_graphic(self):
-        page = AltoParser().parse_page(ALTO_E.Page(ALTO_E.PrintSpace(
-            ALTO_E.Illustration(
-                ID='graphic1',
-                HPOS=str(COORDINATES_1.x),
-                VPOS=str(COORDINATES_1.y),
-                WIDTH=str(COORDINATES_1.width),
-                HEIGHT=str(COORDINATES_1.height),
-                FILEID="/path/to/graphic.svg",
-                TYPE="svg"
-            )
-        )), page_index=(COORDINATES_1.page_number - 1))
+        page = AltoParser().parse_page(
+            ALTO_E.Page(ALTO_E.PrintSpace(
+                ALTO_E.Illustration(
+                    ID='graphic1',
+                    HPOS=str(COORDINATES_1.x),
+                    VPOS=str(COORDINATES_1.y),
+                    WIDTH=str(COORDINATES_1.width),
+                    HEIGHT=str(COORDINATES_1.height),
+                    FILEID="/path/to/graphic.svg",
+                    TYPE="svg"
+                )
+            )),
+            page_index=COORDINATES_1.page_number - 1
+        )
         assert len(page.graphics) == 1
         graphic = page.graphics[0]
         assert graphic.local_file_path == '/path/to/graphic.svg'
