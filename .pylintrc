@@ -11,10 +11,10 @@ ignored-classes=ElementMaker
 [MESSAGES CONTROL]
 disable=
     missing-docstring,
-    no-self-use,
     too-few-public-methods,
     too-many-arguments,
     too-many-instance-attributes,
+    too-many-positional-arguments,
     consider-using-f-string,
     duplicate-code,
     invalid-name

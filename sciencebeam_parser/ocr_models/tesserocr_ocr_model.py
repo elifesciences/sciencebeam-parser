@@ -43,7 +43,7 @@ class TesserComputerVisionModel(OpticalCharacterRecognitionModel):
             'creating tesser api with oem=%r, psm=%r, lang=%r',
             self.oem, self.psm, self.lang
         )
-        return PyTessBaseAPI(
+        return PyTessBaseAPI(  # pylint: disable=unnecessary-dunder-call
             oem=self.oem,
             psm=self.psm,
             lang=self.lang

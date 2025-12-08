@@ -814,6 +814,7 @@ class CitationModelTrainingDataGenerator(AbstractDocumentModelTrainingDataGenera
 
 def generate_training_data_for_layout_document(
     layout_document: LayoutDocument,
+    *,
     output_path: str,
     source_filename: str,
     document_features_context: DocumentFeaturesContext,
@@ -868,6 +869,7 @@ def get_layout_document_for_source_filename(
 
 def generate_training_data_for_source_filename(
     source_filename: str,
+    *,
     output_path: str,
     sciencebeam_parser: ScienceBeamParser,
     use_model: bool,

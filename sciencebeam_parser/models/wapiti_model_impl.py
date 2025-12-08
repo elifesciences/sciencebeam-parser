@@ -32,9 +32,10 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
 
     @staticmethod
     def load_from(
-            model_path: str,
-            download_manager: DownloadManager,
-            wapiti_binary_path: str = None) -> 'WapitiModelAdapter':
+        model_path: str,
+        download_manager: DownloadManager,
+        wapiti_binary_path: Optional[str] = None
+    ) -> 'WapitiModelAdapter':
         # overriding method to return WapitiServiceModelAdapter
         model_file_path = os.path.join(model_path, 'model.wapiti.gz')
         model_file_paths = [model_file_path, os.path.splitext(model_file_path)[0]]
@@ -76,7 +77,7 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
         self,
         x: np.ndarray,
         features: np.ndarray,
-        output_format: str = None
+        output_format: Optional[str] = None
     ) -> List[List[Tuple[str, str]]]:
         prev_wapiti_timeout_counter = self._wapiti_timeout_counter
         timer = threading.Timer(self._wapiti_timeout, self.on_wapiti_timeout)
@@ -91,7 +92,7 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
         self,
         x: np.ndarray,
         features: np.ndarray,
-        output_format: str = None
+        output_format: Optional[str] = None
     ) -> List[List[Tuple[str, str]]]:
         attempt = 0
         while True:
@@ -111,7 +112,7 @@ class WapitiServiceModelAdapter(WapitiModelAdapter):
         self,
         x: np.ndarray,
         features: np.ndarray,
-        output_format: str = None
+        output_format: Optional[str] = None
     ) -> Iterable[List[Tuple[str, str]]]:
         # by default, WapitiModelAdapter will run the binary for each call
         # using "iter_tag_using_model" will result in a wapiti process

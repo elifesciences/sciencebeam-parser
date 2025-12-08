@@ -171,6 +171,7 @@ class AbstractTeiTrainingDataGenerator(TeiTrainingDataGenerator):
         self,
         root_training_xml_element_path: Sequence[str],
         training_xml_element_path_by_label: Mapping[str, Sequence[str]],
+        *,
         root_tag: str = 'tei',
         use_tei_namespace: bool = True,
         element_maker: Optional[ElementMaker] = None,

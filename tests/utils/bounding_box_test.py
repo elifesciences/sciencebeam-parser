@@ -57,7 +57,9 @@ class TestBoundingBox:
         assert BoundingBox(11, 12, 101, 102) != BoundingBox(11, 12, 101, 999)
 
     def test_should_not_equal_none(self):
-        assert not BoundingBox(11, 12, 101, 102).__eq__(None)
+        assert not BoundingBox(  # pylint: disable=unnecessary-dunder-call
+            11, 12, 101, 102
+        ).__eq__(None)
 
     def test_should_indicate_empty_with_zero_width(self):
         bounding_box = BoundingBox(0, 0, 0, 100)

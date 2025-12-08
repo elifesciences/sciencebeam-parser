@@ -5,7 +5,6 @@ from sciencebeam_parser.utils.misc import iter_ids
 from sciencebeam_parser.document.semantic_document import (
     SemanticAddressLine,
     SemanticAffiliationAddress,
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticCountry,
     SemanticDepartment,
@@ -16,7 +15,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticPostBox,
     SemanticPostCode,
     SemanticRegion,
-    SemanticSettlement
+    SemanticSettlement,
+    T_SemanticContentFactory
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock
 from sciencebeam_parser.models.extract import (
@@ -28,7 +28,7 @@ from sciencebeam_parser.models.extract import (
 LOGGER = logging.getLogger(__name__)
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<institution>': SemanticInstitution,
     '<department>': SemanticDepartment,
     '<laboratory>': SemanticLaboratory,

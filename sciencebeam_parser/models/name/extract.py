@@ -4,7 +4,6 @@ from typing import Iterable, List, Mapping, Optional, Tuple, Type, Union, cast
 
 from sciencebeam_parser.document.semantic_document import (
     SemanticAuthor,
-    SemanticContentFactoryProtocol,
     SemanticContentWrapper,
     SemanticMarker,
     SemanticMiddleName,
@@ -15,6 +14,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticNote,
     SemanticGivenName,
     SemanticSurname,
+    T_SemanticContentFactory,
     T_SemanticName
 )
 from sciencebeam_parser.document.layout_document import LayoutBlock, LayoutDocument, LayoutToken
@@ -27,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 SPLIT_ON_SECOND_ENTIY_NAME = {'<title>', '<forename>', '<surname>'}
 
 
-SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, SemanticContentFactoryProtocol] = {
+SIMPLE_SEMANTIC_CONTENT_CLASS_BY_TAG: Mapping[str, T_SemanticContentFactory] = {
     '<title>': SemanticNameTitle,
     '<forename>': SemanticGivenName,
     '<middlename>': SemanticMiddleName,
