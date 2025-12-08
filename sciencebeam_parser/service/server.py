@@ -41,7 +41,25 @@ def get_app_config() -> AppConfig:
     return AppConfig.load_yaml(DEFAULT_CONFIG_FILE).apply_environment_variables()
 
 
+def apply_logging_config(logging_config: Optional[dict] = None):
+    if logging_config:
+        for handler_config in logging_config.get('handlers', {}).values():
+            filename = handler_config.get('filename')
+            if not filename:
+                continue
+            dirname = os.path.dirname(filename)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+        try:
+            dictConfig(logging_config)
+        except ValueError:
+            LOGGER.info('logging_config: %r', logging_config)
+            raise
+
+
 def create_app() -> FastAPI:
+    config = get_app_config()
+    apply_logging_config(config.get('logging'))
     return create_app_for_config(get_app_config())
 
 
@@ -62,20 +80,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[Sequence[str]] = None):
     args = parse_args(argv)
     config = get_app_config()
-    logging_config = config.get('logging')
-    if logging_config:
-        for handler_config in logging_config.get('handlers', {}).values():
-            filename = handler_config.get('filename')
-            if not filename:
-                continue
-            dirname = os.path.dirname(filename)
-            if dirname:
-                os.makedirs(dirname, exist_ok=True)
-        try:
-            dictConfig(logging_config)
-        except ValueError:
-            LOGGER.info('logging_config: %r', logging_config)
-            raise
+    apply_logging_config(config.get('logging'))
     LOGGER.info('app config: %s', config)
     app = create_app_for_config(config)
     uvicorn.run(
