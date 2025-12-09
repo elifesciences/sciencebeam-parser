@@ -15,6 +15,7 @@ from sciencebeam_parser.service.api.dependencies import (
     get_sciencebeam_parser_session_source_dependency_factory,
     get_media_data_wrapper
 )
+from sciencebeam_parser.service.api.routers.low_level import create_low_level_router
 from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 
 
@@ -26,6 +27,8 @@ def create_api_app(
 ) -> FastAPI:
     app = FastAPI()
     app.state.sciencebeam_parser = sciencebeam_parser
+
+    app.include_router(create_low_level_router())
 
     @app.get('/')
     def api_root() -> dict:
