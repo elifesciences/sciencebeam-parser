@@ -3,8 +3,10 @@ from typing import Annotated
 
 from fastapi import (
     Depends,
-    FastAPI
+    FastAPI,
+    Request
 )
+from fastapi.responses import JSONResponse
 
 
 from sciencebeam_parser.app.parser import (
@@ -35,6 +37,17 @@ def create_api_app(
         fulltext_processor_config=sciencebeam_parser.fulltext_processor_config
     ))
     app.include_router(create_convert_router())
+
+    @app.exception_handler(Exception)
+    async def log_unhandled_exceptions(
+        request: Request,
+        exc: Exception  # pylint: disable=unused-argument
+    ):
+        LOGGER.exception("Unhandled exception on %s %s", request.method, request.url)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"},
+        )
 
     @app.get('/')
     def api_root() -> dict:
