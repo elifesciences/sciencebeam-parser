@@ -25,6 +25,8 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticRawAffiliationAddress,
     SemanticRawAuthors,
     SemanticRawFigure,
+    SemanticRawReference,
+    SemanticRawReferenceText,
     SemanticRawTable,
     T_SemanticContentWrapper,
     iter_by_semantic_type_recursively
@@ -344,6 +346,40 @@ class AffiliationAddressModelRouterFactory(SegmentedModelRouterFactory):
         ]
 
 
+class CitationModelRouterFactory(SegmentedModelRouterFactory):
+    def __init__(self, *args, reference_segmenter_model: Model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reference_segmenter_model = reference_segmenter_model
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        references_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<references>'
+        )
+        labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
+            references_layout_document,
+            app_features_context=self.app_features_context
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_references = list(
+            SemanticMixedContentWrapper(list(
+                self.reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawReference)
+        )
+        LOGGER.info('semantic_raw_references count: %d', len(semantic_raw_references))
+        return [
+            LayoutDocument.for_blocks(
+                [semantic_raw_reference.view_by_type(SemanticRawReferenceText).merged_block]
+            ).remove_empty_blocks()
+            for semantic_raw_reference in semantic_raw_references
+        ]
+
+
 class FullTextChildModelRouterFactory(SegmentedModelRouterFactory):
     def __init__(
         self,
@@ -507,6 +543,19 @@ def create_models_router(
             segmentation_labels=['<references>']
         ).create_router(),
         prefix='/models/reference-segmenter'
+    )
+
+    router.include_router(
+        CitationModelRouterFactory(
+            'Citation (Reference)',
+            model=fulltext_models.citation_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<references>'],
+            reference_segmenter_model=fulltext_models.reference_segmenter_model
+        ).create_router(),
+        prefix='/models/citation'
     )
 
     return router
