@@ -2,7 +2,6 @@ import logging
 from typing import Annotated, Iterator, Optional, Protocol
 
 from fastapi import (
-    Body,
     Depends,
     FastAPI,
     File,
@@ -47,23 +46,26 @@ def get_media_data_wrapper_for_upload_file(
     )
 
 
-def resolve_media_data(
-    file: Optional[UploadFile] = File(None),
-    input: Optional[UploadFile] = File(None),  # pylint: disable=redefined-builtin
-    body: Optional[bytes] = Body(None),
+async def resolve_media_data(
+    request: Request,
+    input: Annotated[Optional[UploadFile], File()] = None,  # pylint: disable=redefined-builtin
     filename: Optional[str] = None,
 ) -> MediaDataWrapper:
-    provided = [x for x in (file, input, body) if x is not None]
-    if len(provided) > 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="provide exactly one of 'file', 'input' or raw body",
-        )
-    if file is not None:
-        return get_media_data_wrapper_for_upload_file(file)
+    """
+    Prefer the documented `input` param, but also accept:
+    - legacy 'file' field in multipart form
+    - raw request body
+    """
     if input is not None:
         return get_media_data_wrapper_for_upload_file(input)
-    if body is not None:
+
+    form = await request.form()
+    file = form.get('file')
+    if isinstance(input, UploadFile):
+        return get_media_data_wrapper_for_upload_file(file)
+
+    body = await request.body()
+    if body:
         return MediaDataWrapper(
             data=body,
             media_type=MediaTypes.OCTET_STREAM,
