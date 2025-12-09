@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Annotated, Iterable, Sequence
+from typing import Annotated, Iterable, Optional, Sequence
 
 from lxml import etree
 
@@ -87,14 +87,17 @@ class ModelResponseRouterFactory:
         return router
 
     def iter_filter_layout_document(
-        self, layout_document: LayoutDocument
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict  # pylint: disable=unused-argument
     ) -> Iterable[LayoutDocument]:
         return [layout_document]
 
     def handle_post(  # pylint: disable=too-many-locals
         self,
         source: ScienceBeamParserSessionSource,
-        output_format: str
+        output_format: str,
+        filter_params: Optional[dict] = None
     ):
         with TemporaryDirectory(suffix='-request') as temp_dir:
             temp_path = Path(temp_dir)
@@ -115,7 +118,8 @@ class ModelResponseRouterFactory:
             layout_document_iterable = self.iter_filter_layout_document(
                 normalize_layout_document(
                     parse_alto_root(root)
-                )
+                ),
+                filter_params=(filter_params or {})
             )
             data_generator = self.model.get_data_generator(
                 DocumentFeaturesContext(
@@ -169,6 +173,35 @@ class SegmentedModelRouterFactory(ModelResponseRouterFactory):
         self.segmentation_model = segmentation_model
         self.segmentation_labels = segmentation_labels
 
+    def create_router(self) -> APIRouter:
+        router = APIRouter()
+
+        @router.post('', description=self.model_name)
+        def process_post(
+            source: Annotated[
+                ScienceBeamParserSessionSource,
+                Depends(
+                    get_sciencebeam_parser_session_source_dependency_factory()
+                )
+            ],
+            output_format: Annotated[
+                str,
+                Query(json_schema_extra={
+                    'enum': VALID_MODEL_OUTPUT_FORMATS
+                })
+            ] = DEFAULT_MODEL_OUTPUT_FORMAT,
+            no_use_segmentation: bool = False
+        ) -> FileResponse:
+            LOGGER.info('model_name: %r', self.model_name)
+            return self.handle_post(
+                source=source,
+                output_format=output_format,
+                filter_params={
+                    'no_use_segmentation': no_use_segmentation
+                }
+            )
+        return router
+
     def iter_filter_layout_document_by_segmentation_labels(
         self,
         layout_document: LayoutDocument,
@@ -193,6 +226,29 @@ class SegmentedModelRouterFactory(ModelResponseRouterFactory):
                 )
                 continue
             yield layout_document
+
+    def filter_layout_document_by_segmentation_label(
+        self,
+        layout_document: LayoutDocument,
+        segmentation_label: str
+    ) -> LayoutDocument:
+        for filtered_layout_document in self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document,
+            segmentation_labels=[segmentation_label]
+        ):
+            return filtered_layout_document
+        return LayoutDocument(pages=[])
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        if filter_params['no_use_segmentation']:
+            return [layout_document]
+        return self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document, segmentation_labels=self.segmentation_labels
+        )
 
 
 def create_models_router(
