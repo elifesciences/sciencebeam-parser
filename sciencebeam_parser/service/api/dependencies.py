@@ -1,10 +1,11 @@
 import logging
-from typing import Annotated, Iterator, Optional, Protocol
+from typing import Annotated, Iterator, Optional, Protocol, Sequence
 
 from fastapi import (
     Depends,
     File,
     HTTPException,
+    Header,
     Request,
     UploadFile,
     status
@@ -119,3 +120,35 @@ def get_sciencebeam_parser_session_source_dependency_factory(
         )
 
     return get_source
+
+
+class GetResponseMediaTypeDependencyFactory(Protocol):
+    def __call__(self, *args, **kwargs) -> str:
+        pass
+
+
+def assert_and_get_first_accept_matching_media_type_factory(
+    available_media_types: Sequence[str]
+) -> GetResponseMediaTypeDependencyFactory:
+    def get_media_type(
+        *,
+        accept: Annotated[Optional[str], Header(alias="Accept")] = None,
+    ) -> str:
+        # no Accept → default to first supported type
+        if not accept:
+            return available_media_types[0]
+
+        # very simple matching; extend if you need full RFC handling
+        if accept == "*/*":
+            return available_media_types[0]
+
+        for media_type in available_media_types:
+            if media_type in accept:
+                return media_type
+
+        raise HTTPException(
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
+            detail=f"Supported media types: {', '.join(available_media_types)}",
+        )
+
+    return get_media_type
