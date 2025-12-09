@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 
 from sciencebeam_parser.app.parser import (
     ScienceBeamParser,
-    ScienceBeamParserSessionSource
+    ScienceBeamParserSessionSource,
+    UnsupportedRequestMediaTypeScienceBeamParserError
 )
 from sciencebeam_parser.service.api.dependencies import (
     get_sciencebeam_parser_session_source_dependency_factory,
@@ -47,6 +48,17 @@ def create_api_app(
         return JSONResponse(
             status_code=500,
             content={"detail": "Internal Server Error"},
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unsupported_request_media_type(
+        request: Request,
+        exc: UnsupportedRequestMediaTypeScienceBeamParserError  # pylint: disable=unused-argument
+    ):
+        LOGGER.info("Unsupported request media type: %s", exc)
+        return JSONResponse(
+            status_code=406,
+            content={"detail": str(exc)},
         )
 
     @app.get('/')
