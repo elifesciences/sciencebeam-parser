@@ -9,43 +9,14 @@ from sciencebeam_parser.service.api.dependencies import (
     assert_and_get_first_accept_matching_media_type_factory,
     get_sciencebeam_parser_session_source_dependency_factory
 )
+from sciencebeam_parser.service.api.routers.docs import (
+    TEI_AND_JATS_XML_CONTENT_DOC,
+    TEI_AND_JATS_ZIP_CONTENT_DOC
+)
 from sciencebeam_parser.utils.media_types import MediaTypes
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-TEI_XML_CONTENT_DOC = {
-    "schema": {"type": "string", "format": "xml"},
-    "example": "<TEI>...</TEI>"
-}
-
-
-JATS_XML_CONTENT_DOC = {
-    "schema": {"type": "string", "format": "xml"},
-    "example": "<article>...</article>"
-}
-
-
-TEI_ZIP_CONTENT_DOC = {
-    "schema": {"type": "string", "format": "zip"},
-}
-
-
-JATS_ZIP_CONTENT_DOC = {
-    "schema": {"type": "string", "format": "zip"},
-}
-
-
-TEI_AND_JATS_XML_CONTENT_DOC = {
-    MediaTypes.TEI_XML: TEI_XML_CONTENT_DOC,
-    MediaTypes.JATS_XML: JATS_XML_CONTENT_DOC
-}
-
-TEI_AND_JATS_ZIP_CONTENT_DOC = {
-    MediaTypes.TEI_ZIP: TEI_XML_CONTENT_DOC,
-    MediaTypes.JATS_ZIP: JATS_XML_CONTENT_DOC
-}
 
 
 def get_processed_source_to_response_media_type(
