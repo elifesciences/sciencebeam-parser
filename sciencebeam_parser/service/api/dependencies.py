@@ -85,7 +85,7 @@ def get_sciencebeam_parser_session_dependency_factory(
 ) -> ScienceBeamParserSessionDependencyFactory:
     def get_session(
         *,
-        sciencebeam_parser: ScienceBeamParser = Depends(get_sciencebeam_parser)
+        sciencebeam_parser: Annotated[ScienceBeamParser, Depends(get_sciencebeam_parser)]
     ) -> Iterator[ScienceBeamParserSession]:
         with sciencebeam_parser.get_new_session(**session_kwargs) as session:
             yield session
@@ -98,10 +98,13 @@ def get_sciencebeam_parser_session_source_dependency_factory(
 ) -> ScienceBeamParserSessionSourceDependencyFactory:
     def get_source(
         *,
-        session: ScienceBeamParserSession = Depends(
-            get_sciencebeam_parser_session_dependency_factory(**session_kwargs)
-        ),
-        data_wrapper: MediaDataWrapper = Depends(get_media_data_wrapper),
+        session: Annotated[
+            ScienceBeamParserSession,
+            Depends(
+                get_sciencebeam_parser_session_dependency_factory(**session_kwargs)
+            )
+        ],
+        data_wrapper: Annotated[MediaDataWrapper, Depends(get_media_data_wrapper)],
     ) -> Iterator[ScienceBeamParserSessionSource]:
         source_path = session.temp_path / "source.file"
         source_path.write_bytes(data_wrapper.data)
