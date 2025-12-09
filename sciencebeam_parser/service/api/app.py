@@ -34,9 +34,7 @@ def create_api_app(
     app.include_router(create_grobid_router(
         fulltext_processor_config=sciencebeam_parser.fulltext_processor_config
     ))
-    app.include_router(create_convert_router(
-        fulltext_processor_config=sciencebeam_parser.fulltext_processor_config
-    ))
+    app.include_router(create_convert_router())
 
     @app.get('/')
     def api_root() -> dict:

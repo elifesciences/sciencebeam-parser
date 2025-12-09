@@ -1,13 +1,19 @@
 import logging
-from typing import Annotated
-from fastapi import APIRouter, Depends
+from typing import Annotated, Iterator, Optional
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 
-from sciencebeam_parser.app.parser import ScienceBeamParserSessionSource
-from sciencebeam_parser.processors.fulltext.config import FullTextProcessorConfig
+from sciencebeam_parser.app.parser import (
+    ScienceBeamParser,
+    ScienceBeamParserSession,
+    ScienceBeamParserSessionSource
+)
 from sciencebeam_parser.service.api.dependencies import (
+    ScienceBeamParserSessionDependencyFactory,
+    ScienceBeamParserSessionSourceDependencyFactory,
     assert_and_get_first_accept_matching_media_type_factory,
-    get_sciencebeam_parser_session_source_dependency_factory
+    get_media_data_wrapper,
+    get_sciencebeam_parser
 )
 from sciencebeam_parser.service.api.routers.docs import (
     PDF_CONTENT_DOC,
@@ -15,15 +21,67 @@ from sciencebeam_parser.service.api.routers.docs import (
     TEI_AND_JATS_ZIP_CONTENT_DOC
 )
 from sciencebeam_parser.service.api.routers.utils import get_processed_source_to_response_media_type
+from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 from sciencebeam_parser.utils.media_types import MediaTypes
+from sciencebeam_parser.utils.text import parse_comma_separated_value
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-def create_convert_router(
-    fulltext_processor_config: FullTextProcessorConfig
-) -> APIRouter:
+def get_convert_sciencebeam_parser_session_dependency_factory(
+) -> ScienceBeamParserSessionDependencyFactory:
+    def get_session(
+        *,
+        sciencebeam_parser: Annotated[ScienceBeamParser, Depends(get_sciencebeam_parser)],
+        first_page: Optional[int] = None,
+        last_page: Optional[int] = None,
+        includes: Annotated[
+            Optional[str],
+            Query(description="Comma-separated list of requested fields, e.g. title,abstract")
+        ] = None
+    ) -> Iterator[ScienceBeamParserSession]:
+        includes_list = parse_comma_separated_value(includes or '')
+        LOGGER.info('includes_list: %r', includes_list)
+        fulltext_processor_config = (
+            sciencebeam_parser
+            .fulltext_processor_config
+            .get_for_requested_field_names(set(includes_list))
+        )
+        with sciencebeam_parser.get_new_session(
+            fulltext_processor_config=fulltext_processor_config
+        ) as session:
+            session.document_request_parameters.first_page = first_page
+            session.document_request_parameters.last_page = last_page
+            yield session
+
+    return get_session
+
+
+def get_convert_sciencebeam_parser_session_source_dependency_factory(
+) -> ScienceBeamParserSessionSourceDependencyFactory:
+    def get_source(
+        *,
+        session: Annotated[
+            ScienceBeamParserSession,
+            Depends(
+                get_convert_sciencebeam_parser_session_dependency_factory()
+            )
+        ],
+        data_wrapper: Annotated[MediaDataWrapper, Depends(get_media_data_wrapper)],
+    ) -> Iterator[ScienceBeamParserSessionSource]:
+        source_path = session.temp_path / "source.file"
+        source_path.write_bytes(data_wrapper.data)
+
+        yield session.get_source(
+            source_path=str(source_path),
+            source_media_type=data_wrapper.media_type,
+        )
+
+    return get_source
+
+
+def create_convert_router() -> APIRouter:
     router = APIRouter(tags=['convert'])
 
     @router.post(
@@ -44,9 +102,7 @@ def create_convert_router(
         source: Annotated[
             ScienceBeamParserSessionSource,
             Depends(
-                get_sciencebeam_parser_session_source_dependency_factory(
-                    fulltext_processor_config=fulltext_processor_config.get_for_header_document()
-                )
+                get_convert_sciencebeam_parser_session_source_dependency_factory()
             )
         ],
         response_media_type: Annotated[
