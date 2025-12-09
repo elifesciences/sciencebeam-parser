@@ -85,9 +85,13 @@ def get_sciencebeam_parser_session_dependency_factory(
 ) -> ScienceBeamParserSessionDependencyFactory:
     def get_session(
         *,
-        sciencebeam_parser: Annotated[ScienceBeamParser, Depends(get_sciencebeam_parser)]
+        sciencebeam_parser: Annotated[ScienceBeamParser, Depends(get_sciencebeam_parser)],
+        first_page: Optional[int] = None,
+        last_page: Optional[int] = None
     ) -> Iterator[ScienceBeamParserSession]:
         with sciencebeam_parser.get_new_session(**session_kwargs) as session:
+            session.document_request_parameters.first_page = first_page
+            session.document_request_parameters.last_page = last_page
             yield session
 
     return get_session
