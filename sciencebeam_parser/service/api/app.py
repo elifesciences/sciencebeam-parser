@@ -13,7 +13,7 @@ from sciencebeam_parser.app.parser import (
 )
 from sciencebeam_parser.service.api.dependencies import (
     get_sciencebeam_parser_session_source_dependency_factory,
-    resolve_media_data
+    get_media_data_wrapper
 )
 from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 
@@ -35,7 +35,7 @@ def create_api_app(
 
     @app.post("/process")
     def process(
-        media: MediaDataWrapper = Depends(resolve_media_data)
+        media: MediaDataWrapper = Depends(get_media_data_wrapper)
     ):
         LOGGER.info('file: %r, input: %r', media.filename, media.media_type)
         return f'test: {media.filename}, {media.media_type}'

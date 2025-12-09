@@ -45,7 +45,7 @@ def get_media_data_wrapper_for_upload_file(
     )
 
 
-async def resolve_media_data(
+async def get_media_data_wrapper(
     request: Request,
     input: Annotated[Optional[UploadFile], File()] = None,  # pylint: disable=redefined-builtin
     filename: Optional[str] = None,
@@ -101,7 +101,7 @@ def get_sciencebeam_parser_session_source_dependency_factory(
         session: ScienceBeamParserSession = Depends(
             get_sciencebeam_parser_session_dependency_factory(**session_kwargs)
         ),
-        data_wrapper: MediaDataWrapper = Depends(resolve_media_data),
+        data_wrapper: MediaDataWrapper = Depends(get_media_data_wrapper),
     ) -> Iterator[ScienceBeamParserSessionSource]:
         source_path = session.temp_path / "source.file"
         source_path.write_bytes(data_wrapper.data)
