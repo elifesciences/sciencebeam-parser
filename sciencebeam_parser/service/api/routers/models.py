@@ -22,6 +22,7 @@ from sciencebeam_parser.app.parser import (
 from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
+    SemanticRawAffiliationAddress,
     SemanticRawAuthors
 )
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
@@ -305,6 +306,40 @@ class NameHeaderModelRouterFactory(SegmentedModelRouterFactory):
         ]
 
 
+class AffiliationAddressModelRouterFactory(SegmentedModelRouterFactory):
+    def __init__(self, *args, header_model: Model, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.header_model = header_model
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        header_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<header>'
+        )
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
+            header_layout_document,
+            app_features_context=self.app_features_context
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_aff_address_list = list(
+            SemanticMixedContentWrapper(list(
+                self.header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawAffiliationAddress)
+        )
+        LOGGER.info('semantic_raw_aff_address_list count: %d', len(semantic_raw_aff_address_list))
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_aff_address.iter_blocks())
+            ).remove_empty_blocks()
+            for semantic_raw_aff_address in semantic_raw_aff_address_list
+        ]
+
+
 def create_models_router(
     sciencebeam_parser: ScienceBeamParser
 ) -> APIRouter:
@@ -349,6 +384,19 @@ def create_models_router(
             merge_raw_authors=fulltext_processor_config.merge_raw_authors
         ).create_router(),
         prefix='/models/name-header'
+    )
+
+    router.include_router(
+        AffiliationAddressModelRouterFactory(
+            'Affiliation Address',
+            model=fulltext_models.affiliation_address_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<header>'],
+            header_model=fulltext_models.header_model
+        ).create_router(),
+        prefix='/models/affiliation-address'
     )
 
     return router
