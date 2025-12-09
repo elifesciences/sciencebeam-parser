@@ -15,6 +15,24 @@ from sciencebeam_parser.utils.media_types import MediaTypes
 LOGGER = logging.getLogger(__name__)
 
 
+TEI_XML_CONTENT_DOC = {
+    "schema": {"type": "string", "format": "xml"},
+    "example": "<TEI>...</TEI>"
+}
+
+
+JATS_XML_CONTENT_DOC = {
+    "schema": {"type": "string", "format": "xml"},
+    "example": "<article>...</article>"
+}
+
+
+TEI_AND_JATS_XML_CONTENT_DOC = {
+    MediaTypes.TEI_XML: TEI_XML_CONTENT_DOC,
+    MediaTypes.JATS_XML: JATS_XML_CONTENT_DOC
+}
+
+
 def get_processed_source_to_response_media_type(
     source: ScienceBeamParserSessionSource,
     response_media_type: str
@@ -49,12 +67,7 @@ def create_grobid_router(
         '/processHeaderDocument',
         response_class=FileResponse,
         responses={
-            200: {
-                "content": {
-                    MediaTypes.TEI_XML: {"schema": {"type": "string", "format": "binary"}},
-                    MediaTypes.JATS_XML: {"schema": {"type": "string", "format": "binary"}},
-                },
-            },
+            200: {"content": TEI_AND_JATS_XML_CONTENT_DOC},
             406: {"description": "No acceptable media type"},
         },
     )
