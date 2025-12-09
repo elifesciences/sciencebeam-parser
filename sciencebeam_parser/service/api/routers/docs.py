@@ -23,6 +23,11 @@ JATS_ZIP_CONTENT_DOC = {
 }
 
 
+PDF_CONTENT_DOC = {
+    "schema": {"type": "string", "format": "pdf"},
+}
+
+
 TEI_AND_JATS_XML_CONTENT_DOC = {
     MediaTypes.TEI_XML: TEI_XML_CONTENT_DOC,
     MediaTypes.JATS_XML: JATS_XML_CONTENT_DOC
