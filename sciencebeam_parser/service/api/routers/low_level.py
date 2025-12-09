@@ -18,7 +18,7 @@ class AltoXmlFileResponse(FileResponse):
 
 
 def create_low_level_router() -> APIRouter:
-    router = APIRouter()
+    router = APIRouter(tags=['low-level'])
 
     @router.post('/pdfalto', response_class=AltoXmlFileResponse)
     def pdfalto(
