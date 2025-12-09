@@ -497,4 +497,16 @@ def create_models_router(
         prefix='/models/table'
     )
 
+    router.include_router(
+        SegmentedModelRouterFactory(
+            'Reference Segmenter',
+            model=fulltext_models.reference_segmenter_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<references>']
+        ).create_router(),
+        prefix='/models/reference-segmenter'
+    )
+
     return router
