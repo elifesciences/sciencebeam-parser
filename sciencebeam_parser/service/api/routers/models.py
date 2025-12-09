@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Annotated, Iterable, Optional, Sequence
+from typing import Annotated, Iterable, Optional, Sequence, Type
 
 from lxml import etree
 
@@ -23,7 +23,11 @@ from sciencebeam_parser.document.layout_document import LayoutDocument
 from sciencebeam_parser.document.semantic_document import (
     SemanticMixedContentWrapper,
     SemanticRawAffiliationAddress,
-    SemanticRawAuthors
+    SemanticRawAuthors,
+    SemanticRawFigure,
+    SemanticRawTable,
+    T_SemanticContentWrapper,
+    iter_by_semantic_type_recursively
 )
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
@@ -340,6 +344,60 @@ class AffiliationAddressModelRouterFactory(SegmentedModelRouterFactory):
         ]
 
 
+class FullTextChildModelRouterFactory(SegmentedModelRouterFactory):
+    def __init__(
+        self,
+        *args,
+        fulltext_model: Model,
+        semantic_type: Type[T_SemanticContentWrapper],
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.fulltext_model = fulltext_model
+        self.semantic_type = semantic_type
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        fulltext_layout_documents = list(self.iter_filter_layout_document_by_segmentation_labels(
+            layout_document, self.segmentation_labels
+        ))
+        fulltext_labeled_layout_tokens_list = (
+            self.fulltext_model.predict_labels_for_layout_documents(
+                fulltext_layout_documents,
+                app_features_context=self.app_features_context
+            )
+        )
+        LOGGER.debug('fulltext_labeled_layout_tokens_list: %r', fulltext_labeled_layout_tokens_list)
+        semanti_content_list = [
+            semantic_content
+            for fulltext_labeled_layout_tokens in fulltext_labeled_layout_tokens_list
+            for semantic_content in iter_by_semantic_type_recursively(
+                self.fulltext_model.iter_semantic_content_for_labeled_layout_tokens(
+                    fulltext_labeled_layout_tokens
+                ),
+                self.semantic_type
+            )
+        ]
+        LOGGER.debug('semanti_content_list: %s', semanti_content_list)
+        return [
+            LayoutDocument.for_blocks([semanti_content.merged_block]).remove_empty_blocks()
+            for semanti_content in semanti_content_list
+        ]
+
+
+class FigureModelRouterFactory(FullTextChildModelRouterFactory):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, semantic_type=SemanticRawFigure, **kwargs)
+
+
+class TableModelRouterFactory(FullTextChildModelRouterFactory):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, semantic_type=SemanticRawTable, **kwargs)
+
+
 def create_models_router(
     sciencebeam_parser: ScienceBeamParser
 ) -> APIRouter:
@@ -411,6 +469,32 @@ def create_models_router(
             segmentation_labels=fulltext_segmentation_labels
         ).create_router(),
         prefix='/models/fulltext'
+    )
+
+    router.include_router(
+        FigureModelRouterFactory(
+            'Figure',
+            model=fulltext_models.figure_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=fulltext_segmentation_labels,
+            fulltext_model=fulltext_models.fulltext_model
+        ).create_router(),
+        prefix='/models/figure'
+    )
+
+    router.include_router(
+        TableModelRouterFactory(
+            'Table',
+            model=fulltext_models.table_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=fulltext_segmentation_labels,
+            fulltext_model=fulltext_models.fulltext_model
+        ).create_router(),
+        prefix='/models/table'
     )
 
     return router
