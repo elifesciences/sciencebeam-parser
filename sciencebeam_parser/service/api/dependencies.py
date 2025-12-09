@@ -64,14 +64,23 @@ async def get_media_data_wrapper(
         LOGGER.info('Using file upload `input`')
         return get_media_data_wrapper_for_upload_file(input)
 
-    form = await request.form()
+    content_type = request.headers.get("content-type", "")
+    LOGGER.info("Content-Type: %r", content_type)
+    if (
+        content_type.startswith("multipart/form-data")
+        or content_type.startswith('application/x-www-form')
+    ):
+        form = await request.form()
 
-    file = form.get('file')
-    LOGGER.info('file: %r (%r)', file, type(file))
-    if isinstance(file, StarletteUploadFile):
-        LOGGER.info('Using file upload `file`')
-        return get_media_data_wrapper_for_upload_file(file)
-
+        file = form.get('file')
+        LOGGER.info('file: %r (%r)', file, type(file))
+        if isinstance(file, StarletteUploadFile):
+            LOGGER.info('Using file upload `file`')
+            return get_media_data_wrapper_for_upload_file(file)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="multipart request without 'input' or 'file' field",
+        )
     body = await request.body()
     if body:
         LOGGER.info('Using body as source')
