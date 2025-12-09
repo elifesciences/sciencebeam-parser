@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Annotated, Iterable
+from typing import Annotated, Iterable, Sequence
 
 from lxml import etree
 
@@ -157,6 +157,44 @@ class ModelResponseRouterFactory:
         )
 
 
+class SegmentedModelRouterFactory(ModelResponseRouterFactory):
+    def __init__(
+        self,
+        *args,
+        segmentation_model: Model,
+        segmentation_labels: Sequence[str],
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.segmentation_model = segmentation_model
+        self.segmentation_labels = segmentation_labels
+
+    def iter_filter_layout_document_by_segmentation_labels(
+        self,
+        layout_document: LayoutDocument,
+        segmentation_labels: Sequence[str]
+    ) -> Iterable[LayoutDocument]:
+        assert self.segmentation_model is not None
+        segmentation_label_result = (
+            self.segmentation_model.get_label_layout_document_result(
+                layout_document,
+                app_features_context=self.app_features_context
+            )
+        )
+        for segmentation_label in segmentation_labels:
+            layout_document = segmentation_label_result.get_filtered_document_by_label(
+                segmentation_label
+            ).remove_empty_blocks()
+            if not layout_document:
+                LOGGER.info(
+                    'empty document for segmentation label %r, available labels: %r',
+                    segmentation_label,
+                    segmentation_label_result.get_available_labels()
+                )
+                continue
+            yield layout_document
+
+
 def create_models_router(
     sciencebeam_parser: ScienceBeamParser
 ) -> APIRouter:
@@ -166,11 +204,26 @@ def create_models_router(
     fulltext_models = sciencebeam_parser.fulltext_models
     app_features_context = sciencebeam_parser.app_features_context
 
-    router.include_router(ModelResponseRouterFactory(
-        'Segmentation',
-        model=fulltext_models.segmentation_model,
-        pdfalto_wrapper=pdfalto_wrapper,
-        app_features_context=app_features_context
-    ).create_router(), prefix='/models/segmentation')
+    router.include_router(
+        ModelResponseRouterFactory(
+            'Segmentation',
+            model=fulltext_models.segmentation_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context
+        ).create_router(),
+        prefix='/models/segmentation'
+    )
+
+    router.include_router(
+        SegmentedModelRouterFactory(
+            'Header',
+            model=fulltext_models.header_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<header>']
+        ).create_router(),
+        prefix='/models/header'
+    )
 
     return router
