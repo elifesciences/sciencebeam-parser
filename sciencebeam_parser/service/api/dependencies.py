@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated, Iterator, Optional, Protocol, Sequence
 
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from fastapi import (
     Depends,
     File,
@@ -35,7 +36,7 @@ class ScienceBeamParserSessionSourceDependencyFactory(Protocol):
 
 
 def get_media_data_wrapper_for_upload_file(
-    upload_file: UploadFile,
+    upload_file: StarletteUploadFile,
     filename: Optional[str] = None
 ) -> MediaDataWrapper:
     data = upload_file.file.read()
@@ -57,15 +58,20 @@ async def get_media_data_wrapper(
     - raw request body
     """
     if input is not None:
+        LOGGER.info('Using file upload `input`')
         return get_media_data_wrapper_for_upload_file(input)
 
     form = await request.form()
+
     file = form.get('file')
-    if isinstance(input, UploadFile):
+    LOGGER.info('file: %r (%r)', file, type(file))
+    if isinstance(file, StarletteUploadFile):
+        LOGGER.info('Using file upload `file`')
         return get_media_data_wrapper_for_upload_file(file)
 
     body = await request.body()
     if body:
+        LOGGER.info('Using body as source')
         return MediaDataWrapper(
             data=body,
             media_type=MediaTypes.OCTET_STREAM,
