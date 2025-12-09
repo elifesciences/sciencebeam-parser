@@ -21,6 +21,7 @@ from sciencebeam_parser.service.api.dependencies import (
 from sciencebeam_parser.service.api.routers.convert import create_convert_router
 from sciencebeam_parser.service.api.routers.grobid import create_grobid_router
 from sciencebeam_parser.service.api.routers.low_level import create_low_level_router
+from sciencebeam_parser.service.api.routers.models import create_models_router
 from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
 
 
@@ -38,6 +39,9 @@ def create_api_app(
         fulltext_processor_config=sciencebeam_parser.fulltext_processor_config
     ))
     app.include_router(create_convert_router())
+    app.include_router(create_models_router(
+        sciencebeam_parser=sciencebeam_parser
+    ))
 
     @app.exception_handler(Exception)
     async def log_unhandled_exceptions(
