@@ -20,6 +20,10 @@ from sciencebeam_parser.app.parser import (
     normalize_layout_document
 )
 from sciencebeam_parser.document.layout_document import LayoutDocument
+from sciencebeam_parser.document.semantic_document import (
+    SemanticMixedContentWrapper,
+    SemanticRawAuthors
+)
 from sciencebeam_parser.external.pdfalto.parser import parse_alto_root
 from sciencebeam_parser.external.pdfalto.wrapper import PdfAltoWrapper
 from sciencebeam_parser.models.data import AppFeaturesContext, DocumentFeaturesContext
@@ -251,6 +255,56 @@ class SegmentedModelRouterFactory(ModelResponseRouterFactory):
         )
 
 
+class NameHeaderModelRouterFactory(SegmentedModelRouterFactory):
+    def __init__(
+        self,
+        *args,
+        header_model: Model,
+        merge_raw_authors: bool,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.header_model = header_model
+        self.merge_raw_authors = merge_raw_authors
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        header_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<header>'
+        )
+        labeled_layout_tokens = self.header_model.predict_labels_for_layout_document(
+            header_layout_document,
+            app_features_context=self.app_features_context
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_authors_list = list(
+            SemanticMixedContentWrapper(list(
+                self.header_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawAuthors)
+        )
+        LOGGER.info('semantic_raw_authors_list count: %d', len(semantic_raw_authors_list))
+        LOGGER.info('merge_raw_authors: %s', self.merge_raw_authors)
+        if self.merge_raw_authors:
+            return [
+                LayoutDocument.for_blocks([
+                    block
+                    for semantic_raw_authors in semantic_raw_authors_list
+                    for block in semantic_raw_authors.iter_blocks()
+                ]).remove_empty_blocks()
+            ]
+        return [
+            LayoutDocument.for_blocks(
+                list(semantic_raw_authors.iter_blocks())
+            ).remove_empty_blocks()
+            for semantic_raw_authors in semantic_raw_authors_list
+        ]
+
+
 def create_models_router(
     sciencebeam_parser: ScienceBeamParser
 ) -> APIRouter:
@@ -259,6 +313,7 @@ def create_models_router(
     pdfalto_wrapper = sciencebeam_parser.pdfalto_wrapper
     fulltext_models = sciencebeam_parser.fulltext_models
     app_features_context = sciencebeam_parser.app_features_context
+    fulltext_processor_config = sciencebeam_parser.fulltext_processor_config
 
     router.include_router(
         ModelResponseRouterFactory(
@@ -280,6 +335,20 @@ def create_models_router(
             segmentation_labels=['<header>']
         ).create_router(),
         prefix='/models/header'
+    )
+
+    router.include_router(
+        NameHeaderModelRouterFactory(
+            'Name Header',
+            model=fulltext_models.name_header_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<header>'],
+            header_model=fulltext_models.header_model,
+            merge_raw_authors=fulltext_processor_config.merge_raw_authors
+        ).create_router(),
+        prefix='/models/name-header'
     )
 
     return router
