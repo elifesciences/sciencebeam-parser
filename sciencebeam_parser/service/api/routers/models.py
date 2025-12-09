@@ -399,4 +399,18 @@ def create_models_router(
         prefix='/models/affiliation-address'
     )
 
+    fulltext_segmentation_labels = ['<body>', '<acknowledgement>', '<annex>']
+
+    router.include_router(
+        SegmentedModelRouterFactory(
+            'FullText',
+            model=fulltext_models.fulltext_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=fulltext_segmentation_labels
+        ).create_router(),
+        prefix='/models/fulltext'
+    )
+
     return router
