@@ -27,9 +27,24 @@ JATS_XML_CONTENT_DOC = {
 }
 
 
+TEI_ZIP_CONTENT_DOC = {
+    "schema": {"type": "string", "format": "zip"},
+}
+
+
+JATS_ZIP_CONTENT_DOC = {
+    "schema": {"type": "string", "format": "zip"},
+}
+
+
 TEI_AND_JATS_XML_CONTENT_DOC = {
     MediaTypes.TEI_XML: TEI_XML_CONTENT_DOC,
     MediaTypes.JATS_XML: JATS_XML_CONTENT_DOC
+}
+
+TEI_AND_JATS_ZIP_CONTENT_DOC = {
+    MediaTypes.TEI_ZIP: TEI_XML_CONTENT_DOC,
+    MediaTypes.JATS_ZIP: JATS_XML_CONTENT_DOC
 }
 
 
@@ -138,9 +153,12 @@ def create_grobid_router(
             ScienceBeamParserSessionSource,
             Depends(
                 get_sciencebeam_parser_session_source_dependency_factory(
-                    fulltext_processor_config=fulltext_processor_config.get_for_requested_field_names({
-                        RequestFieldNames.REFERENCES
-                    })
+                    fulltext_processor_config=(
+                        fulltext_processor_config
+                        .get_for_requested_field_names({
+                            RequestFieldNames.REFERENCES
+                        })
+                    )
                 )
             )
         ],
@@ -149,6 +167,37 @@ def create_grobid_router(
             Depends(
                 assert_and_get_first_accept_matching_media_type_factory(
                     [MediaTypes.TEI_XML, MediaTypes.JATS_XML]
+                )
+            )
+        ],
+    ) -> FileResponse:
+        return get_processed_source_to_response_media_type(
+            source=source,
+            response_media_type=response_media_type
+        )
+
+    @router.post(
+        '/processFulltextAssetDocument',
+        response_class=FileResponse,
+        responses={
+            200: {"content": TEI_AND_JATS_ZIP_CONTENT_DOC},
+            406: {"description": "No acceptable media type"},
+        },
+    )
+    def process_pdf_to_tei_assets_zip(
+        source: Annotated[
+            ScienceBeamParserSessionSource,
+            Depends(
+                get_sciencebeam_parser_session_source_dependency_factory(
+                    fulltext_processor_config=fulltext_processor_config
+                )
+            )
+        ],
+        response_media_type: Annotated[
+            str,
+            Depends(
+                assert_and_get_first_accept_matching_media_type_factory(
+                    [MediaTypes.TEI_ZIP, MediaTypes.JATS_ZIP]
                 )
             )
         ],
