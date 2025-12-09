@@ -50,10 +50,10 @@ def create_api_app(
             content={"detail": "Internal Server Error"},
         )
 
-    @app.exception_handler(Exception)
+    @app.exception_handler(UnsupportedRequestMediaTypeScienceBeamParserError)
     async def handle_unsupported_request_media_type(
-        request: Request,
-        exc: UnsupportedRequestMediaTypeScienceBeamParserError  # pylint: disable=unused-argument
+        request: Request,  # pylint: disable=unused-argument
+        exc: UnsupportedRequestMediaTypeScienceBeamParserError
     ):
         LOGGER.info("Unsupported request media type: %s", exc)
         return JSONResponse(

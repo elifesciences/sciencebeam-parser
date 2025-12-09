@@ -18,7 +18,10 @@ from sciencebeam_parser.app.parser import (
     ScienceBeamParserSession,
     ScienceBeamParserSessionSource
 )
-from sciencebeam_parser.utils.data_wrapper import MediaDataWrapper
+from sciencebeam_parser.utils.data_wrapper import (
+    MediaDataWrapper,
+    get_data_wrapper_with_improved_media_type_or_filename
+)
 from sciencebeam_parser.utils.media_types import MediaTypes
 
 
@@ -117,6 +120,9 @@ def get_sciencebeam_parser_session_source_dependency_factory(
         ],
         data_wrapper: Annotated[MediaDataWrapper, Depends(get_media_data_wrapper)],
     ) -> Iterator[ScienceBeamParserSessionSource]:
+        data_wrapper = get_data_wrapper_with_improved_media_type_or_filename(
+            data_wrapper
+        )
         source_path = session.temp_path / "source.file"
         source_path.write_bytes(data_wrapper.data)
 
