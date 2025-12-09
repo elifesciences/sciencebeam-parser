@@ -155,6 +155,7 @@ def assert_and_get_first_accept_matching_media_type_factory(
         *,
         accept: Annotated[Optional[str], Header(alias="Accept")] = None,
     ) -> str:
+        LOGGER.debug('accept: %r', accept)
         # no Accept → default to first supported type
         if not accept:
             return available_media_types[0]
@@ -164,7 +165,7 @@ def assert_and_get_first_accept_matching_media_type_factory(
             return available_media_types[0]
 
         for media_type in available_media_types:
-            if media_type in accept:
+            if media_type == accept:
                 return media_type
 
         raise HTTPException(

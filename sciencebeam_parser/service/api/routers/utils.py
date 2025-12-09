@@ -14,6 +14,7 @@ def get_processed_source_to_response_media_type(
     response_media_type: str
 ) -> FileResponse:
     LOGGER.debug('created session source: %r', source)
+    LOGGER.debug('response_media_type: %r', response_media_type)
     actual_response_media_type = response_media_type
     if response_media_type in {
         MediaTypes.TEI_XML, MediaTypes.JATS_XML
