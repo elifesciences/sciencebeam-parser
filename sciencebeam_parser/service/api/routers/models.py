@@ -28,6 +28,7 @@ from sciencebeam_parser.document.semantic_document import (
     SemanticRawReference,
     SemanticRawReferenceText,
     SemanticRawTable,
+    SemanticReference,
     T_SemanticContentWrapper,
     iter_by_semantic_type_recursively
 )
@@ -380,6 +381,68 @@ class CitationModelRouterFactory(SegmentedModelRouterFactory):
         ]
 
 
+class NameCitationModelRouterFactory(SegmentedModelRouterFactory):
+    def __init__(
+        self,
+        *args,
+        reference_segmenter_model: Model,
+        citation_model: Model,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.reference_segmenter_model = reference_segmenter_model
+        self.citation_model = citation_model
+
+    def iter_filter_layout_document(
+        self,
+        layout_document: LayoutDocument,
+        filter_params: dict
+    ) -> Iterable[LayoutDocument]:
+        references_layout_document = self.filter_layout_document_by_segmentation_label(
+            layout_document, '<references>'
+        )
+        labeled_layout_tokens = self.reference_segmenter_model.predict_labels_for_layout_document(
+            references_layout_document,
+            app_features_context=self.app_features_context
+        )
+        LOGGER.debug('labeled_layout_tokens: %r', labeled_layout_tokens)
+        semantic_raw_references = list(
+            SemanticMixedContentWrapper(list(
+                self.reference_segmenter_model.iter_semantic_content_for_labeled_layout_tokens(
+                    labeled_layout_tokens
+                )
+            )).iter_by_type(SemanticRawReference)
+        )
+        LOGGER.info('semantic_raw_references count: %d', len(semantic_raw_references))
+        raw_reference_documents = [
+            LayoutDocument.for_blocks(
+                [semantic_raw_reference.view_by_type(SemanticRawReferenceText).merged_block]
+            ).remove_empty_blocks()
+            for semantic_raw_reference in semantic_raw_references
+        ]
+        citation_labeled_layout_tokens_list = (
+            self.citation_model.predict_labels_for_layout_documents(
+                raw_reference_documents,
+                app_features_context=self.app_features_context
+            )
+        )
+        raw_authors = [
+            raw_author
+            for citation_labeled_layout_tokens in citation_labeled_layout_tokens_list
+            for ref in (
+                self.citation_model.iter_semantic_content_for_labeled_layout_tokens(
+                    citation_labeled_layout_tokens
+                )
+            )
+            if isinstance(ref, SemanticReference)
+            for raw_author in ref.iter_by_type(SemanticRawAuthors)
+        ]
+        return [
+            LayoutDocument.for_blocks([raw_author.merged_block]).remove_empty_blocks()
+            for raw_author in raw_authors
+        ]
+
+
 class FullTextChildModelRouterFactory(SegmentedModelRouterFactory):
     def __init__(
         self,
@@ -556,6 +619,20 @@ def create_models_router(
             reference_segmenter_model=fulltext_models.reference_segmenter_model
         ).create_router(),
         prefix='/models/citation'
+    )
+
+    router.include_router(
+        NameCitationModelRouterFactory(
+            'Name Citaton',
+            model=fulltext_models.name_citation_model,
+            pdfalto_wrapper=pdfalto_wrapper,
+            app_features_context=app_features_context,
+            segmentation_model=fulltext_models.segmentation_model,
+            segmentation_labels=['<references>'],
+            reference_segmenter_model=fulltext_models.reference_segmenter_model,
+            citation_model=fulltext_models.citation_model
+        ).create_router(),
+        prefix='/models/name-citation'
     )
 
     return router
