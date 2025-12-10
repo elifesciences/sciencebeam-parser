@@ -5,11 +5,11 @@ logging:
     default:
       format: '[%(asctime)s] %(levelname)s in %(name)s:%(lineno)s: %(message)s'
   handlers:
-    wsgi:
+    console:
       level: INFO
       formatter: default
       class: logging.StreamHandler
-      stream: 'ext://flask.logging.wsgi_errors_stream'
+      stream: ext://sys.stdout
     log_file:
       level: INFO
       formatter: default
@@ -23,7 +23,7 @@ logging:
     '':
       level: INFO
       handlers:
-        - wsgi
+        - console
         - log_file
     sciencebeam_parser:
       level: DEBUG
