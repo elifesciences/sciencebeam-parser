@@ -107,6 +107,11 @@ FROM dev AS python-dist-builder
 ARG python_package_version
 RUN echo "Setting version to: $version" && \
     uv version "$python_package_version"
+RUN python scripts/dev/update_readme.py \
+    --source=./doc/python_library.md \
+    --target=./build/python_library.md \
+    --source-base-path=doc \
+    --link-prefix=https://github.com/elifesciences/sciencebeam-parser/blob/main
 RUN uv build && \
     ls -l dist
 
