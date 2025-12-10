@@ -1,28 +1,21 @@
-from __future__ import absolute_import
 from abc import ABC, abstractmethod
-
-import logging
-import json
 from io import BytesIO
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from flask import Flask
-from flask.testing import FlaskClient
-from werkzeug.exceptions import BadRequest
-
+from fastapi.testclient import TestClient
+import httpx
 import pytest
+
 from sciencebeam_parser.app.parser import (
     UnsupportedRequestMediaTypeScienceBeamParserError,
     UnsupportedResponseMediaTypeScienceBeamParserError
 )
-
 from sciencebeam_parser.config.config import AppConfig
-from sciencebeam_parser.service.blueprints.api import (
-    ApiBlueprint
-)
-from sciencebeam_parser.utils.media_types import MediaTypes
 from sciencebeam_parser.resources.default_config import DEFAULT_CONFIG_FILE
+from sciencebeam_parser.service.api.app import create_api_app
+from sciencebeam_parser.utils.media_types import MediaTypes
 
 
 LOGGER = logging.getLogger(__name__)
@@ -47,7 +40,10 @@ def _request_temp_path(tmp_path: Path) -> Path:
 
 @pytest.fixture(name='sciencebeam_parser_mock')
 def _sciencebeam_parser_mock() -> MagicMock:
-    return MagicMock(name='sciencebeam_parser')
+    mock = MagicMock(
+        name='sciencebeam_parser_mock'
+    )
+    return mock
 
 
 @pytest.fixture(name='sciencebeam_parser_session_mock')
@@ -76,50 +72,43 @@ def _app_config() -> AppConfig:
     return AppConfig.load_yaml(DEFAULT_CONFIG_FILE)
 
 
-def _create_test_client(
+def create_test_client(
     sciencebeam_parser_mock: MagicMock
-) -> FlaskClient:
-    blueprint = ApiBlueprint(sciencebeam_parser_mock)
-    app = Flask(__name__)
-    app.register_blueprint(blueprint)
-    return app.test_client()
+) -> TestClient:
+    app = create_api_app(
+        sciencebeam_parser=sciencebeam_parser_mock
+    )
+    client = TestClient(app)
+    return client
 
 
 @pytest.fixture(name='test_client')
 def _test_client(
     sciencebeam_parser_mock: MagicMock
-) -> FlaskClient:
-    return _create_test_client(sciencebeam_parser_mock)
+) -> TestClient:
+    return create_test_client(
+        sciencebeam_parser_mock=sciencebeam_parser_mock
+    )
 
 
-def _get_json(response):
-    return json.loads(response.data.decode('utf-8'))
-
-
-def _get_ok_json(response):
+def _get_ok_json(response: httpx.Response) -> dict:
     assert response.status_code == 200
-    return _get_json(response)
+    return response.json()
 
 
-class TestApiBlueprint:
+class TestApiApp:
     class TestRoot:
-        def test_should_have_links(self, test_client: FlaskClient):
+        def test_should_not_fail(self, test_client: TestClient):
             response = test_client.get('/')
-            assert _get_ok_json(response) == {
-                'links': {
-                    'pdfalto': '/pdfalto'
-                }
-            }
+            assert _get_ok_json(response)
 
     class TestPdfAlto:
-        def test_should_show_form_on_get(self, test_client: FlaskClient):
-            response = test_client.get('/pdfalto')
-            assert response.status_code == 200
-            assert 'html' in str(response.data)
-
-        def test_should_reject_post_without_data(self, test_client: FlaskClient):
+        def test_should_reject_post_without_data(
+            self,
+            test_client: TestClient
+        ):
             response = test_client.post('/pdfalto')
-            assert response.status_code == BadRequest.code
+            assert response.status_code == 400
 
         @pytest.mark.parametrize(
             'post_data_key',
@@ -127,7 +116,7 @@ class TestApiBlueprint:
         )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
@@ -135,11 +124,11 @@ class TestApiBlueprint:
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/pdfalto', data={
-                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/pdfalto', files={
+                post_data_key: (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1), 'application/pdf')
             })
             assert response.status_code == 200
-            assert response.data == XML_CONTENT_1
+            assert response.content == XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.ALTO_XML
             )
@@ -149,40 +138,35 @@ class TestApiBlueprint:
         def get_api_path(self) -> str:
             pass
 
-        def test_should_show_form_on_get(self, test_client: FlaskClient):
-            response = test_client.get(self.get_api_path())
-            assert response.status_code == 200
-            assert 'html' in str(response.data)
-
-        def test_should_reject_post_without_data(self, test_client: FlaskClient):
+        def test_should_reject_post_without_data(self, test_client: TestClient):
             response = test_client.post(self.get_api_path())
-            assert response.status_code == BadRequest.code
+            assert response.status_code == 400
 
         def test_should_reject_unsupported_request_media_type(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock
         ):
             get_local_file_for_response_media_type_mock.side_effect = (
                 UnsupportedRequestMediaTypeScienceBeamParserError()
             )
-            response = test_client.post(self.get_api_path(), data={
-                'input': (BytesIO(PDF_CONTENT_1), 'test.unsupported')
+            response = test_client.post(self.get_api_path(), files={
+                'input': ('test.unsupported', BytesIO(PDF_CONTENT_1))
             })
-            assert response.status_code == BadRequest.code
+            assert response.status_code == 406
 
         def test_should_reject_unsupported_accept_media_type(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock
         ):
             get_local_file_for_response_media_type_mock.side_effect = (
                 UnsupportedResponseMediaTypeScienceBeamParserError()
             )
-            response = test_client.post(self.get_api_path(), data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post(self.get_api_path(), files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': 'media/unsupported'})
-            assert response.status_code == BadRequest.code
+            assert response.status_code == 406
 
     class TestProcessHeaderDocument(_AbstractPdfConversionApiTest):
         def get_api_path(self) -> str:
@@ -194,7 +178,7 @@ class TestApiBlueprint:
         )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
@@ -202,29 +186,29 @@ class TestApiBlueprint:
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(TEI_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processHeaderDocument', data={
-                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processHeaderDocument', files={
+                post_data_key: (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             })
             assert response.status_code == 200
-            assert response.data == TEI_XML_CONTENT_1
+            assert response.content == TEI_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.TEI_XML
             )
 
         def test_should_convert_to_jats(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(JATS_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processHeaderDocument', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processHeaderDocument', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.JATS_XML})
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_XML
             )
@@ -239,7 +223,7 @@ class TestApiBlueprint:
         )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
@@ -247,29 +231,29 @@ class TestApiBlueprint:
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(TEI_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processFulltextDocument', data={
-                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processFulltextDocument', files={
+                post_data_key: (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             })
             assert response.status_code == 200
-            assert response.data == TEI_XML_CONTENT_1
+            assert response.content == TEI_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.TEI_XML
             )
 
         def test_should_convert_to_jats(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(JATS_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processFulltextDocument', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processFulltextDocument', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.JATS_XML})
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_XML
             )
@@ -284,7 +268,7 @@ class TestApiBlueprint:
         )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
@@ -292,29 +276,29 @@ class TestApiBlueprint:
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(TEI_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processReferences', data={
-                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processReferences', files={
+                post_data_key: (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             })
             assert response.status_code == 200
-            assert response.data == TEI_XML_CONTENT_1
+            assert response.content == TEI_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.TEI_XML
             )
 
         def test_should_convert_to_jats(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(JATS_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processReferences', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processReferences', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.JATS_XML})
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_XML
             )
@@ -329,7 +313,7 @@ class TestApiBlueprint:
         )
         def test_should_accept_file_and_pass_to_convert_method(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path,
             post_data_key: str
@@ -337,28 +321,28 @@ class TestApiBlueprint:
             expected_output_path = request_temp_path / 'result.zip'
             expected_output_path.write_bytes(ZIP_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processFulltextAssetDocument', data={
-                post_data_key: (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processFulltextAssetDocument', files={
+                post_data_key: (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             })
             assert response.status_code == 200
-            assert response.content_type == 'application/zip'
-            assert response.data == ZIP_CONTENT_1
+            assert response.headers.get('content-type') == 'application/zip'
+            assert response.content == ZIP_CONTENT_1
 
         def test_should_convert_to_jats(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.zip'
             expected_output_path.write_bytes(ZIP_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/processFulltextAssetDocument', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/processFulltextAssetDocument', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.JATS_ZIP})
             assert response.status_code == 200
-            assert response.content_type == 'application/zip'
-            assert response.data == ZIP_CONTENT_1
+            assert response.headers.get('content-type') == 'application/zip'
+            assert response.content == ZIP_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_ZIP
             )
@@ -369,62 +353,62 @@ class TestApiBlueprint:
 
         def test_should_convert_to_jats_by_default(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(JATS_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/convert', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/convert', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             })
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_XML
             )
 
         def test_should_return_tei_xml_if_requested(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.xml'
             expected_output_path.write_bytes(TEI_XML_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/convert', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/convert', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.TEI_XML})
             assert response.status_code == 200
-            assert response.data == TEI_XML_CONTENT_1
+            assert response.content == TEI_XML_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.TEI_XML
             )
 
         def test_should_be_able_to_request_jats_zip(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
             expected_output_path = request_temp_path / 'result.zip'
             expected_output_path.write_bytes(ZIP_CONTENT_1)
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
-            response = test_client.post('/convert', data={
-                'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)
+            response = test_client.post('/convert', files={
+                'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))
             }, headers={'Accept': MediaTypes.JATS_ZIP})
             assert response.status_code == 200
-            assert response.content_type == 'application/zip'
-            assert response.data == ZIP_CONTENT_1
+            assert response.headers.get('content-type') == 'application/zip'
+            assert response.content == ZIP_CONTENT_1
             get_local_file_for_response_media_type_mock.assert_called_with(
                 MediaTypes.JATS_ZIP
             )
 
         def test_should_be_able_to_pass_includes_request_arg(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
@@ -433,16 +417,16 @@ class TestApiBlueprint:
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
             response = test_client.post(
                 '/convert',
-                data={'input': (BytesIO(PDF_CONTENT_1), PDF_FILENAME_1)},
+                files={'input': (PDF_FILENAME_1, BytesIO(PDF_CONTENT_1))},
                 headers={'Accept': MediaTypes.JATS_XML},
-                query_string='includes=title'
+                params={'includes': 'title'}
             )
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
 
         def test_should_accept_docx(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
@@ -451,16 +435,16 @@ class TestApiBlueprint:
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
             response = test_client.post(
                 '/convert',
-                data={'input': (BytesIO(DOCX_CONTENT_1), 'test.docx')},
+                files={'input': ('test.docx', BytesIO(DOCX_CONTENT_1))},
                 headers={'Accept': MediaTypes.JATS_XML},
-                query_string='includes=title'
+                params={'includes': 'title'}
             )
             assert response.status_code == 200
-            assert response.data == JATS_XML_CONTENT_1
+            assert response.content == JATS_XML_CONTENT_1
 
         def test_should_convert_docx_to_pdf(
             self,
-            test_client: FlaskClient,
+            test_client: TestClient,
             get_local_file_for_response_media_type_mock: MagicMock,
             request_temp_path: Path
         ):
@@ -469,8 +453,8 @@ class TestApiBlueprint:
             get_local_file_for_response_media_type_mock.return_value = str(expected_output_path)
             response = test_client.post(
                 '/convert',
-                data={'input': (BytesIO(DOCX_CONTENT_1), 'test.docx')},
+                files={'input': ('test.docx', BytesIO(DOCX_CONTENT_1))},
                 headers={'Accept': MediaTypes.PDF}
             )
             assert response.status_code == 200
-            assert response.data == PDF_CONTENT_1
+            assert response.content == PDF_CONTENT_1
