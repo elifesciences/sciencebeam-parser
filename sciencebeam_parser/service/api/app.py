@@ -26,11 +26,11 @@ def create_api_app(
     app = FastAPI()
     app.state.sciencebeam_parser = sciencebeam_parser
 
-    app.include_router(create_low_level_router())
+    app.include_router(create_convert_router())
     app.include_router(create_grobid_router(
         fulltext_processor_config=sciencebeam_parser.fulltext_processor_config
     ))
-    app.include_router(create_convert_router())
+    app.include_router(create_low_level_router())
     app.include_router(create_models_router(
         sciencebeam_parser=sciencebeam_parser
     ))
