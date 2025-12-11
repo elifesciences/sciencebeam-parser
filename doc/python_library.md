@@ -5,7 +5,7 @@ ScienceBeam Parser allows you to parse scientific documents. It provides a REST 
 ## Installation
 
 ```bash
-pip install sciencebeam-parser
+pip install sciencebeam-parser[delft,cpu]
 ```
 
 ## CLI
