@@ -5,7 +5,7 @@ ScienceBeam Parser allows you to parse scientific documents. It provides a REST 
 ## Installation
 
 ```bash
-pip install sciencebeam-parser
+pip install sciencebeam-parser[delft,cpu]
 ```
 
 ## CLI
@@ -19,6 +19,10 @@ python -m sciencebeam_parser.service.server --port=8080
 The server will start to listen on port `8080`.
 
 The [default config.yml](../sciencebeam_parser/resources/default_config/config.yml) defines what models to load.
+
+You can find the API docs under `/api/docs`, e.g.:
+
+[http://localhost:8080/api/docs](http://localhost:8080/api/docs)
 
 ## Python API
 
