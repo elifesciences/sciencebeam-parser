@@ -77,6 +77,10 @@ Run the server with auto reload but no debug logging:
 make dev-start-no-debug-logging-auto-reload
 ```
 
+By default the server will start on port 8080 and you can find the API docs under `/api/docs`, e.g.:
+
+[http://localhost:8080/api/docs](http://localhost:8080/api/docs)
+
 ### Submit a sample document to the server
 
 ```bash
