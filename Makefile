@@ -140,7 +140,7 @@ dev-script-end-to-end-tests:
 dev-build-python-readme:
 	$(PYTHON) scripts/dev/update_readme.py \
 		--source=./doc/python_library.md \
-		--target=./build/python_library.md \
+		--target=./doc/generated_python_library.md \
 		--source-base-path=doc \
 		--link-prefix=https://github.com/elifesciences/sciencebeam-parser/blob/main
 

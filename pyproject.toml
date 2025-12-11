@@ -2,7 +2,7 @@
 name = "sciencebeam-parser"
 version = "0.0.0"
 description = "ScienceBeam Parser, parse scientific documents."
-readme = "build/python_library.md"
+readme = "doc/generated_python_library.md"
 requires-python = ">=3.9,<3.10"
 dependencies = [
     "fastapi[standard]>=0.124.0",
@@ -55,6 +55,9 @@ explicit = true
 
 [tool.setuptools.packages.find]
 include = ["sciencebeam_parser*"]
+
+[tool.setuptools.package-data]
+"sciencebeam_parser" = ["doc/*.md"]
 
 [tool.pytest-watcher]
 now = true
