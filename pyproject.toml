@@ -8,11 +8,9 @@ dependencies = [
     "fastapi[standard]>=0.124.0",
     "fsspec>=2022.1.0",
     "gcsfs>=2022.1.0",
-    "lxml==4.8.0",
+    "lxml>=6.0.2",
     "pdf2image==1.16.0",
-    "pyyaml>=6.0.3",
-    "setuptools<70",
-    "werkzeug<2.1",
+    "pyyaml>=6.0.3"
 ]
 
 [project.optional-dependencies]
