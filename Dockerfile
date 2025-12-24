@@ -112,7 +112,7 @@ RUN python scripts/dev/update_readme.py \
     --target=./doc/generated_python_library.md \
     --source-base-path=doc \
     --link-prefix=https://github.com/elifesciences/sciencebeam-parser/blob/main
-RUN uv build && \
+RUN uv build --verbose && \
     ls -l dist
 
 
